@@ -560,3 +560,5 @@ export function useContentPublishingFlow(): ContentPublishingFlowResult {
     }
   }
 }
+
+export type { ContentCategory };
