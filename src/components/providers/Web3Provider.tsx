@@ -1,4 +1,3 @@
-// src/components/providers/EnhancedWeb3Provider.tsx
 'use client'
 
 import React, { 
