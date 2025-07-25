@@ -1,4 +1,3 @@
-// src/hooks/ui/integration.ts
 /**
  * UI Component Integration Hooks - React Interface Layer
  * 
