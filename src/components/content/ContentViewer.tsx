@@ -1,57 +1,51 @@
 /**
- * Content Viewer Component
+ * Content Viewer Component - Component 7.3
  * File: src/components/content/ContentViewer.tsx
  * 
- * This component represents the culmination of our content access control system.
- * It handles secure content display for users who have purchased or been granted
- * access to specific content, demonstrating how sophisticated access verification
- * can be seamlessly integrated into content consumption experiences.
+ * This component completes the content consumption workflow by providing secure,
+ * access-controlled rendering of content that users have permission to view.
+ * It demonstrates how our architectural layers enable sophisticated content
+ * protection while maintaining excellent user experience.
  * 
  * Key Features:
- * - Blockchain-based access verification before content display
- * - Support for multiple content types (text, images, videos, documents)
- * - Secure IPFS content retrieval with error handling
- * - Graceful degradation for access-denied or expired content
- * - Responsive design optimized for content consumption
- * - Creator attribution and engagement metrics
- * - Share functionality and content interaction controls
+ * - Access verification before content display
+ * - IPFS content retrieval with retry logic
+ * - Multi-format content support (text, video, PDF, images)
+ * - Graceful fallbacks for restricted or unavailable content
+ * - Progressive loading with skeleton states
+ * - Error recovery and retry mechanisms
+ * - Creator attribution and content metadata display
+ * - Responsive design for all device sizes
  * 
- * Security Architecture:
- * This component never displays content without first verifying blockchain-based
- * access rights. It implements defense-in-depth by checking access at multiple
- * levels and providing clear feedback when access is restricted or revoked.
+ * This component showcases how blockchain-based access control can be
+ * seamlessly integrated into familiar content viewing experiences while
+ * providing creators with strong content protection guarantees.
  */
 
 'use client'
 
-import React, { useState, useEffect, useCallback, JSX } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  Eye,
+  Shield,
   Lock,
   Unlock,
+  User,
+  Calendar,
+  Tag,
   Download,
   Share2,
-  Heart,
-  MessageCircle,
-  Calendar,
-  User,
-  Tag,
   AlertCircle,
-  Loader2,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize,
+  RefreshCw,
+  Eye,
+  Clock,
   FileText,
+  Film,
   Image as ImageIcon,
-  Video,
-  Music,
   File,
-  ArrowLeft,
   ExternalLink,
-  ShieldCheck,
-  Clock
+  Loader2,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 import {
   Card,
@@ -66,61 +60,61 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/seperator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
-
-// Import our content access control and display hooks
-import { useHasContentAccess } from '@/hooks/contracts/core'
-import { useContentById, useCreatorProfile } from '@/hooks/contracts/core'
-import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
-
-// Import utility functions for data formatting
+import { Progress } from '@/components/ui/progress'
 import {
-  formatCurrency,
-  formatAddress,
-  formatRelativeTime,
-  formatAbsoluteTime,
-  formatContentCategory
-} from '@/lib/utils'
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { cn, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 
-// Import types
-import type { ContentCategory } from '@/types/contracts'
+// Import our architectural layers
+import {
+  useContentById,
+  useHasContentAccess,
+  useCreatorProfile
+} from '@/hooks/contracts/core'
+import { useContentAccessControl } from '@/hooks/business/workflows'
+import { useAccount } from 'wagmi'
+import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
+import { categoryToString, type ContentCategory } from '@/types/contracts'
 
 /**
- * Content Type Detection and Icons
+ * Content Access Status Types
  * 
- * This utility system helps the viewer understand what type of content
- * it's displaying and choose appropriate rendering strategies.
+ * These types help us provide clear feedback about why content
+ * might not be accessible to the current user.
  */
-const CONTENT_TYPE_CONFIG = {
-  image: {
-    icon: ImageIcon,
-    supportedFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
-    playerRequired: false
-  },
-  video: {
-    icon: Video,
-    supportedFormats: ['mp4', 'webm', 'mov', 'avi', 'mkv'],
-    playerRequired: true
-  },
-  audio: {
-    icon: Music,
-    supportedFormats: ['mp3', 'wav', 'ogg', 'flac', 'm4a'],
-    playerRequired: true
-  },
-  document: {
-    icon: FileText,
-    supportedFormats: ['pdf', 'doc', 'docx', 'txt', 'md'],
-    playerRequired: false
-  },
-  other: {
-    icon: File,
-    supportedFormats: [],
-    playerRequired: false
-  }
-} as const
+type AccessStatus = 
+  | 'loading'
+  | 'granted' 
+  | 'denied'
+  | 'not_connected'
+  | 'content_not_found'
+  | 'content_inactive'
+  | 'error'
 
-type ContentType = keyof typeof CONTENT_TYPE_CONFIG
+/**
+ * Content Loading States
+ * 
+ * These states track the IPFS content retrieval process separately
+ * from the access verification process.
+ */
+type ContentLoadingState = 
+  | 'idle'
+  | 'loading'
+  | 'loaded'
+  | 'failed'
+  | 'retrying'
+
+/**
+ * Supported Content Types
+ * 
+ * The viewer can handle different content formats with appropriate
+ * rendering components for each type.
+ */
+type ContentType = 'text' | 'video' | 'pdf' | 'image' | 'audio' | 'unknown'
 
 /**
  * Props interface for the ContentViewer component
@@ -128,787 +122,615 @@ type ContentType = keyof typeof CONTENT_TYPE_CONFIG
 interface ContentViewerProps {
   /** ID of the content to display */
   contentId: bigint
-  /** Address of the current user */
-  userAddress?: string
-  /** Optional callback when user wants to go back */
-  onBack?: () => void
-  /** Optional callback when content is shared */
-  onShare?: (contentId: bigint) => void
-  /** Whether to show engagement actions (like, comment) */
-  showEngagement?: boolean
+  /** Optional callback when content is successfully loaded */
+  onContentLoaded?: (contentId: bigint) => void
+  /** Whether to show creator information prominently */
+  showCreatorInfo?: boolean
+  /** Whether to show sharing and interaction options */
+  showInteractions?: boolean
   /** Optional custom styling */
   className?: string
 }
 
 /**
- * Main ContentViewer Component
+ * ContentViewer Component
  * 
- * This component orchestrates the entire content viewing experience,
- * from access verification through content rendering to user engagement.
- * It demonstrates how our access control system enables secure content
- * consumption while maintaining an excellent user experience.
+ * This component orchestrates the complete content viewing experience,
+ * from access verification through content rendering. It demonstrates
+ * how our layered architecture enables complex access control while
+ * maintaining a smooth user experience.
  */
 export function ContentViewer({
   contentId,
-  userAddress,
-  onBack,
-  onShare,
-  showEngagement = true,
+  onContentLoaded,
+  showCreatorInfo = true,
+  showInteractions = true,
   className
-}: ContentViewerProps): JSX.Element {
-  // Get content access status and control flow
-  const accessControl = useHasContentAccess(
-    userAddress as `0x${string}` | undefined,
-    contentId
-  )
-  
-  // Get detailed content information
+}: ContentViewerProps) {
+  // Wallet connection for access control
+  const { address: userAddress } = useAccount()
+
+  // Content data and access control using our architectural layers
   const contentQuery = useContentById(contentId)
-  
-  // Get creator profile information for attribution
-  const creatorQuery = useCreatorProfile(contentQuery.data?.creator)
+  const accessControl = useContentAccessControl(contentId, userAddress)
+  const creatorProfile = useCreatorProfile(contentQuery.data?.creator)
 
-  // Local state for content interaction
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [hasLiked, setHasLiked] = useState(false)
-  const [showComments, setShowComments] = useState(false)
+  // IPFS content loading state
+  const [contentLoadingState, setContentLoadingState] = useState<ContentLoadingState>('idle')
+  const [ipfsContent, setIpfsContent] = useState<string | null>(null)
+  const [contentType, setContentType] = useState<ContentType>('unknown')
+  const [loadingProgress, setLoadingProgress] = useState(0)
 
-  // Handle share functionality
-  const handleShare = useCallback(async () => {
-    if (!contentQuery.data) return
+  // Determine overall access status
+  const accessStatus: AccessStatus = useMemo(() => {
+    if (!userAddress) return 'not_connected'
+    if (contentQuery.isLoading || accessControl.isLoading) return 'loading'
+    if (contentQuery.error || !contentQuery.data) return 'content_not_found'
+    if (!contentQuery.data.isActive) return 'content_inactive'
+    if (accessControl.error) return 'error'
+    if (accessControl.data) return 'granted'
+    return 'denied'
+  }, [userAddress, contentQuery, accessControl])
+
+  // Determine content type from IPFS hash or metadata
+  const determineContentType = useCallback((ipfsHash: string, title: string): ContentType => {
+    const extension = title.split('.').pop()?.toLowerCase() || ''
     
+    if (['mp4', 'webm', 'mov', 'avi'].includes(extension)) return 'video'
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return 'image'
+    if (['mp3', 'wav', 'ogg', 'm4a'].includes(extension)) return 'audio'
+    if (['pdf'].includes(extension)) return 'pdf'
+    if (['txt', 'md'].includes(extension)) return 'text'
+    
+    return 'text' // Default to text for unknown types
+  }, [])
+
+  // Load content from IPFS when access is granted
+  const loadContentFromIPFS = useCallback(async (ipfsHash: string, title: string) => {
     try {
-      await navigator.share({
-        title: contentQuery.data.title,
-        text: contentQuery.data.description,
-        url: window.location.href
-      })
+      setContentLoadingState('loading')
+      setLoadingProgress(0)
+
+      // Determine content type before loading
+      const detectedType = determineContentType(ipfsHash, title)
+      setContentType(detectedType)
+
+      // Progressive loading simulation (in real implementation, you'd use actual IPFS)
+      const progressInterval = setInterval(() => {
+        setLoadingProgress(prev => Math.min(prev + 10, 90))
+      }, 100)
+
+      // Simulate IPFS retrieval (replace with actual IPFS client)
+      const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`
+      const response = await fetch(ipfsUrl)
+      
+      clearInterval(progressInterval)
+      setLoadingProgress(100)
+
+      if (!response.ok) {
+        throw new Error(`Failed to load content: ${response.statusText}`)
+      }
+
+      let content: string
+      if (detectedType === 'text') {
+        content = await response.text()
+      } else {
+        // For non-text content, we store the URL for rendering
+        content = ipfsUrl
+      }
+
+      setIpfsContent(content)
+      setContentLoadingState('loaded')
+      
+      // Notify parent component
+      onContentLoaded?.(contentId)
+
     } catch (error) {
-      // Fallback to clipboard if Web Share API not available
-      navigator.clipboard.writeText(window.location.href)
+      console.error('Failed to load content from IPFS:', error)
+      setContentLoadingState('failed')
+      setLoadingProgress(0)
+    }
+  }, [determineContentType, onContentLoaded, contentId])
+
+  // Retry content loading
+  const retryContentLoading = useCallback(() => {
+    const data = contentQuery.data
+    if (data && data.ipfsHash && data.title) {
+      setContentLoadingState('retrying')
+      setTimeout(() => {
+        loadContentFromIPFS(data.ipfsHash, data.title)
+      }, 1000)
     }
     
-    onShare?.(contentId)
-  }, [contentQuery.data, contentId, onShare])
+  }, [contentQuery.data, loadContentFromIPFS])
 
-  // Main render logic with access control
-  if (accessControl.isLoading || contentQuery.isLoading) {
+  // Load content when access is granted
+  useEffect(() => {
+    if (accessStatus === 'granted' && contentQuery.data && contentLoadingState === 'idle') {
+
+      loadContentFromIPFS(contentQuery.data.ipfsHash, contentQuery.data.title)
+    }
+  }, [accessStatus, contentQuery.data, contentLoadingState, loadContentFromIPFS])
+
+  // Render different states based on access status
+  if (accessStatus === 'loading') {
     return <ContentViewerSkeleton />
   }
 
-  if (accessControl.error || contentQuery.error) {
-    return (
-      <ContentViewerError 
-        error={accessControl.error || contentQuery.error!}
-        onRetry={() => {
-          accessControl.refetch()
-          contentQuery.refetch()
-        }}
-        onBack={onBack}
-      />
-    )
+  if (accessStatus === 'not_connected') {
+    return <NotConnectedState />
   }
 
-  if (!contentQuery.data) {
+  if (accessStatus === 'content_not_found') {
+    return <ContentNotFoundState />
+  }
+
+  if (accessStatus === 'content_inactive') {
+    return <ContentInactiveState />
+  }
+
+  if (accessStatus === 'error') {
+    return <AccessErrorState error={accessControl.error} />
+  }
+
+  if (accessStatus === 'denied') {
     return (
-      <ContentNotFound 
+      <AccessDeniedState 
         contentId={contentId}
-        onBack={onBack}
+        content={contentQuery.data!}
+        userAddress={userAddress}
       />
     )
   }
 
-  // If user doesn't have access, show purchase interface
-  if (!accessControl.data) {
-    return (
-      <div className={cn("max-w-4xl mx-auto space-y-6", className)}>
-        {onBack && (
-          <Button variant="ghost" onClick={onBack} className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Discovery
-          </Button>
-        )}
-        
-        <ContentPreview
-          content={contentQuery.data}
-          creator={creatorQuery.data}
-          isPreview={true}
-        />
-        
-        <div className="flex justify-center">
-          <ContentPurchaseCard
-            contentId={contentId}
-            userAddress={userAddress}
-            variant="full"
-            onPurchaseSuccess={() => {
-              accessControl.refetch()
-            }}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  // User has access - render full content
+  // Access granted - render the content viewer
   return (
-    <div className={cn("max-w-6xl mx-auto space-y-6", className)}>
-      {/* Header with navigation and actions */}
-      <ContentViewerHeader
-        content={contentQuery.data}
-        creator={creatorQuery.data}
-        onBack={onBack}
-        onShare={handleShare}
-        hasLiked={hasLiked}
-        onLike={() => setHasLiked(!hasLiked)}
-        showEngagement={showEngagement}
+    <div className={cn("space-y-6", className)}>
+      {/* Content Header */}
+      <ContentHeader 
+        content={contentQuery.data!}
+        creator={creatorProfile.data}
+        showCreatorInfo={showCreatorInfo}
+        showInteractions={showInteractions}
       />
 
-      {/* Main content display */}
-      <ContentDisplay
-        content={contentQuery.data}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-      />
+      {/* Content Display Area */}
+      <Card>
+        <CardContent className="p-6">
+          {contentLoadingState === 'loading' || contentLoadingState === 'retrying' ? (
+            <ContentLoadingState 
+              progress={loadingProgress}
+              isRetrying={contentLoadingState === 'retrying'}
+            />
+          ) : contentLoadingState === 'failed' ? (
+            <ContentLoadFailedState onRetry={retryContentLoading} />
+          ) : contentLoadingState === 'loaded' && ipfsContent ? (
+            <ContentDisplay 
+              content={ipfsContent}
+              contentType={contentType}
+              title={contentQuery.data!.title}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No content available
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Content metadata and engagement */}
-      <ContentMetadata
-        content={contentQuery.data}
-        creator={creatorQuery.data}
-        showComments={showComments}
-        onToggleComments={() => setShowComments(!showComments)}
-        showEngagement={showEngagement}
-      />
-
-      {/* Related content suggestions */}
-      <RelatedContent
-        currentContentId={contentId}
-        category={contentQuery.data.category}
-        creatorAddress={contentQuery.data.creator}
-      />
+      {/* Content Footer with Actions */}
+      {showInteractions && contentLoadingState === 'loaded' && (
+        <ContentFooter 
+          contentId={contentId}
+          content={contentQuery.data!}
+        />
+      )}
     </div>
   )
 }
 
 /**
- * Content Viewer Header Component
+ * Content Header Component
  * 
- * This component provides navigation controls, sharing functionality,
- * and content attribution in a clean header interface.
+ * Displays content metadata, creator information, and access status.
  */
-function ContentViewerHeader({
+function ContentHeader({
   content,
   creator,
-  onBack,
-  onShare,
-  hasLiked,
-  onLike,
-  showEngagement
+  showCreatorInfo,
+  showInteractions
 }: {
-  content: any // Would use proper Content type in real implementation
-  creator: any // Would use proper Creator type in real implementation
-  onBack?: () => void
-  onShare: () => void
-  hasLiked: boolean
-  onLike: () => void
-  showEngagement: boolean
+  content: NonNullable<ReturnType<typeof useContentById>['data']>
+  creator: ReturnType<typeof useCreatorProfile>['data']
+  showCreatorInfo: boolean
+  showInteractions: boolean
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-4">
-        {onBack && (
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        )}
-        
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>
-              {formatAddress(content.creator).slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-medium">{creator?.name || formatAddress(content.creator)}</p>
-            <p className="text-sm text-muted-foreground">
-              {formatRelativeTime(content.creationTime)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {showEngagement && (
-          <>
-            <Button
-              variant={hasLiked ? "default" : "outline"}
-              size="sm"
-              onClick={onLike}
-            >
-              <Heart className={cn("h-4 w-4 mr-2", hasLiked && "fill-current")} />
-              Like
-            </Button>
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="space-y-2 flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{content.title}</h1>
+              <Badge variant="secondary">
+                <Unlock className="h-3 w-3 mr-1" />
+                Access Granted
+              </Badge>
+            </div>
             
-            <Button variant="outline" size="sm" onClick={onShare}>
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
+            <p className="text-muted-foreground">{content.description}</p>
+            
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Tag className="h-4 w-4" />
+                {categoryToString(content.category)}
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {formatRelativeTime(content.creationTime)}
+              </div>
+              {content.payPerViewPrice > BigInt(0) && (
+                <div className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  {formatCurrency(content.payPerViewPrice)} per view
+                </div>
+              )}
+            </div>
+          </div>
+
+          {showInteractions && (
+            <div className="flex gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild> 
+                    <Button variant="outline" size="sm">
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share content</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
+        </div>
+
+        {showCreatorInfo && creator && (
+          <>
+            <Separator />
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarFallback>
+                  {formatAddress(content.creator).slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">Creator</p>
+                  {creator.isVerified && (
+                    <Badge variant="secondary" className="text-xs">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {formatAddress(content.creator)}
+                </p>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span>{Number(creator.contentCount)} content pieces</span>
+                  <span>{Number(creator.subscriberCount)} subscribers</span>
+                </div>
+              </div>
+            </div>
           </>
         )}
-        
-        <Badge variant="outline">
-          <ShieldCheck className="h-3 w-3 mr-1" />
-          Verified Access
-        </Badge>
-      </div>
-    </div>
+      </CardHeader>
+    </Card>
   )
 }
 
 /**
  * Content Display Component
  * 
- * This component handles the actual rendering of content based on its type,
- * providing appropriate viewers for different media formats.
+ * Renders the actual content based on its type with appropriate viewers.
  */
 function ContentDisplay({
   content,
-  isFullscreen,
-  onToggleFullscreen
-}: {
-  content: any
-  isFullscreen: boolean
-  onToggleFullscreen: () => void
-}) {
-  const contentType = detectContentType(content.ipfsHash)
-  
-  return (
-    <Card className={cn("overflow-hidden", isFullscreen && "fixed inset-0 z-50")}>
-      <CardHeader className="pb-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle className="text-2xl mb-2">{content.title}</CardTitle>
-            <CardDescription className="text-base leading-relaxed">
-              {content.description}
-            </CardDescription>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">
-              {formatContentCategory(content.category)}
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onToggleFullscreen}
-            >
-              <Maximize className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-0">
-        <ContentRenderer
-          contentType={contentType}
-          ipfsHash={content.ipfsHash}
-          title={content.title}
-          isFullscreen={isFullscreen}
-        />
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * Content Renderer Component
- * 
- * This component provides specialized rendering for different content types,
- * handling IPFS retrieval and format-specific display logic.
- */
-function ContentRenderer({
   contentType,
-  ipfsHash,
-  title,
-  isFullscreen
+  title
 }: {
+  content: string
   contentType: ContentType
-  ipfsHash: string
   title: string
-  isFullscreen: boolean
 }) {
-  const [contentUrl, setContentUrl] = useState<string>('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  // Fetch content from IPFS
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        
-        // In a real implementation, you would:
-        // 1. Fetch from your IPFS gateway
-        // 2. Handle authentication/access tokens if needed
-        // 3. Stream large files appropriately
-        const url = `https://ipfs.io/ipfs/${ipfsHash}`
-        setContentUrl(url)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load content')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    if (ipfsHash) {
-      fetchContent()
-    }
-  }, [ipfsHash])
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="text-muted-foreground">Loading content...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <Alert className="m-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load content: {error}
-        </AlertDescription>
-      </Alert>
-    )
-  }
-
-  // Render based on content type
   switch (contentType) {
-    case 'image':
+    case 'text':
       return (
-        <div className="w-full">
-          <img
-            src={contentUrl}
-            alt={title}
-            className={cn(
-              "w-full h-auto object-contain",
-              isFullscreen ? "max-h-screen" : "max-h-96"
-            )}
-            loading="lazy"
-          />
+        <div className="prose max-w-none">
+          <pre className="whitespace-pre-wrap font-sans text-foreground">
+            {content}
+          </pre>
         </div>
       )
 
     case 'video':
       return (
-        <div className="w-full">
-          <video
-            src={contentUrl}
-            controls
-            className={cn(
-              "w-full h-auto",
-              isFullscreen ? "max-h-screen" : "max-h-96"
-            )}
-            preload="metadata"
+        <div className="aspect-video">
+          <video 
+            controls 
+            className="w-full h-full rounded-lg"
+            src={content}
+            title={title}
           >
             Your browser does not support video playback.
           </video>
         </div>
       )
 
+    case 'image':
+      return (
+        <div className="text-center">
+          <img 
+            src={content} 
+            alt={title}
+            className="max-w-full h-auto rounded-lg mx-auto"
+          />
+        </div>
+      )
+
     case 'audio':
       return (
-        <div className="p-6">
-          <audio
-            src={contentUrl}
-            controls
-            className="w-full"
-            preload="metadata"
-          >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <File className="h-5 w-5" />
+            <span>{title}</span>
+          </div>
+          <audio controls className="w-full">
+            <source src={content} />
             Your browser does not support audio playback.
           </audio>
         </div>
       )
 
-    case 'document':
+    case 'pdf':
       return (
-        <div className="p-6">
-          <div className="text-center space-y-4">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-            <div>
-              <p className="font-medium mb-2">Document Viewer</p>
-              <Button asChild>
-                <a href={contentUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open in New Tab
-                </a>
-              </Button>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              <span className="font-medium">{title}</span>
             </div>
+            <Button variant="outline" size="sm" asChild>
+              <a href={content} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open PDF
+              </a>
+            </Button>
           </div>
+          <iframe 
+            src={content}
+            className="w-full h-96 border rounded-lg"
+            title={title}
+          />
         </div>
       )
 
     default:
       return (
-        <div className="p-6">
-          <div className="text-center space-y-4">
-            <File className="h-12 w-12 mx-auto text-muted-foreground" />
-            <div>
-              <p className="font-medium mb-2">File Download</p>
-              <Button asChild>
-                <a href={contentUrl} download={title}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download File
-                </a>
-              </Button>
-            </div>
+        <div className="text-center py-8 space-y-4">
+          <File className="h-12 w-12 mx-auto text-muted-foreground" />
+          <div>
+            <p className="font-medium">{title}</p>
+            <p className="text-sm text-muted-foreground">
+              Content type not supported for preview
+            </p>
           </div>
+          <Button variant="outline" asChild>
+            <a href={content} target="_blank" rel="noopener noreferrer">
+              <Download className="h-4 w-4 mr-2" />
+              Download File
+            </a>
+          </Button>
         </div>
       )
   }
 }
 
 /**
- * Content Metadata Component
+ * Content Footer Component
  * 
- * This component displays rich metadata about the content including
- * tags, creation details, and engagement statistics.
+ * Provides additional actions and information about the content.
  */
-function ContentMetadata({
-  content,
-  creator,
-  showComments,
-  onToggleComments,
-  showEngagement
-}: {
-  content: any
-  creator: any
-  showComments: boolean
-  onToggleComments: () => void
-  showEngagement: boolean
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Content Details</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Content tags */}
-        {content.tags && content.tags.length > 0 && (
-          <div>
-            <p className="text-sm font-medium mb-2">Tags</p>
-            <div className="flex flex-wrap gap-2">
-              {content.tags.map((tag: string, index: number) => (
-                <Badge key={index} variant="secondary">
-                  <Tag className="h-3 w-3 mr-1" />
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Content statistics */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-medium">Price</p>
-            <p className="text-muted-foreground">
-              {formatCurrency(content.payPerViewPrice)}
-            </p>
-          </div>
-          <div>
-            <p className="font-medium">Category</p>
-            <p className="text-muted-foreground">
-              {formatContentCategory(content.category)}
-            </p>
-          </div>
-          <div>
-            <p className="font-medium">Created</p>
-            <p className="text-muted-foreground">
-              {formatAbsoluteTime(content.creationTime)}
-            </p>
-          </div>
-          <div>
-            <p className="font-medium">Creator</p>
-            <p className="text-muted-foreground">
-              {creator?.name || formatAddress(content.creator)}
-            </p>
-          </div>
-        </div>
-
-        {showEngagement && (
-          <>
-            <Separator />
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                onClick={onToggleComments}
-                className="flex items-center gap-2"
-              >
-                <MessageCircle className="h-4 w-4" />
-                {showComments ? 'Hide Comments' : 'Show Comments'}
-              </Button>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * Related Content Component
- * 
- * This component suggests other content based on category or creator,
- * encouraging further engagement and content discovery.
- */
-function RelatedContent({
-  currentContentId,
-  category,
-  creatorAddress
-}: {
-  currentContentId: bigint
-  category: ContentCategory
-  creatorAddress: string
-}) {
-  // In a real implementation, this would fetch related content
-  // based on category, creator, or user preferences
-  
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Related Content</CardTitle>
-        <CardDescription>
-          Discover more content in this category or from this creator
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-center py-8 text-muted-foreground">
-          <p>Related content suggestions would appear here</p>
-          <p className="text-sm mt-2">
-            Implementation would fetch content by category: {formatContentCategory(category)}
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * Content Preview Component
- * 
- * This component shows a limited preview of content when users don't have access,
- * encouraging them to make a purchase while respecting access controls.
- */
-function ContentPreview({
-  content,
-  creator,
-  isPreview
-}: {
-  content: any
-  creator: any
-  isPreview: boolean
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle className="text-2xl mb-2">{content.title}</CardTitle>
-            <CardDescription className="text-base">
-              {content.description}
-            </CardDescription>
-          </div>
-          
-          <Badge variant="outline">
-            <Lock className="h-3 w-3 mr-1" />
-            Preview
-          </Badge>
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <div className="relative">
-          {/* Blurred preview overlay */}
-          <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <Lock className="h-12 w-12 mx-auto text-gray-400" />
-              <div>
-                <p className="font-medium text-gray-600">Premium Content</p>
-                <p className="text-sm text-gray-500">
-                  Purchase to view full content
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Content metadata preview */}
-        <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-medium">Price</p>
-            <p className="text-muted-foreground">
-              {formatCurrency(content.payPerViewPrice)}
-            </p>
-          </div>
-          <div>
-            <p className="font-medium">Category</p>
-            <p className="text-muted-foreground">
-              {formatContentCategory(content.category)}
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * Loading and Error State Components
- * 
- * These components provide proper feedback during loading states
- * and error conditions, maintaining good UX even when things go wrong.
- */
-function ContentViewerSkeleton() {
-  return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-8 bg-gray-200 rounded animate-pulse" />
-          <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
-          <div className="space-y-2">
-            <div className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
-            <div className="w-16 h-3 bg-gray-200 rounded animate-pulse" />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <div className="w-16 h-8 bg-gray-200 rounded animate-pulse" />
-          <div className="w-16 h-8 bg-gray-200 rounded animate-pulse" />
-        </div>
-      </div>
-      
-      {/* Content skeleton */}
-      <Card>
-        <CardHeader>
-          <div className="w-3/4 h-8 bg-gray-200 rounded animate-pulse mb-2" />
-          <div className="w-full h-4 bg-gray-200 rounded animate-pulse" />
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="w-full h-96 bg-gray-200 animate-pulse" />
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function ContentViewerError({
-  error,
-  onRetry,
-  onBack
-}: {
-  error: Error
-  onRetry: () => void
-  onBack?: () => void
-}) {
-  return (
-    <div className="max-w-2xl mx-auto">
-      {onBack && (
-        <Button variant="ghost" onClick={onBack} className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Discovery
-        </Button>
-      )}
-      
-      <Card>
-        <CardContent className="text-center py-12">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Content Loading Error</h3>
-          <p className="text-muted-foreground mb-6">
-            {error.message || 'We encountered an error while loading this content.'}
-          </p>
-          <div className="flex justify-center gap-4">
-            <Button onClick={onRetry}>
-              Try Again
-            </Button>
-            {onBack && (
-              <Button variant="outline" onClick={onBack}>
-                Go Back
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function ContentNotFound({
+function ContentFooter({
   contentId,
-  onBack
+  content
 }: {
   contentId: bigint
-  onBack?: () => void
+  content: NonNullable<ReturnType<typeof useContentById>['data']>
 }) {
   return (
-    <div className="max-w-2xl mx-auto">
-      {onBack && (
-        <Button variant="ghost" onClick={onBack} className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Discovery
-        </Button>
-      )}
+    <Card>
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Shield className="h-4 w-4" />
+              Content protected by blockchain
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              Accessed {new Date().toLocaleDateString()}
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Save for Later
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// =====  STATE COMPONENTS =====
+
+function ContentViewerSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="space-y-4">
+          <div className="h-8 bg-muted rounded animate-pulse" />
+          <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+          <div className="flex gap-4">
+            <div className="h-4 bg-muted rounded w-20 animate-pulse" />
+            <div className="h-4 bg-muted rounded w-24 animate-pulse" />
+            <div className="h-4 bg-muted rounded w-16 animate-pulse" />
+          </div>
+        </CardHeader>
+      </Card>
       
       <Card>
-        <CardContent className="text-center py-12">
-          <Eye className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Content Not Found</h3>
-          <p className="text-muted-foreground mb-6">
-            The content you're looking for doesn't exist or has been removed.
-          </p>
-          <p className="text-sm text-gray-500 mb-6">
-            Content ID: {contentId.toString()}
-          </p>
-          {onBack && (
-            <Button onClick={onBack}>
-              Browse Other Content
-            </Button>
-          )}
+        <CardContent className="p-6">
+          <div className="h-64 bg-muted rounded animate-pulse" />
         </CardContent>
       </Card>
     </div>
   )
 }
 
-/**
- * Utility Functions
- */
-
-/**
- * Detect content type based on IPFS hash or filename
- * In a real implementation, this would use more sophisticated detection
- */
-function detectContentType(ipfsHash: string): ContentType {
-  // This is a simplified implementation
-  // In reality, you'd check file extensions or MIME types
-  const hash = ipfsHash.toLowerCase()
-  
-  if (hash.includes('img') || hash.includes('image')) return 'image'
-  if (hash.includes('vid') || hash.includes('video')) return 'video'
-  if (hash.includes('aud') || hash.includes('audio')) return 'audio'
-  if (hash.includes('doc') || hash.includes('pdf')) return 'document'
-  
-  return 'other'
+function NotConnectedState() {
+  return (
+    <Card>
+      <CardContent className="py-12 text-center space-y-4">
+        <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
+        <div>
+          <h3 className="font-semibold">Connect Wallet to View Content</h3>
+          <p className="text-sm text-muted-foreground">
+            You need to connect your wallet to access this content.
+          </p>
+        </div>
+        <Button>Connect Wallet</Button>
+      </CardContent>
+    </Card>
+  )
 }
 
-/**
- * Export the main component and utility types
- */
-export default ContentViewer
-export type { ContentViewerProps, ContentType }
+function ContentNotFoundState() {
+  return (
+    <Card>
+      <CardContent className="py-12 text-center space-y-4">
+        <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+        <div>
+          <h3 className="font-semibold">Content Not Found</h3>
+          <p className="text-sm text-muted-foreground">
+            The requested content could not be found or has been removed.
+          </p>
+        </div>
+        <Button variant="outline">Browse Other Content</Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ContentInactiveState() {
+  return (
+    <Card>
+      <CardContent className="py-12 text-center space-y-4">
+        <XCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+        <div>
+          <h3 className="font-semibold">Content Unavailable</h3>
+          <p className="text-sm text-muted-foreground">
+            This content has been temporarily disabled by the creator.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function AccessErrorState({ error }: { error: Error | null }) {
+  return (
+    <Alert variant="destructive">
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>
+        Failed to verify content access: {error?.message || 'Unknown error'}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+function AccessDeniedState({ 
+  contentId, 
+  content, 
+  userAddress 
+}: { 
+  contentId: bigint
+  content: NonNullable<ReturnType<typeof useContentById>['data']>
+  userAddress: string | undefined
+}) {
+  return (
+    <Card>
+      <CardContent className="py-12 text-center space-y-6">
+        <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
+        <div>
+          <h3 className="font-semibold">Purchase Required</h3>
+          <p className="text-sm text-muted-foreground">
+            You need to purchase access to view this content.
+          </p>
+        </div>
+        
+        <div className="max-w-md mx-auto">
+          <ContentPurchaseCard 
+            contentId={contentId}
+            userAddress={userAddress as `0x${string}`}
+            variant="full"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ContentLoadingState({ 
+  progress, 
+  isRetrying 
+}: { 
+  progress: number
+  isRetrying: boolean
+}) {
+  return (
+    <div className="py-12 text-center space-y-4">
+      <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
+      <div className="space-y-2">
+        <p className="font-medium">
+          {isRetrying ? 'Retrying content load...' : 'Loading content...'}
+        </p>
+        <Progress value={progress} className="w-64 mx-auto" />
+        <p className="text-xs text-muted-foreground">
+          Retrieving from IPFS network
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function ContentLoadFailedState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="py-12 text-center space-y-4">
+      <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+      <div>
+        <p className="font-medium">Failed to Load Content</p>
+        <p className="text-sm text-muted-foreground">
+          Unable to retrieve content from IPFS network.
+        </p>
+      </div>
+      <Button onClick={onRetry} variant="outline">
+        <RefreshCw className="h-4 w-4 mr-2" />
+        Retry Loading
+      </Button>
+    </div>
+  )
+}

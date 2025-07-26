@@ -209,6 +209,44 @@ export function parseDecimalToBigInt(value: string, decimals: number): bigint {
   }
 }
 
+
+/**
+ * Formats a number or BigInt according to locale and formatting options.
+ *
+ * Use this for quantities, metrics, and any numeric display where you need
+ * consistent grouping separators or controlled decimal precision.
+ *
+ * @param value       - The numeric or bigint value to format.
+ * @param locale      - BCP 47 language tag for localization (default: 'en-US').
+ * @param options     - Intl.NumberFormatOptions to control grouping, decimals, etc.
+ *                      Defaults to grouping enabled and up to 2 decimal places.
+ * @returns           - Localized, formatted number string.
+ *
+ * @example
+ * formatNumber(1234567.891) 
+ * // "1,234,567.89"
+ *
+ * formatNumber(1500n)          
+ * // "1,500"
+ *
+ * formatNumber(0.1234, 'de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+ * // "0,1234" (in German locale)
+ */
+export function formatNumber(
+  value: number | bigint,
+  locale: string = 'en-US',
+  options: Intl.NumberFormatOptions = {
+    useGrouping: true,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }
+): string {
+  const num = typeof value === 'bigint' ? Number(value) : value;
+  return new Intl.NumberFormat(locale, options).format(num);
+}
+
+
+
 // ===== TIME AND DATE FORMATTING =====
 // These functions handle blockchain timestamps and time-based calculations
 
@@ -501,4 +539,38 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
       func(...args)
     }
   }
+}
+
+
+/**
+ * Formats a number or BigInt as a percentage string
+ * 
+ * Useful for analytics, progress bars, and performance indicators. Accepts
+ * either a ratio (0.0–1.0) or a percentage number (e.g. 75).
+ * 
+ * @param value - The numeric or bigint value (e.g. 0.75 or 75n)
+ * @param fromDecimal - If true, input is treated as a decimal ratio (0–1) and converted to %
+ * @param maxFractionDigits - Maximum number of decimal places to show (default: 2)
+ * @returns Formatted string like "75%" or "75.23%"
+ * 
+ * @example
+ * formatPercentage(0.7532, true) // "75.32%"
+ * formatPercentage(75)          // "75%"
+ * formatPercentage(987654321n, false) // "987654321%"
+ */
+export function formatPercentage(
+  value: number | bigint,
+  fromDecimal: boolean = false,
+  maxFractionDigits: number = 2
+): string {
+  const numericValue = typeof value === 'bigint' ? Number(value) : value
+  const percentValue = fromDecimal ? numericValue * 100 : numericValue
+
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'percent',
+    maximumFractionDigits: maxFractionDigits,
+    minimumFractionDigits: 0,
+  })
+
+  return formatter.format(percentValue / 100)
 }
