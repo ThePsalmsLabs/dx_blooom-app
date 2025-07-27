@@ -44,17 +44,75 @@ export const Toast = ({
 }
 Toast.displayName = 'Toast'
 
+type ToastItem = {
+  id: string
+  title?: string
+  description?: string
+  variant?: 'default' | 'destructive'
+  duration?: number
+}
+
+type ToastContextType = {
+  toast: (t: Omit<ToastItem, 'id'>) => void
+  dismiss: (id: string) => void
+  toasts: ToastItem[]
+}
+
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined)
+
+export const useToast = () => {
+  const context = React.useContext(ToastContext)
+  if (!context) {
+    throw new Error('useToast must be used within a ToastProvider')
+  }
+  return context
+}
+
 interface ToastProviderProps {
   children: React.ReactNode
 }
 
 export const ToastProvider = ({ children }: ToastProviderProps) => {
-  return <div className="relative z-[100]"><>{children}</></div>
+  const [toasts, setToasts] = React.useState<ToastItem[]>([])
+
+  const toast = React.useCallback((t: Omit<ToastItem, 'id'>) => {
+    const id = crypto.randomUUID()
+    const newToast = { id, ...t }
+    setToasts((prev) => [...prev, newToast])
+
+    if (t.duration !== 0) {
+      setTimeout(() => dismiss(id), t.duration ?? 3000)
+    }
+  }, [])
+
+  const dismiss = React.useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  }, [])
+
+  return (
+    <ToastContext.Provider value={{ toast, dismiss, toasts }}>
+      <div className="relative z-[100]">
+        {children}
+        <ToastViewport>
+          {toasts.map((t) => (
+            <Toast
+              key={t.id}
+              title={t.title}
+              description={t.description}
+              variant={t.variant}
+              onClose={() => dismiss(t.id)}
+            />
+          ))}
+        </ToastViewport>
+      </div>
+    </ToastContext.Provider>
+  )
 }
 ToastProvider.displayName = 'ToastProvider'
 
 export const ToastViewport = ({
   className,
+  children,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
@@ -63,6 +121,8 @@ export const ToastViewport = ({
       className
     )}
     {...props}
-  />
+  >
+    {children}
+  </div>
 )
 ToastViewport.displayName = 'ToastViewport'
