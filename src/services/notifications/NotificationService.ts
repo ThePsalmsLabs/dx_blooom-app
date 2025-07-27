@@ -103,7 +103,7 @@ interface PlatformNotification {
   readonly expiresAt?: Date            // When it becomes irrelevant (smart expiry)
   readonly isRead: boolean             // User interaction state
   readonly isPersistent: boolean       // Should survive browser refresh
-  readonly groupId?: string            // For intelligent grouping of related notifications
+  groupId?: string                     // For intelligent grouping of related notifications
   
   // Context and metadata for intelligent processing
   readonly sourceEvent: {              // What triggered this notification
@@ -269,7 +269,7 @@ export class NotificationService extends EventEmitter {
         channel: 'failed'
       }
     }
-
+  
     // Get user preferences to respect their communication choices
     const userPrefs = this.getUserPreferences(notification.recipient)
     
@@ -283,16 +283,16 @@ export class NotificationService extends EventEmitter {
         channel: 'failed'
       }
     }
-
+  
     // Create complete notification object with computed expiry
     const completeNotification: PlatformNotification = {
+      ...notification,
       id: notificationId,
       createdAt: new Date(),
       expiresAt: this.calculateExpiry(notification),
-      isRead: false, // 'isRead' is specified more than once, so this usage will be overwritten.ts(2783)
-      ...notification
+      isRead: false // Only specify isRead once
     }
-
+  
     // Handle intelligent grouping if enabled
     if (this.config.groupingEnabled) {
       const groupResult = this.attemptGrouping(completeNotification)
@@ -307,10 +307,10 @@ export class NotificationService extends EventEmitter {
         }
       }
     }
-
+  
     // Store notification for persistence and tracking
     this.notifications.set(notificationId, completeNotification)
-
+  
     // Attempt real-time delivery if available
     if (this.config.enableRealTime && this.webSocket?.readyState === WebSocket.OPEN) {
       try {
@@ -335,7 +335,7 @@ export class NotificationService extends EventEmitter {
         console.warn('WebSocket delivery failed, falling back to polling:', error)
       }
     }
-
+  
     // Store for polling-based delivery
     const result: DeliveryResult = {
       notificationId,
@@ -786,7 +786,7 @@ export class NotificationService extends EventEmitter {
     const now = new Date()
     
     // Different notification types have different relevance lifespans
-    const expiryHours = {
+    const expiryHours: Partial<Record<NotificationType, number>> = {
       [NotificationType.TRANSACTION_PENDING]: 24,        // 1 day for pending transactions
       [NotificationType.TRANSACTION_CONFIRMED]: 7 * 24,  // 1 week for confirmations
       [NotificationType.CONTENT_ACCESS_EXPIRING]: 1,     // 1 hour for urgent access alerts
@@ -812,14 +812,19 @@ export class NotificationService extends EventEmitter {
         !existing.isRead &&
         (new Date().getTime() - existing.createdAt.getTime()) < 60 * 60 * 1000 // Within 1 hour
       )
-
+  
     if (potentialGroups.length > 0) {
-      // Add to existing group
+      // Add to existing group by creating a new notification object
       const groupId = potentialGroups[0].groupId!
-      notification.groupId = groupId // Cannot assign to 'groupId' because it is a read-only property.ts(2540)
+      const groupedNotification: PlatformNotification = {
+        ...notification,
+        groupId
+      }
+      // Update the notification in the map
+      this.notifications.set(notification.id, groupedNotification)
       return { grouped: true, groupId }
     }
-
+  
     // Create new group if we have multiple similar notifications
     const similarCount = Array.from(this.notifications.values())
       .filter(existing => 
@@ -827,13 +832,18 @@ export class NotificationService extends EventEmitter {
         existing.type === notification.type &&
         !existing.isRead
       ).length
-
+  
     if (similarCount >= 2) {
       const groupId = `group_${notification.type}_${Date.now()}`
-      notification.groupId = groupId // Cannot assign to 'groupId' because it is a read-only property.ts(2540)
+      const groupedNotification: PlatformNotification = {
+        ...notification,
+        groupId
+      }
+      // Update the notification in the map
+      this.notifications.set(notification.id, groupedNotification)
       return { grouped: false, groupId } // New group created
     }
-
+  
     return { grouped: false }
   }
 
