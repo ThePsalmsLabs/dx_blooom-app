@@ -212,7 +212,7 @@ function WalletConnectionCard({
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                You're connected to {wallet.chainName}. Please switch to Base network
+                You&apos;re connected to {wallet.chainName}. Please switch to Base network
                 to use all platform features.
               </AlertDescription>
             </Alert>
