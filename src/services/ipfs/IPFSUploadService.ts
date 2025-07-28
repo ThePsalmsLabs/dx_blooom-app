@@ -351,7 +351,7 @@ export class IPFSUploadService {
     onProgress: (progress: UploadProgress) => void
   ): Promise<{ cid: string }> {
     const totalChunks = Math.ceil(file.size / this.config.chunkSize)
-    let uploadedBytes = 0
+    const uploadedBytes = 0
     const startTime = Date.now()
 
     // Try each IPFS client until one succeeds

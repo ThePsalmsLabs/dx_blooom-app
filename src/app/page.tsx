@@ -1,103 +1,539 @@
-import Image from "next/image";
+/**
+ * Home Page Component - Platform Landing & Discovery Hub
+ * File: src/app/page.tsx
+ * 
+ * This component serves as the main entry point for your Web3 content platform,
+ * adapting dynamically to user connection status and roles while showcasing
+ * the platform's value proposition and driving user engagement.
+ * 
+ * Architecture Integration:
+ * - Follows established three-layer hook pattern (core → business → UI)
+ * - Leverages existing AppLayout, ContentDiscoveryGrid, and RouteGuards
+ * - Implements role-based adaptive interface (disconnected → consumer → creator)
+ * - Maintains consistent design patterns with other pages
+ * - Uses UI integration hooks for clean, declarative components
+ * 
+ * This design transforms your home page from a basic template into a sophisticated
+ * platform showcase that guides users through their journey from discovery to
+ * active participation in the Web3 content economy.
+ */
 
-export default function Home() {
+'use client'
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAccount } from 'wagmi'
+import {
+  ArrowRight,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Play,
+  FileText,
+  Headphones,
+  Image as ImageIcon,
+  BookOpen,
+  Code,
+  Database,
+  Sparkles,
+  Eye,
+  Star,
+  Trophy,
+  Zap,
+  Shield,
+  Globe,
+  ChevronRight,
+  ExternalLink
+} from 'lucide-react'
+
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Separator,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Progress,
+  Avatar,
+  AvatarFallback,
+  AvatarImage
+} from '@/components/ui/index'
+
+// Import architectural layers following established patterns
+import { AppLayout } from '@/components/layout/AppLayout'
+import { RouteGuards } from '@/components/layout/RouteGuards'
+import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
+import { WalletConnectionButton } from '@/components/web3/WalletConnect'
+
+// Import business logic and UI integration hooks
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
+import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
+
+// Import utilities and types
+import { cn, formatCurrency, formatNumber } from '@/lib/utils'
+import { ContentCategory, categoryToString } from '@/types/contracts'
+
+/**
+ * Home Page State Interface
+ * 
+ * Manages the various interactive states within the home page experience,
+ * including featured content selection and user engagement tracking.
+ */
+interface HomePageState {
+  readonly activeContentTab: ContentCategory | 'featured'
+  readonly showPlatformStats: boolean
+  readonly heroVideoPlaying: boolean
+  readonly selectedCreatorSpotlight: number
+}
+
+/**
+ * Platform Statistics Interface
+ * 
+ * Defines the key metrics we display to build trust and showcase
+ * platform activity and growth.
+ */
+interface PlatformStats {
+  readonly totalCreators: string
+  readonly totalContent: string
+  readonly totalEarnings: string
+  readonly monthlyActiveUsers: string
+}
+
+/**
+ * Featured Creator Interface
+ * 
+ * Represents creators we highlight in the creator spotlight section
+ * to inspire new creators and showcase success stories.
+ */
+interface FeaturedCreator {
+  readonly address: string
+  readonly displayName: string
+  readonly avatar: string
+  readonly category: string
+  readonly earnings: string
+  readonly subscriberCount: string
+  readonly bio: string
+}
+
+/**
+ * Main Home Page Component
+ * 
+ * This component orchestrates the complete home page experience, adapting
+ * to user roles and connection status while providing clear pathways to
+ * platform engagement.
+ */
+export default function HomePage() {
+  const router = useRouter()
+  const { address, isConnected } = useAccount()
+  
+  // Use our established UI integration hooks
+  const walletUI = useWalletConnectionUI()
+  const { data: isCreator } = useIsCreatorRegistered(address)
+  const { data: creatorProfile } = useCreatorProfile(address)
+
+  // Component state management
+  const [pageState, setPageState] = useState<HomePageState>({
+    activeContentTab: 'featured',
+    showPlatformStats: true,
+    heroVideoPlaying: false,
+    selectedCreatorSpotlight: 0
+  })
+
+  // Mock data - in production, these would come from your contract hooks
+  const platformStats: PlatformStats = useMemo(() => ({
+    totalCreators: '2.3K',
+    totalContent: '15.7K',
+    totalEarnings: '$2.1M',
+    monthlyActiveUsers: '45.2K'
+  }), [])
+
+  const featuredCreators: readonly FeaturedCreator[] = useMemo(() => [
+    {
+      address: '0x1234...',
+      displayName: 'TechGuruAlex',
+      avatar: '/avatars/alex.jpg',
+      category: 'Software Development',
+      earnings: '$15.2K',
+      subscriberCount: '1.2K',
+      bio: 'Building the future of decentralized applications'
+    },
+    {
+      address: '0x5678...',
+      displayName: 'CryptoAnalystSara',
+      avatar: '/avatars/sara.jpg',
+      category: 'Market Analysis',
+      earnings: '$23.8K',
+      subscriberCount: '2.1K',
+      bio: 'Deep dives into DeFi protocols and market trends'
+    },
+    {
+      address: '0x9abc...',
+      displayName: 'NFTArtistMike',
+      avatar: '/avatars/mike.jpg',
+      category: 'Digital Art',
+      earnings: '$31.5K',
+      subscriberCount: '3.4K',
+      bio: 'Creating next-generation digital experiences'
+    }
+  ], [])
+
+  // Content category configuration for tabs
+  const contentCategories = useMemo(() => [
+    { key: 'featured' as const, label: 'Featured', icon: Star },
+    { key: ContentCategory.ARTICLE, label: 'Articles', icon: FileText },
+    { key: ContentCategory.VIDEO, label: 'Videos', icon: Play },
+    { key: ContentCategory.AUDIO, label: 'Audio', icon: Headphones },
+    { key: ContentCategory.COURSE, label: 'Courses', icon: BookOpen },
+    { key: ContentCategory.SOFTWARE, label: 'Software', icon: Code }
+  ], [])
+
+  // Navigation handlers
+  const handleBrowseContent = useCallback(() => {
+    router.push('/browse')
+  }, [router])
+
+  const handleStartCreating = useCallback(() => {
+    if (isConnected) {
+      if (isCreator) {
+        router.push('/dashboard')
+      } else {
+        router.push('/onboard')
+      }
+    } else {
+      // Connect wallet first, then redirect to onboarding
+      walletUI.connect()
+    }
+  }, [isConnected, isCreator, router, walletUI])
+
+  const handleContentTabChange = useCallback((category: ContentCategory | 'featured') => {
+    setPageState(prev => ({ ...prev, activeContentTab: category }))
+  }, [])
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <AppLayout className="bg-gradient-to-br from-background via-background to-muted/10">
+      <RouteGuards requiredLevel="public">
+        <div className="container mx-auto space-y-16">
+          
+          {/* Hero Section - Adapts based on user connection status */}
+          <section className="relative py-20 text-center">
+            <div className="mx-auto max-w-4xl space-y-8">
+              <div className="space-y-4">
+                <Badge variant="secondary" className="text-sm">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Web3 Content Economy
+                </Badge>
+                <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
+                  Create, Share, and{' '}
+                  <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                    Earn
+                  </span>
+                </h1>
+                <p className="text-xl text-muted-foreground leading-relaxed">
+                  The decentralized platform where creators own their content, 
+                  build direct relationships with their audience, and earn fairly 
+                  for their work through blockchain technology.
+                </p>
+              </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+              {/* Role-based Call-to-Action */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                {!isConnected ? (
+                  <>
+                    <WalletConnectionButton 
+                      size="lg" 
+                      className="text-lg px-8 py-4"
+                    >
+                      Connect Wallet to Start
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </WalletConnectionButton>
+                    <Button 
+                      variant="outline" 
+                      size="lg"
+                      onClick={handleBrowseContent}
+                      className="text-lg px-8 py-4"
+                    >
+                      Browse Content
+                      <Eye className="ml-2 h-5 w-5" />
+                    </Button>
+                  </>
+                ) : isCreator ? (
+                  <>
+                    <Button 
+                      size="lg" 
+                      onClick={() => router.push('/dashboard')}
+                      className="text-lg px-8 py-4"
+                    >
+                      Creator Dashboard
+                      <TrendingUp className="ml-2 h-5 w-5" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="lg"
+                      onClick={() => router.push('/upload')}
+                      className="text-lg px-8 py-4"
+                    >
+                      Upload Content
+                      <Plus className="ml-2 h-5 w-5" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      size="lg" 
+                      onClick={handleStartCreating}
+                      className="text-lg px-8 py-4"
+                    >
+                      Start Creating
+                      <Sparkles className="ml-2 h-5 w-5" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="lg"
+                      onClick={handleBrowseContent}
+                      className="text-lg px-8 py-4"
+                    >
+                      Discover Content
+                      <ChevronRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Platform Statistics */}
+          {pageState.showPlatformStats && (
+            <section className="py-12 border-y">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-primary">
+                    {platformStats.totalCreators}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Creators</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-primary">
+                    {platformStats.totalContent}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Content Pieces</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-green-600">
+                    {platformStats.totalEarnings}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Creator Earnings</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-blue-600">
+                    {platformStats.monthlyActiveUsers}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Monthly Users</div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Featured Content Discovery */}
+          <section className="space-y-8">
+            <div className="text-center space-y-4">
+              <h2 className="text-3xl font-bold">Discover Amazing Content</h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Explore high-quality content from talented creators across various categories.
+                Support creators directly with blockchain-powered micropayments.
+              </p>
+            </div>
+
+            {/* Content Category Tabs */}
+            <div className="flex flex-wrap justify-center gap-2">
+              {contentCategories.map(({ key, label, icon: Icon }) => (
+                <Button
+                  key={key}
+                  variant={pageState.activeContentTab === key ? "default" : "outline"}
+                  onClick={() => handleContentTabChange(key)}
+                  className="flex items-center gap-2"
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Content Grid - Leverages existing ContentDiscoveryGrid */}
+            <ContentDiscoveryGrid
+              initialFilters={
+                pageState.activeContentTab === 'featured' 
+                  ? {} 
+                  : { category: pageState.activeContentTab }
+              }
+              onContentSelect={(contentId) => {
+                router.push(`/content/${contentId}`)
+              }}
+              showCreatorInfo={true}
+              itemsPerPage={8}
+              className="min-h-[400px]"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+
+            <div className="text-center">
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={handleBrowseContent}
+              >
+                Browse All Content
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </section>
+
+          {/* Creator Spotlight */}
+          <section className="space-y-8">
+            <div className="text-center space-y-4">
+              <h2 className="text-3xl font-bold">Creator Spotlight</h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Meet successful creators who are building thriving businesses 
+                on our platform through direct fan support.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {featuredCreators.map((creator, index) => (
+                <Card key={creator.address} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="text-center space-y-4">
+                    <Avatar className="w-16 h-16 mx-auto">
+                      <AvatarImage src={creator.avatar} alt={creator.displayName} />
+                      <AvatarFallback>
+                        {creator.displayName.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold text-lg">{creator.displayName}</h3>
+                      <Badge variant="secondary">{creator.category}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground text-center">
+                      {creator.bio}
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div>
+                        <div className="text-lg font-bold text-green-600">
+                          {creator.earnings}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Earned</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-blue-600">
+                          {creator.subscriberCount}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Subscribers</div>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => router.push(`/creator/${creator.address}`)}
+                    >
+                      View Profile
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+
+          {/* Value Proposition for New Creators */}
+          <section className="bg-gradient-to-r from-primary/5 to-purple-600/5 rounded-lg p-12">
+            <div className="max-w-4xl mx-auto text-center space-y-8">
+              <div className="space-y-4">
+                <h2 className="text-3xl font-bold">Why Creators Choose Our Platform</h2>
+                <p className="text-lg text-muted-foreground">
+                  Join thousands of creators who've discovered the power of 
+                  Web3 content monetization and true ownership.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
+                    <Shield className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-lg">True Ownership</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your content lives on IPFS. No platform can delete or control your work.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-green-600/10 rounded-lg flex items-center justify-center mx-auto">
+                    <DollarSign className="h-6 w-6 text-green-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Fair Revenue</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Keep 90%+ of your earnings. Direct payments via USDC on Base blockchain.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-blue-600/10 rounded-lg flex items-center justify-center mx-auto">
+                    <Globe className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Global Reach</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Borderless payments enable creators to monetize worldwide audiences.
+                  </p>
+                </div>
+              </div>
+
+              {!isCreator && (
+                <Button 
+                  size="lg" 
+                  onClick={handleStartCreating}
+                  className="text-lg px-8 py-4"
+                >
+                  {isConnected ? 'Complete Creator Setup' : 'Connect Wallet to Start'}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          </section>
+
+          {/* Final CTA Section */}
+          <section className="text-center py-16 space-y-8">
+            <div className="space-y-4">
+              <h2 className="text-4xl font-bold">Ready to Join the Creator Economy?</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Whether you're here to discover amazing content or share your own creations,
+                our Web3 platform gives you the tools to participate in the new digital economy.
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                onClick={handleBrowseContent}
+                className="text-lg px-8 py-4"
+              >
+                Explore Content
+                <Eye className="ml-2 h-5 w-5" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={handleStartCreating}
+                className="text-lg px-8 py-4"
+              >
+                {isCreator ? 'Creator Dashboard' : 'Start Creating'}
+                <Sparkles className="ml-2 h-5 w-5" />
+              </Button>
+            </div>
+          </section>
+
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      </RouteGuards>
+    </AppLayout>
+  )
 }
