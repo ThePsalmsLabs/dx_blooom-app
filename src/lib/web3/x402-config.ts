@@ -390,3 +390,175 @@ export function getX402ErrorMessage(error: unknown): string {
   
   return 'An unexpected error occurred during payment processing.'
 }
+
+/**
+ * x402 Middleware Configuration Interface
+ * Defines the configuration structure needed by the middleware to process payments
+ */
+export interface X402MiddlewareConfig {
+  readonly network: 'base' | 'base-sepolia'
+  readonly facilitatorUrl: string
+  readonly allowedTokens: readonly Address[]
+  readonly resourceWalletAddress: Address
+  readonly timeout: number
+  readonly maxPaymentAge: number
+}
+
+/**
+ * Get x402 middleware configuration
+ * Creates a configuration object specifically designed for middleware operations
+ * 
+ * @returns Complete middleware configuration with all necessary settings
+ */
+export function getX402MiddlewareConfig(): X402MiddlewareConfig {
+  const network = getCurrentNetwork()
+  const networkConfig = getX402NetworkConfig(network)
+  const paymentConfig = getX402PaymentConfig()
+  
+  // Get the resource wallet address from environment or contract addresses
+  const resourceWalletAddress = (
+    process.env.RESOURCE_WALLET_ADDRESS ||
+    process.env.NEXT_PUBLIC_RESOURCE_WALLET_ADDRESS ||
+    process.env.NEXT_PUBLIC_COMMERCE_INTEGRATION_ADDRESS
+  ) as Address
+
+  if (!resourceWalletAddress || resourceWalletAddress === '0x') {
+    throw new Error('Resource wallet address not configured for middleware. Set RESOURCE_WALLET_ADDRESS environment variable.')
+  }
+
+  return {
+    network,
+    facilitatorUrl: networkConfig.facilitatorUrl,
+    allowedTokens: paymentConfig.allowedTokens,
+    resourceWalletAddress,
+    timeout: paymentConfig.timeout,
+    maxPaymentAge: 3600 // 1 hour maximum age for payment proofs
+  }
+}
+
+/**
+ * Create middleware-specific payment requirements
+ * Generates the payment requirements object that gets sent in 402 responses
+ * 
+ * @param amount - Payment amount required (in token's smallest unit)
+ * @param recipient - Address that should receive the payment
+ * @param network - Network where payment should be processed
+ * @param metadata - Additional metadata about the payment (content ID, description, etc.)
+ * @returns Standard x402 payment requirements object
+ */
+export function createMiddlewarePaymentRequirements(
+  amount: bigint,
+  recipient: Address,
+  network: 'base' | 'base-sepolia' = 'base',
+  metadata?: {
+    contentId?: string
+    description?: string
+    validUntil?: number
+  }
+): Record<string, any> {
+  const networkConfig = getX402NetworkConfig(network)
+  const config = getX402MiddlewareConfig()
+  
+  return {
+    version: '1.0',
+    paymentOptions: [
+      {
+        amount: amount.toString(),
+        currency: networkConfig.usdcAddress,
+        recipient,
+        network,
+        deadline: metadata?.validUntil || Math.floor(Date.now() / 1000) + config.maxPaymentAge,
+        metadata: {
+          contentId: metadata?.contentId,
+          description: metadata?.description || 'Premium content access',
+          facilitator: config.facilitatorUrl
+        }
+      }
+    ],
+    facilitator: {
+      url: config.facilitatorUrl,
+      version: '1.0'
+    }
+  }
+}
+
+/**
+ * Validate middleware environment configuration
+ * Ensures all required environment variables are present for middleware operation
+ * 
+ * @throws Error if required configuration is missing
+ */
+export function validateMiddlewareConfig(): void {
+  const requiredVars = [
+    'RESOURCE_WALLET_ADDRESS',
+    'NEXT_PUBLIC_NETWORK'
+  ]
+
+  const missingVars = requiredVars.filter(varName => {
+    const value = process.env[varName] || process.env[`NEXT_PUBLIC_${varName}`]
+    return !value || value.trim() === ''
+  })
+
+  if (missingVars.length > 0) {
+    throw new Error(
+      `Missing required environment variables for x402 middleware: ${missingVars.join(', ')}. ` +
+      `Please check your .env.local file and ensure these variables are properly configured.`
+    )
+  }
+
+  // Validate wallet address format
+  const walletAddress = process.env.RESOURCE_WALLET_ADDRESS || process.env.NEXT_PUBLIC_RESOURCE_WALLET_ADDRESS
+  if (walletAddress && !isHexString(walletAddress)) {
+    throw new Error(`Invalid RESOURCE_WALLET_ADDRESS format: ${walletAddress}. Must be a valid Ethereum address starting with 0x.`)
+  }
+}
+
+/**
+ * Hex String Type System
+ * 
+ * These types demonstrate how to create strict type safety for blockchain-specific
+ * data formats. The HexString type ensures that only properly formatted hex strings
+ * can be used where blockchain addresses or IDs are expected.
+ */
+type HexString = `0x${string}`
+
+
+/**
+ * Type Guard with Explicit Parameter Typing
+ * 
+ * This function demonstrates how to write type guards that satisfy TypeScript's
+ * strict mode requirements. The explicit parameter typing prevents the "implicit any" 
+ * errors we saw in the original code.
+ */
+function isHexString(value: unknown): value is HexString {
+    return typeof value === 'string' && value.startsWith('0x') && value.length > 2
+  }
+  
+
+/**
+ * Create secure headers for x402 responses
+ * Generates appropriate HTTP headers for payment-related responses
+ * 
+ * @param includePaymentHeaders - Whether to include x402-specific headers
+ * @returns Object containing HTTP headers for secure responses
+ */
+export function createSecureHeaders(includePaymentHeaders = false): Record<string, string> {
+  const baseHeaders = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff'
+  }
+
+  if (includePaymentHeaders) {
+    return {
+      ...baseHeaders,
+      'X-Payment-Required': 'x402',
+      'X-Payment-Protocol': 'x402/1.0'
+    }
+  }
+
+  return baseHeaders
+}

@@ -26,7 +26,6 @@ import { useAccount } from 'wagmi'
 import {
   ArrowRight,
   TrendingUp,
-  Users,
   DollarSign,
   Play,
   FileText,
@@ -34,32 +33,21 @@ import {
   Image as ImageIcon,
   BookOpen,
   Code,
-  Database,
   Sparkles,
   Eye,
   Star,
-  Trophy,
-  Zap,
   Shield,
   Globe,
   ChevronRight,
-  ExternalLink
+  Plus
 } from 'lucide-react'
 
 import {
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
   Badge,
-  Separator,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Progress,
   Avatar,
   AvatarFallback,
   AvatarImage
@@ -246,12 +234,8 @@ export default function HomePage() {
                 {!isConnected ? (
                   <>
                     <WalletConnectionButton 
-                      size="lg" 
                       className="text-lg px-8 py-4"
-                    >
-                      Connect Wallet to Start
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </WalletConnectionButton>
+                    />
                     <Button 
                       variant="outline" 
                       size="lg"

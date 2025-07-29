@@ -18,6 +18,7 @@
     "@coinbase/x402": "^0.4.2",
     "@farcaster/auth-kit": "^0.8.1",
     "@farcaster/frame-sdk": "^0.0.64",
+    "@farcaster/miniapp-sdk": "^0.1.8",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-dropdown-menu": "^2.1.15",
