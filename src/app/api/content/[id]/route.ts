@@ -61,7 +61,7 @@ export async function GET(
     }
 
     // Validate that the content ID is positive
-    if (contentId <= BigInt(0)) {
+    if (contentId <= 0) {
       return NextResponse.json(
         { 
           error: 'Invalid content ID',
@@ -92,24 +92,36 @@ export async function GET(
     // Fetch content data from the ContentRegistry contract
     // This calls the getContentById function on your deployed contract
     const contentData = await publicClient.readContract({
-        address: contractConfig.address,
-        abi: contractConfig.abi,
-        functionName: 'getContentById',
-        args: [contentId]
-      })
-  
-      // Type assertion for the contract response based on your actual contract structure
-      // Your contract returns a struct with named properties, which is much cleaner
-      const contentStruct = contentData as {
-        readonly creator: `0x${string}`
-        readonly ipfsHash: string
-        readonly title: string
-        readonly description: string
-        readonly category: number
-        readonly payPerViewPrice: bigint
-        readonly creationTime: bigint
-        readonly isActive: boolean
-      }
+      address: contractConfig.address,
+      abi: contractConfig.abi,
+      functionName: 'getContent',
+      args: [contentId]
+    })
+
+    // Type assertion for the contract response based on your actual contract structure
+    // Your contract returns a struct with named properties, which is much cleaner
+    const contentStruct = contentData as {
+      readonly creator: `0x${string}`
+      readonly ipfsHash: string
+      readonly title: string
+      readonly description: string
+      readonly category: number
+      readonly payPerViewPrice: bigint
+      readonly createdAt: bigint
+      readonly isActive: boolean
+    }
+
+    // Extract the properties from the struct using descriptive names
+    const {
+      title,
+      description,
+      category,
+      creator: creatorAddress,
+      payPerViewPrice,
+      ipfsHash,
+      createdAt: publishedAt,
+      isActive
+    } = contentStruct
 
     // Check if content exists by verifying that the creator address is not zero
     if (creatorAddress === '0x0000000000000000000000000000000000000000') {
