@@ -113,7 +113,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the message signature to ensure it's actually from Farcaster
     // This verification step is crucial for security - it prevents malicious
     // actors from sending fake interactions to your webhook endpoint
-    const frameMessage = await FrameSDK.verifyFrameMessage(body) as FrameMessage // 'FrameSDK' only refers to a type, but is being used as a value here.ts(2693)
+    const frameMessage = await verifyFrameMessage(body) as FrameMessage 
 
     
     if (!frameMessage.isValid) {
