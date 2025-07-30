@@ -1,24 +1,75 @@
-// File: src/lib/web3/x402-config.ts
+// src/lib/web3/x402-config.ts
 
-import { Address } from 'viem'
+import { type Address } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { getContractAddresses } from '@/lib/contracts/config'
 
 /**
- * x402 Configuration Interface
- * Integrates x402 protocol with existing contract infrastructure
+ * Hex String Type System
+ * 
+ * These types ensure strict type safety for blockchain-specific data formats.
+ * The HexString type ensures that only properly formatted hex strings can be used
+ * where blockchain addresses or transaction hashes are expected.
  */
-export interface X402Config {
-  readonly walletAddress: Address
-  readonly network: 'base' | 'base-sepolia' 
+type HexString = `0x${string}`
+
+/**
+ * x402 Middleware Configuration Interface
+ * 
+ * This interface defines the complete configuration structure that your
+ * sophisticated middleware expects. It provides all the settings needed
+ * for production-ready x402 payment processing while integrating seamlessly
+ * with your existing contract infrastructure.
+ */
+export interface X402MiddlewareConfig {
+  /** The network to operate on (matches your existing environment setup) */
+  readonly network: 'base' | 'base-sepolia'
+  
+  /** Coinbase x402 facilitator URL for payment verification */
   readonly facilitatorUrl: string
-  readonly contractAddresses: Record<string, Address>
+  
+  /** Timeout for external service calls (facilitator, RPC) in milliseconds */
+  readonly timeout: number
+  
+  /** Your platform's resource wallet address (where payments are received) */
+  readonly resourceWalletAddress: Address
+  
+  /** USDC token contract address for the current network */
+  readonly usdcTokenAddress: Address
+  
+  /** Whether to enable debug logging for payment processing */
+  readonly enableDebugLogging: boolean
+  
+  /** Maximum age for payment proofs before they're considered stale */
+  readonly maxPaymentProofAge: number
+  
+  /** Chain ID for the current network */
   readonly chainId: number
+  
+  /** Maximum allowed payment amount in USDC (6 decimals) */
+  readonly maxPaymentAmount: bigint
+  
+  /** Minimum required payment amount in USDC (6 decimals) */
+  readonly minPaymentAmount: bigint
+  
+  /** List of allowed token addresses for payments */
+  readonly allowedTokens: readonly Address[]
+  
+  /** Gas tolerance percentage for gasless payments */
+  readonly gaslessTolerance: number
+  
+  /** Number of retry attempts for facilitator calls */
+  readonly retryAttempts: number
+  
+  /** Delay between retry attempts in milliseconds */
+  readonly retryDelay: number
 }
 
 /**
- * x402 Network Configuration
- * Maps supported networks to their x402 settings
+ * x402 Network Configuration Interface
+ * 
+ * Maps supported networks to their complete x402 settings including
+ * facilitator URLs, RPC endpoints, and deployed contract addresses.
  */
 export interface X402NetworkConfig {
   readonly chainId: number
@@ -27,36 +78,70 @@ export interface X402NetworkConfig {
   readonly blockExplorer: string
   readonly usdcAddress: Address
   readonly commerceProtocol: Address
+  readonly name: string
+  readonly isTestnet: boolean
 }
 
 /**
- * Payment verification configuration for x402 middleware
+ * Payment Requirement Structure
+ * 
+ * This interface defines the structure of payment requirements returned
+ * in HTTP 402 responses. It complies with x402 protocol specifications
+ * while providing all information needed for automatic payment processing.
  */
-export interface X402PaymentConfig {
-  readonly maxAmount: bigint
-  readonly allowedTokens: readonly Address[]
-  readonly timeout: number
-  readonly minAmount: bigint
-  readonly gaslessTolerance: number
-}
-
-/**
- * x402 Payment Requirements Schema
- * Used for 402 responses to clients
- */
-export interface X402PaymentRequirements {
-  readonly resource: string
-  readonly maxAmountRequired: string
-  readonly description: string
-  readonly payTo: Address
-  readonly asset: Address
+export interface PaymentRequirement {
+  /** Payment scheme (always 'exact' for your platform) */
   readonly scheme: 'exact'
-  readonly network: 'base' | 'base-sepolia'
+  
+  /** Required payment amount in token's smallest unit */
+  readonly amount: string
+  
+  /** Token contract address (USDC) */
+  readonly token: Address
+  
+  /** Network identifier */
+  readonly chainId: number
+  
+  /** Recipient wallet address */
+  readonly recipient: Address
+  
+  /** Payment deadline (Unix timestamp) */
+  readonly deadline: number
+  
+  /** Unique nonce for this payment requirement */
+  readonly nonce: string
+  
+  /** Human-readable description */
+  readonly description: string
+  
+  /** Optional metadata for content identification */
+  readonly metadata?: {
+    readonly contentId?: string
+    readonly resourcePath?: string
+    readonly version?: string
+  }
+}
+
+/**
+ * Payment Requirements Response Structure
+ * 
+ * This interface defines the complete HTTP 402 response structure
+ * that x402-compatible clients expect when payment is required.
+ */
+export interface PaymentRequirementsResponse {
+  readonly error: string
+  readonly paymentRequirements: readonly PaymentRequirement[]
+  readonly facilitator: {
+    readonly url: string
+    readonly version: string
+  }
 }
 
 /**
  * x402 Payment Verification Response
- * Structure returned by facilitator after verification
+ * 
+ * Structure returned by facilitator after verification of payment proof.
+ * Contains all necessary information to confirm payment validity.
  */
 export interface X402VerificationResponse {
   readonly verified: boolean
@@ -65,248 +150,91 @@ export interface X402VerificationResponse {
   readonly amount?: string
   readonly timestamp?: number
   readonly error?: string
+  readonly gasUsed?: string
+  readonly effectiveGasPrice?: string
 }
 
-// Network configurations mapping
+/**
+ * Payment Proof Structure
+ * 
+ * Defines the complete structure of payment proofs that clients submit
+ * for verification. Used by validation functions to ensure data integrity.
+ */
+export interface PaymentProof {
+  readonly signature: string
+  readonly amount: string
+  readonly token: Address
+  readonly recipient: Address
+  readonly deadline: number
+  readonly nonce: string
+  readonly chainId: number
+  readonly transactionHash?: string
+  readonly blockNumber?: number
+}
+
+// Network configurations mapping with comprehensive settings
 export const X402_NETWORKS: Record<'base' | 'base-sepolia', X402NetworkConfig> = {
   'base': {
     chainId: base.id,
-    facilitatorUrl: 'https://x402.org/facilitator',
+    facilitatorUrl: 'https://facilitator.x402.org',
     rpcUrl: base.rpcUrls.default.http[0],
     blockExplorer: base.blockExplorers.default.url,
     usdcAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address, // Base Mainnet USDC
-    commerceProtocol: '0xeADE6bE02d043b3550bE19E960504dbA14A14971' as Address // Base Mainnet Commerce Protocol
+    commerceProtocol: '0xeADE6bE02d043b3550bE19E960504dbA14A14971' as Address, // Base Mainnet Commerce Protocol
+    name: 'Base Mainnet',
+    isTestnet: false
   },
   'base-sepolia': {
     chainId: baseSepolia.id,
-    facilitatorUrl: 'https://x402.org/facilitator',
+    facilitatorUrl: 'https://facilitator.x402.org',
     rpcUrl: baseSepolia.rpcUrls.default.http[0],
     blockExplorer: baseSepolia.blockExplorers.default.url,
     usdcAddress: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as Address, // Base Sepolia USDC
-    commerceProtocol: '0x96A08D8e8631b6dB52Ea0cbd7232d9A85d239147' as Address // Base Sepolia Commerce Protocol
+    commerceProtocol: '0x96A08D8e8631b6dB52Ea0cbd7232d9A85d239147' as Address, // Base Sepolia Commerce Protocol
+    name: 'Base Sepolia Testnet',
+    isTestnet: true
   }
 } as const
 
 // Default facilitator configuration for Coinbase's hosted service
 export const X402_FACILITATOR_CONFIG = {
-  baseUrl: 'https://x402.org/facilitator',
+  baseUrl: 'https://facilitator.x402.org',
   verifyEndpoint: '/verify',
   timeout: 30000, // 30 seconds timeout for payment verification
   retryAttempts: 3,
-  retryDelay: 1000 // 1 second between retries
+  retryDelay: 1000, // 1 second between retries
+  version: '1.0'
 } as const
 
 /**
- * Complete x402 configuration factory
- * Creates a full x402 config object with all necessary settings
+ * Type Guard with Explicit Parameter Typing
  * 
- * @param chainId - The blockchain network ID (8453 for Base, 84532 for Base Sepolia)
- * @returns Complete x402 configuration object
+ * This function provides strict type checking for hex strings used in
+ * blockchain operations. Prevents runtime errors from malformed addresses.
  */
-export function createX402Config(chainId: number): X402Config {
-  // Validate the chain ID is supported
-  const network = chainId === base.id ? 'base' : 
-                  chainId === baseSepolia.id ? 'base-sepolia' : null
-  
-  if (!network) {
-    throw new Error(`Unsupported chain ID for x402: ${chainId}. Only Base (${base.id}) and Base Sepolia (${baseSepolia.id}) are supported.`)
-  }
-
-  // Get network-specific configuration
-  const networkConfig = getX402NetworkConfig(network)
-  
-  // Get your deployed contract addresses
-  const contractAddresses = getContractAddresses(chainId)
-  
-  // Resource wallet address - this should be your designated payment receiver
-  const walletAddress = (
-    process.env.NEXT_PUBLIC_RESOURCE_WALLET_ADDRESS || 
-    process.env.NEXT_PUBLIC_COMMERCE_INTEGRATION_ADDRESS ||
-    contractAddresses.COMMERCE_INTEGRATION
-  ) as Address
-
-  if (!walletAddress || walletAddress === '0x') {
-    throw new Error('Resource wallet address not configured. Set NEXT_PUBLIC_RESOURCE_WALLET_ADDRESS or ensure COMMERCE_INTEGRATION contract is deployed.')
-  }
-
-  return {
-    walletAddress,
-    network,
-    facilitatorUrl: networkConfig.facilitatorUrl,
-    contractAddresses: {
-      ...contractAddresses,
-      USDC: networkConfig.usdcAddress,
-      COMMERCE_PROTOCOL: networkConfig.commerceProtocol
-    },
-    chainId
-  }
+function isHexString(value: unknown): value is HexString {
+  return typeof value === 'string' && value.startsWith('0x') && value.length > 2
 }
 
 /**
- * Get x402 network configuration for specified chain
+ * Validate Ethereum Address Format
  * 
- * @param network - The network name ('base' or 'base-sepolia')
- * @returns Network configuration with facilitator URLs, RPC endpoints, and contract addresses
+ * Ensures that provided addresses conform to Ethereum's 40-character
+ * hexadecimal format. Essential for preventing payment routing errors.
  */
-export function getX402NetworkConfig(network: 'base' | 'base-sepolia'): X402NetworkConfig {
-  const config = X402_NETWORKS[network]
-  
-  if (!config) {
-    throw new Error(`Unsupported x402 network: ${network}. Supported networks: base, base-sepolia`)
-  }
-  
-  return config
+function isValidEthereumAddress(address: unknown): address is Address {
+  return typeof address === 'string' && /^0x[a-fA-F0-9]{40}$/.test(address)
 }
 
 /**
- * Validate x402 configuration for completeness and correctness
+ * Get Current Environment Network
  * 
- * @param config - The x402 configuration to validate
- * @returns True if configuration is valid, throws error otherwise
- */
-export function validateX402Config(config: X402Config): boolean {
-  // Validate wallet address format
-  if (!config.walletAddress || !config.walletAddress.startsWith('0x') || config.walletAddress.length !== 42) {
-    throw new Error(`Invalid wallet address format: ${config.walletAddress}`)
-  }
-
-  // Validate network
-  if (!['base', 'base-sepolia'].includes(config.network)) {
-    throw new Error(`Invalid network: ${config.network}`)
-  }
-
-  // Validate facilitator URL
-  if (!config.facilitatorUrl || !config.facilitatorUrl.startsWith('https://')) {
-    throw new Error(`Invalid facilitator URL: ${config.facilitatorUrl}`)
-  }
-
-  // Validate chain ID matches network
-  const expectedChainId = config.network === 'base' ? base.id : baseSepolia.id
-  if (config.chainId !== expectedChainId) {
-    throw new Error(`Chain ID ${config.chainId} doesn't match network ${config.network} (expected ${expectedChainId})`)
-  }
-
-  // Validate required contract addresses are present
-  const requiredContracts = ['COMMERCE_INTEGRATION', 'CONTENT_REGISTRY', 'PAY_PER_VIEW']
-  for (const contract of requiredContracts) {
-    if (!config.contractAddresses[contract]) {
-      throw new Error(`Missing required contract address: ${contract}`)
-    }
-  }
-
-  return true
-}
-
-/**
- * Get payment configuration for x402 middleware
- * Defines payment limits, allowed tokens, and timeout settings
- * 
- * @returns Payment configuration object with security and operational limits
- */
-export function getX402PaymentConfig(): X402PaymentConfig {
-  return {
-    maxAmount: BigInt('1000000000'), // 1,000 USDC (6 decimals) max payment
-    minAmount: BigInt('10000'), // 0.01 USDC (6 decimals) minimum payment
-    allowedTokens: [
-      X402_NETWORKS.base.usdcAddress,
-      X402_NETWORKS['base-sepolia'].usdcAddress
-    ],
-    timeout: 300000, // 5 minutes timeout for payment completion
-    gaslessTolerance: 10 // Allow up to 10% difference in gas estimates for ERC-3009
-  }
-}
-
-/**
- * Create payment requirements object for 402 responses
- * This is what gets sent to clients when payment is required
- * 
- * @param resource - The protected resource path
- * @param amount - Payment amount in USDC (as string with decimals)
- * @param description - Human-readable description of what's being purchased
- * @param network - Target network for payment
- * @returns Payment requirements object for client
- */
-export function createPaymentRequirements(
-  resource: string,
-  amount: string,
-  description: string,
-  network: 'base' | 'base-sepolia' = 'base'
-): X402PaymentRequirements {
-  const networkConfig = getX402NetworkConfig(network)
-  
-  // Get the appropriate receiver wallet address
-  const chainId = networkConfig.chainId
-  const config = createX402Config(chainId)
-  
-  return {
-    resource,
-    maxAmountRequired: amount,
-    description,
-    payTo: config.walletAddress,
-    asset: networkConfig.usdcAddress,
-    scheme: 'exact',
-    network
-  }
-}
-
-/**
- * Verify payment with Coinbase x402 facilitator
- * Makes actual API call to facilitator service for payment verification
- * 
- * @param paymentPayload - The payment data from X-PAYMENT header
- * @param paymentRequirements - The original payment requirements
- * @param network - Network where payment should be verified
- * @returns Verification response from facilitator
- */
-export async function verifyPaymentWithFacilitator(
-  paymentPayload: string,
-  paymentRequirements: X402PaymentRequirements,
-  network: 'base' | 'base-sepolia' = 'base'
-): Promise<X402VerificationResponse> {
-  const networkConfig = getX402NetworkConfig(network)
-  const facilitatorUrl = `${networkConfig.facilitatorUrl}${X402_FACILITATOR_CONFIG.verifyEndpoint}`
-  
-  try {
-    const response = await fetch(facilitatorUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'x402-client/1.0'
-      },
-      body: JSON.stringify({
-        paymentPayload,
-        paymentRequirements
-      }),
-      signal: AbortSignal.timeout(X402_FACILITATOR_CONFIG.timeout)
-    })
-
-    if (!response.ok) {
-      throw new Error(`Facilitator verification failed: ${response.status} ${response.statusText}`)
-    }
-
-    const result = await response.json() as X402VerificationResponse
-    
-    if (!result.verified) {
-      throw new Error(`Payment verification failed: ${result.error || 'Unknown error'}`)
-    }
-
-    return result
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Payment verification failed: ${error.message}`)
-    }
-    throw new Error('Payment verification failed: Unknown error')
-  }
-}
-
-/**
- * Get current environment network
- * Determines which network to use based on environment variables
- * 
- * @returns Current network name based on environment
+ * Determines which network to use based on environment variables.
+ * Defaults to testnet for development safety, ensuring developers
+ * don't accidentally use mainnet during testing.
  */
 export function getCurrentNetwork(): 'base' | 'base-sepolia' {
-  const envNetwork = process.env.NEXT_PUBLIC_NETWORK?.toLowerCase()
+  const envNetwork = process.env.NEXT_PUBLIC_NETWORK?.toLowerCase() || process.env.NETWORK?.toLowerCase()
   
   if (envNetwork === 'base' || envNetwork === 'base-mainnet') {
     return 'base'
@@ -321,23 +249,432 @@ export function getCurrentNetwork(): 'base' | 'base-sepolia' {
 }
 
 /**
- * Get x402 configuration for current environment
- * Convenience function that creates config for the current environment network
+ * Get x402 Network Configuration
  * 
- * @returns x402 configuration for current environment
+ * Retrieves comprehensive network configuration including facilitator URLs,
+ * RPC endpoints, and deployed contract addresses for the specified network.
  */
-export function getCurrentX402Config(): X402Config {
-  const network = getCurrentNetwork()
-  const chainId = network === 'base' ? base.id : baseSepolia.id
-  return createX402Config(chainId)
+export function getX402NetworkConfig(network: 'base' | 'base-sepolia'): X402NetworkConfig {
+  const config = X402_NETWORKS[network]
+  
+  if (!config) {
+    throw new Error(`Unsupported x402 network: ${network}. Supported networks: base, base-sepolia`)
+  }
+  
+  return config
 }
 
 /**
- * Format USDC amount for display
- * Converts USDC amount (6 decimals) to human-readable format
+ * Get x402 Middleware Configuration
  * 
- * @param amount - USDC amount as bigint (6 decimals)
- * @returns Formatted string like "1.50 USDC"
+ * This function creates the complete configuration object that your middleware uses
+ * for all payment processing operations. It integrates with your existing
+ * environment variables and contract addresses to ensure consistency across your platform.
+ */
+export function getX402MiddlewareConfig(): X402MiddlewareConfig {
+  // Get network from environment (same pattern as your existing code)
+  const network = getCurrentNetwork()
+  const networkConfig = getX402NetworkConfig(network)
+  
+  // Get resource wallet address from environment with multiple fallback options
+  const resourceWalletAddress = (
+    process.env.RESOURCE_WALLET_ADDRESS ||
+    process.env.NEXT_PUBLIC_RESOURCE_WALLET_ADDRESS ||
+    process.env.NEXT_PUBLIC_COMMERCE_INTEGRATION_ADDRESS
+  ) as Address
+  
+  if (!resourceWalletAddress) {
+    throw new Error('RESOURCE_WALLET_ADDRESS environment variable is required for x402 middleware')
+  }
+  
+  if (!isValidEthereumAddress(resourceWalletAddress)) {
+    throw new Error(`Invalid RESOURCE_WALLET_ADDRESS format: ${resourceWalletAddress}`)
+  }
+  
+  // Get contract addresses using your existing system
+  const contractAddresses = getContractAddresses(networkConfig.chainId)
+  
+  // Determine facilitator URL with environment override capability
+  const facilitatorUrl = process.env.X402_FACILITATOR_URL || networkConfig.facilitatorUrl
+  
+  // Check for debug mode (useful during development)
+  const enableDebugLogging = process.env.NODE_ENV === 'development' || 
+                             process.env.X402_DEBUG === 'true'
+  
+  return {
+    network,
+    facilitatorUrl,
+    timeout: 30000, // 30 second timeout for external calls
+    resourceWalletAddress,
+    usdcTokenAddress: networkConfig.usdcAddress,
+    enableDebugLogging,
+    maxPaymentProofAge: 30 * 60 * 1000, // 30 minutes
+    chainId: networkConfig.chainId,
+    maxPaymentAmount: BigInt('1000000000'), // 1,000 USDC (6 decimals)
+    minPaymentAmount: BigInt('10000'), // 0.01 USDC (6 decimals)
+    allowedTokens: [networkConfig.usdcAddress],
+    gaslessTolerance: 10, // 10% tolerance for gas estimates
+    retryAttempts: X402_FACILITATOR_CONFIG.retryAttempts,
+    retryDelay: X402_FACILITATOR_CONFIG.retryDelay
+  }
+}
+
+/**
+ * Validate Middleware Configuration
+ * 
+ * This function performs comprehensive validation of the middleware
+ * configuration to catch issues early and provide clear error messages.
+ * Your middleware calls this during initialization to ensure everything
+ * is set up correctly before processing any requests.
+ */
+export function validateMiddlewareConfig(): void {
+  try {
+    const config = getX402MiddlewareConfig()
+    
+    // Validate facilitator URL format
+    try {
+      new URL(config.facilitatorUrl)
+    } catch (error) {
+      throw new Error(`Invalid facilitator URL: ${config.facilitatorUrl}`)
+    }
+    
+    // Validate timeout is reasonable
+    if (config.timeout < 1000 || config.timeout > 60000) {
+      throw new Error(`Invalid timeout: ${config.timeout}ms. Must be between 1000-60000ms`)
+    }
+    
+    // Validate payment amounts are logical
+    if (config.minPaymentAmount >= config.maxPaymentAmount) {
+      throw new Error('Minimum payment amount must be less than maximum payment amount')
+    }
+    
+    // Validate allowed tokens array is not empty
+    if (config.allowedTokens.length === 0) {
+      throw new Error('At least one allowed token must be configured')
+    }
+    
+    // Validate all allowed tokens have proper address format
+    for (const token of config.allowedTokens) {
+      if (!isValidEthereumAddress(token)) {
+        throw new Error(`Invalid token address in allowed tokens: ${token}`)
+      }
+    }
+    
+    // Log configuration in debug mode
+    if (config.enableDebugLogging) {
+      console.log('✅ x402 Middleware Configuration Validated:', {
+        network: config.network,
+        chainId: config.chainId,
+        facilitatorUrl: config.facilitatorUrl,
+        resourceWalletAddress: config.resourceWalletAddress,
+        usdcTokenAddress: config.usdcTokenAddress,
+        timeout: config.timeout,
+        allowedTokens: config.allowedTokens.length,
+        paymentRange: `${formatUSDCAmount(config.minPaymentAmount)} - ${formatUSDCAmount(config.maxPaymentAmount)}`
+      })
+    }
+    
+  } catch (error) {
+    console.error('❌ x402 Middleware Configuration Validation Failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Generate Secure Nonce
+ * 
+ * This function creates cryptographically secure nonces for payment
+ * requirements. The nonces prevent replay attacks and ensure each
+ * payment requirement is unique and time-bound.
+ */
+function generateSecureNonce(): string {
+  // Combine timestamp with random bytes for uniqueness and ordering
+  const timestamp = Date.now().toString(36)
+  const randomBytes = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+  
+  return `${timestamp}-${randomBytes}`
+}
+
+/**
+ * Create Middleware Payment Requirements
+ * 
+ * This function generates the payment requirement objects that your
+ * middleware returns in HTTP 402 responses. It creates requirements
+ * that comply with x402 protocol specifications while integrating
+ * with your platform's pricing and payment infrastructure.
+ */
+export function createMiddlewarePaymentRequirements(
+  amount: bigint,
+  recipient: Address,
+  network: 'base' | 'base-sepolia' = 'base',
+  metadata?: {
+    contentId?: string
+    description?: string
+    resourcePath?: string
+    validUntil?: number
+  }
+): PaymentRequirementsResponse {
+  const config = getX402MiddlewareConfig()
+  const networkConfig = getX402NetworkConfig(network)
+  
+  // Validate amount is within acceptable range
+  if (amount < config.minPaymentAmount || amount > config.maxPaymentAmount) {
+    throw new Error(
+      `Payment amount ${formatUSDCAmount(amount)} is outside allowed range: ` +
+      `${formatUSDCAmount(config.minPaymentAmount)} - ${formatUSDCAmount(config.maxPaymentAmount)}`
+    )
+  }
+  
+  // Validate recipient address
+  if (!isValidEthereumAddress(recipient)) {
+    throw new Error(`Invalid recipient address: ${recipient}`)
+  }
+  
+  // Generate payment deadline (30 minutes from now, or custom if provided)
+  const deadline = metadata?.validUntil || Math.floor(Date.now() / 1000) + (30 * 60)
+  
+  // Create descriptive message for the payment requirement
+  const description = metadata?.description || 
+    (metadata?.contentId 
+      ? `Access to content ${metadata.contentId}`
+      : 'Premium content access')
+  
+  // Generate unique nonce for this payment requirement
+  const nonce = generateSecureNonce()
+  
+  // Create the payment requirement object
+  const paymentRequirement: PaymentRequirement = {
+    scheme: 'exact',
+    amount: amount.toString(),
+    token: config.usdcTokenAddress,
+    chainId: config.chainId,
+    recipient,
+    deadline,
+    nonce,
+    description,
+    metadata: {
+      contentId: metadata?.contentId,
+      resourcePath: metadata?.resourcePath,
+      version: X402_FACILITATOR_CONFIG.version
+    }
+  }
+  
+  // Log payment requirement generation in debug mode
+  if (config.enableDebugLogging) {
+    console.log('💰 Generated Payment Requirement:', {
+      amount: formatUSDCAmount(amount),
+      recipient,
+      description,
+      deadline: new Date(deadline * 1000).toISOString(),
+      nonce,
+      network: networkConfig.name
+    })
+  }
+  
+  // Return the complete 402 response structure
+  return {
+    error: 'Payment Required',
+    paymentRequirements: [paymentRequirement],
+    facilitator: {
+      url: config.facilitatorUrl,
+      version: X402_FACILITATOR_CONFIG.version
+    }
+  }
+}
+
+/**
+ * Verify Payment with Coinbase x402 Facilitator
+ * 
+ * Makes actual API call to facilitator service for payment verification.
+ * Includes retry logic and comprehensive error handling for production reliability.
+ */
+export async function verifyPaymentWithFacilitator(
+  paymentProof: PaymentProof,
+  paymentRequirements: PaymentRequirement,
+  network: 'base' | 'base-sepolia' = 'base'
+): Promise<X402VerificationResponse> {
+  const config = getX402MiddlewareConfig()
+  const facilitatorUrl = `${config.facilitatorUrl}${X402_FACILITATOR_CONFIG.verifyEndpoint}`
+  
+  let lastError: Error | null = null
+  
+  // Retry logic for network resilience
+  for (let attempt = 1; attempt <= config.retryAttempts; attempt++) {
+    try {
+      if (config.enableDebugLogging) {
+        console.log(`🔍 Payment verification attempt ${attempt}/${config.retryAttempts}`)
+      }
+      
+      const response = await fetch(facilitatorUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': `x402-client/${X402_FACILITATOR_CONFIG.version}`,
+          'X-Network': network,
+          'X-Chain-Id': config.chainId.toString()
+        },
+        body: JSON.stringify({
+          paymentProof,
+          paymentRequirements,
+          networkConfig: {
+            chainId: config.chainId,
+            network
+          }
+        }),
+        signal: AbortSignal.timeout(config.timeout)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Facilitator verification failed: ${response.status} ${response.statusText}`)
+      }
+
+      const result = await response.json() as X402VerificationResponse
+      
+      if (!result.verified) {
+        throw new Error(`Payment verification failed: ${result.error || 'Unknown error'}`)
+      }
+
+      if (config.enableDebugLogging) {
+        console.log('✅ Payment verification successful:', {
+          transactionHash: result.transactionHash,
+          blockNumber: result.blockNumber,
+          amount: result.amount
+        })
+      }
+
+      return result
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown verification error')
+      
+      if (config.enableDebugLogging) {
+        console.log(`❌ Verification attempt ${attempt} failed:`, lastError.message)
+      }
+      
+      // Don't retry on the last attempt
+      if (attempt < config.retryAttempts) {
+        await new Promise(resolve => setTimeout(resolve, config.retryDelay))
+      }
+    }
+  }
+  
+  // All attempts failed
+  throw new Error(`Payment verification failed after ${config.retryAttempts} attempts: ${lastError?.message}`)
+}
+
+/**
+ * Validate Payment Proof Structure
+ * 
+ * This function validates that a payment proof contains all required
+ * fields with correct types and formats. It's used by your middleware
+ * to validate incoming payment proofs before processing them.
+ */
+export function validatePaymentProofStructure(paymentProof: unknown): paymentProof is PaymentProof {
+  if (!paymentProof || typeof paymentProof !== 'object') {
+    return false
+  }
+  
+  const proof = paymentProof as any
+  
+  // Check all required fields are present and have correct types
+  const requiredFields = [
+    { field: 'signature', type: 'string' },
+    { field: 'amount', type: 'string' },
+    { field: 'token', type: 'string' },
+    { field: 'recipient', type: 'string' },
+    { field: 'deadline', type: 'number' },
+    { field: 'nonce', type: 'string' },
+    { field: 'chainId', type: 'number' }
+  ]
+  
+  for (const { field, type } of requiredFields) {
+    if (!(field in proof) || typeof proof[field] !== type) {
+      return false
+    }
+  }
+  
+  // Validate address formats
+  const addressFields = ['token', 'recipient'] as const
+  for (const field of addressFields) {
+    if (!isValidEthereumAddress(proof[field])) {
+      return false
+    }
+  }
+  
+  // Validate amount is a valid number string
+  try {
+    const amount = BigInt(proof.amount)
+    if (amount < BigInt(0)) {
+      return false
+    }
+  } catch {
+    return false
+  }
+  
+  // Validate deadline is in the future
+  const currentTime = Math.floor(Date.now() / 1000)
+  if (proof.deadline <= currentTime) {
+    return false
+  }
+  
+  // Validate chain ID matches supported networks
+  const supportedChainIds = Object.values(X402_NETWORKS).map(config => config.chainId)
+  if (!supportedChainIds.includes(proof.chainId)) {
+    return false
+  }
+  
+  return true
+}
+
+/**
+ * Create Secure Headers
+ * 
+ * This function generates the HTTP headers that your middleware uses
+ * for secure communication. It includes appropriate CORS headers,
+ * security headers, and caching directives based on the response type.
+ */
+export function createSecureHeaders(isPaymentRequired: boolean = false): Record<string, string> {
+  const baseHeaders = {
+    'Content-Type': 'application/json',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'X-x402-Version': X402_FACILITATOR_CONFIG.version
+  }
+  
+  if (isPaymentRequired) {
+    // Headers for HTTP 402 Payment Required responses
+    return {
+      ...baseHeaders,
+      'X-Payment-Required': 'x402',
+      'X-Payment-Protocol': `x402/${X402_FACILITATOR_CONFIG.version}`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      // CORS headers for x402 clients
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Payment, X-Network',
+      'Access-Control-Expose-Headers': 'X-Payment-Required, X-Payment-Protocol'
+    }
+  } else {
+    // Headers for successful or error responses
+    return {
+      ...baseHeaders,
+      'Cache-Control': 'private, no-cache',
+      'Vary': 'Accept-Encoding, X-Payment'
+    }
+  }
+}
+
+/**
+ * Format USDC Amount for Display
+ * 
+ * Converts USDC amount (6 decimals) to human-readable format.
+ * Essential for creating clear user interfaces and error messages.
  */
 export function formatUSDCAmount(amount: bigint): string {
   const formatted = (Number(amount) / 1_000_000).toFixed(2)
@@ -345,11 +682,10 @@ export function formatUSDCAmount(amount: bigint): string {
 }
 
 /**
- * Parse USDC amount from string
- * Converts human-readable amount to USDC units (6 decimals)
+ * Parse USDC Amount from String
  * 
- * @param amount - Amount as string like "1.50"
- * @returns USDC amount as bigint (6 decimals)
+ * Converts human-readable amount to USDC units (6 decimals).
+ * Used when processing user input or configuration values.
  */
 export function parseUSDCAmount(amount: string): bigint {
   const parsed = parseFloat(amount)
@@ -360,205 +696,182 @@ export function parseUSDCAmount(amount: string): bigint {
 }
 
 /**
- * Check if current environment is production
+ * Check if Current Environment is Production
  * 
- * @returns True if running on Base mainnet
+ * Determines if the current configuration is running on mainnet.
+ * Used for environment-specific behavior and safety checks.
  */
 export function isProduction(): boolean {
   return getCurrentNetwork() === 'base'
 }
 
 /**
- * Get error message for common x402 errors
- * Provides user-friendly error messages for common failure scenarios
+ * Get Error Message for Common x402 Errors
  * 
- * @param error - Error object or message
- * @returns User-friendly error message
+ * Provides user-friendly error messages for common failure scenarios.
+ * Helps create better user experiences during payment processing.
  */
 export function getX402ErrorMessage(error: unknown): string {
-  if (typeof error === 'string') {
-    if (error.includes('insufficient')) return 'Insufficient USDC balance for payment'
-    if (error.includes('timeout')) return 'Payment verification timed out. Please try again.'
-    if (error.includes('network')) return 'Network error. Please check your connection and try again.'
-    if (error.includes('signature')) return 'Invalid payment signature. Please try the payment again.'
-    return error
-  }
+  const errorString = typeof error === 'string' ? error : 
+                     error instanceof Error ? error.message : 
+                     'Unknown error'
   
-  if (error instanceof Error) {
-    return getX402ErrorMessage(error.message)
-  }
+  // Map technical errors to user-friendly messages
+  if (errorString.includes('insufficient')) return 'Insufficient USDC balance for payment'
+  if (errorString.includes('timeout')) return 'Payment verification timed out. Please try again.'
+  if (errorString.includes('network')) return 'Network error. Please check your connection and try again.'
+  if (errorString.includes('signature')) return 'Invalid payment signature. Please try the payment again.'
+  if (errorString.includes('deadline')) return 'Payment deadline has expired. Please request a new payment requirement.'
+  if (errorString.includes('amount')) return 'Payment amount is invalid or outside acceptable range.'
+  if (errorString.includes('nonce')) return 'Payment nonce is invalid or has already been used.'
+  if (errorString.includes('recipient')) return 'Payment recipient address is invalid.'
+  if (errorString.includes('facilitator')) return 'Payment verification service is currently unavailable.'
   
-  return 'An unexpected error occurred during payment processing.'
+  return errorString
 }
 
 /**
- * x402 Middleware Configuration Interface
- * Defines the configuration structure needed by the middleware to process payments
- */
-export interface X402MiddlewareConfig {
-  readonly network: 'base' | 'base-sepolia'
-  readonly facilitatorUrl: string
-  readonly allowedTokens: readonly Address[]
-  readonly resourceWalletAddress: Address
-  readonly timeout: number
-  readonly maxPaymentAge: number
-}
-
-/**
- * Get x402 middleware configuration
- * Creates a configuration object specifically designed for middleware operations
+ * Get Network Configuration Summary
  * 
- * @returns Complete middleware configuration with all necessary settings
+ * This function provides a summary of the current network configuration
+ * for debugging and monitoring purposes. It's useful for verifying that
+ * your middleware is configured correctly for the target environment.
  */
-export function getX402MiddlewareConfig(): X402MiddlewareConfig {
-  const network = getCurrentNetwork()
-  const networkConfig = getX402NetworkConfig(network)
-  const paymentConfig = getX402PaymentConfig()
+export function getNetworkConfigSummary(): {
+  network: string
+  chainId: number
+  facilitatorUrl: string
+  usdcAddress: string
+  resourceWallet: string
+  isTestnet: boolean
+  allowedTokens: number
+  paymentRange: string
+} {
+  const config = getX402MiddlewareConfig()
+  const networkConfig = getX402NetworkConfig(config.network)
   
-  // Get the resource wallet address from environment or contract addresses
-  const resourceWalletAddress = (
-    process.env.RESOURCE_WALLET_ADDRESS ||
-    process.env.NEXT_PUBLIC_RESOURCE_WALLET_ADDRESS ||
-    process.env.NEXT_PUBLIC_COMMERCE_INTEGRATION_ADDRESS
-  ) as Address
-
-  if (!resourceWalletAddress || resourceWalletAddress === '0x') {
-    throw new Error('Resource wallet address not configured for middleware. Set RESOURCE_WALLET_ADDRESS environment variable.')
-  }
-
   return {
-    network,
-    facilitatorUrl: networkConfig.facilitatorUrl,
-    allowedTokens: paymentConfig.allowedTokens,
-    resourceWalletAddress,
-    timeout: paymentConfig.timeout,
-    maxPaymentAge: 3600 // 1 hour maximum age for payment proofs
+    network: networkConfig.name,
+    chainId: config.chainId,
+    facilitatorUrl: config.facilitatorUrl,
+    usdcAddress: config.usdcTokenAddress,
+    resourceWallet: config.resourceWalletAddress,
+    isTestnet: networkConfig.isTestnet,
+    allowedTokens: config.allowedTokens.length,
+    paymentRange: `${formatUSDCAmount(config.minPaymentAmount)} - ${formatUSDCAmount(config.maxPaymentAmount)}`
   }
 }
 
 /**
- * Create middleware-specific payment requirements
- * Generates the payment requirements object that gets sent in 402 responses
+ * Development and Testing Utilities
  * 
- * @param amount - Payment amount required (in token's smallest unit)
- * @param recipient - Address that should receive the payment
- * @param network - Network where payment should be processed
- * @param metadata - Additional metadata about the payment (content ID, description, etc.)
- * @returns Standard x402 payment requirements object
+ * These functions provide utilities for testing and debugging x402
+ * integration during development. They help validate configuration
+ * and test payment flows without requiring real blockchain transactions.
  */
-export function createMiddlewarePaymentRequirements(
+
+/**
+ * Create Mock Payment Proof for Testing
+ * 
+ * This function generates valid-looking payment proofs for testing
+ * purposes. It should only be used in development environments.
+ */
+export function createMockPaymentProof(
   amount: bigint,
-  recipient: Address,
-  network: 'base' | 'base-sepolia' = 'base',
-  metadata?: {
-    contentId?: string
-    description?: string
-    validUntil?: number
+  contentId: string,
+  userAddress: Address
+): PaymentProof {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Mock payment proofs should not be used in production')
   }
-): Record<string, any> {
-  const networkConfig = getX402NetworkConfig(network)
+  
   const config = getX402MiddlewareConfig()
   
   return {
-    version: '1.0',
-    paymentOptions: [
-      {
-        amount: amount.toString(),
-        currency: networkConfig.usdcAddress,
-        recipient,
-        network,
-        deadline: metadata?.validUntil || Math.floor(Date.now() / 1000) + config.maxPaymentAge,
-        metadata: {
-          contentId: metadata?.contentId,
-          description: metadata?.description || 'Premium content access',
-          facilitator: config.facilitatorUrl
-        }
-      }
-    ],
-    facilitator: {
-      url: config.facilitatorUrl,
-      version: '1.0'
-    }
+    signature: '0x' + '0'.repeat(130), // Mock signature
+    amount: amount.toString(),
+    token: config.usdcTokenAddress,
+    recipient: config.resourceWalletAddress,
+    deadline: Math.floor(Date.now() / 1000) + (30 * 60),
+    nonce: generateSecureNonce(),
+    chainId: config.chainId,
+    transactionHash: '0x' + '1'.repeat(64), // Mock transaction hash
+    blockNumber: 12345678 // Mock block number
   }
 }
 
 /**
- * Validate middleware environment configuration
- * Ensures all required environment variables are present for middleware operation
+ * Test x402 Configuration
  * 
- * @throws Error if required configuration is missing
+ * Comprehensive test function that validates all aspects of x402 configuration.
+ * Use this during development to ensure everything is set up correctly.
  */
-export function validateMiddlewareConfig(): void {
-  const requiredVars = [
-    'RESOURCE_WALLET_ADDRESS',
-    'NEXT_PUBLIC_NETWORK'
-  ]
-
-  const missingVars = requiredVars.filter(varName => {
-    const value = process.env[varName] || process.env[`NEXT_PUBLIC_${varName}`]
-    return !value || value.trim() === ''
-  })
-
-  if (missingVars.length > 0) {
-    throw new Error(
-      `Missing required environment variables for x402 middleware: ${missingVars.join(', ')}. ` +
-      `Please check your .env.local file and ensure these variables are properly configured.`
-    )
-  }
-
-  // Validate wallet address format
-  const walletAddress = process.env.RESOURCE_WALLET_ADDRESS || process.env.NEXT_PUBLIC_RESOURCE_WALLET_ADDRESS
-  if (walletAddress && !isHexString(walletAddress)) {
-    throw new Error(`Invalid RESOURCE_WALLET_ADDRESS format: ${walletAddress}. Must be a valid Ethereum address starting with 0x.`)
-  }
-}
-
-/**
- * Hex String Type System
- * 
- * These types demonstrate how to create strict type safety for blockchain-specific
- * data formats. The HexString type ensures that only properly formatted hex strings
- * can be used where blockchain addresses or IDs are expected.
- */
-type HexString = `0x${string}`
-
-
-/**
- * Type Guard with Explicit Parameter Typing
- * 
- * This function demonstrates how to write type guards that satisfy TypeScript's
- * strict mode requirements. The explicit parameter typing prevents the "implicit any" 
- * errors we saw in the original code.
- */
-function isHexString(value: unknown): value is HexString {
-    return typeof value === 'string' && value.startsWith('0x') && value.length > 2
+export function testX402Configuration(): {
+  success: boolean
+  results: Array<{ test: string; passed: boolean; error?: string }>
+} {
+  const results: Array<{ test: string; passed: boolean; error?: string }> = []
+  
+  // Test configuration loading
+  try {
+    getX402MiddlewareConfig()
+    results.push({ test: 'Configuration Loading', passed: true })
+  } catch (error) {
+    results.push({ 
+      test: 'Configuration Loading', 
+      passed: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    })
   }
   
-
-/**
- * Create secure headers for x402 responses
- * Generates appropriate HTTP headers for payment-related responses
- * 
- * @param includePaymentHeaders - Whether to include x402-specific headers
- * @returns Object containing HTTP headers for secure responses
- */
-export function createSecureHeaders(includePaymentHeaders = false): Record<string, string> {
-  const baseHeaders = {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
-    'X-Frame-Options': 'DENY',
-    'X-Content-Type-Options': 'nosniff'
+  // Test network configuration
+  try {
+    const network = getCurrentNetwork()
+    getX402NetworkConfig(network)
+    results.push({ test: 'Network Configuration', passed: true })
+  } catch (error) {
+    results.push({ 
+      test: 'Network Configuration', 
+      passed: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    })
   }
-
-  if (includePaymentHeaders) {
-    return {
-      ...baseHeaders,
-      'X-Payment-Required': 'x402',
-      'X-Payment-Protocol': 'x402/1.0'
+  
+  // Test payment requirement creation
+  try {
+    const testAmount = parseUSDCAmount('1.00')
+    const config = getX402MiddlewareConfig()
+    createMiddlewarePaymentRequirements(testAmount, config.resourceWalletAddress)
+    results.push({ test: 'Payment Requirements Creation', passed: true })
+  } catch (error) {
+    results.push({ 
+      test: 'Payment Requirements Creation', 
+      passed: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    })
+  }
+  
+  // Test mock payment proof (only in development)
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const testAmount = parseUSDCAmount('1.00')
+      const config = getX402MiddlewareConfig()
+      const mockProof = createMockPaymentProof(testAmount, 'test-content', config.resourceWalletAddress)
+      const isValid = validatePaymentProofStructure(mockProof)
+      results.push({ test: 'Mock Payment Proof Creation', passed: isValid })
+    } catch (error) {
+      results.push({ 
+        test: 'Mock Payment Proof Creation', 
+        passed: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      })
     }
   }
-
-  return baseHeaders
+  
+  const allPassed = results.every(result => result.passed)
+  
+  return {
+    success: allPassed,
+    results
+  }
 }
