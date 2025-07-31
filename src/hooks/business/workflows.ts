@@ -8,14 +8,15 @@ import { useCallback, useMemo, useState, useEffect } from 'react'
 import { Address } from 'viem'
 import { useChainId } from 'wagmi'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { useAuth } from '@/components/providers/AuthProvider'
 import {
   useContentById,
   useHasContentAccess,
   useTokenBalance,
   useTokenAllowance,
   useApproveToken,
-  usePurchaseContent
+  usePurchaseContent,
+  useIsCreatorRegistered,
+  useRegisterContent,
 } from '@/hooks/contracts/core'
 import { 
   getX402MiddlewareConfig, 
@@ -25,6 +26,9 @@ import {
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
+import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abi'
+import { decodeEventLog } from 'viem'
+import { createPublicClient, http } from 'viem'
 
 // ==============================================================================
 // FARCASTER CONTEXT IMPLEMENTATION
@@ -479,5 +483,306 @@ export function useX402ContentPurchaseFlow(
     purchaseWithX402,
     x402PaymentState,
     shareCapabilities
+  }
+}
+
+export interface ContentPublishingData {
+  readonly title: string
+  readonly description: string
+  readonly ipfsHash: string  // Content stored on IPFS
+  readonly category: number  // ContentCategory enum value
+  readonly payPerViewPrice: bigint  // Price in USDC base units (6 decimals)
+  readonly tags: readonly string[]  // Content tags for discovery
+}
+
+/**
+ * Content Publishing Flow Steps
+ * 
+ * This enum defines all possible states in the content publishing workflow,
+ * enabling clear state management and user feedback.
+ */
+export type ContentPublishingFlowStep = 
+  | 'idle'                    // Ready to start publishing
+  | 'checking_creator'        // Verifying creator registration status
+  | 'validating_content'      // Validating content data and IPFS
+  | 'registering'            // Publishing content to blockchain
+  | 'completed'              // Content successfully published
+  | 'error'                  // Publishing failed
+
+/**
+ * Content Publishing Flow Result Interface
+ * 
+ * This interface provides everything the UI layer needs to manage
+ * content publishing workflows with proper state management.
+ */
+export interface ContentPublishingFlowResult {
+  readonly currentStep: ContentPublishingFlowStep
+  readonly isLoading: boolean
+  readonly error: Error | null
+  readonly canPublish: boolean
+  readonly isCreatorRegistered: boolean
+  readonly publishedContentId: bigint | null
+  
+  // Actions
+  readonly publish: (data: ContentPublishingData) => void
+  readonly reset: () => void
+  
+  // Progress tracking
+  readonly publishingProgress: {
+    readonly isSubmitting: boolean
+    readonly isConfirming: boolean
+    readonly isConfirmed: boolean
+    readonly transactionHash: string | undefined
+  }
+}
+
+/**
+ * Content Publishing Workflow Hook
+ * 
+ * This hook manages the complete content publishing workflow, integrating
+ * with your existing smart contract infrastructure. It follows the same
+ * architectural patterns as your purchase flow hooks.
+ * 
+ * The workflow ensures creators are registered before allowing content
+ * publishing, validates content data, and handles the blockchain transaction
+ * to register content in your ContentRegistry contract.
+ * 
+ * @param userAddress - The creator's wallet address
+ * @returns Complete content publishing workflow state and actions
+ */
+export function useContentPublishingFlow(
+  userAddress: Address | undefined
+): ContentPublishingFlowResult {
+  const chainId = useChainId()
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
+  
+  // Contract interaction hooks
+  const creatorRegistration = useIsCreatorRegistered(userAddress)
+  const registerContent = useRegisterContent()
+  const userBalance = useTokenBalance(contractAddresses.USDC, userAddress)
+  
+  // Workflow state management
+  const [workflowState, setWorkflowState] = useState<{
+    currentStep: ContentPublishingFlowStep
+    error: Error | null
+    publishedContentId: bigint | null
+  }>({
+    currentStep: 'idle',
+    error: null,
+    publishedContentId: null
+  })
+  
+  // Derived state for UI components
+  const isCreatorRegistered = creatorRegistration.data ?? false
+  const canPublish = isCreatorRegistered && workflowState.currentStep === 'idle'
+  const isLoading = workflowState.currentStep !== 'idle' && 
+                   workflowState.currentStep !== 'completed' && 
+                   workflowState.currentStep !== 'error'
+  
+  // Progress tracking for transaction feedback
+  const publishingProgress = useMemo(() => ({
+    isSubmitting: registerContent.isLoading && !registerContent.isConfirmed,
+    isConfirming: registerContent.isLoading && registerContent.isConfirmed,
+    isConfirmed: registerContent.isConfirmed,
+    transactionHash: registerContent.hash
+  }), [registerContent])
+  
+  // Content validation function
+  const validateContentData = useCallback((data: ContentPublishingData): string[] => {
+    const errors: string[] = []
+    
+    if (!data.title || data.title.trim().length === 0) {
+      errors.push('Content title is required')
+    }
+    
+    if (data.title && data.title.length > 100) {
+      errors.push('Title must be less than 100 characters')
+    }
+    
+    if (!data.description || data.description.trim().length === 0) {
+      errors.push('Content description is required')
+    }
+    
+    if (!data.ipfsHash || !data.ipfsHash.startsWith('Qm')) {
+      errors.push('Valid IPFS hash is required')
+    }
+    
+    if (data.payPerViewPrice <= BigInt(0)) {
+      errors.push('Price must be greater than 0')
+    }
+    
+    if (data.payPerViewPrice > BigInt(1000000000)) { // 1000 USDC max
+      errors.push('Price cannot exceed 1000 USDC')
+    }
+    
+    return errors
+  }, [])
+  
+  // Main publishing function
+  const publish = useCallback((data: ContentPublishingData) => {
+    if (!userAddress) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('Wallet connection required'),
+        publishedContentId: null
+      })
+      return
+    }
+    
+    // Step 1: Check creator registration status
+    setWorkflowState(prev => ({ ...prev, currentStep: 'checking_creator', error: null }))
+    
+    if (!isCreatorRegistered) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('You must be a registered creator to publish content'),
+        publishedContentId: null
+      })
+      return
+    }
+    
+    // Step 2: Validate content data
+    setWorkflowState(prev => ({ ...prev, currentStep: 'validating_content' }))
+    
+    const validationErrors = validateContentData(data)
+    if (validationErrors.length > 0) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error(`Content validation failed: ${validationErrors.join(', ')}`),
+        publishedContentId: null
+      })
+      return
+    }
+    
+    // Step 3: Publish content to blockchain
+    setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
+    
+    try {
+      registerContent.write({
+        ipfsHash: data.ipfsHash,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        payPerViewPrice: data.payPerViewPrice,
+        tags: data.tags
+      })
+    } catch (error) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: error instanceof Error ? error : new Error('Failed to publish content'),
+        publishedContentId: null
+      })
+    }
+  }, [userAddress, isCreatorRegistered, validateContentData, registerContent])
+  
+  // Reset workflow to initial state
+  const reset = useCallback(() => {
+    setWorkflowState({
+      currentStep: 'idle',
+      error: null,
+      publishedContentId: null
+    })
+  }, [])
+  
+  // Handle publishing transaction results
+  useEffect(() => {
+    if (registerContent.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
+    } else if (registerContent.error) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: registerContent.error,
+        publishedContentId: null
+      })
+    } else if (registerContent.isConfirmed && registerContent.hash) {
+      // Extract content ID from transaction logs if available
+      let contentId: bigint | null = null
+      try {
+        const fetchReceipt = async () => {
+          if (!registerContent.hash) {
+            setWorkflowState({
+              currentStep: 'completed',
+              error: null,
+              publishedContentId: null
+            })
+            creatorRegistration.refetch()
+            userBalance.refetch()
+            return
+          }
+          const chainId = useChainId()
+          const contractAddresses = getContractAddresses(chainId)
+          const publicClient = createPublicClient({
+            chain: chainId === 8453 ? require('viem/chains').base : require('viem/chains').baseSepolia,
+            transport: http()
+          })
+          const receipt = await publicClient.getTransactionReceipt({ hash: registerContent.hash as `0x${string}` })
+          for (const log of receipt.logs) {
+            try {
+              const event = decodeEventLog({
+                abi: CONTENT_REGISTRY_ABI,
+                data: log.data,
+                topics: log.topics
+              })
+              if (event.eventName === 'ContentRegistered') {
+                contentId = event.args.contentId as bigint
+                break
+              }
+            } catch {}
+          }
+          setWorkflowState({
+            currentStep: 'completed',
+            error: null,
+            publishedContentId: contentId
+          })
+          // Refresh creator data after successful publishing
+          creatorRegistration.refetch()
+          userBalance.refetch()
+        }
+        fetchReceipt()
+      } catch (e) {
+        setWorkflowState({
+          currentStep: 'completed',
+          error: null,
+          publishedContentId: null
+        })
+        creatorRegistration.refetch()
+        userBalance.refetch()
+      }
+    }
+  }, [registerContent, creatorRegistration, userBalance])
+  
+  // Update step based on creator registration status
+  useEffect(() => {
+    if (creatorRegistration.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'checking_creator' }))
+    } else if (creatorRegistration.error) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('Failed to check creator status'),
+        publishedContentId: null
+      })
+    } else if (workflowState.currentStep === 'checking_creator' && !creatorRegistration.isLoading) {
+      if (isCreatorRegistered) {
+        setWorkflowState(prev => ({ ...prev, currentStep: 'idle' }))
+      } else {
+        setWorkflowState({
+          currentStep: 'error',
+          error: new Error('Creator registration required'),
+          publishedContentId: null
+        })
+      }
+    }
+  }, [creatorRegistration, isCreatorRegistered, workflowState.currentStep])
+  
+  return {
+    currentStep: workflowState.currentStep,
+    isLoading,
+    error: workflowState.error,
+    canPublish,
+    isCreatorRegistered,
+    publishedContentId: workflowState.publishedContentId,
+    publish,
+    reset,
+    publishingProgress
   }
 }
