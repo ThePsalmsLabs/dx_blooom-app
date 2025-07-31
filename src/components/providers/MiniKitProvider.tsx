@@ -22,7 +22,7 @@ import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { base, baseSepolia } from 'viem/chains'
 import { Address } from 'viem'
-import { getCurrentX402Config } from '@/lib/web3/x402-config'
+import { getX402MiddlewareConfig } from '@/lib/web3/x402-config'
 
 /**
  * Conditional MiniKit Import Pattern
@@ -258,7 +258,8 @@ function validateMiniKitEnvironment(): void {
 export function createMiniKitConfig(): MiniKitConfig {
   validateMiniKitEnvironment()
 
-  const x402Config = getCurrentX402Config()
+  // Use base.id as the default chainId for x402 config
+  const x402Config = getX402MiddlewareConfig(base.id)
   const isDevMode = process.env.NEXT_PUBLIC_FARCASTER_DEV_MODE === 'true'
   const baseUrl = process.env.NEXT_PUBLIC_URL
 
@@ -269,8 +270,7 @@ export function createMiniKitConfig(): MiniKitConfig {
     enablePayments: true,
     supportedChains: [x402Config.chainId],
     // Proper filtering with explicit typing to avoid 'implicit any' errors
-    supportedTokens: Object.values(x402Config.contractAddresses)
-      .filter((addr: unknown): addr is Address => isHexString(addr)),
+    supportedTokens: [x402Config.usdcTokenAddress],
     debugMode: isDevMode,
     manifestUrl: `${cleanBaseUrl}/.well-known/farcaster.json`,
   }
