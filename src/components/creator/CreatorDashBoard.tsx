@@ -103,10 +103,6 @@ import {
   useCreatorPendingEarnings,
   useTokenBalance
 } from '@/hooks/contracts/core'
-import {
-  useCreatorOnboarding,
-  useContentPublishingFlow
-} from '@/hooks/business/workflows'
 import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 import { useAccount } from 'wagmi'
 import { ContentUploadForm } from '@/components/content/ContentUpload'

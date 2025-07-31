@@ -70,8 +70,8 @@ interface ContentPurchaseCardProps {
   onPurchaseSuccess?: () => void
   /** Optional callback when user wants to view content */
   onViewContent?: () => void
-  /** Whether to show the full card or a compact version */
-  variant?: 'full' | 'compact'
+  /** Whether to show the full card, a compact version, or miniapp variant */
+  variant?: 'full' | 'compact' | 'miniapp'
   /** Optional custom styling */
   className?: string
 }
@@ -132,6 +132,18 @@ export function ContentPurchaseCard({
     if (onViewContent) {
       onViewContent()
     }
+  }
+
+  // Render miniapp variant for Farcaster Mini App environments
+  if (variant === 'miniapp') {
+    return (
+      <CompactContentCard
+        purchaseUI={purchaseUI}
+        onPurchaseAction={handlePurchaseAction}
+        onViewContent={handleViewContent}
+        className={cn(className, 'miniapp')}
+      />
+    )
   }
 
   // Render compact variant for space-constrained contexts
