@@ -108,11 +108,11 @@ export interface ContractWriteWithConfirmationResult extends ContractWriteResult
 export function useIsCreatorRegistered(creatorAddress: Address | undefined): ContractReadResult<boolean> {
   const chainId = useChainId()
   const contractConfig = useMemo(() => getCreatorRegistryContract(chainId), [chainId])
-  
+
   const result = useReadContract({
     address: contractConfig.address,
     abi: CREATOR_REGISTRY_ABI,
-    functionName: 'isCreatorRegistered',
+    functionName: 'isRegisteredCreator',
     args: creatorAddress ? [creatorAddress] : undefined,
     query: {
       enabled: !!creatorAddress, // Only run when we have an address
@@ -123,7 +123,7 @@ export function useIsCreatorRegistered(creatorAddress: Address | undefined): Con
   })
 
   return {
-    data: result.data,
+    data: typeof result.data === 'boolean' ? result.data : undefined,
     isLoading: result.isLoading,
     isError: result.isError,
     error: result.error,
@@ -144,7 +144,7 @@ export function useIsCreatorRegistered(creatorAddress: Address | undefined): Con
 export function useCreatorProfile(creatorAddress: Address | undefined): ContractReadResult<Creator> {
   const chainId = useChainId()
   const contractConfig = useMemo(() => getCreatorRegistryContract(chainId), [chainId])
-  
+
   const result = useReadContract({
     address: contractConfig.address,
     abi: CREATOR_REGISTRY_ABI,
@@ -158,8 +158,19 @@ export function useCreatorProfile(creatorAddress: Address | undefined): Contract
     }
   })
 
+  // Map ABI struct to Creator type
+  const data = result.data && typeof result.data === 'object' ? {
+    isRegistered: result.data.isRegistered,
+    subscriptionPrice: result.data.subscriptionPrice,
+    isVerified: result.data.isVerified,
+    totalEarnings: result.data.totalEarnings,
+    contentCount: result.data.contentCount,
+    subscriberCount: result.data.subscriberCount,
+    registrationTime: result.data.registrationTime,
+  } as Creator : undefined
+
   return {
-    data: result.data,
+    data,
     isLoading: result.isLoading,
     isError: result.isError,
     error: result.error,
@@ -180,7 +191,7 @@ export function useCreatorProfile(creatorAddress: Address | undefined): Contract
 export function useCreatorPendingEarnings(creatorAddress: Address | undefined): ContractReadResult<bigint> {
   const chainId = useChainId()
   const contractConfig = useMemo(() => getCreatorRegistryContract(chainId), [chainId])
-  
+
   const result = useReadContract({
     address: contractConfig.address,
     abi: CREATOR_REGISTRY_ABI,
@@ -196,7 +207,7 @@ export function useCreatorPendingEarnings(creatorAddress: Address | undefined): 
   })
 
   return {
-    data: result.data,
+    data: typeof result.data === 'bigint' ? result.data : undefined,
     isLoading: result.isLoading,
     isError: result.isError,
     error: result.error,
@@ -218,11 +229,9 @@ export function useRegisterCreator(): ContractWriteWithConfirmationResult {
   const chainId = useChainId()
   const queryClient = useQueryClient()
   const contractConfig = useMemo(() => getCreatorRegistryContract(chainId), [chainId])
-  
-  // Main write operation using wagmi's useWriteContract
+
   const writeResult = useWriteContract()
-  
-  // Transaction confirmation tracking
+
   const confirmationResult = useWaitForTransactionReceipt({
     hash: writeResult.data,
     query: {
@@ -240,29 +249,25 @@ export function useRegisterCreator(): ContractWriteWithConfirmationResult {
     }
   }, [confirmationResult.isSuccess, queryClient])
 
-  // Enhanced write function that includes parameter validation
+  // Accepts { subscriptionPrice: bigint, profileData: string }
   const writeWithValidation = useCallback((args?: unknown) => {
-    if (typeof args !== 'bigint') {
-      throw new Error('Expected a bigint for subscription price');
+    if (!args || typeof args !== 'object' || !('subscriptionPrice' in args) || !('profileData' in args)) {
+      throw new Error('Expected an object with subscriptionPrice and profileData')
     }
-  
-    const subscriptionPrice = args;
-  
-    if (subscriptionPrice < BigInt(10000)) {
-      throw new Error('Subscription price must be at least $0.01');
+    const { subscriptionPrice, profileData } = args as { subscriptionPrice: bigint, profileData: string }
+    if (typeof subscriptionPrice !== 'bigint') {
+      throw new Error('subscriptionPrice must be a bigint')
     }
-  
-    if (subscriptionPrice > BigInt(100000000)) {
-      throw new Error('Subscription price cannot exceed $100.00');
+    if (typeof profileData !== 'string') {
+      throw new Error('profileData must be a string')
     }
-  
     writeResult.writeContract({
       address: contractConfig.address,
       abi: CREATOR_REGISTRY_ABI,
       functionName: 'registerCreator',
-      args: [subscriptionPrice],
-    });
-  }, [writeResult, contractConfig.address]);
+      args: [subscriptionPrice, profileData],
+    })
+  }, [writeResult, contractConfig.address])
 
   return {
     hash: writeResult.data,
@@ -290,9 +295,9 @@ export function useWithdrawEarnings(): ContractWriteWithConfirmationResult {
   const chainId = useChainId()
   const queryClient = useQueryClient()
   const contractConfig = useMemo(() => getCreatorRegistryContract(chainId), [chainId])
-  
+
   const writeResult = useWriteContract()
-  
+
   const confirmationResult = useWaitForTransactionReceipt({
     hash: writeResult.data,
     query: {
@@ -311,24 +316,14 @@ export function useWithdrawEarnings(): ContractWriteWithConfirmationResult {
     }
   }, [confirmationResult.isSuccess, queryClient])
 
-  const writeWithValidation = useCallback((args?: unknown) => {
-    if (typeof args !== 'bigint') {
-      throw new Error('Expected a bigint for withdrawal amount');
-    }
-  
-    const amount = args;
-  
-    if (amount <= BigInt(0)) {
-      throw new Error('Withdrawal amount must be greater than zero');
-    }
-  
+  const writeWithValidation = useCallback(() => {
     writeResult.writeContract({
       address: contractConfig.address,
       abi: CREATOR_REGISTRY_ABI,
-      functionName: 'withdrawEarnings',
-      args: [amount],
-    });
-  }, [writeResult, contractConfig.address]);
+      functionName: 'withdrawCreatorEarnings',
+      args: [],
+    })
+  }, [writeResult, contractConfig.address])
 
   return {
     hash: writeResult.data,
@@ -373,8 +368,20 @@ export function useContentById(contentId: bigint | undefined): ContractReadResul
     }
   })
 
+  // Map ABI struct to Content type
+  const data = result.data && typeof result.data === 'object' ? {
+    creator: result.data.creator,
+    ipfsHash: result.data.ipfsHash,
+    title: result.data.title,
+    description: result.data.description,
+    category: result.data.category,
+    payPerViewPrice: result.data.payPerViewPrice,
+    creationTime: result.data.createdAt, // map createdAt to creationTime
+    isActive: result.data.isActive,
+  } as Content : undefined
+
   return {
-    data: result.data,
+    data,
     isLoading: result.isLoading,
     isError: result.isError,
     error: result.error,
@@ -587,8 +594,8 @@ export function useHasPaidForContent(
   const result = useReadContract({
     address: contractConfig.address,
     abi: PAY_PER_VIEW_ABI,
-    functionName: 'hasPaid',
-    args: userAddress && contentId !== undefined ? [userAddress, contentId] : undefined,
+    functionName: 'hasAccess',
+    args: userAddress && contentId !== undefined ? [contentId, userAddress] : undefined,
     query: {
       enabled: !!userAddress && contentId !== undefined,
       staleTime: 1000 * 60 * 15, // Purchase status rarely changes, cache aggressively
@@ -623,22 +630,22 @@ export function useHasContentAccess(
 ): ContractReadResult<boolean> {
   const chainId = useChainId()
   const contractConfig = useMemo(() => getPayPerViewContract(chainId), [chainId])
-  
+
   const result = useReadContract({
     address: contractConfig.address,
     abi: PAY_PER_VIEW_ABI,
     functionName: 'hasAccess',
-    args: userAddress && contentId !== undefined ? [userAddress, contentId] : undefined,
+    args: contentId !== undefined && userAddress ? [contentId, userAddress] : undefined,
     query: {
-      enabled: !!userAddress && contentId !== undefined,
-      staleTime: 1000 * 60 * 5, // Access can change via subscription, moderate caching
+      enabled: contentId !== undefined && !!userAddress,
+      staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 20,
       retry: 3,
     }
   })
 
   return {
-    data: result.data,
+    data: typeof result.data === 'boolean' ? result.data : undefined,
     isLoading: result.isLoading,
     isError: result.isError,
     error: result.error,
@@ -659,9 +666,9 @@ export function usePurchaseContent(): ContractWriteWithConfirmationResult {
   const chainId = useChainId()
   const queryClient = useQueryClient()
   const contractConfig = useMemo(() => getPayPerViewContract(chainId), [chainId])
-  
+
   const writeResult = useWriteContract()
-  
+
   const confirmationResult = useWaitForTransactionReceipt({
     hash: writeResult.data,
     query: {
@@ -669,33 +676,27 @@ export function usePurchaseContent(): ContractWriteWithConfirmationResult {
     }
   })
 
-  // Invalidate access control queries when purchase confirms
   useEffect(() => {
     if (confirmationResult.isSuccess) {
       queryClient.invalidateQueries({ 
         predicate: (query) => 
-          query.queryKey.includes('hasPaid') ||
           query.queryKey.includes('hasAccess')
       })
     }
   }, [confirmationResult.isSuccess, queryClient])
 
   const writeWithValidation = useCallback((args?: unknown) => {
-    
     if (typeof args !== 'bigint') {
       throw new Error('Expected a Bigint for content ID')
     }
-
     const contentId = args
-
     if (contentId <= BigInt(0)) {
       throw new Error('Invalid content ID')
     }
-
     writeResult.writeContract({
       address: contractConfig.address,
       abi: PAY_PER_VIEW_ABI,
-      functionName: 'purchaseContent',
+      functionName: 'purchaseContentDirect',
       args: [contentId],
     })
   }, [writeResult, contractConfig.address])
@@ -733,7 +734,7 @@ export function useIsSubscribed(
 ): ContractReadResult<boolean> {
   const chainId = useChainId()
   const contractConfig = useMemo(() => getSubscriptionManagerContract(chainId), [chainId])
-  
+
   const result = useReadContract({
     address: contractConfig.address,
     abi: SUBSCRIPTION_MANAGER_ABI,
@@ -749,7 +750,7 @@ export function useIsSubscribed(
   })
 
   return {
-    data: result.data,
+    data: typeof result.data === 'boolean' ? result.data : undefined,
     isLoading: result.isLoading,
     isError: result.isError,
     error: result.error,
@@ -774,11 +775,11 @@ export function useSubscriptionExpiry(
 ): ContractReadResult<bigint> {
   const chainId = useChainId()
   const contractConfig = useMemo(() => getSubscriptionManagerContract(chainId), [chainId])
-  
+
   const result = useReadContract({
     address: contractConfig.address,
     abi: SUBSCRIPTION_MANAGER_ABI,
-    functionName: 'getSubscriptionExpiry',
+    functionName: 'getSubscriptionEndTime',
     args: userAddress && creatorAddress ? [userAddress, creatorAddress] : undefined,
     query: {
       enabled: !!userAddress && !!creatorAddress,
@@ -789,7 +790,7 @@ export function useSubscriptionExpiry(
   })
 
   return {
-    data: result.data,
+    data: typeof result.data === 'bigint' ? result.data : undefined,
     isLoading: result.isLoading,
     isError: result.isError,
     error: result.error,
@@ -810,9 +811,9 @@ export function useSubscribeToCreator(): ContractWriteWithConfirmationResult {
   const chainId = useChainId()
   const queryClient = useQueryClient()
   const contractConfig = useMemo(() => getSubscriptionManagerContract(chainId), [chainId])
-  
+
   const writeResult = useWriteContract()
-  
+
   const confirmationResult = useWaitForTransactionReceipt({
     hash: writeResult.data,
     query: {
@@ -826,7 +827,7 @@ export function useSubscribeToCreator(): ContractWriteWithConfirmationResult {
       queryClient.invalidateQueries({ 
         predicate: (query) => 
           query.queryKey.includes('isSubscribed') ||
-          query.queryKey.includes('getSubscriptionExpiry') ||
+          query.queryKey.includes('getSubscriptionEndTime') ||
           query.queryKey.includes('hasAccess')
       })
     }
@@ -834,22 +835,19 @@ export function useSubscribeToCreator(): ContractWriteWithConfirmationResult {
 
   const writeWithValidation = useCallback((args?: unknown) => {
     if (typeof args !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(args)) {
-      throw new Error('Valid creator address is required');
+      throw new Error('Valid creator address is required')
     }
-  
-    const creatorAddress = args as Address;
-  
+    const creatorAddress = args as Address
     if (creatorAddress === '0x0000000000000000000000000000000000000000') {
-      throw new Error('Zero address is not allowed');
+      throw new Error('Zero address is not allowed')
     }
-  
     writeResult.writeContract({
       address: contractConfig.address,
       abi: SUBSCRIPTION_MANAGER_ABI,
-      functionName: 'subscribe',
+      functionName: 'subscribeToCreator',
       args: [creatorAddress],
-    });
-  }, [writeResult, contractConfig.address]);
+    })
+  }, [writeResult, contractConfig.address])
 
   return {
     hash: writeResult.data,
