@@ -61,7 +61,7 @@ export interface FarcasterContext {
  * Farcaster Context Hook Implementation
  * Detects MiniApp environment and provides social context
  */
-function useFarcasterContext(): FarcasterContext | null {
+export function useFarcasterContext(): FarcasterContext | null {
   const [farcasterContext, setFarcasterContext] = useState<FarcasterContext | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
 
