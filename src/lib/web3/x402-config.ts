@@ -5,6 +5,8 @@
 
 import { Address } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
+import { X402PaymentRequirement } from '@/types/x402'
+
 
 // ==============================================================================
 // TYPE DEFINITIONS
@@ -400,6 +402,94 @@ function generateSecureNonce(): string {
 function formatUSDC(amount: bigint): string {
   const dollars = Number(amount) / 1000000 // Convert from 6 decimals
   return `$${dollars.toFixed(2)}`
+}
+
+/**
+ * Create Middleware Payment Requirements
+ * 
+ * This function creates the standardized payment requirement object that gets
+ * returned in HTTP 402 responses. Think of this as creating a "payment invoice"
+ * that tells clients exactly what they need to pay and where to send it.
+ * 
+ * @param amount - Payment amount in token base units (e.g., USDC with 6 decimals)
+ * @param recipient - The recipient address (your resource wallet)
+ * @param network - The blockchain network ('base' or 'base-sepolia')
+ * @param metadata - Optional metadata like contentId and description
+ * @returns X402 payment requirement object for 402 responses
+ */
+export function createMiddlewarePaymentRequirements(
+  amount: bigint,
+  recipient: Address,
+  network: 'base' | 'base-sepolia',
+  metadata?: { contentId?: string; description?: string }
+): X402PaymentRequirement {
+  const chainId = network === 'base' ? base.id : baseSepolia.id
+  const config = getX402MiddlewareConfig(chainId)
+  
+  // Format the payment requirement according to x402 protocol
+  const paymentRequirement: X402PaymentRequirement = {
+    maxAmountRequired: amount.toString(),
+    resource: metadata?.contentId 
+      ? `/api/protected/content/${metadata.contentId}`
+      : '/api/protected',
+    description: metadata?.description || 'Payment required for content access',
+    payTo: config.resourceWalletAddress, // x402 requires payments to resource wallet
+    asset: config.usdcTokenAddress,
+    network: network,
+    scheme: 'exact',
+    chainId: chainId
+  }
+  
+  return paymentRequirement
+}
+
+/**
+ * Create Secure Headers
+ * 
+ * This function creates standardized HTTP headers for x402 responses.
+ * It includes security headers and content type information.
+ * 
+ * @param isPaymentRequired - Whether this is a 402 payment required response
+ * @returns Headers object with appropriate security and content headers
+ */
+export function createSecureHeaders(isPaymentRequired: boolean = false): HeadersInit {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block'
+  }
+  
+  if (isPaymentRequired) {
+    headers['WWW-Authenticate'] = 'x402'
+  }
+  
+  return headers
+}
+
+/**
+ * Validate Middleware Configuration
+ * 
+ * This function validates that all required configuration is present
+ * for the middleware to function properly. Call this at middleware startup.
+ * 
+ * @throws Error if configuration is invalid or incomplete
+ */
+export function validateMiddlewareConfig(): void {
+  const chainId = process.env.NETWORK === 'base' ? base.id : baseSepolia.id
+  const validation = validateX402Configuration(chainId)
+  
+  if (!validation.isValid) {
+    throw new Error(
+      `X402 middleware configuration invalid: ${validation.errors.join(', ')}`
+    )
+  }
+  
+  // Log warnings if any
+  if (validation.warnings.length > 0) {
+    console.warn('X402 middleware configuration warnings:', validation.warnings)
+  }
 }
 
 /**

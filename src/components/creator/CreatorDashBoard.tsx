@@ -115,6 +115,7 @@ import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 import { useAccount } from 'wagmi'
 import { ContentUploadForm } from '@/components/content/ContentUpload'
 import { categoryToString, type ContentCategory } from '@/types/contracts'
+import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 
 /**
  * Mini App Metrics Interface
@@ -185,25 +186,6 @@ interface MiniAppAnalyticsResult {
   
   /** Refresh function for updating social metrics */
   readonly refetch: () => Promise<void>
-}
-
-/**
- * Placeholder useMiniAppAnalytics Hook
- * 
- * This is a placeholder implementation that will be replaced with the full
- * implementation in Component 4.2. It provides the correct interface structure
- * to ensure type safety and integration compatibility.
- */
-function useMiniAppAnalytics(): MiniAppAnalyticsResult {
-  // Placeholder implementation - will be replaced in Component 4.2
-  return {
-    data: null,
-    isLoading: false,
-    error: null,
-    refetch: async () => {
-      console.log('Mini App analytics refresh - to be implemented in Component 4.2')
-    }
-  }
 }
 
 /**

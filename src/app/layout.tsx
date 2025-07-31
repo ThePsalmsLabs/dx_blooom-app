@@ -15,7 +15,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from '@/components/ui/index'
 import { EnhancedWeb3Provider } from '@/components/providers/Web3Provider'
-import '@/styles/globals.css'
+import './globals.css'
+
 
 // Configure the Inter font for optimal performance
 const inter = Inter({ 
