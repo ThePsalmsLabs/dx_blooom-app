@@ -536,7 +536,7 @@ function CreatorOverview({ metrics, profile, isLoading }: CreatorOverviewProps) 
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <User className="h-5 w-5" />
+          <Users className="h-5 w-5" />
           Creator Overview
         </CardTitle>
       </CardHeader>
