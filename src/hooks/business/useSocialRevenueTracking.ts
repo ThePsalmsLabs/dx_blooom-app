@@ -6,7 +6,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAccount, useChainId, useWatchContractEvent } from 'wagmi'
+import { useAccount, useChainId, useWatchContractEvent, usePublicClient } from 'wagmi'
 import { type Address, type Log } from 'viem'
 
 // Import existing hooks from your core contracts system
@@ -278,25 +278,87 @@ class RevenueAttributionCalculator {
 }
 
 /**
- * Mock Event Subscription Function
- * 
- * This function simulates the subscribeToPaymentEvents functionality referenced
- * in the roadmap. In a production implementation, this would connect to your
- * actual event subscription system or WebSocket infrastructure.
- * 
+ * Production Event Subscription Function
+ *
+ * Subscribes to PaymentCompleted events from the Commerce Protocol Integration contract.
+ * Fetches historical logs and listens for new events, calling the callback with PaymentEvent[]
+ *
+ * @param contractAddress - Address of the Commerce Protocol Integration contract
  * @param callback - Function to call when payment events are received
  * @returns Cleanup function to unsubscribe from events
  */
+function parseLog(log: Log): PaymentEvent {
+  // args may be undefined or not have the expected types, so check each field
+  const args = (log as Log & { args?: Record<string, unknown> }).args ?? {}
+  return {
+    intentId: typeof args.intentId === 'string' ? args.intentId : '',
+    user: typeof args.user === 'string' ? (args.user as Address) : '0x',
+    creator: typeof args.creator === 'string' ? (args.creator as Address) : '0x',
+    paymentType: typeof args.paymentType === 'number' ? args.paymentType : 0,
+    amount: typeof args.amountPaid === 'bigint' ? args.amountPaid :
+           typeof args.amount === 'bigint' ? args.amount : BigInt(0),
+    deadline: typeof args.deadline === 'bigint' ? args.deadline : BigInt(0),
+    timestamp: typeof args.timestamp === 'bigint'
+      ? args.timestamp
+      : BigInt(Date.now() / 1000),
+    transactionHash: typeof log.transactionHash === 'string' ? log.transactionHash : undefined,
+    metadata: {
+      // TODO: Enrich with analytics or transaction input parsing
+      referrer: undefined,
+      userAgent: undefined,
+      farcasterContext: undefined,
+    },
+  }
+}
+
 function subscribeToPaymentEvents(
+  contractAddress: Address,
   callback: (events: PaymentEvent[]) => void
 ): () => void {
-  // This is a placeholder implementation
-  // In production, this would connect to your event subscription system
-  console.log('Subscribing to payment events...')
-  
-  // Return cleanup function
+  // Use wagmi's publicClient for historical logs and watchContractEvent for real-time
+  const publicClient = usePublicClient()
+  let unwatch: (() => void) | undefined
+  let cancelled = false
+
+  // Guard: if publicClient is not available, return a no-op unsubscribe
+  if (!publicClient) {
+    return () => {}
+  }
+
+  // Fetch historical logs
+  (async () => {
+    try {
+      const logs = await publicClient.getLogs({
+        address: contractAddress,
+        event: COMMERCE_PROTOCOL_INTEGRATION_ABI.find(e => e.name === 'PaymentCompleted'),
+        fromBlock: 'earliest',
+        toBlock: 'latest',
+      })
+      if (!cancelled && logs.length > 0) {
+        const events = logs.map(parseLog).filter(PaymentSourceClassifier.isValidPaymentEvent)
+        callback(events)
+      }
+    } catch (err) {
+      // Optionally handle error
+      console.error('Error fetching historical PaymentCompleted logs:', err)
+    }
+  })()
+
+  // Subscribe to new events using publicClient
+  unwatch = publicClient.watchContractEvent({
+    address: contractAddress,
+    abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+    eventName: 'PaymentCompleted',
+    onLogs: (logs: Log[]) => {
+      const events = logs.map(parseLog).filter(PaymentSourceClassifier.isValidPaymentEvent)
+      if (events.length > 0) callback(events)
+    },
+  })
+
+  // Cleanup function
   return () => {
-    console.log('Unsubscribing from payment events...')
+    cancelled = true
+    if (unwatch) unwatch()
   }
 }
 
@@ -439,7 +501,7 @@ export function useSocialRevenueTracking(
     
     try {
       // Subscribe to payment events using existing infrastructure
-      const unsubscribe = subscribeToPaymentEvents(processPaymentEvents)
+      const unsubscribe = subscribeToPaymentEvents(contractConfig.address, processPaymentEvents)
       
       return () => {
         unsubscribe()
@@ -452,7 +514,7 @@ export function useSocialRevenueTracking(
       setError(error)
       console.error('Event subscription error:', error)
     }
-  }, [effectiveCreatorAddress, processPaymentEvents])
+  }, [effectiveCreatorAddress, processPaymentEvents, contractConfig.address])
   
   /**
    * Contract Event Watching
@@ -468,29 +530,8 @@ export function useSocialRevenueTracking(
     onLogs: (logs: Log[]) => {
       try {
         const paymentEvents: PaymentEvent[] = logs
-          .map(log => {
-            // Parse log data into PaymentEvent structure
-            // This is a simplified implementation - in production you'd use proper log parsing
-            const { args } = log as any
-            return {
-              intentId: args?.intentId || '',
-              user: args?.user || '0x',
-              creator: args?.creator || '0x',
-              paymentType: args?.paymentType || 0,
-              amount: args?.amount || BigInt(0),
-              deadline: args?.deadline || BigInt(0),
-              timestamp: BigInt(Date.now() / 1000),
-              transactionHash: log.transactionHash,
-              metadata: {
-                // In production, you'd extract this from transaction metadata
-                referrer: undefined,
-                userAgent: undefined,
-                farcasterContext: undefined
-              }
-            } as PaymentEvent
-          })
+          .map(parseLog)
           .filter(PaymentSourceClassifier.isValidPaymentEvent)
-        
         if (paymentEvents.length > 0) {
           processPaymentEvents(paymentEvents)
         }
