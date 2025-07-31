@@ -1333,3 +1333,639 @@ export function useCreatorOnboarding(
     registrationProgress
   }
 }
+
+// ==============================================================================
+// COMPONENT 4.3: CONTENT PUBLISHING ENHANCEMENT
+// Enhancement to existing src/hooks/business/workflows.ts
+// ==============================================================================
+
+import { useAccount } from 'wagmi'
+import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
+import { type ContentCategory } from '@/types/contracts'
+
+// ==============================================================================
+// ENHANCED TYPE DEFINITIONS
+// ==============================================================================
+
+export interface EnhancedContentPublishingData extends ContentPublishingData {
+  readonly framePreviewImage?: string
+  readonly socialDescription?: string
+  readonly targetAudience?: 'general' | 'creators' | 'crypto' | 'tech'
+  readonly socialKeywords?: readonly string[]
+  readonly socialCallToAction?: string
+  readonly enableAutoShare?: boolean
+  readonly frameStyle?: 'preview' | 'interactive' | 'minimal'
+}
+
+export type EnhancedContentPublishingFlowStep =
+  | ContentPublishingFlowStep
+  | 'validating_social_data'
+  | 'generating_frame_assets'
+  | 'creating_social_content'
+  | 'optimizing_discovery'
+
+interface FrameAssetConfig {
+  readonly contentId: bigint
+  readonly title: string
+  readonly description: string
+  readonly previewImage?: string
+  readonly price: bigint
+  readonly creatorAddress: Address
+  readonly socialKeywords: readonly string[]
+  readonly callToAction: string
+  readonly frameStyle: 'preview' | 'interactive' | 'minimal'
+}
+
+interface SocialContentResult {
+  readonly castText: string
+  readonly hashtags: readonly string[]
+  readonly mentions: readonly string[]
+  readonly engagementHooks: readonly string[]
+  readonly frameMetadata: {
+    readonly imageUrl: string
+    readonly buttons: readonly {
+      readonly label: string
+      readonly action: string
+      readonly target: string
+    }[]
+    readonly postUrl: string
+  }
+}
+
+interface EnhancedPublishingResult {
+  readonly contentId?: bigint
+  readonly success: boolean
+  readonly error?: Error
+  readonly socialOptimization?: SocialContentResult
+  readonly performancePredictions?: {
+    readonly expectedFrameViews: number
+    readonly predictedEngagementRate: number
+    readonly estimatedConversionRate: number
+  }
+}
+
+interface EnhancedContentPublishingFlowResult {
+  readonly currentStep: EnhancedContentPublishingFlowStep
+  readonly isLoading: boolean
+  readonly error: Error | null
+  readonly isValidContent: boolean
+  readonly validationErrors: readonly string[]
+  readonly publish: (data: ContentPublishingData) => void
+  readonly publishWithSocialOptimization: (data: EnhancedContentPublishingData) => Promise<EnhancedPublishingResult>
+  readonly publishingProgress: {
+    readonly isSubmitting: boolean
+    readonly isConfirming: boolean
+    readonly isConfirmed: boolean
+    readonly transactionHash: string | undefined
+  }
+  readonly socialOptimization: {
+    readonly isProcessing: boolean
+    readonly results: SocialContentResult | null
+    readonly error: Error | null
+  }
+  readonly reset: () => void
+  readonly socialCapabilities: {
+    readonly canShare: boolean
+    readonly shareToFarcaster: (message: string) => Promise<void>
+    readonly generateOptimizedShareMessage: () => string
+  }
+}
+
+// ==============================================================================
+// SOCIAL OPTIMIZATION UTILITY CLASSES
+// ==============================================================================
+
+class FrameAssetGenerator {
+  private readonly baseUrl: string
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl.replace(/\/$/, '')
+  }
+  async generateFrameAssets(config: FrameAssetConfig): Promise<SocialContentResult['frameMetadata']> {
+    try {
+      const imageUrl = await this.generateFrameImage(config)
+      const buttons = this.generateFrameButtons(config)
+      const postUrl = `${this.baseUrl}/api/farcaster/frame/${config.contentId}`
+      return { imageUrl, buttons, postUrl }
+    } catch (error) {
+      console.error('Frame asset generation failed:', error)
+      throw new Error('Failed to generate Frame assets')
+    }
+  }
+  private async generateFrameImage(config: FrameAssetConfig): Promise<string> {
+    if (config.previewImage) {
+      return await this.optimizeImageForFrame(config.previewImage)
+    }
+    return await this.createDynamicFrameImage(config)
+  }
+  private async optimizeImageForFrame(imageUrl: string): Promise<string> {
+    try {
+      const response = await fetch(imageUrl, { method: 'HEAD' })
+      if (!response.ok) throw new Error('Source image not accessible')
+      const optimizedUrl = `${this.baseUrl}/api/images/optimize?src=${encodeURIComponent(imageUrl)}&ratio=1.91:1`
+      return optimizedUrl
+    } catch (error) {
+      console.warn('Image optimization failed, using fallback:', error)
+      return `${this.baseUrl}/images/frames/default-preview.png`
+    }
+  }
+  private async createDynamicFrameImage(config: FrameAssetConfig): Promise<string> {
+    const imageParams = new URLSearchParams({
+      contentId: config.contentId.toString(),
+      title: config.title,
+      price: (Number(config.price) / 1000000).toFixed(2),
+      creator: config.creatorAddress,
+      style: config.frameStyle
+    })
+    return `${this.baseUrl}/api/images/frame/generate?${imageParams.toString()}`
+  }
+  private generateFrameButtons(config: FrameAssetConfig): readonly { label: string; action: string; target: string }[] {
+    const buttons = [
+      {
+        label: config.callToAction,
+        action: 'post',
+        target: `/api/farcaster/purchase/${config.contentId}`
+      }
+    ]
+    if (config.frameStyle !== 'minimal') {
+      buttons.push({
+        label: 'Creator Profile',
+        action: 'link',
+        target: `${this.baseUrl}/creator/${config.creatorAddress}`
+      })
+    }
+    return buttons
+  }
+}
+
+class SocialContentGenerator {
+  static async generateSocialContent(
+    contentData: EnhancedContentPublishingData,
+    contentId: bigint,
+    creatorProfile?: { readonly displayName?: string; readonly fid?: number }
+  ): Promise<Omit<SocialContentResult, 'frameMetadata'>> {
+    try {
+      const castText = this.generateOptimizedCastText(contentData, creatorProfile)
+      const hashtags = this.generateStrategicHashtags(contentData)
+      const mentions = this.generateStrategicMentions(contentData, creatorProfile)
+      const engagementHooks = this.generateEngagementHooks(contentData)
+      return { castText, hashtags, mentions, engagementHooks }
+    } catch (error) {
+      console.error('Social content generation failed:', error)
+      return {
+        castText: `New content published: ${contentData.title}`,
+        hashtags: ['content', 'creator'],
+        mentions: [],
+        engagementHooks: ['Check out my latest content!']
+      }
+    }
+  }
+  private static generateOptimizedCastText(
+    contentData: EnhancedContentPublishingData,
+    creatorProfile?: { readonly displayName?: string; readonly fid?: number }
+  ): string {
+    let castText = ''
+    if (creatorProfile?.displayName) {
+      castText += `${creatorProfile.displayName} just published: `
+    }
+    castText += `"${contentData.title}"`
+    const description = contentData.socialDescription || contentData.description
+    if (description && description.length <= 100) {
+      castText += `\n\n${description}`
+    }
+    const callToAction = contentData.socialCallToAction || 'Get instant access with USDC'
+    castText += `\n\n${callToAction}`
+    castText += '\n\n💎 Premium content, instant access'
+    return castText
+  }
+  private static generateStrategicHashtags(contentData: EnhancedContentPublishingData): readonly string[] {
+    const baseHashtags = ['content', 'creator', 'web3']
+    const strategicHashtags: string[] = []
+    if (contentData.category) {
+      const categoryHashtags = this.getCategoryHashtags(contentData.category)
+      strategicHashtags.push(...categoryHashtags)
+    }
+    if (contentData.targetAudience) {
+      const audienceHashtags = this.getAudienceHashtags(contentData.targetAudience)
+      strategicHashtags.push(...audienceHashtags)
+    }
+    if (contentData.socialKeywords) {
+      strategicHashtags.push(...contentData.socialKeywords)
+    }
+    const allHashtags = [...baseHashtags, ...strategicHashtags]
+    return Array.from(new Set(allHashtags)).slice(0, 8)
+  }
+  private static getCategoryHashtags(category: ContentCategory): string[] {
+    const categoryMap: Record<string, string[]> = {
+      'Article': ['article', 'blog', 'writing'],
+      'Video': ['video', 'tutorial', 'education'],
+      'Audio': ['audio', 'podcast', 'listening'],
+      'Image': ['image', 'art', 'visual'],
+      'Course': ['course', 'learning', 'education'],
+      'Document': ['document', 'guide', 'reference'],
+      'Other': ['content', 'digital']
+    }
+    const categoryString = category.toString()
+    return categoryMap[categoryString] || categoryMap['Other']
+  }
+  private static getAudienceHashtags(audience: 'general' | 'creators' | 'crypto' | 'tech'): string[] {
+    const audienceMap: Record<string, string[]> = {
+      'creators': ['creators', 'creatoreconomy', 'contentcreator'],
+      'crypto': ['crypto', 'defi', 'blockchain'],
+      'tech': ['tech', 'programming', 'development'],
+      'general': ['lifestyle', 'community', 'discover']
+    }
+    return audienceMap[audience] || audienceMap['general']
+  }
+  private static generateStrategicMentions(
+    contentData: EnhancedContentPublishingData,
+    creatorProfile?: { readonly displayName?: string; readonly fid?: number }
+  ): readonly string[] {
+    const mentions: string[] = []
+    const communityMentions: Record<string, string[]> = {
+      'crypto': ['@farcaster', '@base'],
+      'tech': ['@builders', '@developers'],
+      'creators': ['@creators', '@creatoreconomy']
+    }
+    if (contentData.targetAudience && communityMentions[contentData.targetAudience]) {
+      mentions.push(...communityMentions[contentData.targetAudience])
+    }
+    return mentions.slice(0, 3)
+  }
+  private static generateEngagementHooks(contentData: EnhancedContentPublishingData): readonly string[] {
+    const hooks: string[] = []
+    switch (contentData.targetAudience) {
+      case 'creators':
+        hooks.push(
+          'Fellow creators, what content strategies are working for you?',
+          'Drop your best content creation tips below!'
+        )
+        break
+      case 'crypto':
+        hooks.push(
+          'What are your thoughts on the current Web3 content landscape?',
+          'How do you prefer to consume crypto educational content?'
+        )
+        break
+      case 'tech':
+        hooks.push(
+          'Developers, what topics should I cover next?',
+          'What tech skills are you focusing on in 2025?'
+        )
+        break
+      default:
+        hooks.push(
+          'What topics interest you most?',
+          'What content would you like to see next?'
+        )
+    }
+    return hooks.slice(0, 2)
+  }
+}
+
+class PerformancePredictionEngine {
+  static async predictSocialPerformance(
+    contentData: EnhancedContentPublishingData,
+    creatorHistory?: {
+      readonly averageFrameViews: number
+      readonly averageEngagementRate: number
+      readonly averageConversionRate: number
+    }
+  ): Promise<{
+    readonly expectedFrameViews: number
+    readonly predictedEngagementRate: number
+    readonly estimatedConversionRate: number
+  }> {
+    const baseFrameViews = creatorHistory?.averageFrameViews || 100
+    const baseEngagementRate = creatorHistory?.averageEngagementRate || 0.05
+    const baseConversionRate = creatorHistory?.averageConversionRate || 0.02
+    let frameViewMultiplier = 1.0
+    let engagementMultiplier = 1.0
+    let conversionMultiplier = 1.0
+    if (contentData.socialKeywords && contentData.socialKeywords.length > 0) {
+      frameViewMultiplier *= 1.2
+    }
+    if (contentData.framePreviewImage) {
+      engagementMultiplier *= 1.3
+    }
+    if (contentData.socialDescription) {
+      engagementMultiplier *= 1.15
+    }
+    if (contentData.targetAudience && contentData.targetAudience !== 'general') {
+      conversionMultiplier *= 1.25
+    }
+    return {
+      expectedFrameViews: Math.round(baseFrameViews * frameViewMultiplier),
+      predictedEngagementRate: Math.min(baseEngagementRate * engagementMultiplier, 0.15),
+      estimatedConversionRate: Math.min(baseConversionRate * conversionMultiplier, 0.08)
+    }
+  }
+}
+
+// ==============================================================================
+// ENHANCED PUBLISHING WORKFLOW HOOK
+// ==============================================================================
+
+export function useEnhancedContentPublishingFlow(
+  userAddress?: Address
+): EnhancedContentPublishingFlowResult {
+  const { address: connectedAddress } = useAccount()
+  const effectiveUserAddress = (userAddress || connectedAddress) as Address | undefined
+  const chainId = useChainId()
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
+  const basePublishingFlow = useContentPublishingFlow(effectiveUserAddress)
+  const farcasterContext = useFarcasterContext()
+  const miniAppAnalytics = useMiniAppAnalytics(effectiveUserAddress)
+  const [enhancedState, setEnhancedState] = useState<{
+    currentStep: EnhancedContentPublishingFlowStep
+    socialValidationErrors: readonly string[]
+    socialOptimization: {
+      isProcessing: boolean
+      results: SocialContentResult | null
+      error: Error | null
+    }
+    lastPublishedContent: EnhancedContentPublishingData | null
+  }>({
+    currentStep: 'idle',
+    socialValidationErrors: [],
+    socialOptimization: {
+      isProcessing: false,
+      results: null,
+      error: null
+    },
+    lastPublishedContent: null
+  })
+  const frameAssetGenerator = useMemo(() =>
+    new FrameAssetGenerator(process.env.NEXT_PUBLIC_URL || 'https://localhost:3000'),
+  [])
+  const validateSocialContentData = useCallback((
+    data: EnhancedContentPublishingData
+  ): { isValid: boolean; errors: readonly string[] } => {
+    const errors: string[] = []
+    if (data.socialDescription && data.socialDescription.length > 280) {
+      errors.push('Social description should be 280 characters or less for optimal Frame display')
+    }
+    if (data.framePreviewImage) {
+      try {
+        new URL(data.framePreviewImage)
+      } catch {
+        errors.push('Frame preview image must be a valid URL')
+      }
+    }
+    if (data.socialKeywords && data.socialKeywords.length > 10) {
+      errors.push('Maximum 10 social keywords allowed for optimal discovery performance')
+    }
+    if (data.socialCallToAction && data.socialCallToAction.length > 100) {
+      errors.push('Social call-to-action should be 100 characters or less')
+    }
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
+  }, [])
+  const generateSocialOptimizationAssets = useCallback(async (
+    contentId: bigint,
+    contentData: EnhancedContentPublishingData
+  ): Promise<SocialContentResult> => {
+    try {
+      setEnhancedState(prev => ({
+        ...prev,
+        currentStep: 'generating_frame_assets',
+        socialOptimization: { ...prev.socialOptimization, isProcessing: true }
+      }))
+      const frameAssetConfig: FrameAssetConfig = {
+        contentId,
+        title: contentData.title,
+        description: contentData.socialDescription || contentData.description,
+        previewImage: contentData.framePreviewImage,
+        price: contentData.payPerViewPrice,
+        creatorAddress: effectiveUserAddress!,
+        socialKeywords: contentData.socialKeywords || [],
+        callToAction: contentData.socialCallToAction || 'View Content',
+        frameStyle: contentData.frameStyle || 'interactive'
+      }
+      const frameMetadata = await frameAssetGenerator.generateFrameAssets(frameAssetConfig)
+      setEnhancedState(prev => ({
+        ...prev,
+        currentStep: 'creating_social_content'
+      }))
+      const socialContentData = await SocialContentGenerator.generateSocialContent(
+        contentData,
+        contentId,
+        farcasterContext?.user ? {
+          displayName: farcasterContext.user.displayName,
+          fid: farcasterContext.user.fid
+        } : undefined
+      )
+      setEnhancedState(prev => ({
+        ...prev,
+        currentStep: 'optimizing_discovery'
+      }))
+      const socialOptimizationResult: SocialContentResult = {
+        ...socialContentData,
+        frameMetadata
+      }
+      return socialOptimizationResult
+    } catch (error) {
+      const optimizationError = error instanceof Error ? error : new Error('Social optimization failed')
+      setEnhancedState(prev => ({
+        ...prev,
+        socialOptimization: {
+          ...prev.socialOptimization,
+          error: optimizationError
+        }
+      }))
+      throw optimizationError
+    }
+  }, [frameAssetGenerator, farcasterContext, effectiveUserAddress])
+  const publishWithSocialOptimization = useCallback(async (
+    enhancedData: EnhancedContentPublishingData
+  ): Promise<EnhancedPublishingResult> => {
+    try {
+      setEnhancedState(prev => ({ 
+        ...prev, 
+        currentStep: 'validating_social_data',
+        socialValidationErrors: [],
+        lastPublishedContent: enhancedData
+      }))
+      const socialValidation = validateSocialContentData(enhancedData)
+      if (!socialValidation.isValid) {
+        setEnhancedState(prev => ({
+          ...prev,
+          currentStep: 'error',
+          socialValidationErrors: socialValidation.errors
+        }))
+        return {
+          success: false,
+          error: new Error('Social content validation failed')
+        }
+      }
+      const traditionalData: ContentPublishingData = {
+        title: enhancedData.title,
+        description: enhancedData.description,
+        ipfsHash: enhancedData.ipfsHash,
+        category: enhancedData.category,
+        payPerViewPrice: enhancedData.payPerViewPrice,
+        tags: enhancedData.tags
+      }
+      basePublishingFlow.publish(traditionalData)
+      return {
+        success: true
+      }
+    } catch (error) {
+      const publishingError = error instanceof Error ? error : new Error('Enhanced publishing failed')
+      setEnhancedState(prev => ({
+        ...prev,
+        currentStep: 'error',
+        socialValidationErrors: [publishingError.message]
+      }))
+      return {
+        success: false,
+        error: publishingError
+      }
+    }
+  }, [basePublishingFlow, validateSocialContentData])
+  const socialCapabilities = useMemo(() => {
+    const canShare = Boolean(
+      farcasterContext && 
+      enhancedState.socialOptimization.results &&
+      enhancedState.currentStep === 'completed'
+    )
+    const shareToFarcaster = async (message: string): Promise<void> => {
+      if (!farcasterContext || !canShare) {
+        throw new Error('Farcaster sharing not available')
+      }
+      try {
+        console.log('Sharing to Farcaster:', message)
+      } catch (error) {
+        console.error('Farcaster sharing failed:', error)
+        throw new Error('Failed to share content to Farcaster')
+      }
+    }
+    const generateOptimizedShareMessage = (): string => {
+      if (!enhancedState.socialOptimization.results) {
+        return 'Check out my latest content!'
+      }
+      return enhancedState.socialOptimization.results.castText
+    }
+    return {
+      canShare,
+      shareToFarcaster,
+      generateOptimizedShareMessage
+    }
+  }, [farcasterContext, enhancedState])
+  useEffect(() => {
+    switch (basePublishingFlow.currentStep) {
+      case 'idle':
+        setEnhancedState(prev => ({ 
+          ...prev, 
+          currentStep: 'idle' 
+        }))
+        break
+      case 'checking_creator':
+        setEnhancedState(prev => ({ 
+          ...prev, 
+          currentStep: 'checking_creator' 
+        }))
+        break
+      case 'validating_content':
+        setEnhancedState(prev => ({ 
+          ...prev, 
+          currentStep: 'validating_content' 
+        }))
+        break
+      case 'registering':
+        setEnhancedState(prev => ({ 
+          ...prev, 
+          currentStep: 'registering' 
+        }))
+        break
+      case 'error':
+        setEnhancedState(prev => ({ 
+          ...prev, 
+          currentStep: 'error' 
+        }))
+        break
+    }
+  }, [basePublishingFlow.currentStep])
+  useEffect(() => {
+    if (basePublishingFlow.currentStep === 'completed' && 
+        enhancedState.currentStep === 'registering' &&
+        enhancedState.lastPublishedContent) {
+      const executePostPublishingOptimization = async () => {
+        try {
+          const mockContentId = BigInt(Date.now())
+          const socialResults = await generateSocialOptimizationAssets(
+            mockContentId,
+            enhancedState.lastPublishedContent!
+          )
+          const performancePredictions = await PerformancePredictionEngine.predictSocialPerformance(
+            enhancedState.lastPublishedContent!,
+            miniAppAnalytics.data ? {
+              averageFrameViews: miniAppAnalytics.data.frameViews / Math.max(miniAppAnalytics.data.contentSocialMetrics.length, 1),
+              averageEngagementRate: 0.05,
+              averageConversionRate: miniAppAnalytics.data.enhancedEarnings.socialConversionRate / 100
+            } : undefined
+          )
+          setEnhancedState(prev => ({
+            ...prev,
+            currentStep: 'completed',
+            socialOptimization: {
+              isProcessing: false,
+              results: socialResults,
+              error: null
+            }
+          }))
+        } catch (error) {
+          console.error('Post-publishing optimization failed:', error)
+          setEnhancedState(prev => ({
+            ...prev,
+            currentStep: 'completed',
+            socialOptimization: {
+              isProcessing: false,
+              results: null,
+              error: error instanceof Error ? error : new Error('Social optimization failed')
+            }
+          }))
+        }
+      }
+      executePostPublishingOptimization()
+    }
+  }, [
+    basePublishingFlow.currentStep, 
+    enhancedState.currentStep,
+    enhancedState.lastPublishedContent,
+    generateSocialOptimizationAssets,
+    miniAppAnalytics.data
+  ])
+  const resetEnhancedWorkflow = useCallback(() => {
+    basePublishingFlow.reset()
+    setEnhancedState({
+      currentStep: 'idle',
+      socialValidationErrors: [],
+      socialOptimization: {
+        isProcessing: false,
+        results: null,
+        error: null
+      },
+      lastPublishedContent: null
+    })
+  }, [basePublishingFlow])
+  const combinedValidationErrors = useMemo(() => {
+    return [
+      ...enhancedState.socialValidationErrors
+    ]
+  }, [enhancedState.socialValidationErrors])
+  return {
+    currentStep: enhancedState.currentStep,
+    isLoading: basePublishingFlow.isLoading,
+    error: basePublishingFlow.error,
+    isValidContent: true,
+    validationErrors: combinedValidationErrors,
+    publish: basePublishingFlow.publish,
+    publishWithSocialOptimization,
+    publishingProgress: basePublishingFlow.publishingProgress,
+    socialOptimization: enhancedState.socialOptimization,
+    reset: resetEnhancedWorkflow,
+    socialCapabilities
+  }
+}
