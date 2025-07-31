@@ -17,7 +17,10 @@ import {
   usePurchaseContent,
   useIsCreatorRegistered,
   useRegisterContent,
+  useCreatorProfile,
+  useRegisterCreator,
 } from '@/hooks/contracts/core'
+import type { Creator } from '@/types/contracts'
 import { 
   getX402MiddlewareConfig, 
   createX402PaymentProof, 
@@ -124,7 +127,6 @@ function useFarcasterContext(): FarcasterContext | null {
 // ==============================================================================
 // TYPE DEFINITIONS
 // ==============================================================================
-
 export type X402ContentPurchaseFlowStep = 
   | 'checking_access'
   | 'can_purchase'
@@ -784,5 +786,550 @@ export function useContentPublishingFlow(
     publish,
     reset,
     publishingProgress
+  }
+}
+
+
+// ==============================================================================
+// BASIC CONTENT PURCHASE FLOW HOOK
+// Add this to your src/hooks/business/workflows.ts file
+// ==============================================================================
+
+/**
+ * Content Purchase Flow Steps
+ * 
+ * This enum defines all possible states in the basic content purchase workflow.
+ * The x402 enhanced version extends this with additional social payment states.
+ */
+export type ContentPurchaseFlowStep = 
+  | 'checking_access'        // Verifying if user already has access
+  | 'cannot_purchase'        // User already owns content or other blocking issue
+  | 'need_approval'          // Token approval required before purchase
+  | 'can_purchase'          // Ready to purchase content
+  | 'purchasing'            // Purchase transaction in progress
+  | 'completed'             // Purchase completed successfully
+  | 'error'                 // Purchase failed
+
+/**
+ * Content Purchase Flow Result Interface
+ * 
+ * This interface provides everything components need to manage basic content
+ * purchase workflows. It serves as the foundation that the x402 enhanced
+ * version builds upon.
+ */
+export interface ContentPurchaseFlowResult {
+  // Core purchase state
+  readonly currentStep: ContentPurchaseFlowStep
+  readonly isLoading: boolean
+  readonly error: Error | null
+  readonly hasAccess: boolean | null
+  
+  // Content information
+  readonly content: {
+    readonly id: bigint
+    readonly title: string
+    readonly description: string
+    readonly payPerViewPrice: bigint
+    readonly creator: Address
+    readonly category: number
+    readonly isActive: boolean
+  } | null
+  
+  // Purchase capability checks
+  readonly canAfford: boolean
+  readonly needsApproval: boolean
+  readonly userBalance: bigint | null
+  readonly requiredAllowance: bigint | null
+  
+  // Purchase actions
+  readonly purchase: () => void
+  readonly approveAndPurchase: () => void
+  readonly reset: () => void
+  
+  // Transaction progress tracking
+  readonly purchaseProgress: {
+    readonly isSubmitting: boolean
+    readonly isConfirming: boolean
+    readonly isConfirmed: boolean
+    readonly transactionHash: string | undefined
+  }
+  readonly approvalProgress: {
+    readonly isSubmitting: boolean
+    readonly isConfirming: boolean
+    readonly isConfirmed: boolean
+    readonly transactionHash: string | undefined
+  }
+}
+
+/**
+ * Basic Content Purchase Flow Hook
+ * 
+ * This hook manages the fundamental content purchase workflow for your platform.
+ * It handles access checking, balance validation, token approvals, and purchase
+ * execution while providing clear state management for UI components.
+ * 
+ * This serves as the foundation layer that enhanced versions (like x402) build upon.
+ * The hook integrates with your existing smart contract infrastructure and follows
+ * the same patterns as your other workflow hooks.
+ * 
+ * @param contentId - The ID of the content to purchase
+ * @param userAddress - The purchaser's wallet address
+ * @returns Complete purchase workflow state and actions
+ */
+export function useContentPurchaseFlow(
+  contentId: bigint | undefined,
+  userAddress: Address | undefined
+): ContentPurchaseFlowResult {
+  const chainId = useChainId()
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
+  
+  // Core contract interaction hooks
+  const contentData = useContentById(contentId)
+  const hasAccess = useHasContentAccess(userAddress, contentId)
+  const userBalance = useTokenBalance(contractAddresses.USDC, userAddress)
+  const tokenAllowance = useTokenAllowance(
+    contractAddresses.USDC,
+    userAddress,
+    contractAddresses.PAY_PER_VIEW
+  )
+  const approveToken = useApproveToken()
+  const purchaseContent = usePurchaseContent()
+  
+  // Workflow state management
+  const [workflowState, setWorkflowState] = useState<{
+    currentStep: ContentPurchaseFlowStep
+    error: Error | null
+  }>({
+    currentStep: 'checking_access',
+    error: null
+  })
+  
+  // Derived state calculations
+  const canAfford = useMemo(() => {
+    if (!userBalance.data || !contentData.data) return false
+    return userBalance.data >= contentData.data.payPerViewPrice
+  }, [userBalance.data, contentData.data])
+  
+  const needsApproval = useMemo(() => {
+    if (!tokenAllowance.data || !contentData.data) return false
+    return tokenAllowance.data < contentData.data.payPerViewPrice
+  }, [tokenAllowance.data, contentData.data])
+  
+  const requiredAllowance = useMemo(() => {
+    if (!contentData.data) return null
+    return contentData.data.payPerViewPrice
+  }, [contentData.data])
+  
+  // Loading state calculation
+  const isLoading = useMemo(() => {
+    return hasAccess.isLoading || 
+           contentData.isLoading || 
+           userBalance.isLoading ||
+           tokenAllowance.isLoading ||
+           workflowState.currentStep === 'purchasing' ||
+           workflowState.currentStep === 'checking_access'
+  }, [hasAccess.isLoading, contentData.isLoading, userBalance.isLoading, tokenAllowance.isLoading, workflowState.currentStep])
+  
+  // Transaction progress tracking
+  const purchaseProgress = useMemo(() => ({
+    isSubmitting: purchaseContent.isLoading && !purchaseContent.isConfirmed,
+    isConfirming: purchaseContent.isLoading && purchaseContent.isConfirmed,
+    isConfirmed: purchaseContent.isConfirmed,
+    transactionHash: purchaseContent.hash
+  }), [purchaseContent])
+  
+  const approvalProgress = useMemo(() => ({
+    isSubmitting: approveToken.isLoading && !approveToken.isConfirmed,
+    isConfirming: approveToken.isLoading && approveToken.isConfirmed,
+    isConfirmed: approveToken.isConfirmed,
+    transactionHash: approveToken.hash
+  }), [approveToken])
+  
+  // Main purchase action
+  const purchase = useCallback(() => {
+    if (!contentId) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Content ID is required for purchase')
+      })
+      return
+    }
+    
+    if (workflowState.currentStep !== 'can_purchase') {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('Cannot purchase in current state')
+      })
+      return
+    }
+    
+    try {
+      setWorkflowState(prev => ({ ...prev, error: null }))
+      purchaseContent.write(contentId)
+    } catch (error) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: error instanceof Error ? error : new Error('Purchase failed')
+      })
+    }
+  }, [contentId, workflowState.currentStep, purchaseContent])
+  
+  // Combined approval and purchase action
+  const approveAndPurchase = useCallback(() => {
+    if (!contentData.data || !contentId) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Content data required for purchase')
+      })
+      return
+    }
+    
+    try {
+      setWorkflowState(prev => ({ ...prev, error: null }))
+      
+      // Start with token approval
+      approveToken.write({
+        tokenAddress: contractAddresses.USDC,
+        spender: contractAddresses.PAY_PER_VIEW,
+        amount: contentData.data.payPerViewPrice,
+      })
+    } catch (error) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: error instanceof Error ? error : new Error('Approval failed')
+      })
+    }
+  }, [contentData.data, contentId, approveToken, contractAddresses])
+  
+  // Reset workflow to initial state
+  const reset = useCallback(() => {
+    setWorkflowState({ currentStep: 'checking_access', error: null })
+    approveToken.reset()
+    purchaseContent.reset()
+    hasAccess.refetch()
+  }, [approveToken, purchaseContent, hasAccess])
+  
+  // Effect: Update workflow state based on access and content data
+  useEffect(() => {
+    if (hasAccess.isLoading || contentData.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'checking_access' }))
+      return
+    }
+    
+    if (hasAccess.error || contentData.error) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: hasAccess.error || contentData.error || new Error('Failed to load content data')
+      })
+      return
+    }
+    
+    if (hasAccess.data === true) {
+      setWorkflowState({ 
+        currentStep: 'cannot_purchase', 
+        error: new Error('You already have access to this content')
+      })
+      return
+    }
+    
+    if (!canAfford) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Insufficient USDC balance to purchase this content')
+      })
+      return
+    }
+    
+    if (needsApproval) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
+    } else {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+    }
+  }, [hasAccess.data, hasAccess.isLoading, hasAccess.error, contentData.error, canAfford, needsApproval])
+  
+  // Effect: Handle approval transaction results
+  useEffect(() => {
+    if (approveToken.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
+    } else if (approveToken.isConfirmed && needsApproval === false) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+      tokenAllowance.refetch()
+    } else if (approveToken.error) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: approveToken.error
+      })
+    }
+  }, [approveToken.isLoading, approveToken.isConfirmed, approveToken.error, needsApproval, tokenAllowance])
+  
+  // Effect: Handle purchase transaction results
+  useEffect(() => {
+    if (purchaseContent.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'purchasing' }))
+    } else if (purchaseContent.error) {
+      setWorkflowState({ currentStep: 'error', error: purchaseContent.error })
+    } else if (purchaseContent.isConfirmed) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'completed' }))
+      hasAccess.refetch()
+      userBalance.refetch()
+    }
+  }, [purchaseContent.isLoading, purchaseContent.error, purchaseContent.isConfirmed, hasAccess, userBalance])
+  
+  return {
+    currentStep: workflowState.currentStep,
+    isLoading,
+    error: workflowState.error,
+    hasAccess: hasAccess.data || false,
+    content: contentData.data ? {
+      id: contentId || BigInt(0),
+      title: contentData.data.title,
+      description: contentData.data.description,
+      payPerViewPrice: contentData.data.payPerViewPrice,
+      creator: contentData.data.creator,
+      category: contentData.data.category,
+      isActive: contentData.data.isActive
+    } : null,
+    canAfford,
+    needsApproval,
+    userBalance: userBalance.data || null,
+    requiredAllowance,
+    purchase,
+    approveAndPurchase,
+    reset,
+    purchaseProgress,
+    approvalProgress
+  }
+}
+
+
+
+
+
+// ==============================================================================
+// CREATOR ONBOARDING WORKFLOW HOOK
+// Add this to your src/hooks/business/workflows.ts file
+// ==============================================================================
+
+/**
+ * Creator Onboarding Flow Steps
+ * 
+ * This enum defines all possible states in the creator onboarding workflow.
+ * Each step represents a distinct phase of the user journey from initial
+ * registration check through successful creator profile creation.
+ */
+export type CreatorOnboardingFlowStep = 
+  | 'checking'              // Checking current registration status
+  | 'not_registered'        // User is not registered, can begin registration
+  | 'registering'          // Registration transaction in progress
+  | 'registered'           // Successfully registered as creator
+  | 'error'                // Registration failed or other error occurred
+
+/**
+ * Creator Onboarding Flow Result Interface
+ * 
+ * This interface provides everything the UI layer needs to manage the complete
+ * creator onboarding experience. It handles status checking, registration
+ * execution, and profile management in a unified workflow.
+ */
+export interface CreatorOnboardingFlowResult {
+  // Current workflow state
+  readonly currentStep: CreatorOnboardingFlowStep
+  readonly isLoading: boolean
+  readonly error: Error | null
+  readonly isRegistered: boolean
+  // Creator profile data (available after successful registration)
+  readonly profile: Creator | null
+  // Registration actions
+  readonly register: (subscriptionPrice: bigint) => void
+  readonly reset: () => void
+  // Registration progress tracking
+  readonly registrationProgress: {
+    readonly isSubmitting: boolean
+    readonly isConfirming: boolean
+    readonly isConfirmed: boolean
+    readonly transactionHash: string | undefined
+  }
+}
+
+/**
+ * Creator Onboarding Workflow Hook
+ * 
+ * This hook manages the complete creator onboarding journey from initial status
+ * checking through successful registration. It integrates with your existing
+ * smart contract infrastructure and provides a unified interface for UI components.
+ * 
+ * The workflow follows this logical progression:
+ * 1. Check if the user is already registered as a creator
+ * 2. If not registered, enable registration with subscription price setting
+ * 3. Handle the registration transaction with proper progress tracking
+ * 4. Fetch and provide creator profile data after successful registration
+ * 5. Handle errors gracefully with clear user feedback
+ * 
+ * This hook serves as the foundation for both your onboarding page and the
+ * UI integration layer that transforms the workflow into component-friendly interfaces.
+ * 
+ * @param userAddress - The user's wallet address
+ * @returns Complete creator onboarding workflow state and actions
+ */
+export function useCreatorOnboarding(
+  userAddress: Address | undefined
+): CreatorOnboardingFlowResult {
+  const chainId = useChainId()
+  
+  // Contract interaction hooks from your core layer
+  const registrationCheck = useIsCreatorRegistered(userAddress)
+  const creatorProfile = useCreatorProfile(userAddress)
+  const registerCreator = useRegisterCreator()
+  
+  // Workflow state management
+  const [workflowState, setWorkflowState] = useState<{
+    currentStep: CreatorOnboardingFlowStep
+    error: Error | null
+  }>({
+    currentStep: 'checking',
+    error: null
+  })
+  
+  // Derived state for UI components
+  const isRegistered = registrationCheck.data ?? false 
+  const isLoading = registrationCheck.isLoading || 
+                   creatorProfile.isLoading || 
+                   workflowState.currentStep === 'registering' ||
+                   workflowState.currentStep === 'checking'
+  
+  // Registration progress tracking for transaction feedback
+  const registrationProgress = useMemo(() => ({
+    isSubmitting: registerCreator.isLoading && !registerCreator.isConfirmed,
+    isConfirming: registerCreator.isConfirming,
+    isConfirmed: registerCreator.isConfirmed,
+    transactionHash: registerCreator.hash
+  }), [registerCreator])
+  
+  // Profile data formatting for UI consumption
+  const profileData = useMemo(() => {
+    if (!creatorProfile.data || !isRegistered) return null
+    
+    return {
+      subscriptionPrice: creatorProfile.data.subscriptionPrice,
+      totalEarnings: creatorProfile.data.totalEarnings,
+      subscriberCount: creatorProfile.data.subscriberCount,
+      contentCount: creatorProfile.data.contentCount,
+      registrationTime: creatorProfile.data.registrationTime,
+      isRegistered: creatorProfile.data.isRegistered,
+      isVerified: creatorProfile.data.isVerified,
+    }
+  }, [creatorProfile.data, isRegistered])
+  
+  // Main registration action
+  const register = useCallback((subscriptionPrice: bigint) => {
+    if (!userAddress) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('Wallet connection required for registration')
+      })
+      return
+    }
+    
+    if (isRegistered) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('Already registered as creator')
+      })
+      return
+    }
+    
+    if (subscriptionPrice <= BigInt(0)) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('Subscription price must be greater than 0')
+      })
+      return
+    }
+    
+    try {
+      setWorkflowState(prev => ({ ...prev, error: null, currentStep: 'registering' }))
+      
+      // Call the contract registration function
+      // The profileData parameter can be enhanced later to include IPFS metadata
+      registerCreator.write({ 
+        subscriptionPrice, 
+        profileData: '' // Empty for now, can be enhanced with IPFS profile metadata
+      })
+    } catch (error) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: error instanceof Error ? error : new Error('Registration failed')
+      })
+    }
+  }, [userAddress, isRegistered, registerCreator])
+  
+  // Reset workflow to initial state
+  const reset = useCallback(() => {
+    setWorkflowState({ currentStep: 'checking', error: null })
+    registerCreator.reset()
+    registrationCheck.refetch()
+    creatorProfile.refetch()
+  }, [registerCreator, registrationCheck, creatorProfile])
+  
+  // Effect: Update workflow state based on registration check results
+  useEffect(() => {
+    if (registrationCheck.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'checking' }))
+      return
+    }
+    
+    if (registrationCheck.error) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Failed to check registration status')
+      })
+      return
+    }
+    
+    // Only update to not_registered or registered if we're currently checking
+    // This prevents overriding other states like 'registering'
+    if (workflowState.currentStep === 'checking') {
+      if (registrationCheck.data === true) {
+        setWorkflowState(prev => ({ ...prev, currentStep: 'registered' }))
+      } else {
+        setWorkflowState(prev => ({ ...prev, currentStep: 'not_registered' }))
+      }
+    }
+  }, [registrationCheck.isLoading, registrationCheck.error, registrationCheck.data, workflowState.currentStep])
+  
+  // Effect: Handle registration transaction results
+  useEffect(() => {
+    if (registerCreator.isLoading && !registerCreator.isConfirmed) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
+    } else if (registerCreator.error) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: registerCreator.error 
+      })
+    } else if (registerCreator.isConfirmed) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'registered' }))
+      
+      // Refresh registration status and profile data after successful registration
+      registrationCheck.refetch()
+      creatorProfile.refetch()
+    }
+  }, [registerCreator.isLoading, registerCreator.isConfirmed, registerCreator.error, registrationCheck, creatorProfile])
+  
+  // Effect: Handle transition from registered back to checking when address changes
+  useEffect(() => {
+    if (!userAddress) {
+      setWorkflowState({ currentStep: 'checking', error: null })
+    }
+  }, [userAddress])
+  
+  return {
+    currentStep: workflowState.currentStep,
+    isLoading,
+    error: workflowState.error,
+    isRegistered,
+    profile: profileData,
+    register,
+    reset,
+    registrationProgress
   }
 }

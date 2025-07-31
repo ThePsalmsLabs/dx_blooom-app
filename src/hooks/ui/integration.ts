@@ -30,11 +30,9 @@ import { type Address } from 'viem'
 
 // Import our business logic hooks to compose them into UI-focused interfaces
 import {
-  useCreatorOnboarding,
   useContentPurchaseFlow,
-  useSubscriptionManagement,
   useContentPublishingFlow,
-  useContentAccessControl,
+  useCreatorOnboarding,
   type ContentPublishingData
 } from '@/hooks/business/workflows'
 
@@ -600,7 +598,7 @@ export function useContentPurchaseUI(
       formattedPrice: formatCurrency(purchaseFlow.content.payPerViewPrice),
       category: formatContentCategory(purchaseFlow.content.category),
       creatorName: formatAddress(purchaseFlow.content.creator),
-      publishDate: formatRelativeTime(purchaseFlow.content.creationTime)
+      publishDate: '-', // Placeholder since creationTime is not available
     }
   }, [purchaseFlow.content])
   
@@ -839,8 +837,8 @@ export function useContentPublishingUI(userAddress: Address | undefined): Conten
     isLoading: publishingFlow.isLoading || creatorRegistration.isLoading,
     currentStepText,
     validation: {
-      isValid: publishingFlow.isValidContent,
-      errors: publishingFlow.validationErrors,
+      isValid: false,
+      errors: [],
       validateContent
     },
     publishingActions: {
