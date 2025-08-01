@@ -547,7 +547,7 @@ function PurchaseSummaryCard({
               <span className={cn(
                 purchaseFlow.canAfford ? 'text-green-600' : 'text-red-600'
               )}>
-                {formatCurrency(BigInt(purchaseFlow.userBalance), 6, 'USDC')}
+                {formatCurrency(purchaseFlow.userBalance ?? BigInt(0), 6, 'USDC')}
               </span>
             </div>
           </div>

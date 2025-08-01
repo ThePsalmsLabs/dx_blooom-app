@@ -106,6 +106,10 @@ const PAYMENT_HEADERS = {
   RECIPIENT: 'x-payment-recipient'
 } as const
 
+const X402_FACILITATOR_TIMEOUT = 10000; // 10 seconds
+const X402_NETWORK = (process.env.NEXT_PUBLIC_X402_NETWORK === 'base-sepolia') ? 'base-sepolia' : 'base';
+const X402_CHAIN_ID = X402_NETWORK === 'base' ? 8453 : 84532;
+
 /**
  * Create Blockchain Client with Optimized Configuration
  * 
@@ -337,7 +341,7 @@ async function verifyPaymentProof(
     }
 
     // Step 6: Verify payment through Coinbase x402 facilitator
-    const config = getX402MiddlewareConfig()
+    const config = getX402MiddlewareConfig(X402_CHAIN_ID)
     const facilitatorResponse = await Promise.race([
       fetch(`${config.facilitatorUrl}/verify`, {
         method: 'POST',
@@ -354,7 +358,7 @@ async function verifyPaymentProof(
       }),
       // Race against timeout to ensure responsiveness
       new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Facilitator timeout')), config.timeout)
+        setTimeout(() => reject(new Error('Facilitator timeout')), X402_FACILITATOR_TIMEOUT)
       )
     ])
 
@@ -469,11 +473,9 @@ async function processPaymentRequest(
     }
 
     // Initialize blockchain client and configuration
-    const config = getX402MiddlewareConfig()
-    const contractAddresses = getContractAddresses(
-      config.network === 'base' ? 8453 : 84532
-    )
-    const blockchainClient = createOptimizedBlockchainClient(config.network)
+    const config = getX402MiddlewareConfig(X402_CHAIN_ID)
+    const contractAddresses = getContractAddresses(X402_CHAIN_ID)
+    const blockchainClient = createOptimizedBlockchainClient(X402_NETWORK)
 
     // Fetch current pricing from smart contracts
     const pricingInfo = await fetchContractPricing(
@@ -506,7 +508,7 @@ async function processPaymentRequest(
       return create402PaymentResponse(
         pricingInfo.amount,
         pricingInfo.recipient,
-        config.network,
+        X402_NETWORK,
         {
           contentId: routeParams.contentId,
           description: `Access to ${routeParams.routeType} ${routeParams.contentId || routeParams.creatorAddress}`
@@ -530,7 +532,7 @@ async function processPaymentRequest(
       paymentProof,
       pricingInfo.amount,
       pricingInfo.recipient,
-      config.network
+      X402_NETWORK
     )
 
     if (!verificationResult.verified) {
@@ -539,7 +541,7 @@ async function processPaymentRequest(
       return create402PaymentResponse(
         pricingInfo.amount,
         pricingInfo.recipient,
-        config.network,
+        X402_NETWORK,
         {
           contentId: routeParams.contentId,
           description: `Payment verification failed: ${verificationResult.error}`

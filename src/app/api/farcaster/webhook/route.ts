@@ -1,6 +1,7 @@
 // src/app/api/farcaster/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import verifyFrameMessage, { FrameSDK } from '@farcaster/frame-sdk'
+import { validateFramesMessage } from '@airstack/frames'
+import type { FrameActionMessage } from '@farcaster/core'
 
 /**
  * Farcaster Frame Message Interface
@@ -113,22 +114,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Verify the message signature to ensure it's actually from Farcaster
     // This verification step is crucial for security - it prevents malicious
     // actors from sending fake interactions to your webhook endpoint
-    const frameMessage = await verifyFrameMessage(body) as FrameMessage 
-
-    
-    if (!frameMessage.isValid) {
-      console.error('Invalid Frame message signature:', frameMessage.error)
+    const verificationResult = await validateFramesMessage(body)
+    if (!verificationResult.isValid || !verificationResult.message) {
+      console.error('Invalid Frame message signature or missing message')
       return NextResponse.json(
         { error: 'Invalid message signature' },
         { status: 400 }
       )
     }
+    const frameMessage = verificationResult.message // This is a FrameActionMessage
 
+    
     // Extract interaction details from the verified message
-    const { frameActionBody } = frameMessage.message.data
-    const { url, buttonIndex, castId, inputText, state, address } = frameActionBody
+    const { frameActionBody } = frameMessage.data
+    const url = decodeIfUint8Array(frameActionBody.url)
+    const buttonIndex = frameActionBody.buttonIndex
+    const castId = frameActionBody.castId
+    const castIdHash = decodeIfUint8Array(castId?.hash)
+    const inputText = frameActionBody.inputText
+    const state = frameActionBody.state
+    const address = decodeIfUint8Array(frameActionBody.address)
 
     // Parse the Frame URL to determine what content and action are involved
+    if (!url) {
+      return NextResponse.json({ error: 'Invalid or missing URL in frame message' }, { status: 400 })
+    }
     const urlParts = new URL(url)
     const pathParts = urlParts.pathname.split('/')
     
@@ -157,7 +167,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         frameMessage
       })
     }
-
+    
     // Default handler for unrecognized interaction patterns
     return await handleDefaultInteraction({ frameMessage })
 
@@ -196,7 +206,7 @@ async function handlePurchaseInteraction({
   readonly contentId: bigint
   readonly buttonIndex: number
   readonly userAddress?: string
-  readonly frameMessage: FrameMessage
+  readonly frameMessage: FrameActionMessage
 }): Promise<NextResponse> {
   try {
     // Fetch content information using the same API we built in Component 1.1
@@ -286,7 +296,7 @@ async function handleDetailsInteraction({
 }: {
   readonly contentId: bigint
   readonly buttonIndex: number
-  readonly frameMessage: FrameMessage
+  readonly frameMessage: FrameActionMessage
 }): Promise<NextResponse> {
   try {
     // Fetch content details using your existing content API
@@ -342,7 +352,7 @@ async function handleAccessInteraction({
 }: {
   readonly contentId: bigint
   readonly userAddress?: string
-  readonly frameMessage: FrameMessage
+  readonly frameMessage: FrameActionMessage
 }): Promise<NextResponse> {
   try {
     if (!userAddress) {
@@ -414,7 +424,7 @@ async function handleAccessInteraction({
 async function handleDefaultInteraction({
   frameMessage
 }: {
-  readonly frameMessage: FrameMessage
+  readonly frameMessage: FrameActionMessage
 }): Promise<NextResponse> {
   return NextResponse.json({
     image: generateWelcomeFrame(),
@@ -493,4 +503,15 @@ function formatCurrency(amountInUsdcWei: bigint): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })
+}
+
+// Utility to decode Uint8Array to string if needed
+function decodeIfUint8Array(val: unknown): string | undefined {
+  if (val instanceof Uint8Array) {
+    return new TextDecoder().decode(val)
+  }
+  if (typeof val === 'string') {
+    return val
+  }
+  return undefined
 }
