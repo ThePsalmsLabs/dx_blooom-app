@@ -68,6 +68,8 @@ import type {
 } from '@/types/contracts'
 
 import { AccountType } from '@/components/providers/Web3Provider'
+import { useState as useReactState } from 'react'
+import type { Connector } from 'wagmi'
 
 /**
  * UI-Focused Interface Definitions
@@ -356,6 +358,10 @@ export interface EnhancedWalletConnectionUI {
   readonly clearError: () => void
   readonly showNetworkWarning: boolean
   readonly showSmartAccountBenefits: boolean
+  readonly showWalletModal: boolean
+  readonly setShowWalletModal: (show: boolean) => void
+  readonly connectors: Connector[]
+  readonly handleConnectorSelect: (connector: Connector) => void
 }
 
 /**
@@ -383,6 +389,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
 
   const [error, setError] = useState<string | null>(null)
   const [isUpgrading, setIsUpgrading] = useState(false)
+  const [showWalletModal, setShowWalletModal] = useReactState(false)
   const combinedError = contextError || error
 
   const { chainName, isCorrectNetwork } = useMemo(() => {
@@ -416,23 +423,18 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     [canUpgradeToSmartAccount, smartAccountConfig.smartAccount]
   )
 
+  // Open the wallet selection modal
   const handleConnect = useCallback(() => {
     setError(null)
-    // Try to connect to the first available connector (MetaMask, Coinbase, WalletConnect)
-    // You can enhance this to show a modal for user choice if desired
-    const preferred = [
-      connectors.find(c => c.id === 'metaMask'),
-      connectors.find(c => c.id === 'coinbaseWallet'),
-      connectors.find(c => c.id === 'walletConnect')
-    ].find(Boolean)
-    if (preferred) {
-      connect({ connector: preferred })
-    } else if (connectors.length > 0) {
-      connect({ connector: connectors[0] })
-    } else {
-      setError('No wallet connectors available')
-    }
-  }, [connect, connectors])
+    setShowWalletModal(true)
+  }, [])
+
+  // Connect to a specific wallet connector
+  const handleConnectorSelect = useCallback((connector: Connector) => {
+    setError(null)
+    setShowWalletModal(false)
+    connect({ connector })
+  }, [connect])
 
   const handleSwitchNetwork = useCallback(() => {
     setError(null)
@@ -488,7 +490,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     connect: handleConnect,
     disconnect: handleDisconnect,
     switchNetwork: handleSwitchNetwork,
-    error: combinedError,
+    error: connectError?.message || combinedError,
     clearError,
     showNetworkWarning: isConnected && !isCorrectNetwork,
     accountType: accountTypeString,
@@ -499,7 +501,11 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     canUpgradeToSmartAccount,
     upgradeToSmartAccount: handleUpgradeToSmartAccount,
     isUpgrading,
-    showSmartAccountBenefits
+    showSmartAccountBenefits,
+    showWalletModal,
+    setShowWalletModal,
+    connectors: connectors as Connector[],
+    handleConnectorSelect
   }
 }
 
