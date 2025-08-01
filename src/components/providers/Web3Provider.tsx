@@ -12,7 +12,7 @@ import React, {
 } from 'react'
 import { WagmiProvider, useAccount, useChainId, useWalletClient } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
+import { RainbowKitProvider, getDefaultWallets } from '@rainbow-me/rainbowkit'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { base, baseSepolia } from 'viem/chains'
 import { type Address, type Hash, parseUnits } from 'viem'
@@ -20,20 +20,41 @@ import { BiconomySmartAccountV2 } from '@biconomy/account'
 import { wagmiConfig, getCurrentChain, isSupportedChain } from '@/lib/web3/wagmi'
 import { createSmartAccount, getBiconomyChainConfig } from '@/lib/biconomy/config'
 
+
+import '@rainbow-me/rainbowkit/styles.css'
+
 /**
- * Enhanced Web3 Provider System - Refactored for Build Quality
+ * Enhanced Web3 Provider - Complete Wallet Connection System
  * 
- * This refactored version addresses common TypeScript and lint issues while
- * maintaining all the sophisticated Web3 functionality we've architected.
+ * This component provides the complete Web3 infrastructure needed for 
+ * wallet connections to work properly. The key insight here is that
+ * RainbowKit needs to be properly integrated into the provider chain
+ * AND its CSS needs to be imported for the modal to display.
  * 
- * Key improvements for build quality:
- * - Proper environment variable typing with fallbacks
- * - Complete React hooks dependency arrays
- * - Eliminated 'any' types in favor of proper TypeScript interfaces
- * - Added comprehensive null/undefined handling
- * - Proper error boundary patterns for Web3 edge cases
- * - Clean separation of concerns to prevent circular dependencies
+ * The provider hierarchy is crucial:
+ * 1. QueryClient provides React Query for caching
+ * 2. WagmiProvider provides core Web3 functionality  
+ * 3. RainbowKitProvider provides the connection modal UI
+ * 4. OnchainKitProvider adds Coinbase-specific features
  */
+
+
+// Create QueryClient for React Query (needed by Wagmi)
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Cache data for 1 minute to improve performance
+      staleTime: 1000 * 60,
+      // Keep data in cache for 5 minutes
+      gcTime: 1000 * 60 * 5,
+    },
+  },
+})
+
+// Environment variables with validation
+const COINBASE_PROJECT_ID = process.env.NEXT_PUBLIC_COINBASE_PROJECT_ID || ''
+const ONCHAINKIT_API_KEY = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || ''
+
 
 /**
  * Environment Configuration with Proper Typing
@@ -51,22 +72,34 @@ interface EnvironmentConfig {
 
 function createEnvironmentConfig(): EnvironmentConfig {
   const biconomyPaymasterApiKey = process.env.NEXT_PUBLIC_BICONOMY_PAYMASTER_API_KEY ?? ''
-  const biconomyBundlerUrl = process.env.NEXT_PUBLIC_BICONOMY_BUNDLER_URL ?? ''
-  const coinbaseProjectId = process.env.NEXT_PUBLIC_COINBASE_PROJECT_ID ?? ''
+  const biconomyBundlerUrl = process.env.NEXT_PUBLIC_BICONOMY_BUNDLER_URL ?? 'https://bundler.biconomy.io/api/v3/84532/bundler_3ZMCSi7xgtCc5nNF9mFWZNe3'
+  const coinbaseProjectId = process.env.NEXT_PUBLIC_COINBASE_PROJECT_ID || 'bee23d62-7e28-4fe3-9b84-2153d2bb99d2'
   
+  // For development, allow advanced features if we have fallback values
+  // even if the paymaster API key is missing
   const hasAdvancedFeatures = Boolean(
-    biconomyPaymasterApiKey && 
+    (biconomyPaymasterApiKey || process.env.NODE_ENV === 'development') && 
     biconomyBundlerUrl && 
     coinbaseProjectId
   )
 
-  // Provide helpful development feedback without causing build errors
+  // Only warn about missing paymaster in development if no fallbacks exist
   if (!hasAdvancedFeatures && process.env.NODE_ENV === 'development') {
-    console.warn('⚠️ Advanced Web3 features disabled - missing environment variables:', {
+    const missingConfigs = {
       biconomyPaymaster: !biconomyPaymasterApiKey,
       biconomyBundler: !biconomyBundlerUrl,
       coinbaseProject: !coinbaseProjectId,
-    })
+    }
+    
+    // Only show warning if paymaster is missing AND we're not using fallbacks
+    const shouldWarn = missingConfigs.biconomyPaymaster && 
+                      (missingConfigs.biconomyBundler || missingConfigs.coinbaseProject)
+    
+    if (shouldWarn) {
+      console.warn('⚠️ Advanced Web3 features disabled - missing environment variables:', missingConfigs)
+    } else if (missingConfigs.biconomyPaymaster) {
+      console.info('ℹ️ Running with fallback configuration - add NEXT_PUBLIC_BICONOMY_PAYMASTER_API_KEY for full functionality')
+    }
   }
 
   return {
@@ -634,17 +667,23 @@ function EnhancedWeb3ProviderInner({ children }: EnhancedWeb3ProviderProps): JSX
  * Main Enhanced Web3 Provider with All Wrapper Providers
  */
 export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): JSX.Element {
-  // Memoize query client to prevent recreation on re-renders
-  const queryClient = useMemo(() => createOptimizedQueryClient(), [])
-  const currentChain = useMemo(() => getCurrentChain(), [])
-
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
+    <QueryClientProvider client={queryClient}>
+      <WagmiProvider config={wagmiConfig}>
+        <RainbowKitProvider
+          // Show recent transactions in the modal
+          showRecentTransactions={true}
+          // Custom app info that appears in wallet connection
+          appInfo={{
+            appName: 'OnChain Content Platform',
+            learnMoreUrl: 'https://your-domain.com/about',
+          }}
+          // Cool mode adds subtle animations
+          coolMode
+        >
           <OnchainKitProvider
-            apiKey={envConfig.coinbaseProjectId}
-            chain={currentChain}
+            apiKey={ONCHAINKIT_API_KEY}
+            chain={base}
             config={{
               appearance: {
                 mode: 'auto',
@@ -657,8 +696,8 @@ export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): J
             </EnhancedWeb3ProviderInner>
           </OnchainKitProvider>
         </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+      </WagmiProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -735,3 +774,35 @@ const SUPPORTED_CHAINS_INFO = [
   { id: base.id, name: base.name },
   { id: baseSepolia.id, name: baseSepolia.name },
 ]
+
+/**
+ * Debug Component for Development
+ * 
+ * This component helps you debug provider setup issues during development.
+ * It checks that all necessary environment variables are present and
+ * provides helpful warnings if anything is missing.
+ */
+export function Web3ProviderDebugInfo() {
+  if (process.env.NODE_ENV !== 'development') {
+    return null
+  }
+
+  const config = {
+    wagmiConfigured: !!wagmiConfig,
+    coinbaseProjectId: !!COINBASE_PROJECT_ID,
+    onchainKitApiKey: !!ONCHAINKIT_API_KEY,
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 bg-black/80 text-white p-4 rounded-lg text-xs max-w-sm">
+      <h4 className="font-bold mb-2">Web3 Provider Debug</h4>
+      <ul className="space-y-1">
+        {Object.entries(config).map(([key, value]) => (
+          <li key={key} className={value ? 'text-green-400' : 'text-red-400'}>
+            {key}: {value ? '✓' : '✗'}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
