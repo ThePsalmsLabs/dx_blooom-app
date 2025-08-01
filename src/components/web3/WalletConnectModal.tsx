@@ -297,7 +297,7 @@ export function WalletConnectButton({
   variant = 'default',
   size = 'default',
   className,
-  showModal = true,
+  showModal = false, // Changed default to false to use RainbowKit's modal
   children
 }: WalletConnectButtonProps) {
   const wallet = useWalletConnectionUI()
@@ -305,8 +305,10 @@ export function WalletConnectButton({
 
   const handleClick = () => {
     if (showModal) {
+      // Use custom modal
       setIsModalOpen(true)
     } else {
+      // Use RainbowKit's modal via the wallet.connect() function
       if (wallet.isConnected) {
         wallet.disconnect()
       } else {
@@ -346,6 +348,7 @@ export function WalletConnectButton({
         )}
       </Button>
 
+      {/* Only render custom modal if showModal is explicitly true */}
       {showModal && (
         <WalletConnectModal
           isOpen={isModalOpen}

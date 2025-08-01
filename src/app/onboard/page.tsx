@@ -55,8 +55,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  ToastProvider,
-  ToastViewport,
   useToast
 } from '@/components/ui/index'
 
@@ -102,6 +100,22 @@ interface OnboardingStep {
  * a sophisticated yet user-friendly Web3 workflow.
  */
 export default function CreatorOnboardingPage() {
+  return (
+    <AppLayout>
+      <RouteGuards requiredLevel="public">
+        <OnboardingContent />
+      </RouteGuards>
+    </AppLayout>
+  )
+}
+
+/**
+ * Main Onboarding Content Component
+ * 
+ * This component contains all the logic and is properly wrapped by ToastProvider
+ * from AppLayout.
+ */
+function OnboardingContent() {
   // Router for navigation after successful onboarding
   const router = useRouter()
   
@@ -114,7 +128,7 @@ export default function CreatorOnboardingPage() {
   // The core business logic hook that manages the entire onboarding workflow
   const onboarding = useCreatorOnboarding(address)
   
-  // Toast for notifications
+  // Toast for notifications - NOW PROPERLY AVAILABLE FROM APPLAYOUT
   const { toast } = useToast()
   
   // Local form state for user input collection
@@ -263,143 +277,133 @@ export default function CreatorOnboardingPage() {
   const progressPercentage = ((onboardingSteps.filter(step => step.completed).length) / onboardingSteps.length) * 100
 
   return (
-    <AppLayout className="bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Route Guard ensures only appropriate users can access this page */}
-      <RouteGuards
-        requiredLevel="public"
-      >
-        <ToastProvider>
-          <div className="max-w-4xl mx-auto py-8 px-4">
-            {/* Page Header with Clear Value Proposition */}
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <Sparkles className="h-8 w-8 text-primary" />
-                <h1 className="text-4xl font-bold">Become a Creator</h1>
-              </div>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Join the decentralized creator economy. Set up your profile, define your subscription pricing, 
-                and start monetizing your content on the blockchain.
-              </p>
-            </div>
+    <div className="max-w-4xl mx-auto py-8 px-4 bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Page Header with Clear Value Proposition */}
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Sparkles className="h-8 w-8 text-primary" />
+          <h1 className="text-4xl font-bold">Become a Creator</h1>
+        </div>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          Join the decentralized creator economy. Set up your profile, define your subscription pricing, 
+          and start monetizing your content on the blockchain.
+        </p>
+      </div>
 
-            {/* Progress Indicator */}
-            <Card className="mb-8">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">Setup Progress</h3>
-                  <Badge variant="outline">
-                    Step {currentStepIndex + 1} of {onboardingSteps.length}
-                  </Badge>
-                </div>
-                
-                <Progress value={progressPercentage} className="mb-6" />
-                
-                <div className="flex justify-between">
-                  {onboardingSteps.map((step, index) => (
-                    <OnboardingStepIndicator
-                      key={step.id}
-                      step={step}
-                      isFirst={index === 0}
-                      isLast={index === onboardingSteps.length - 1}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Responsive Navigation for Step Tracking */}
-            <ResponsiveNavigation 
-              userRole="disconnected"
-              showMobileNav={true}
-              showWorkflowProgress={true}
-              onContextChange={(context) => {
-                console.log(`Navigation context changed to: ${context}`)
-              }}
-            />
-
-            {/* Wallet Address Display */}
-            {isConnected && address && (
-              <Card className="mb-6">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Connected Wallet:</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {formatAddress(address)}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(address)
-                          toast({
-                            title: "Address Copied",
-                            description: "Wallet address copied to clipboard!",
-                          })
-                        }}
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Back Navigation */}
-            <div className="mb-6">
-              <Button
-                variant="ghost"
-                onClick={() => router.back()}
-                className="flex items-center gap-2"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </Button>
-            </div>
-
-            {/* Main Content Area with Step-by-Step Flow */}
-            <div className="grid gap-8 lg:grid-cols-3">
-              {/* Primary Flow Panel */}
-              <div className="lg:col-span-2">
-                {!isConnected ? (
-                  <WalletConnectionCard walletUI={walletUI} />
-                ) : onboarding.isRegistered ? (
-                  <AlreadyRegisteredCard profile={onboarding.profile} />
-                ) : (
-                  <CreatorProfileSetupCard
-                    formData={formData}
-                    formErrors={formErrors}
-                    onFormChange={setFormData}
-                    onSubmit={handleSubmit}
-                    isLoading={onboarding.isLoading}
-                    registrationProgress={onboarding.registrationProgress}
-                  />
-                )}
-              </div>
-
-              {/* Information Sidebar */}
-              <div className="space-y-6">
-                <BenefitsCard />
-                <HelpCard />
-              </div>
-            </div>
-
-            {/* Success Dialog */}
-            <SuccessDialog
-              open={showSuccessDialog}
-              onOpenChange={setShowSuccessDialog}
-              profile={onboarding.profile}
-              onGoToDashboard={() => router.push('/dashboard')}
-            />
+      {/* Progress Indicator */}
+      <Card className="mb-8">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Setup Progress</h3>
+            <Badge variant="outline">
+              Step {currentStepIndex + 1} of {onboardingSteps.length}
+            </Badge>
           </div>
-          <ToastViewport />
-        </ToastProvider>
-      </RouteGuards>
-    </AppLayout>
+          
+          <Progress value={progressPercentage} className="mb-6" />
+          
+          <div className="flex justify-between">
+            {onboardingSteps.map((step, index) => (
+              <OnboardingStepIndicator
+                key={step.id}
+                step={step}
+                isFirst={index === 0}
+                isLast={index === onboardingSteps.length - 1}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Responsive Navigation for Step Tracking */}
+      <ResponsiveNavigation 
+        userRole="disconnected"
+        showMobileNav={true}
+        showWorkflowProgress={true}
+        onContextChange={(context) => {
+          console.log(`Navigation context changed to: ${context}`)
+        }}
+      />
+
+      {/* Wallet Address Display */}
+      {isConnected && address && (
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Connected Wallet:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-xs bg-muted px-2 py-1 rounded">
+                  {formatAddress(address)}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(address)
+                    toast({
+                      title: "Address Copied",
+                      description: "Wallet address copied to clipboard!",
+                    })
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Back Navigation */}
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          onClick={() => router.back()}
+          className="flex items-center gap-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back
+        </Button>
+      </div>
+
+      {/* Main Content Area with Step-by-Step Flow */}
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Primary Flow Panel */}
+        <div className="lg:col-span-2">
+          {!isConnected ? (
+            <WalletConnectionCard walletUI={walletUI} />
+          ) : onboarding.isRegistered ? (
+            <AlreadyRegisteredCard profile={onboarding.profile} />
+          ) : (
+            <CreatorProfileSetupCard
+              formData={formData}
+              formErrors={formErrors}
+              onFormChange={setFormData}
+              onSubmit={handleSubmit}
+              isLoading={onboarding.isLoading}
+              registrationProgress={onboarding.registrationProgress}
+            />
+          )}
+        </div>
+
+        {/* Information Sidebar */}
+        <div className="space-y-6">
+          <BenefitsCard />
+          <HelpCard />
+        </div>
+      </div>
+
+      {/* Success Dialog */}
+      <SuccessDialog
+        open={showSuccessDialog}
+        onOpenChange={setShowSuccessDialog}
+        profile={onboarding.profile}
+        onGoToDashboard={() => router.push('/dashboard')}
+      />
+    </div>
   )
 }
 
@@ -482,7 +486,7 @@ function WalletConnectionCard({ walletUI }: WalletConnectionCardProps) {
 }
 
 interface AlreadyRegisteredCardProps {
-  profile: Creator | undefined
+  profile: Creator | null
 }
 
 function AlreadyRegisteredCard({ profile }: AlreadyRegisteredCardProps) {
@@ -753,7 +757,7 @@ function HelpCard() {
 interface SuccessDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  profile: Creator | undefined
+  profile: Creator | null
   onGoToDashboard: () => void
 }
 
