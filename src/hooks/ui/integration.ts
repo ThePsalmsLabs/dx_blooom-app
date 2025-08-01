@@ -24,10 +24,11 @@
  * the right format for each type of UI component.
  */
 
-import { useMemo, useCallback, useState, useEffect } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import { useAccount, useChainId, useDisconnect } from 'wagmi'
+import { useEnhancedWeb3 } from '@/components/providers/Web3Provider'
+import { formatAddress } from '@/lib/utils'
 import { type Address } from 'viem'
-
 // Import our business logic hooks to compose them into UI-focused interfaces
 import {
   useContentPurchaseFlow,
@@ -51,7 +52,6 @@ import { getContractAddresses } from '@/lib/contracts/config'
 // Import utility functions for data formatting
 import {
   formatCurrency,
-  formatAddress,
   formatRelativeTime,
   formatAbsoluteTime,
   formatContentCategory,
@@ -65,6 +65,8 @@ import type {
   Creator,
   ContentCategory 
 } from '@/types/contracts'
+
+import { AccountType } from '@/components/providers/Web3Provider'
 
 /**
  * UI-Focused Interface Definitions
@@ -331,76 +333,137 @@ export interface CreatorDashboardUI {
   readonly transactionStatus: TransactionStatusUI
 }
 
-// ===== WALLET CONNECTION AND ACCOUNT MANAGEMENT =====
+// Enhanced Wallet Connection UI Interface
+export interface EnhancedWalletConnectionUI {
+  readonly isConnected: boolean
+  readonly isConnecting: boolean
+  readonly formattedAddress: string | null
+  readonly chainName: string
+  readonly isCorrectNetwork: boolean
+  readonly accountType: 'disconnected' | 'eoa' | 'smart_account'
+  readonly hasSmartAccount: boolean
+  readonly canUseGaslessTransactions: boolean
+  readonly smartAccountAddress: string | null
+  readonly isSmartAccountDeployed: boolean
+  readonly canUpgradeToSmartAccount: boolean
+  readonly upgradeToSmartAccount: () => Promise<void>
+  readonly isUpgrading: boolean
+  readonly connect: () => void
+  readonly disconnect: () => void
+  readonly switchNetwork: () => void
+  readonly error: string | null
+  readonly clearError: () => void
+  readonly showNetworkWarning: boolean
+  readonly showSmartAccountBenefits: boolean
+}
 
 /**
- * Wallet Connection UI Hook
+ * Enhanced Wallet Connection UI Hook
  * 
  * This hook provides everything wallet connection components need,
  * transforming complex Web3 provider state into simple UI interfaces.
  * It handles network validation, connection status, and provides
  * formatted display values for immediate use in components.
  */
-export function useWalletConnectionUI(): WalletConnectionUI {
+export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   const { address, isConnected, isConnecting } = useAccount()
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
-  
-  // State for user feedback
+
+  // Real Smart Account context from your provider
+  const {
+    accountType,
+    smartAccountConfig,
+    capabilities,
+    upgradeToSmartAccount,
+    error: contextError
+  } = useEnhancedWeb3()
+
   const [error, setError] = useState<string | null>(null)
-  
-  // Determine network status and name
+  const [isUpgrading, setIsUpgrading] = useState(false)
+  const combinedError = contextError || error
+
   const { chainName, isCorrectNetwork } = useMemo(() => {
-    const supportedChains = [8453, 84532] // Base Mainnet and Sepolia
+    const supportedChains = [8453, 84532]
     const isCorrect = supportedChains.includes(chainId)
-    
     let name: string
     switch (chainId) {
-      case 8453:
-        name = 'Base Mainnet'
-        break
-      case 84532:
-        name = 'Base Sepolia'
-        break
-      default:
-        name = 'Unsupported Network'
+      case 8453: name = 'Base Mainnet'; break
+      case 84532: name = 'Base Sepolia'; break
+      default: name = 'Unsupported Network'
     }
-    
     return { chainName: name, isCorrectNetwork: isCorrect }
   }, [chainId])
-  
-  // Format address for display
-  const formattedAddress = useMemo(() => {
-    return address ? formatAddress(address) : null
-  }, [address])
-  
-  // Connection action with error handling
+
+  const formattedAddress = useMemo(() => address ? formatAddress(address) : null, [address])
+  const smartAccountAddress = useMemo(
+    () => smartAccountConfig.smartAccountAddress ? formatAddress(smartAccountConfig.smartAccountAddress) : null,
+    [smartAccountConfig.smartAccountAddress]
+  )
+
+  const canUpgradeToSmartAccount = useMemo(() =>
+    isConnected &&
+    accountType === AccountType.EOA &&
+    isCorrectNetwork &&
+    !isUpgrading,
+    [isConnected, accountType, isCorrectNetwork, isUpgrading]
+  )
+
+  const showSmartAccountBenefits = useMemo(() =>
+    canUpgradeToSmartAccount && !smartAccountConfig.smartAccount,
+    [canUpgradeToSmartAccount, smartAccountConfig.smartAccount]
+  )
+
   const handleConnect = useCallback(() => {
-    try {
-      setError(null)
-      // Connection will be handled by RainbowKit or wallet connector
-      console.log('Triggering wallet connection modal')
-    } catch (err) {
-      setError('Failed to connect wallet. Please try again.')
-    }
-  }, [])
-  
-  // Network switching action
-  const handleSwitchNetwork = useCallback(() => {
-    try {
-      setError(null)
-      // Network switching logic would go here
-      console.log('Requesting network switch to Base')
-    } catch (err) {
-      setError('Failed to switch networks. Please try manually.')
-    }
-  }, [])
-  
-  // Clear error action
-  const clearError = useCallback(() => {
     setError(null)
+    // Your wallet connection logic (e.g., open modal)
   }, [])
-  
+
+  const handleSwitchNetwork = useCallback(() => {
+    setError(null)
+    // Your network switching logic
+  }, [])
+
+  const handleDisconnect = useCallback(() => {
+    setError(null)
+    setIsUpgrading(false)
+    disconnect()
+  }, [disconnect])
+
+  const handleUpgradeToSmartAccount = useCallback(async () => {
+    if (!canUpgradeToSmartAccount) {
+      setError('Cannot upgrade to Smart Account at this time')
+      return
+    }
+    setIsUpgrading(true)
+    setError(null)
+    try {
+      await upgradeToSmartAccount()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upgrade to Smart Account')
+    } finally {
+      setIsUpgrading(false)
+    }
+  }, [canUpgradeToSmartAccount, upgradeToSmartAccount])
+
+  const clearError = useCallback(() => setError(null), [])
+
+  let accountTypeString: 'disconnected' | 'eoa' | 'smart_account'
+  switch (accountType) {
+    case AccountType.DISCONNECTED:
+      accountTypeString = 'disconnected'
+      break
+    case AccountType.EOA:
+      accountTypeString = 'eoa'
+      break
+    case AccountType.SMART_ACCOUNT:
+      accountTypeString = 'smart_account'
+      break
+    case AccountType.UPGRADING:
+    default:
+      accountTypeString = 'disconnected'
+  }
+
   return {
     isConnected,
     isConnecting,
@@ -408,11 +471,20 @@ export function useWalletConnectionUI(): WalletConnectionUI {
     chainName,
     isCorrectNetwork,
     connect: handleConnect,
-    disconnect: () => disconnect(),
+    disconnect: handleDisconnect,
     switchNetwork: handleSwitchNetwork,
-    error,
+    error: combinedError,
     clearError,
-    showNetworkWarning: isConnected && !isCorrectNetwork
+    showNetworkWarning: isConnected && !isCorrectNetwork,
+    accountType: accountTypeString,
+    hasSmartAccount: accountType === AccountType.SMART_ACCOUNT,
+    canUseGaslessTransactions: capabilities.canSponsorGas,
+    smartAccountAddress,
+    isSmartAccountDeployed: smartAccountConfig.isDeployed,
+    canUpgradeToSmartAccount,
+    upgradeToSmartAccount: handleUpgradeToSmartAccount,
+    isUpgrading,
+    showSmartAccountBenefits
   }
 }
 
