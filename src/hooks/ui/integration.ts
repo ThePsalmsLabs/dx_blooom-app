@@ -25,7 +25,8 @@
  */
 
 import { useMemo, useCallback, useState } from 'react'
-import { useAccount, useChainId, useDisconnect } from 'wagmi'
+import { useAccount, useChainId, useDisconnect, useConnect } from 'wagmi'
+import { metaMask, coinbaseWallet, walletConnect } from 'wagmi/connectors'
 import { useEnhancedWeb3 } from '@/components/providers/Web3Provider'
 import { formatAddress } from '@/lib/utils'
 import { type Address } from 'viem'
@@ -369,6 +370,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   const { address, isConnected, isConnecting } = useAccount()
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
+  const { connect, connectors, error: connectError, status } = useConnect()
 
   // Real Smart Account context from your provider
   const {
@@ -416,8 +418,21 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
 
   const handleConnect = useCallback(() => {
     setError(null)
-    // Your wallet connection logic (e.g., open modal)
-  }, [])
+    // Try to connect to the first available connector (MetaMask, Coinbase, WalletConnect)
+    // You can enhance this to show a modal for user choice if desired
+    const preferred = [
+      connectors.find(c => c.id === 'metaMask'),
+      connectors.find(c => c.id === 'coinbaseWallet'),
+      connectors.find(c => c.id === 'walletConnect')
+    ].find(Boolean)
+    if (preferred) {
+      connect({ connector: preferred })
+    } else if (connectors.length > 0) {
+      connect({ connector: connectors[0] })
+    } else {
+      setError('No wallet connectors available')
+    }
+  }, [connect, connectors])
 
   const handleSwitchNetwork = useCallback(() => {
     setError(null)
@@ -466,7 +481,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
 
   return {
     isConnected,
-    isConnecting,
+    isConnecting: isConnecting || status === 'pending',
     formattedAddress,
     chainName,
     isCorrectNetwork,
