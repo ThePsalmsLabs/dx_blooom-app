@@ -74,7 +74,7 @@ import {
   useTokenBalance
 } from '@/hooks/contracts/core'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { WalletConnectionButton } from '@/components/web3/WalletConnect'
+import { WalletConnectButton, WalletStatus } from '@/components/web3/WalletConnectModal'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/wagmi'
 
 /**
@@ -405,6 +405,15 @@ function AppHeader({
               </Button>
             )}
 
+            {/* Wallet Status Display */}
+            {isConnected && (
+              <WalletStatus 
+                showAddress={false} 
+                showNetwork={true}
+                className="hidden md:flex"
+              />
+            )}
+
             {/* Wallet Connection / User Profile */}
             {isConnected && address ? (
               <UserProfileDropdown
@@ -416,7 +425,7 @@ function AppHeader({
                 onDisconnect={onDisconnect}
               />
             ) : (
-              <WalletConnectionButton />
+              <WalletConnectButton size="sm" />
             )}
           </div>
         </div>

@@ -10,7 +10,7 @@
  * - useCreatorOnboarding manages the complete business logic workflow
  * - ResponsiveNavigation tracks progress through multi-step process
  * - RouteGuards ensure proper access control and prerequisites
- * - WalletConnectionButton handles Smart Account creation with Biconomy
+ * - WalletConnectButton handles Smart Account creation with Biconomy
  * - Form validation leverages our type system for subscription pricing
  * 
  * This page proves that complex Web3 workflows can be presented as intuitive,
@@ -64,7 +64,7 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ResponsiveNavigation } from '@/components/layout/ResponsiveNavigation'
 import { RouteGuards } from '@/components/layout/RouteGuards'
-import { WalletConnectionButton } from '@/components/web3/WalletConnect'
+import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 
 // Import our business logic hooks - the core of our workflow management
 import { useCreatorOnboarding } from '@/hooks/business/workflows'
@@ -460,7 +460,7 @@ function WalletConnectionCard({ walletUI }: WalletConnectionCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <WalletConnectionButton variant="card" />
+                        <WalletConnectButton variant="outline" size="lg" />
         
         {walletUI.error && (
           <Alert variant="destructive">

@@ -57,7 +57,7 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
-import { WalletConnectionButton } from '@/components/web3/WalletConnect'
+import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 
 // Import business logic and UI integration hooks
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
@@ -233,7 +233,8 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {!isConnected ? (
                   <>
-                    <WalletConnectionButton 
+                    <WalletConnectButton 
+                      size="lg"
                       className="text-lg px-8 py-4"
                     />
                     <Button 
@@ -473,14 +474,25 @@ export default function HomePage() {
               </div>
 
               {!isCreator && (
-                <Button 
-                  size="lg" 
-                  onClick={handleStartCreating}
-                  className="text-lg px-8 py-4"
-                >
-                  {isConnected ? 'Complete Creator Setup' : 'Connect Wallet to Start'}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  {!isConnected ? (
+                    <WalletConnectButton 
+                      size="lg"
+                      className="text-lg px-8 py-4"
+                    >
+                      Connect Wallet to Start
+                    </WalletConnectButton>
+                  ) : (
+                    <Button 
+                      size="lg" 
+                      onClick={handleStartCreating}
+                      className="text-lg px-8 py-4"
+                    >
+                      Complete Creator Setup
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           </section>
@@ -504,15 +516,25 @@ export default function HomePage() {
                 Explore Content
                 <Eye className="ml-2 h-5 w-5" />
               </Button>
-              <Button 
-                variant="outline" 
-                size="lg"
-                onClick={handleStartCreating}
-                className="text-lg px-8 py-4"
-              >
-                {isCreator ? 'Creator Dashboard' : 'Start Creating'}
-                <Sparkles className="ml-2 h-5 w-5" />
-              </Button>
+              {!isConnected ? (
+                <WalletConnectButton 
+                  variant="outline"
+                  size="lg"
+                  className="text-lg px-8 py-4"
+                >
+                  Connect Wallet to Start Creating
+                </WalletConnectButton>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  onClick={handleStartCreating}
+                  className="text-lg px-8 py-4"
+                >
+                  {isCreator ? 'Creator Dashboard' : 'Start Creating'}
+                  <Sparkles className="ml-2 h-5 w-5" />
+                </Button>
+              )}
             </div>
           </section>
 

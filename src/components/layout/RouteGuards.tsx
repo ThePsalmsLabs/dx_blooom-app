@@ -73,7 +73,7 @@ import {
 } from '@/hooks/contracts/core'
 import { useCreatorOnboardingUI, useContentPurchaseUI } from '@/hooks/ui/integration'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
-import { WalletConnectionButton } from '@/components/web3/WalletConnect'
+import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/wagmi'
 
 /**
@@ -667,7 +667,7 @@ export function RouteGuards({
   const handlePermissionResolution = useCallback((resolutionPath: string) => {
     switch (resolutionPath) {
       case 'wallet-connect':
-        // Wallet connection handled by WalletConnectionButton
+        // Wallet connection handled by WalletConnectButton
         break
       case 'network-switch':
         if (switchChain) {
