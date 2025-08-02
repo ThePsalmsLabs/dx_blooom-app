@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState, useEffect } from 'react'
-import { Address } from 'viem'
+import { Address, parseEventLogs } from 'viem'
 import { useChainId, useAccount } from 'wagmi'
-import { getContractAddresses } from '@/lib/contracts/config'
+import { createPublicClient, http } from 'viem'
+import { base, baseSepolia } from 'viem/chains'
 import {
   useContentById,
   useHasContentAccess,
@@ -14,20 +15,18 @@ import {
   useCreatorProfile,
   useRegisterCreator,
 } from '@/hooks/contracts/core'
-import type { Creator } from '@/types/contracts'
-import { 
-  getX402MiddlewareConfig, 
-  createX402PaymentProof, 
+import { getContractAddresses } from '@/lib/contracts/config'
+import {
+  getX402MiddlewareConfig,
+  createX402PaymentProof,
   verifyX402PaymentProof,
   X402Config,
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
 import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abi'
-import { decodeEventLog } from 'viem'
-import { createPublicClient, http } from 'viem'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
-import { type ContentCategory } from '@/types/contracts'
+import type { Creator, ContentCategory } from '@/types/contracts'
 
 // Farcaster Context Interface
 export interface FarcasterContext {
@@ -721,6 +720,49 @@ export function useContentPurchaseFlow(
   }
 }
 
+// ===== ENHANCED VALIDATION UTILITIES =====
+
+/**
+ * Enhanced IPFS hash validation that supports both CID v0 and v1 formats
+ * CID v0: Qm... (legacy format)
+ * CID v1: baf..., bae..., bag... etc (modern format)
+ */
+function validateIPFSHash(hash: string): boolean {
+  if (!hash || hash.length < 10) return false
+  
+  // Check for CID v0 (starts with Qm)
+  if (hash.startsWith('Qm') && hash.length === 46) return true
+  
+  // Check for CID v1 (starts with various prefixes)
+  const cidV1Prefixes = ['baf', 'bae', 'bag', 'bah', 'bai', 'baj']
+  const hasValidPrefix = cidV1Prefixes.some(prefix => hash.startsWith(prefix))
+  
+  if (hasValidPrefix && hash.length >= 32) return true
+  
+  return false
+}
+
+/**
+ * Unified price validation that matches smart contract constraints
+ * All price validations now use the same limits as ContentRegistry.sol
+ */
+function validatePrice(price: bigint): { isValid: boolean; error?: string } {
+  const MIN_PRICE = BigInt(0.01e6) // $0.01 in USDC (6 decimals)
+  const MAX_PRICE = BigInt(50e6)   // $50.00 in USDC (6 decimals) - matches smart contract
+  
+  if (price < MIN_PRICE) {
+    return { isValid: false, error: 'Minimum price is $0.01' }
+  }
+  
+  if (price > MAX_PRICE) {
+    return { isValid: false, error: 'Maximum price is $50.00' }
+  }
+  
+  return { isValid: true }
+}
+
+// ===== ENHANCED CONTENT PUBLISHING WORKFLOW =====
+
 export interface ContentPublishingData {
   readonly title: string
   readonly description: string
@@ -735,6 +777,8 @@ export type ContentPublishingFlowStep =
   | 'checking_creator'
   | 'validating_content'
   | 'registering'
+  | 'confirming'
+  | 'extracting_content_id'
   | 'completed'
   | 'error'
 
@@ -752,6 +796,7 @@ export interface ContentPublishingFlowResult {
     readonly isConfirming: boolean
     readonly isConfirmed: boolean
     readonly transactionHash: string | undefined
+    readonly stepDescription: string
   }
 }
 
@@ -781,48 +826,82 @@ export function useContentPublishingFlow(
                    workflowState.currentStep !== 'completed' && 
                    workflowState.currentStep !== 'error'
   
-  const publishingProgress = useMemo(() => ({
-    isSubmitting: registerContent.isLoading && !registerContent.isConfirmed,
-    isConfirming: registerContent.isLoading && registerContent.isConfirmed,
-    isConfirmed: registerContent.isConfirmed,
-    transactionHash: registerContent.hash
-  }), [registerContent])
+  // Enhanced progress tracking with detailed step descriptions
+  const publishingProgress = useMemo(() => {
+    const stepDescriptions: Record<ContentPublishingFlowStep, string> = {
+      idle: 'Ready to publish',
+      checking_creator: 'Verifying creator registration...',
+      validating_content: 'Validating content data...',
+      registering: 'Submitting to blockchain...',
+      confirming: 'Waiting for confirmation...',
+      extracting_content_id: 'Processing published content...',
+      completed: 'Content published successfully!',
+      error: 'Publishing failed'
+    }
+    
+    return {
+      isSubmitting: registerContent.isLoading && !registerContent.isConfirmed,
+      isConfirming: registerContent.isConfirming,
+      isConfirmed: registerContent.isConfirmed,
+      transactionHash: registerContent.hash,
+      stepDescription: stepDescriptions[workflowState.currentStep]
+    }
+  }, [registerContent, workflowState.currentStep])
   
+  // Enhanced validation with better error messages
   const validateContentData = useCallback((data: ContentPublishingData): string[] => {
     const errors: string[] = []
     
+    // Title validation
     if (!data.title || data.title.trim().length === 0) {
       errors.push('Content title is required')
     }
-    
-    if (data.title && data.title.length > 100) {
-      errors.push('Title must be less than 100 characters')
+    if (data.title && data.title.length > 200) {
+      errors.push('Title must be less than 200 characters')
     }
     
+    // Description validation
     if (!data.description || data.description.trim().length === 0) {
       errors.push('Content description is required')
     }
-    
-    if (!data.ipfsHash || !data.ipfsHash.startsWith('Qm')) {
-      errors.push('Valid IPFS hash is required')
+    if (data.description && data.description.length > 1000) {
+      errors.push('Description must be less than 1000 characters')
     }
     
-    if (data.payPerViewPrice <= BigInt(0)) {
-      errors.push('Price must be greater than 0')
+    // Enhanced IPFS hash validation
+    if (!validateIPFSHash(data.ipfsHash)) {
+      errors.push('Valid IPFS hash is required (supports both CID v0 and v1 formats)')
     }
     
-    if (data.payPerViewPrice > BigInt(1000000000)) {
-      errors.push('Price cannot exceed 1000 USDC')
+    // Unified price validation
+    const priceValidation = validatePrice(data.payPerViewPrice)
+    if (!priceValidation.isValid) {
+      errors.push(priceValidation.error!)
+    }
+    
+    // Tags validation
+    if (data.tags.length > 10) {
+      errors.push('Maximum 10 tags allowed')
+    }
+    
+    for (const tag of data.tags) {
+      if (tag.length > 30) {
+        errors.push('Each tag must be 30 characters or less')
+        break
+      }
     }
     
     return errors
   }, [])
   
+  // Enhanced publish function with complete error handling
   const publish = useCallback((data: ContentPublishingData) => {
+    console.log('Starting content publishing workflow...', data)
+    
     if (!userAddress) {
       setWorkflowState({
         currentStep: 'error',
-        error: new Error('Wallet connection required'),
+        error: new Error('Wallet connection required to publish content'),
         publishedContentId: null
       })
       return
@@ -833,7 +912,7 @@ export function useContentPublishingFlow(
     if (!isCreatorRegistered) {
       setWorkflowState({
         currentStep: 'error',
-        error: new Error('You must be a registered creator to publish content'),
+        error: new Error('You must be a registered creator to publish content. Please complete creator registration first.'),
         publishedContentId: null
       })
       return
@@ -845,7 +924,7 @@ export function useContentPublishingFlow(
     if (validationErrors.length > 0) {
       setWorkflowState({
         currentStep: 'error',
-        error: new Error(`Content validation failed: ${validationErrors.join(', ')}`),
+        error: new Error(`Content validation failed:\n${validationErrors.join('\n')}`),
         publishedContentId: null
       })
       return
@@ -854,6 +933,15 @@ export function useContentPublishingFlow(
     setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
     
     try {
+      console.log('Calling registerContent with validated data:', {
+        ipfsHash: data.ipfsHash,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        payPerViewPrice: data.payPerViewPrice.toString(),
+        tags: data.tags
+      })
+      
       registerContent.write({
         ipfsHash: data.ipfsHash,
         title: data.title,
@@ -863,9 +951,10 @@ export function useContentPublishingFlow(
         tags: data.tags
       })
     } catch (error) {
+      console.error('Error calling registerContent:', error)
       setWorkflowState({
         currentStep: 'error',
-        error: error instanceof Error ? error : new Error('Failed to publish content'),
+        error: error instanceof Error ? error : new Error('Failed to submit content registration'),
         publishedContentId: null
       })
     }
@@ -877,93 +966,88 @@ export function useContentPublishingFlow(
       error: null,
       publishedContentId: null
     })
-  }, [])
+    registerContent.reset()
+  }, [registerContent])
   
+  // Enhanced effect to handle transaction lifecycle
   useEffect(() => {
     if (registerContent.isLoading) {
+      console.log('Transaction submitted, waiting for confirmation...')
       setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
+    } else if (registerContent.isConfirming) {
+      console.log('Transaction confirmed, waiting for receipt...')
+      setWorkflowState(prev => ({ ...prev, currentStep: 'confirming' }))
     } else if (registerContent.error) {
+      console.error('Transaction error:', registerContent.error)
       setWorkflowState({
         currentStep: 'error',
         error: registerContent.error,
         publishedContentId: null
       })
-    } else if (registerContent.isConfirmed && registerContent.hash) {
-      let contentId: bigint | null = null
-      try {
-        const fetchReceipt = async () => {
-          if (!registerContent.hash) {
+    } else if (registerContent.isSuccess && registerContent.hash) {
+      console.log('Transaction successful, extracting content ID...')
+      setWorkflowState(prev => ({ ...prev, currentStep: 'extracting_content_id' }))
+      
+      // Extract content ID from transaction receipt
+      const extractContentId = async () => {
+        try {
+          const publicClient = createPublicClient({
+            chain: chainId === 8453 ? base : baseSepolia,
+            transport: http()
+          })
+          
+          const receipt = await publicClient.getTransactionReceipt({
+            hash: registerContent.hash as `0x${string}`
+          })
+          
+          console.log('Transaction receipt:', receipt)
+          
+          // Parse the ContentRegistered event to get the content ID
+          const contentRegisteredLogs = parseEventLogs({
+            abi: CONTENT_REGISTRY_ABI,
+            eventName: 'ContentRegistered',
+            logs: receipt.logs
+          })
+          
+          if (contentRegisteredLogs.length > 0) {
+            const contentId = contentRegisteredLogs[0].args.contentId
+            console.log('Successfully extracted content ID:', contentId)
+            
             setWorkflowState({
               currentStep: 'completed',
               error: null,
-              publishedContentId: null
+              publishedContentId: contentId
             })
+            
+            // Refresh related data
             creatorRegistration.refetch()
             userBalance.refetch()
-            return
+          } else {
+            throw new Error('Content ID not found in transaction receipt')
           }
-          const chainId = useChainId()
-          const contractAddresses = getContractAddresses(chainId)
-          const publicClient = createPublicClient({
-            chain: chainId === 8453 ? require('viem/chains').base : require('viem/chains').baseSepolia,
-            transport: http()
-          })
-          const receipt = await publicClient.getTransactionReceipt({ hash: registerContent.hash as `0x${string}` })
-          for (const log of receipt.logs) {
-            try {
-              const event = decodeEventLog({
-                abi: CONTENT_REGISTRY_ABI,
-                data: log.data,
-                topics: log.topics
-              })
-              if (event.eventName === 'ContentRegistered') {
-                contentId = event.args.contentId as bigint
-                break
-              }
-            } catch {}
-          }
+        } catch (error) {
+          console.error('Error extracting content ID:', error)
+          // Still mark as completed since the transaction succeeded
           setWorkflowState({
             currentStep: 'completed',
             error: null,
-            publishedContentId: contentId
+            publishedContentId: null
           })
-          creatorRegistration.refetch()
-          userBalance.refetch()
         }
-        fetchReceipt()
-      } catch (e) {
-        setWorkflowState({
-          currentStep: 'completed',
-          error: null,
-          publishedContentId: null
-        })
-        creatorRegistration.refetch()
-        userBalance.refetch()
       }
+      
+      extractContentId()
     }
-  }, [registerContent, creatorRegistration, userBalance])
-  
-  useEffect(() => {
-    if (creatorRegistration.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'checking_creator' }))
-    } else if (creatorRegistration.error) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: new Error('Failed to check creator status'),
-        publishedContentId: null
-      })
-    } else if (workflowState.currentStep === 'checking_creator' && !creatorRegistration.isLoading) {
-      if (isCreatorRegistered) {
-        setWorkflowState(prev => ({ ...prev, currentStep: 'idle' }))
-      } else {
-        setWorkflowState({
-          currentStep: 'error',
-          error: new Error('Creator registration required'),
-          publishedContentId: null
-        })
-      }
-    }
-  }, [creatorRegistration, isCreatorRegistered, workflowState.currentStep])
+  }, [
+    registerContent.isLoading,
+    registerContent.isConfirming,
+    registerContent.isSuccess,
+    registerContent.error,
+    registerContent.hash,
+    chainId,
+    creatorRegistration,
+    userBalance
+  ])
   
   return {
     currentStep: workflowState.currentStep,
