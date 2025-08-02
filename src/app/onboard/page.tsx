@@ -133,7 +133,7 @@ function OnboardingContent() {
   
   // Local form state for user input collection
   const [formData, setFormData] = useState<OnboardingFormData>({
-    subscriptionPrice: '5.00', // Default to $5/month
+    subscriptionPrice: '3.00', // Default to $5/month
     bio: '',
     websiteUrl: '',
     socialHandle: ''
@@ -320,9 +320,9 @@ function OnboardingContent() {
         userRole="disconnected"
         showMobileNav={true}
         showWorkflowProgress={true}
-        onContextChange={(context) => {
+        onContextChange={useCallback((context: 'home' | 'browse' | 'content_creation' | 'content_consumption' | 'creator_dashboard' | 'user_profile' | 'transaction_flow' | 'onboarding') => {
           console.log(`Navigation context changed to: ${context}`)
-        }}
+        }, [])}
       />
 
       {/* Wallet Address Display */}
@@ -464,7 +464,7 @@ function WalletConnectionCard({ walletUI }: WalletConnectionCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-                        <WalletConnectButton variant="outline" size="lg" />
+                        <WalletConnectButton variant="outline" size="lg" showModal={true} />
         
         {walletUI.error && (
           <Alert variant="destructive">

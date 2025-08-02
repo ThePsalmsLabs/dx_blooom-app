@@ -1313,7 +1313,7 @@ export function useCreatorOnboarding(
       registrationCheck.refetch()
       creatorProfile.refetch()
     }
-  }, [registerCreator.isLoading, registerCreator.isConfirmed, registerCreator.error, registrationCheck, creatorProfile])
+  }, [registerCreator.isLoading, registerCreator.isConfirmed, registerCreator.error])
   
   // Effect: Handle transition from registered back to checking when address changes
   useEffect(() => {

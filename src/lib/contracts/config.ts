@@ -58,7 +58,10 @@ export function getContractAddresses(chainId: number): NetworkContractAddresses 
   // Validate that all addresses are properly set
   Object.entries(addresses).forEach(([contractName, address]) => {
     if (!address || address === '0x') {
-      throw new Error(`Missing contract address for ${contractName} on chain ${chainId}`)
+      const errorMessage = `Missing contract address for ${contractName} on chain ${chainId}. ` +
+        `Please set the environment variable NEXT_PUBLIC_${contractName}_ADDRESS or switch to a supported network.`
+      console.error(errorMessage)
+      throw new Error(errorMessage)
     }
   })
   

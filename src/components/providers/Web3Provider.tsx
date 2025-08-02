@@ -669,7 +669,7 @@ function EnhancedWeb3ProviderInner({ children }: EnhancedWeb3ProviderProps): JSX
 export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): JSX.Element {
   return (
     <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfig}>
         <RainbowKitProvider
           // Show recent transactions in the modal
           showRecentTransactions={true}
@@ -697,7 +697,7 @@ export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): J
           </OnchainKitProvider>
         </RainbowKitProvider>
       </WagmiProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
   )
 }
 

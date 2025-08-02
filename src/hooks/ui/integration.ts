@@ -477,9 +477,9 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     try {
       setError(null)
       
-      // Default to Base Mainnet (chain ID 8453)
-      // You can modify this to switch to Base Sepolia for testing
-      switchChain({ chainId: 8453 })
+      // Default to Base Sepolia (chain ID 84532) for testing
+      // Change to 8453 for Base Mainnet when contracts are deployed
+      switchChain({ chainId: 84532 })
     } catch (err) {
       setError('Failed to switch networks. Please try manually in your wallet.')
       console.error('Network switch error:', err)

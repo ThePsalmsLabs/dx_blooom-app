@@ -3,6 +3,43 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* RainbowKit Modal Z-Index Fix */
+/* Ensure RainbowKit modals appear above all other content */
+[data-rk] {
+  z-index: 999999 !important;
+}
+
+[data-rk] [role="dialog"] {
+  z-index: 999999 !important;
+}
+
+[data-rk] [data-testid="rk-connect-modal"] {
+  z-index: 999999 !important;
+}
+
+/* Additional RainbowKit modal selectors */
+.rainbow-kit-connect-modal {
+  z-index: 999999 !important;
+}
+
+[data-testid="rk-connect-modal"] {
+  z-index: 999999 !important;
+}
+
+/* Ensure modal backdrop is also above everything */
+[data-rk] [data-testid="rk-connect-modal"]::before {
+  z-index: 999998 !important;
+}
+
+/* Custom wallet modal z-index fix */
+[data-slot="dialog-overlay"] {
+  z-index: 999998 !important;
+}
+
+[data-slot="dialog-content"] {
+  z-index: 999999 !important;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

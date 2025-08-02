@@ -175,6 +175,15 @@ export function ResponsiveNavigation({
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
+  
+  // Memoize search params to prevent infinite re-renders
+  const memoizedSearchParams = useMemo(() => {
+    return {
+      flow: searchParams.get('flow'),
+      toString: () => searchParams.toString()
+    }
+  }, [searchParams.toString()])
+  
   const { address, isConnected } = useAccount()
 
   // Creator status for navigation personalization
@@ -197,9 +206,9 @@ export function ResponsiveNavigation({
     if (pathname.startsWith('/dashboard')) return 'creator_dashboard'
     if (pathname.startsWith('/profile')) return 'user_profile'
     if (pathname.startsWith('/onboard')) return 'onboarding'
-    if (searchParams.get('flow') === 'transaction') return 'transaction_flow'
+    if (memoizedSearchParams.flow === 'transaction') return 'transaction_flow'
     return 'home'
-  }, [pathname, searchParams])
+  }, [pathname, memoizedSearchParams])
 
   // Generate breadcrumb navigation based on current context
   const breadcrumbs: readonly BreadcrumbNavItem[] = useMemo(() => {

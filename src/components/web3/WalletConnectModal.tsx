@@ -40,6 +40,8 @@ export function WalletConnectModal({
 }: WalletConnectModalProps) {
   const wallet = useWalletConnectionUI()
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
+  
+  console.log('WalletConnectModal render', { isOpen, isConnected: wallet.isConnected, connectors: wallet.connectors?.length })
 
   // Auto-close modal when connected (optional)
   useEffect(() => {
@@ -87,7 +89,7 @@ export function WalletConnectModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" style={{ zIndex: 999999 }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5" />
@@ -304,11 +306,15 @@ export function WalletConnectButton({
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const handleClick = () => {
+    console.log('WalletConnectButton clicked', { showModal, isConnected: wallet.isConnected })
+    
     if (showModal) {
       // Use custom modal
+      console.log('Opening custom modal')
       setIsModalOpen(true)
     } else {
       // Use RainbowKit's modal via the wallet.connect() function
+      console.log('Using RainbowKit modal')
       if (wallet.isConnected) {
         wallet.disconnect()
       } else {
