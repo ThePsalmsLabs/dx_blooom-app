@@ -40,6 +40,15 @@
   z-index: 999999 !important;
 }
 
+/* Fix for Select dropdown z-index issues */
+[data-radix-popper-content-wrapper] {
+  z-index: 999999 !important;
+}
+
+[data-radix-select-content] {
+  z-index: 999999 !important;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

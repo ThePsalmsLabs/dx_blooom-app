@@ -976,7 +976,13 @@ function ContentMetadataSection({
               <SelectTrigger className={cn(validationErrors.category && 'border-red-500')}>
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent 
+                className="z-[999999] !z-[999999]"
+                position="popper"
+                side="bottom"
+                align="start"
+                sideOffset={4}
+              >
                 {Object.values(ContentCategory)
                   .filter(value => typeof value === 'number')
                   .map((category) => (
