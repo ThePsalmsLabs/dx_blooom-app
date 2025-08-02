@@ -75,6 +75,59 @@ import { TransactionStatusModal } from '@/components/web3/TransactionStatus'
 import { validatePrice, formatCurrency, parseDecimalToBigInt } from '@/lib/utils'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 
+// ===== ENHANCED IPFS INTEGRATION =====
+
+/**
+ * Enhanced IPFS upload with proper error handling and validation
+ * This function now supports both CID v0 and v1 formats
+ */
+async function uploadToIPFS(file: File): Promise<{ hash: string; error?: string }> {
+  try {
+    console.log('Starting IPFS upload for file:', file.name, 'Size:', file.size)
+    
+    // Create FormData for file upload
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    // Upload to your IPFS endpoint (adjust URL as needed)
+    const response = await fetch('/api/ipfs/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('IPFS API error response:', errorText)
+      throw new Error(`IPFS upload failed: ${response.status} ${response.statusText}`)
+    }
+    
+    const result = await response.json()
+    console.log('IPFS upload successful:', result)
+    
+    // Validate the returned hash
+    if (!result.hash || result.hash.length < 10) {
+      throw new Error('Invalid IPFS hash returned from server')
+    }
+    
+    return { hash: result.hash }
+  } catch (error) {
+    console.error('IPFS upload error:', error)
+    
+    // If the API endpoint doesn't exist, provide a helpful error message
+    if (error instanceof Error && error.message.includes('404')) {
+      return { 
+        hash: '', 
+        error: 'IPFS upload service not configured. Please contact support.' 
+      }
+    }
+    
+    return { 
+      hash: '', 
+      error: error instanceof Error ? error.message : 'Unknown upload error' 
+    }
+  }
+}
+
 /**
  * File Upload Progress Interface
  * 
@@ -105,6 +158,68 @@ interface ContentFormData {
   accessType: 'public' | 'premium' | 'subscription'
   file: File | null
   ipfsHash: string
+}
+
+// ===== ENHANCED FORM VALIDATION =====
+
+interface ValidationErrors {
+  title?: string
+  description?: string
+  category?: string
+  price?: string
+  tags?: string
+  file?: string
+  ipfsHash?: string
+}
+
+/**
+ * Comprehensive form validation with detailed error messages
+ */
+function validateFormData(formData: ContentFormData): ValidationErrors {
+  const errors: ValidationErrors = {}
+  
+  // Title validation
+  if (!formData.title.trim()) {
+    errors.title = 'Title is required'
+  } else if (formData.title.length > 200) {
+    errors.title = 'Title must be less than 200 characters'
+  }
+  
+  // Description validation
+  if (!formData.description.trim()) {
+    errors.description = 'Description is required'
+  } else if (formData.description.length > 1000) {
+    errors.description = 'Description must be less than 1000 characters'
+  }
+  
+  // Category validation
+  if (formData.category === null) {
+    errors.category = 'Please select a content category'
+  }
+  
+  // Price validation with proper parsing (only for premium content)
+  if (formData.accessType === 'premium') {
+    const priceNum = parseFloat(formData.price)
+    if (!formData.price || isNaN(priceNum)) {
+      errors.price = 'Valid price is required'
+    } else if (priceNum < 0.01) {
+      errors.price = 'Minimum price is $0.01'
+    } else if (priceNum > 50) {
+      errors.price = 'Maximum price is $50.00 (smart contract limit)'
+    }
+  }
+  
+  // Tags validation
+  if (formData.tags.length > 10) {
+    errors.tags = 'Maximum 10 tags allowed'
+  }
+  
+  // File and IPFS validation
+  if (!formData.file && !formData.ipfsHash) {
+    errors.file = 'Please select a file to upload'
+  }
+  
+  return errors
 }
 
 /**
@@ -143,7 +258,7 @@ export function ContentUploadForm({
     title: '',
     description: '',
     category: null,
-    price: '',
+    price: '1.00',
     tags: [],
     accessType: 'premium',
     file: null,
@@ -161,7 +276,8 @@ export function ContentUploadForm({
   // UI state management
   const [showTransactionModal, setShowTransactionModal] = useState(false)
   const [tagInput, setTagInput] = useState('')
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
+  const [isUploading, setIsUploading] = useState(false)
 
   // File input reference for programmatic access
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -185,43 +301,12 @@ export function ContentUploadForm({
     }
   }, [publishingUI.publishingActions.isProcessing, showTransactionModal])
 
-  // Simulate IPFS upload process
-  const uploadToIPFS = useCallback(async (file: File): Promise<string> => {
-    // Update progress for upload start
-    setUploadProgress({
-      step: 'uploading',
-      percentage: 0,
-      message: 'Uploading to IPFS...',
-      canRetry: false
-    })
-
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise(resolve => setTimeout(resolve, 200))
-      setUploadProgress(prev => ({
-        ...prev,
-        percentage: i,
-        message: `Uploading to IPFS... ${i}%`
-      }))
-    }
-
-    // Simulate IPFS hash generation
-    const mockIpfsHash = `Qm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
-    
-    setUploadProgress({
-      step: 'processing',
-      percentage: 100,
-      message: 'Upload complete! Processing metadata...',
-      canRetry: false
-    })
-
-    return mockIpfsHash
-  }, [])
-
-  // Handle file selection and validation
+  // Handle file selection and validation with enhanced IPFS integration
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
+
+    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
 
     // Reset previous upload state
     setUploadProgress({
@@ -232,7 +317,7 @@ export function ContentUploadForm({
     })
 
     // File validation
-    const maxSize = 100 * 1024 * 1024 // 100MB
+    const maxSize = 50 * 1024 * 1024 // 50MB limit
     const allowedTypes = [
       'text/plain',
       'text/markdown',
@@ -250,9 +335,13 @@ export function ContentUploadForm({
       setUploadProgress({
         step: 'error',
         percentage: 0,
-        message: 'File size must be less than 100MB',
+        message: 'File size must be less than 50MB',
         canRetry: true
       })
+      setValidationErrors(prev => ({
+        ...prev,
+        file: 'File size must be less than 50MB'
+      }))
       return
     }
 
@@ -263,76 +352,102 @@ export function ContentUploadForm({
         message: 'File type not supported',
         canRetry: true
       })
+      setValidationErrors(prev => ({
+        ...prev,
+        file: 'File type not supported'
+      }))
       return
     }
 
-    try {
-      // Upload to IPFS
-      const ipfsHash = await uploadToIPFS(file)
-      
-      // Update form data
-      setFormData(prev => ({
+    setFormData(prev => ({ ...prev, file, ipfsHash: '' }))
+    setValidationErrors(prev => ({ ...prev, file: undefined, ipfsHash: undefined }))
+
+    // Start IPFS upload
+    setIsUploading(true)
+    setUploadProgress({
+      step: 'uploading',
+      percentage: 0,
+      message: 'Uploading to IPFS...',
+      canRetry: false
+    })
+
+    // Simulate progress for better UX
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => ({
         ...prev,
-        file,
-        ipfsHash,
-        title: prev.title || file.name.replace(/\.[^/.]+$/, '') // Auto-fill title if empty
+        percentage: Math.min(prev.percentage + 10, 90)
       }))
+    }, 200)
 
-      setUploadProgress({
-        step: 'completed',
-        percentage: 100,
-        message: 'File uploaded successfully!',
-        canRetry: false
-      })
-
+    try {
+      const uploadResult = await uploadToIPFS(file)
+      clearInterval(progressInterval)
+      
+      if (uploadResult.error) {
+        console.error('IPFS upload failed:', uploadResult.error)
+        setUploadProgress({
+          step: 'error',
+          percentage: 0,
+          message: uploadResult.error,
+          canRetry: true
+        })
+        setValidationErrors(prev => ({
+          ...prev,
+          file: uploadResult.error
+        }))
+        setFormData(prev => ({ ...prev, file: null }))
+      } else {
+        console.log('IPFS upload successful, hash:', uploadResult.hash)
+        setFormData(prev => ({ ...prev, ipfsHash: uploadResult.hash }))
+        setUploadProgress({
+          step: 'completed',
+          percentage: 100,
+          message: 'Upload complete! Processing metadata...',
+          canRetry: false
+        })
+      }
     } catch (error) {
+      clearInterval(progressInterval)
+      console.error('Upload error:', error)
+      
+      let errorMessage = 'Upload failed. Please try again.'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+      
       setUploadProgress({
         step: 'error',
         percentage: 0,
-        message: 'Upload failed. Please try again.',
+        message: errorMessage,
         canRetry: true
       })
+      setValidationErrors(prev => ({
+        ...prev,
+        file: errorMessage
+      }))
+      setFormData(prev => ({ ...prev, file: null }))
+    } finally {
+      setIsUploading(false)
     }
-  }, [uploadToIPFS])
+  }, [])
 
-  // Validate form data
-  const validateForm = useCallback((): boolean => {
-    const errors: Record<string, string> = {}
-
-    if (!formData.title.trim()) {
-      errors.title = 'Title is required'
-    } else if (formData.title.length > 200) {
-      errors.title = 'Title must be 200 characters or less'
-    }
-
-    if (formData.description.length > 1000) {
-      errors.description = 'Description must be 1000 characters or less'
-    }
-
-    if (!formData.category) {
-      errors.category = 'Category is required'
-    }
-
-    if (formData.accessType === 'premium') {
-      const priceValidation = validatePrice(formData.price)
-      if (!priceValidation.isValid) {
-        errors.price = priceValidation.error || 'Invalid price'
-      }
-    }
-
-    if (!formData.file || !formData.ipfsHash) {
-      errors.file = 'Please upload a file'
-    }
-
-    setValidationErrors(errors)
-    return Object.keys(errors).length === 0
-  }, [formData])
-
-  // Handle form submission
+  // Handle form submission with enhanced validation
   const handleSubmit = useCallback(async (event: React.FormEvent) => {
     event.preventDefault()
     
-    if (!validateForm()) {
+    console.log('Form submission started with data:', formData)
+    
+    // Validate form data using enhanced validation
+    const errors = validateFormData(formData)
+    setValidationErrors(errors)
+    
+    if (Object.keys(errors).length > 0) {
+      console.log('Form validation failed:', errors)
+      return
+    }
+
+    if (!publishingUI.canPublish) {
+      console.log('Cannot publish - creator requirements not met')
       return
     }
 
@@ -344,32 +459,41 @@ export function ContentUploadForm({
         canRetry: false
       })
 
-      // Convert price to BigInt format
+      // Convert price to BigInt format (only for premium content)
       const priceInWei = formData.accessType === 'premium' 
-        ? parseDecimalToBigInt(formData.price, 6) // USDC has 6 decimals
+        ? BigInt(Math.round(parseFloat(formData.price) * 1e6)) // USDC has 6 decimals
         : BigInt(0)
 
-      // Submit through our UI integration hook
-      publishingUI.publishingActions.publishAction({
+      const publishData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
         ipfsHash: formData.ipfsHash,
-        title: formData.title,
-        description: formData.description,
         category: formData.category!,
         payPerViewPrice: priceInWei,
         tags: formData.tags
-      })
+      }
+
+      console.log('Publishing content with data:', publishData)
+
+      // Submit through our UI integration hook
+      publishingUI.publishingActions.publishAction(publishData)
 
       setShowTransactionModal(true)
 
     } catch (error) {
+      console.error('Error preparing publish data:', error)
       setUploadProgress({
         step: 'error',
         percentage: 0,
         message: 'Failed to register content. Please try again.',
         canRetry: true
       })
+      setValidationErrors(prev => ({
+        ...prev,
+        price: 'Invalid price format'
+      }))
     }
-  }, [formData, validateForm, publishingUI])
+  }, [formData, publishingUI])
 
   // Handle adding tags
   const handleAddTag = useCallback(() => {
@@ -403,6 +527,7 @@ export function ContentUploadForm({
       fileInputRef.current.value = ''
     }
     setFormData(prev => ({ ...prev, file: null, ipfsHash: '' }))
+    setValidationErrors(prev => ({ ...prev, file: undefined, ipfsHash: undefined }))
   }, [])
 
   // Get file type icon
@@ -420,6 +545,16 @@ export function ContentUploadForm({
   // Render the main form content
   const formContent = (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Creator Requirements Check */}
+      {!publishingUI.canPublish && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {publishingUI.creatorRequirements.registrationText}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* File Upload Section */}
       <FileUploadSection
         uploadProgress={uploadProgress}
@@ -429,6 +564,7 @@ export function ContentUploadForm({
         onRetryUpload={handleRetryUpload}
         getFileIcon={getFileIcon}
         validationErrors={validationErrors}
+        isUploading={isUploading}
       />
 
       {/* Content Metadata Section */}
@@ -444,12 +580,19 @@ export function ContentUploadForm({
         />
       )}
 
-      {/* Creator Requirements Check */}
-      <CreatorRequirementsSection publishingUI={publishingUI} />
+      {/* Publishing Status */}
+      {publishingUI.publishingActions.isProcessing && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>
+            Publishing content to blockchain...
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Form Actions */}
       <FormActionsSection
-        canSubmit={uploadProgress.step === 'completed' && formData.ipfsHash !== ''}
+        canSubmit={uploadProgress.step === 'completed' && formData.ipfsHash !== '' && publishingUI.canPublish}
         isSubmitting={publishingUI.publishingActions.isProcessing}
         onCancel={onCancel}
       />
@@ -524,7 +667,8 @@ function FileUploadSection({
   onFileSelect,
   onRetryUpload,
   getFileIcon,
-  validationErrors
+  validationErrors,
+  isUploading
 }: {
   uploadProgress: UploadProgress
   formData: ContentFormData
@@ -532,7 +676,8 @@ function FileUploadSection({
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
   onRetryUpload: () => void
   getFileIcon: (file: File | null) => React.ReactNode
-  validationErrors: Record<string, string>
+  validationErrors: ValidationErrors
+  isUploading: boolean
 }) {
   const [isDragging, setIsDragging] = useState(false)
 
@@ -590,7 +735,7 @@ function FileUploadSection({
             <div>
               <p className="text-lg font-medium">Drop your file here or click to browse</p>
               <p className="text-sm text-muted-foreground">
-                Supports documents, images, videos, and audio files up to 100MB
+                Supports documents, images, videos, and audio files up to 50MB
               </p>
             </div>
             <Button
@@ -683,7 +828,7 @@ function ContentMetadataSection({
 }: {
   formData: ContentFormData
   setFormData: React.Dispatch<React.SetStateAction<ContentFormData>>
-  validationErrors: Record<string, string>
+  validationErrors: ValidationErrors
   tagInput: string
   setTagInput: React.Dispatch<React.SetStateAction<string>>
   onAddTag: () => void
@@ -713,13 +858,14 @@ function ContentMetadataSection({
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Enter a compelling title for your content"
               className={cn(validationErrors.title && 'border-red-500')}
+              maxLength={200}
             />
-            {validationErrors.title && (
-              <p className="text-sm text-red-600">{validationErrors.title}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {formData.title.length}/200 characters
-            </p>
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>{validationErrors.title && (
+                <span className="text-red-600">{validationErrors.title}</span>
+              )}</span>
+              <span>{formData.title.length}/200</span>
+            </div>
           </div>
 
           {/* Description Input */}
@@ -732,13 +878,14 @@ function ContentMetadataSection({
               placeholder="Describe your content and what makes it valuable"
               rows={4}
               className={cn(validationErrors.description && 'border-red-500')}
+              maxLength={1000}
             />
-            {validationErrors.description && (
-              <p className="text-sm text-red-600">{validationErrors.description}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {formData.description.length}/1000 characters
-            </p>
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>{validationErrors.description && (
+                <span className="text-red-600">{validationErrors.description}</span>
+              )}</span>
+              <span>{formData.description.length}/1000</span>
+            </div>
           </div>
         </TabsContent>
 
@@ -785,7 +932,10 @@ function ContentMetadataSection({
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="price"
-                  type="text"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="50"
                   value={formData.price}
                   onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                   placeholder="1.00"
@@ -796,7 +946,7 @@ function ContentMetadataSection({
                 <p className="text-sm text-red-600">{validationErrors.price}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Set a price between $0.01 and $100.00
+                Price range: $0.01 - $50.00
               </p>
             </div>
           )}
@@ -890,38 +1040,6 @@ function ContentMetadataSection({
         </TabsContent>
       </Tabs>
     </div>
-  )
-}
-
-/**
- * Creator Requirements Section Component
- * 
- * This section validates that the user meets the requirements for publishing
- * content and provides guidance if they need to complete additional setup.
- */
-function CreatorRequirementsSection({
-  publishingUI
-}: {
-  publishingUI: ReturnType<typeof useContentPublishingUI>
-}) {
-  if (publishingUI.creatorRequirements.isRegisteredCreator) {
-    return (
-      <Alert>
-        <CheckCircle className="h-4 w-4" />
-        <AlertDescription>
-          You're registered as a creator and ready to publish content.
-        </AlertDescription>
-      </Alert>
-    )
-  }
-
-  return (
-    <Alert variant="destructive">
-      <AlertCircle className="h-4 w-4" />
-      <AlertDescription>
-        {publishingUI.creatorRequirements.registrationText}
-      </AlertDescription>
-    </Alert>
   )
 }
 
