@@ -3,13 +3,22 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
-
 import { cn } from "@/lib/utils"
 
+// Enhanced Dialog Root with better default props
 function Dialog({
+  modal = true, // Ensure modal behavior
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+}: React.ComponentProps<typeof DialogPrimitive.Root> & {
+  modal?: boolean
+}) {
+  return (
+    <DialogPrimitive.Root 
+      data-slot="dialog" 
+      modal={modal}
+      {...props} 
+    />
+  )
 }
 
 function DialogTrigger({
@@ -18,10 +27,24 @@ function DialogTrigger({
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
+// Enhanced Portal with container targeting for better z-index control
 function DialogPortal({
+  container,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+}: React.ComponentProps<typeof DialogPrimitive.Portal> & {
+  container?: HTMLElement | null
+}) {
+  // Default to document body if no container specified
+  // This ensures the modal renders at the top level
+  const portalContainer = container || (typeof document !== 'undefined' ? document.body : undefined)
+  
+  return (
+    <DialogPrimitive.Portal 
+      data-slot="dialog-portal" 
+      container={portalContainer}
+      {...props} 
+    />
+  )
 }
 
 function DialogClose({
@@ -30,6 +53,7 @@ function DialogClose({
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+// Enhanced Overlay with higher z-index and better animation
 function DialogOverlay({
   className,
   ...props
@@ -38,7 +62,12 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[99999] bg-black/50",
+        // CRITICAL: Higher z-index to ensure it's above everything
+        "fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm",
+        // Enhanced animations for better UX
+        "data-[state=open]:animate-in data-[state=closed]:animate-out",
+        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "data-[state=open]:duration-300 data-[state=closed]:duration-200",
         className
       )}
       {...props}
@@ -46,31 +75,69 @@ function DialogOverlay({
   )
 }
 
+// Enhanced Dialog Content with maximum z-index and robust positioning
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  forceRender = false, // Emergency prop to force visibility
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  forceRender?: boolean // Debug prop - forces visibility regardless of other issues
 }) {
   return (
-    <DialogPortal data-slot="dialog-portal">
+    <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         aria-describedby={undefined}
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[99999] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
+          // CRITICAL: Maximum z-index to ensure visibility above everything
+          "fixed top-[50%] left-[50%] z-[9999]",
+          // CRITICAL: Robust positioning and centering
+          "translate-x-[-50%] translate-y-[-50%]",
+          // CRITICAL: Explicit dimensions and constraints
+          "w-full max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]",
+          "sm:max-w-lg",
+          // Styling and animations
+          "grid gap-4 rounded-lg border bg-background p-6 shadow-lg",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+          "data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]",
+          "duration-200",
+          // Emergency force render styles
+          forceRender && "!opacity-100 !visible !pointer-events-auto",
           className
         )}
+        style={{
+          // Emergency inline styles to force visibility if needed
+          ...(forceRender && {
+            zIndex: 10000,
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            opacity: 1,
+            visibility: 'visible',
+            pointerEvents: 'auto',
+          }),
+        }}
         {...props}
       >
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className={cn(
+              "absolute top-4 right-4 z-10",
+              "rounded-sm opacity-70 ring-offset-background transition-opacity",
+              "hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              "disabled:pointer-events-none",
+              "[&_svg]:pointer-events-none [&_svg]:size-4"
+            )}
           >
             <XIcon />
             <span className="sr-only">Close</span>

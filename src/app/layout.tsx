@@ -26,6 +26,8 @@ import { EnhancedWeb3Provider, Web3ProviderDebugInfo } from '@/components/provid
 
 // Import global styles - the order here matters!
 import './globals.css'
+import '@rainbow-me/rainbowkit/styles.css'
+import '../styles/rainbowkit-fixes.css'
 
 
 // Configure the Inter font for optimal performance and accessibility

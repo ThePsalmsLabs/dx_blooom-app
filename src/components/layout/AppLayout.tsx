@@ -350,7 +350,7 @@ function AppHeader({
   headerContent
 }: AppHeaderProps) {
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-background">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Left side - Logo and navigation toggle */}
@@ -471,14 +471,24 @@ function UserProfileDropdown({
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent className="w-56" align="end">
+      {/* 
+        KEY FIX: Add custom className with higher z-index to overcome 
+        the stacking context created by the header's backdrop-blur 
+      */}
+      <DropdownMenuContent 
+        className="w-56 z-[9999]" 
+        align="end"
+        side="bottom"
+        sideOffset={8}
+        avoidCollisions={true}
+      >
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
               {userRole === 'creator' ? 'Creator Account' : 'User Account'}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {formatAddress(address  as `0x${string}`)}
+              {formatAddress(address as `0x${string}`)}
             </p>
             {creatorProfile?.isVerified && (
               <Badge variant="secondary" className="w-fit text-xs">
