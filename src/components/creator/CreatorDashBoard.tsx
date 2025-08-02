@@ -304,6 +304,83 @@ export function EnhancedCreatorDashboard({
   // Loading state management
   const isLoading = dashboardUI.isLoading || miniAppAnalytics.isLoading
 
+  // Show a helpful message if analytics are limited
+  if (miniAppAnalytics.data?.isLimited) {
+    return (
+      <div className={cn('dashboard-container space-y-6', className)}>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <h3 className="text-yellow-800 font-medium">Limited Analytics Mode</h3>
+          <p className="text-yellow-700 text-sm mt-1">
+            {miniAppAnalytics.data.reason} - Some features may not be available.
+          </p>
+        </div>
+        
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button
+                    onClick={dashboardUI.quickActions.viewAnalyticsAction}
+                    className="w-full"
+                  >
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    View Analytics
+                  </Button>
+                  <Button
+                    onClick={dashboardUI.quickActions.updatePricingAction}
+                    className="w-full"
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Update Pricing
+                  </Button>
+                  <Button
+                    onClick={dashboardUI.quickActions.publishContentAction}
+                    className="w-full"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Publish Content
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Address</span>
+                    <span className="font-mono text-sm">{creatorAddress}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Subscription Price</span>
+                    <span className="font-medium">{creatorProfile.data?.subscriptionPrice ? `${creatorProfile.data.subscriptionPrice} USDC` : 'Not set'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <Badge variant={creatorProfile.data?.isVerified ? 'default' : 'secondary'}>
+                      {creatorProfile.data?.isVerified ? 'Verified' : 'Unverified'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Member Since</span>
+                    <span className="text-sm">{creatorProfile.data?.registrationTime ? new Date(Number(creatorProfile.data.registrationTime) * 1000).toLocaleDateString() : 'Unknown'}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={cn('dashboard-container space-y-6', className)}>
       {/* Enhanced Dashboard Header with Social Metrics */}
@@ -1278,6 +1355,100 @@ function AnalyticsDashboard({
           <CardContent>
             <div className="h-64 flex items-center justify-center text-muted-foreground">
               Revenue source breakdown visualization
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Basic Dashboard Content Component
+ * 
+ * This component provides a basic structure for the dashboard when analytics
+ * are limited due to missing providers. It displays a message and allows
+ * the user to navigate to settings or view analytics.
+ */
+interface BasicDashboardContentProps {
+  readonly creatorProfile: ReturnType<typeof useCreatorProfile>['data']
+  readonly dashboardUI: ReturnType<typeof useCreatorDashboardUI>
+  readonly isLoading: boolean
+  readonly creatorAddress: string
+}
+
+function BasicDashboardContent({
+  creatorProfile,
+  dashboardUI,
+  isLoading,
+  creatorAddress
+}: BasicDashboardContentProps) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <h3 className="text-yellow-800 font-medium">Limited Analytics Mode</h3>
+        <p className="text-yellow-700 text-sm mt-1">
+          Analytics are currently limited. Please check your provider settings
+          or contact support for assistance.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Button
+                onClick={dashboardUI.quickActions.viewAnalyticsAction}
+                className="w-full"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                View Analytics
+              </Button>
+              <Button
+                onClick={dashboardUI.quickActions.updatePricingAction}
+                className="w-full"
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Update Pricing
+              </Button>
+              <Button
+                onClick={dashboardUI.quickActions.publishContentAction}
+                className="w-full"
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Publish Content
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+                             <div className="flex items-center justify-between">
+                 <span className="text-sm text-muted-foreground">Address</span>
+                 <span className="font-mono text-sm">{creatorAddress || 'Unknown'}</span>
+               </div>
+               <div className="flex items-center justify-between">
+                 <span className="text-sm text-muted-foreground">Subscription Price</span>
+                 <span className="font-medium">{creatorProfile?.subscriptionPrice ? `${creatorProfile.subscriptionPrice} USDC` : 'Not set'}</span>
+               </div>
+               <div className="flex items-center justify-between">
+                 <span className="text-sm text-muted-foreground">Status</span>
+                 <Badge variant={creatorProfile?.isVerified ? 'default' : 'secondary'}>
+                   {creatorProfile?.isVerified ? 'Verified' : 'Unverified'}
+                 </Badge>
+               </div>
+               <div className="flex items-center justify-between">
+                 <span className="text-sm text-muted-foreground">Member Since</span>
+                 <span className="text-sm">{creatorProfile?.registrationTime ? new Date(Number(creatorProfile.registrationTime) * 1000).toLocaleDateString() : 'Unknown'}</span>
+               </div>
             </div>
           </CardContent>
         </Card>

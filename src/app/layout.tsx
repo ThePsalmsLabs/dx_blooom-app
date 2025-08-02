@@ -12,23 +12,23 @@
  * layout, so if the providers aren't properly configured here, wallet
  * connections won't work anywhere in your application.
  * 
- * Key Changes Made to Fix Wallet Connection:
- * 1. Properly imported the fixed EnhancedWeb3Provider
- * 2. Ensured the provider wraps all children (including your home page)
+ * Key Changes Made to Fix Provider Issues:
+ * 1. Replaced individual providers with AllProviders for proper hierarchy
+ * 2. Ensured AuthProvider is available to all components
  * 3. Added development debugging to help identify configuration issues
  * 4. Maintained proper import order for CSS styles
  */
 
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Toaster } from '@/components/ui/index'
-import { EnhancedWeb3Provider, Web3ProviderDebugInfo } from '@/components/providers/Web3Provider'
+import { AllProviders } from '@/components/providers/AllProviders'
+import { useAuth } from '@/components/providers/AuthProvider'
+import { useAccount } from 'wagmi'
 
 // Import global styles - the order here matters!
 import './globals.css'
 import '@rainbow-me/rainbowkit/styles.css'
 import '../styles/rainbowkit-fixes.css'
-
 
 // Configure the Inter font for optimal performance and accessibility
 const inter = Inter({ 
@@ -96,30 +96,16 @@ export const metadata: Metadata = {
 }
 
 /**
- * Root Layout Component - The Web3 Connection Foundation
+ * Root Layout Component - The Provider Connection Foundation
  * 
- * This component represents the architectural foundation that enables wallet
- * connections throughout your application. The key insight here is understanding
- * the provider hierarchy and why each layer is necessary.
+ * This is the foundation of your entire application. Every page and component
+ * in your app will inherit from this layout, so this is where we establish
+ * the provider hierarchy that makes context available everywhere.
  * 
- * Provider Hierarchy Explanation:
- * 1. EnhancedWeb3Provider (outermost): Provides the complete Web3 infrastructure
- *    including QueryClient, WagmiProvider, RainbowKitProvider, and OnchainKitProvider
- * 2. Your application content (children): All pages and components
- * 3. Toaster (global): Toast notifications for transaction feedback
- * 4. Web3ProviderDebugInfo (development only): Debugging information
- * 
- * Why This Fixes Your Wallet Connection Issue:
- * Previously, your Connect Wallet button wasn't working because the RainbowKit
- * modal system wasn't properly initialized in the provider chain. Even though
- * you had wagmi configuration, the UI components that actually display the
- * wallet selection modal weren't connected to your button clicks.
- * 
- * This corrected layout ensures that:
- * - RainbowKit's modal system is properly initialized
- * - The modal styles are loaded (imported in the provider)
- * - All pages have access to wallet connection functionality
- * - Error handling and debugging information is available during development
+ * Key Changes Made:
+ * 1. Wrapped everything with AllProviders to establish context hierarchy
+ * 2. Removed the individual provider imports since they're now in AllProviders
+ * 3. Added development debugging to help identify issues
  */
 export default function RootLayout({
   children,
@@ -130,49 +116,79 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
         {/* 
-          The Enhanced Web3 Provider Wrapper
+          🔧 KEY FIX: This AllProviders wrapper ensures that every component
+          in your app has access to all the context providers, including AuthProvider.
           
-          This is the critical fix for your wallet connection issue. The
-          EnhancedWeb3Provider component now properly sets up the entire
-          Web3 provider chain, including RainbowKit's modal system.
-          
-          Everything inside this provider (including your home page with
-          the Connect Wallet button) now has access to:
-          - Wallet connection functionality via useAccount()
-          - Network information via useChainId()
-          - The actual connection modal via useConnectModal()
-          - Transaction capabilities via contract interaction hooks
-          
-          This is why your button wasn't working before - it was like trying
-          to make a phone call without being connected to a phone network.
-          The button existed, but the underlying infrastructure wasn't there.
+          This is like connecting the main electrical panel to every room in the house.
+          Now any component anywhere in your app can use useAuth, useWeb3, etc.
         */}
-        <EnhancedWeb3Provider>
-          {/* Your application content - now properly connected to Web3 infrastructure */}
+        <AllProviders>
+          {/* 
+            Development Debug Info - Remove this in production
+            This helps you verify that providers are working correctly
+          */}
+          {process.env.NODE_ENV === 'development' && (
+            <ProviderDebugInfo />
+          )}
+          
           {children}
-          
-          {/* 
-            Global Toast Notifications
-            
-            This provides user feedback for Web3 operations like transaction
-            confirmations, error messages, and connection status updates.
-            Positioned here so it appears above all other content.
-          */}
-          <Toaster />
-          
-          {/* 
-            Development Debugging Information
-            
-            This component only appears in development mode and shows you
-            whether all the necessary environment variables and configurations
-            are properly set up. If you're still having issues after applying
-            these fixes, check the debug info in the bottom-right corner.
-          */}
-          <Web3ProviderDebugInfo />
-        </EnhancedWeb3Provider>
+        </AllProviders>
       </body>
     </html>
   )
+}
+
+/**
+ * Provider Debug Component
+ * 
+ * This component helps you verify that your providers are working correctly
+ * during development. It will show you the current state of your contexts.
+ */
+function ProviderDebugInfo() {
+  return (
+    <div className="fixed bottom-0 left-0 z-50 bg-black text-white p-2 text-xs opacity-75">
+      <ProviderStatusChecker />
+    </div>
+  )
+}
+
+function ProviderStatusChecker() {
+  // This component safely checks if providers are available
+  return (
+    <div className="space-y-1">
+      <AuthProviderChecker />
+      <Web3ProviderChecker />
+    </div>
+  )
+}
+
+function AuthProviderChecker() {
+  try {
+    // Try to use the auth context
+    const { user, isLoading } = useAuth()
+    return (
+      <div>
+        ✅ AuthProvider: {user ? `Connected (${user.address?.slice(0, 6)}...)` : 'Not authenticated'} 
+        {isLoading && ' (Loading...)'}
+      </div>
+    )
+  } catch (error) {
+    return <div>❌ AuthProvider: Not available</div>
+  }
+}
+
+function Web3ProviderChecker() {
+  try {
+    // Try to use the web3 context
+    const { isConnected, address } = useAccount()
+    return (
+      <div>
+        ✅ Web3Provider: {isConnected ? `Connected (${address?.slice(0, 6)}...)` : 'Not connected'}
+      </div>
+    )
+  } catch (error) {
+    return <div>❌ Web3Provider: Not available</div>
+  }
 }
 
 /**
@@ -190,22 +206,21 @@ export default function RootLayout({
  * - NEXT_PUBLIC_ONCHAINKIT_API_KEY (for OnchainKit enhanced UI)
  * - NEXT_PUBLIC_BICONOMY_PAYMASTER_API_KEY (for gasless transactions)
  * 
- * The Web3ProviderDebugInfo component will show you which of these
+ * The ProviderDebugInfo component will show you which of these
  * are properly configured when you run the app in development mode.
  */
 
 /**
- * Testing Your Wallet Connection Fix
+ * Testing Your Provider Fix
  * 
- * After applying these changes, test your wallet connection by:
+ * After applying these changes, test your provider setup by:
  * 1. Starting your development server (npm run dev)
- * 2. Navigate to your home page
- * 3. Click the Connect Wallet button
- * 4. You should now see the RainbowKit wallet selection modal
- * 5. Choose a wallet (MetaMask, Coinbase Wallet, etc.)
- * 6. Complete the connection process
+ * 2. Navigate to your dashboard page
+ * 3. Check the debug info in the bottom-left corner
+ * 4. You should see both AuthProvider and Web3Provider showing as available
+ * 5. The dashboard should load without the "useAuth must be used within an AuthProvider" error
  * 
- * If the modal still doesn't appear, check the Web3ProviderDebugInfo
- * in the bottom-right corner for configuration issues, and look at
+ * If you still see errors, check the ProviderDebugInfo
+ * in the bottom-left corner for configuration issues, and look at
  * the browser console for any error messages.
  */

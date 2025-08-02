@@ -756,7 +756,7 @@ export async function testMiniAppCompatibility(): Promise<TestSuiteResult> {
       const testStartTime = Date.now()
       let passed = false
       let error: Error | undefined
-      let metadata: Record<string, unknown> = {}
+      const metadata: Record<string, unknown> = {}
       
       try {
         // Apply timeout if specified in test metadata

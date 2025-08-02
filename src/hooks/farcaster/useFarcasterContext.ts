@@ -6,7 +6,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuth } from '@/components/providers/AuthProvider'
 
 /**
  * Farcaster User Data Interface
@@ -76,6 +75,9 @@ export interface FarcasterContext {
   
   /** Context refresh function for updating social data */
   readonly refreshContext: () => Promise<void>
+  
+  /** Indicates if auth provider is available */
+  readonly hasAuthProvider: boolean
 }
 
 /**
@@ -102,10 +104,30 @@ interface MiniKitContext {
 }
 
 /**
- * Enhanced Farcaster Context Hook
+ * Optional Auth Hook
  * 
- * This hook integrates Farcaster social context with your existing authentication
- * system, creating enhanced user profiles that combine platform and social data.
+ * This hook tries to use the auth context, but doesn't throw an error
+ * if the AuthProvider isn't available. This makes components more resilient.
+ */
+function useOptionalAuth() {
+  try {
+    // Try to use the auth context
+    const { useAuth } = require('@/components/providers/AuthProvider')
+    const auth = useAuth()
+    return auth
+  } catch (error) {
+    // If AuthProvider isn't available, return null instead of throwing
+    console.warn('AuthProvider not available - using fallback behavior')
+    return null
+  }
+}
+
+/**
+ * Enhanced Farcaster Context Hook with Optional Auth
+ * 
+ * This version makes the auth dependency optional, so if AuthProvider
+ * isn't available, the hook can still function in a limited capacity.
+ * This pattern makes your components more resilient.
  * 
  * Key Features:
  * - Merges Farcaster user data with platform authentication state
@@ -114,9 +136,10 @@ interface MiniKitContext {
  * - Maintains compatibility with your existing authentication system
  * - Updates context when platform user changes
  * - Provides type-safe interfaces with no 'any' types
+ * - Makes auth dependency optional for better resilience
  * 
  * Integration Points:
- * - Uses your existing useAuth hook for platform user data
+ * - Uses your existing useAuth hook for platform user data (when available)
  * - Compatible with Component 3.1's MiniAppProvider
  * - Supports Component 3.2's x402 payment flow social context
  * - Designed for use in Mini App purchase interfaces and social sharing
@@ -126,10 +149,11 @@ interface MiniKitContext {
  * - Handles missing or incomplete Farcaster context safely
  * - Maintains fallback state without throwing errors
  * - Logs warnings for debugging but doesn't break application flow
+ * - Gracefully handles missing AuthProvider
  */
 export function useFarcasterContext(): FarcasterContext | undefined {
-  // Integrate with your existing authentication system
-  const { user: platformUser } = useAuth()
+  // 🔧 ENHANCED: Use optional auth with fallback
+  const auth = useOptionalAuth()
   
   // State management for Farcaster context
   const [farcasterContext, setFarcasterContext] = useState<FarcasterContext | undefined>(undefined)
@@ -225,13 +249,13 @@ export function useFarcasterContext(): FarcasterContext | undefined {
       
       // Add platform-specific information
       platformAddress,
-      isRegisteredCreator: platformUser?.isCreator ?? false,
+      isRegisteredCreator: auth?.user?.isCreator ?? false,
       
-      // Include creator profile if available
-      creatorProfile: platformUser?.isCreator ? {
-        displayName: platformUser.displayName,
-        subscriptionPrice: platformUser.subscriptionPrice,
-        totalEarnings: platformUser.totalEarnings,
+      // Add creator profile if available
+      creatorProfile: auth?.user ? {
+        displayName: auth.user.displayName,
+        subscriptionPrice: auth.user.subscriptionPrice,
+        totalEarnings: auth.user.totalEarnings,
       } : undefined,
       
       // Add verification status
@@ -239,113 +263,94 @@ export function useFarcasterContext(): FarcasterContext | undefined {
     }
     
     return enhancedUser
-  }, [platformUser])
+  }, [auth?.user])
 
   /**
-   * Context Refresh Function
+   * Context Initialization
    * 
-   * This function allows components to manually refresh the Farcaster context,
-   * useful when social data might have changed or after user interactions.
+   * This function initializes the complete Farcaster context by extracting
+   * MiniKit data and merging it with platform authentication state.
    */
-  const refreshContext = useCallback(async (): Promise<void> => {
-    if (!platformUser?.address) {
-      setFarcasterContext(undefined)
-      return
-    }
-
+  const initializeContext = async (): Promise<void> => {
     try {
+      setIsInitialized(false)
+      setError(null)
+      
+      // Extract MiniKit context
       const miniKitContext = await extractMiniKitContext()
       
-      if (!miniKitContext || !miniKitContext.user) {
-        setFarcasterContext(undefined)
+      if (!miniKitContext?.user) {
+        // Create fallback context when MiniKit is unavailable
+        const fallbackContext: FarcasterContext = {
+          user: {
+            fid: 0,
+            username: 'unknown',
+            displayName: 'Unknown User',
+            pfpUrl: '',
+            verifications: [],
+          },
+          enhancedUser: {
+            fid: 0,
+            username: 'unknown',
+            displayName: 'Unknown User',
+            pfpUrl: '',
+            verifications: [],
+            platformAddress: auth?.user?.address || '',
+            isRegisteredCreator: auth?.user?.isCreator || false,
+            isAddressVerified: false,
+          },
+          isMiniAppEnvironment,
+          refreshContext: async () => {
+            console.warn('Refresh not available in fallback mode')
+          },
+          hasAuthProvider: !!auth,
+        }
+        
+        setFarcasterContext(fallbackContext)
+        setIsInitialized(true)
         return
       }
       
-      // Create properly typed Farcaster user data
+      // Create Farcaster user from MiniKit context
       const farcasterUser: FarcasterUser = {
         fid: miniKitContext.user.fid,
-        username: miniKitContext.user.username ?? '',
-        displayName: miniKitContext.user.displayName ?? '',
-        pfpUrl: miniKitContext.user.pfpUrl ?? '',
-        verifications: miniKitContext.user.verifications ?? [],
+        username: miniKitContext.user.username || 'unknown',
+        displayName: miniKitContext.user.displayName || 'Unknown User',
+        pfpUrl: miniKitContext.user.pfpUrl || '',
+        verifications: miniKitContext.user.verifications || [],
       }
       
-      // Create enhanced user profile
-      const enhancedUser = createEnhancedUser(farcasterUser, platformUser.address)
+      // Create enhanced user by merging with platform data
+      const platformAddress = auth?.user?.address || ''
+      const enhancedUser = createEnhancedUser(farcasterUser, platformAddress)
       
-      // Create complete Farcaster context
-      const newContext: FarcasterContext = {
+      // Create complete context
+      const context: FarcasterContext = {
         user: farcasterUser,
         enhancedUser,
         isMiniAppEnvironment,
-        refreshContext,
+        refreshContext: async () => {
+          await initializeContext()
+        },
+        hasAuthProvider: !!auth,
       }
       
-      setFarcasterContext(newContext)
-      setError(null)
-      
-    } catch (refreshError) {
-      const error = refreshError instanceof Error ? refreshError : new Error('Context refresh failed')
-      setError(error)
-      console.warn('Failed to refresh Farcaster context:', error)
-      setFarcasterContext(undefined)
+      setFarcasterContext(context)
+      setIsInitialized(true)
+    } catch (initializationError) {
+      console.error('Failed to initialize Farcaster context:', initializationError)
+      setError(initializationError instanceof Error ? initializationError : new Error('Context initialization failed'))
+      setIsInitialized(true)
     }
-  }, [platformUser?.address, extractMiniKitContext, createEnhancedUser, isMiniAppEnvironment])
+  }
 
-  /**
-   * Initial Context Setup Effect
-   * 
-   * This effect runs when the hook is first mounted and when the platform user changes,
-   * ensuring that the Farcaster context is always synchronized with the authentication state.
-   */
+  // Initialize context when component mounts or dependencies change
   useEffect(() => {
-    let mounted = true
-
-    const initializeContext = async (): Promise<void> => {
-      // Only initialize if we have a platform user and haven't initialized yet
-      if (!platformUser?.address || isInitialized) {
-        return
-      }
-
-      try {
-        await refreshContext()
-        
-        if (mounted) {
-          setIsInitialized(true)
-        }
-      } catch (initError) {
-        console.warn('Failed to initialize Farcaster context:', initError)
-        
-        if (mounted) {
-          setError(initError instanceof Error ? initError : new Error('Initialization failed'))
-          setIsInitialized(true) // Mark as initialized even if failed to prevent retries
-        }
-      }
+    if (!isInitialized) {
+      initializeContext()
     }
+  }, [isInitialized, auth?.user?.address, auth?.user?.isCreator])
 
-    initializeContext()
-
-    return () => {
-      mounted = false
-    }
-  }, [platformUser?.address, isInitialized, refreshContext])
-
-  /**
-   * Platform User Change Effect
-   * 
-   * This effect refreshes the Farcaster context whenever the platform user changes,
-   * ensuring that the enhanced user profile stays synchronized with authentication state.
-   */
-  useEffect(() => {
-    // Only refresh if we're already initialized and have a platform user
-    if (isInitialized && platformUser?.address) {
-      refreshContext()
-    } else if (isInitialized && !platformUser?.address) {
-      // Clear context if platform user is no longer available
-      setFarcasterContext(undefined)
-    }
-  }, [platformUser?.address, platformUser?.isCreator, platformUser?.displayName, isInitialized, refreshContext])
-
-  // Return undefined for graceful degradation when context is unavailable
+  // Return context when available
   return farcasterContext
 }

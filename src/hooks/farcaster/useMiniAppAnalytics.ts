@@ -94,6 +94,12 @@ interface MiniAppAnalytics {
     /** Percentage of earnings from social channels */
     readonly socialConversionRate: number
   }
+  
+  /** Indicates if analytics are limited due to missing providers */
+  readonly isLimited?: boolean
+  
+  /** Reason for limited analytics */
+  readonly reason?: string
 }
 
 /**
@@ -450,6 +456,65 @@ export function useMiniAppAnalytics(
 
   // Memoized Farcaster Hub client for API interactions
   const hubClient = useMemo(() => new FarcasterHubClient(FARCASTER_HUB_CONFIG), [])
+
+  /**
+   * Enhanced Mini App Analytics Hook with Optional Dependencies
+   * 
+   * This version gracefully handles missing auth providers and provides
+   * meaningful fallback data when dependencies aren't available.
+   */
+  
+  // Fallback analytics when full context isn't available
+  const fallbackMetrics = useMemo(() => ({
+    frameViews: 0,
+    castEngagement: 0,
+    socialConversions: 0,
+    viralCoefficient: 0
+  }), [])
+  
+  // Use real analytics if auth is available, otherwise use fallbacks
+  const analytics = useMemo(() => {
+    if (!farcasterContext?.hasAuthProvider) {
+      console.info('Using fallback analytics - auth provider not available')
+      return {
+        ...fallbackMetrics,
+        isLimited: true,
+        reason: 'Authentication not available'
+      }
+    }
+    
+    // Your real analytics logic here
+    return {
+      frameViews: calculateFrameViews(farcasterContext),
+      castEngagement: calculateCastEngagement(farcasterContext),
+      socialConversions: calculateSocialConversions(farcasterContext),
+      viralCoefficient: calculateViralCoefficient(farcasterContext),
+      isLimited: false
+    }
+  }, [farcasterContext, fallbackMetrics])
+
+  /**
+   * Placeholder calculation functions - implement these based on your needs
+   */
+  function calculateFrameViews(context: any): number {
+    // Your implementation here
+    return 0
+  }
+
+  function calculateCastEngagement(context: any): number {
+    // Your implementation here  
+    return 0
+  }
+
+  function calculateSocialConversions(context: any): number {
+    // Your implementation here
+    return 0
+  }
+
+  function calculateViralCoefficient(context: any): number {
+    // Your implementation here
+    return 0
+  }
 
   /**
    * Fetch Frame Analytics Data
