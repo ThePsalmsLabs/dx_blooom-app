@@ -12,7 +12,4 @@ export { CreatorDashboard } from './CreatorDashBoard'
 export { CreatorVerificationStatus, VERIFICATION_REQUIREMENTS } from './CreatorVerificationStatus'
 export { VerifiedCreatorCard, VerificationEligibilityCard } from './VerificationEligibility'
 export { VerificationApplicationCard } from './VerificationApplication'
-export { AdminVerificationDashboard } from './AdminVerificationDashboard'
-
-// Creator registration form
-export { CreatorRegistrationForm } from './CreatorRegistrationForm' 
+export { AdminVerificationDashboard } from './AdminVerificationDashboard' 
