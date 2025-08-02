@@ -33,7 +33,8 @@ import {
   Shield,
   Sparkles,
   ChevronLeft,
-  ExternalLink
+  ExternalLink,
+  CheckCircle
 } from 'lucide-react'
 
 import {
@@ -101,7 +102,7 @@ interface OnboardingStep {
  */
 export default function CreatorOnboardingPage() {
   return (
-    <AppLayout>
+    <AppLayout className="bg-gradient-to-br from-background via-background to-primary/5">
       <RouteGuards requiredLevel="public">
         <OnboardingContent />
       </RouteGuards>
@@ -116,24 +117,15 @@ export default function CreatorOnboardingPage() {
  * from AppLayout.
  */
 function OnboardingContent() {
-  // Router for navigation after successful onboarding
   const router = useRouter()
-  
-  // Wallet connection state from wagmi
   const { address, isConnected } = useAccount()
-  
-  // Our UI integration hooks provide clean, component-friendly interfaces
   const walletUI = useWalletConnectionUI()
-  
-  // The core business logic hook that manages the entire onboarding workflow
   const onboarding = useCreatorOnboarding(address)
-  
-  // Toast for notifications - NOW PROPERLY AVAILABLE FROM APPLAYOUT
   const { toast } = useToast()
   
-  // Local form state for user input collection
+  // Form state management
   const [formData, setFormData] = useState<OnboardingFormData>({
-    subscriptionPrice: '3.00', // Default to $3/month
+    subscriptionPrice: '5.00', // Updated default from 3.00 to 5.00
     bio: '',
     websiteUrl: '',
     socialHandle: ''
@@ -142,16 +134,13 @@ function OnboardingContent() {
   // UI state for enhanced user experience
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
-
-  /**
-   * Form Validation Logic
-   * 
-   * Updated to ensure profile data is provided, preventing smart contract reverts.
-   */
+  const [isNavigating, setIsNavigating] = useState(false)
+  
+  // Enhanced form validation
   const validateForm = useCallback((data: OnboardingFormData): Record<string, string> => {
     const errors: Record<string, string> = {}
     
-    // Subscription price validation with clear business rules
+    // Price validation
     const price = parseFloat(data.subscriptionPrice)
     if (isNaN(price) || price < 0.01) {
       errors.subscriptionPrice = 'Minimum subscription price is $0.01'
@@ -160,10 +149,10 @@ function OnboardingContent() {
       errors.subscriptionPrice = 'Maximum subscription price is $100.00'
     }
     
-    // Profile data validation to prevent contract revert
+    // Profile content validation - ensure at least one field has content
     const hasProfileContent = [
       data.bio?.trim(),
-      data.websiteUrl?.trim(),
+      data.websiteUrl?.trim(), 
       data.socialHandle?.trim()
     ].some(field => field && field.length > 0)
     
@@ -182,12 +171,8 @@ function OnboardingContent() {
     
     return errors
   }, [])
-
-  /**
-   * Helper function to construct profile data from form inputs
-   * 
-   * Creates a non-empty profile string required by the smart contract.
-   */
+  
+  // Construct profile data from form inputs
   const constructProfileData = useCallback((data: OnboardingFormData): string => {
     const profileParts = [
       data.bio?.trim() || '',
@@ -195,22 +180,16 @@ function OnboardingContent() {
       data.socialHandle?.trim() || ''
     ].filter(part => part.length > 0)
     
-    // Ensure non-empty profile data
+    // Ensure we have at least some profile content
     if (profileParts.length === 0) {
       return `Creator Profile - Subscription: $${data.subscriptionPrice}/month`
     }
     
     return profileParts.join(' | ')
   }, [])
-
-  /**
-   * Form Submission Handler
-   * 
-   * Updated to pass both subscription price and profile data to the smart contract,
-   * fixing the "execution reverted" error.
-   */
+  
+  // Enhanced form submission with better error handling
   const handleSubmit = useCallback(async () => {
-    // Validate form data before proceeding
     const errors = validateForm(formData)
     setFormErrors(errors)
     
@@ -224,43 +203,27 @@ function OnboardingContent() {
     }
     
     try {
-      // Convert subscription price to blockchain format (USDC has 6 decimals)
       const subscriptionPriceWei = BigInt(Math.floor(parseFloat(formData.subscriptionPrice) * 1000000))
-      
-      // Construct profile data from form data
       const profileData = constructProfileData(formData)
       
-      // Validate profile data before sending transaction
       if (!profileData || profileData.trim().length === 0) {
         throw new Error('Profile data cannot be empty')
       }
       
-      // Log the values being sent for debugging
-      console.group('🚀 Creator Registration Attempt')
-      console.log('Subscription Price (input):', formData.subscriptionPrice)
+      console.group('🚀 Enhanced Page: Submitting Registration')
+      console.log('Form Data:', formData)
       console.log('Subscription Price (wei):', subscriptionPriceWei.toString())
       console.log('Profile Data:', profileData)
-      console.log('Profile Data Length:', profileData.length)
       console.groupEnd()
       
-      // Pass both required parameters to the registration function
       onboarding.register(subscriptionPriceWei, profileData)
       
       toast({
         title: "Registration Started",
         description: "Your creator registration is being processed on the blockchain.",
       })
-      
     } catch (error) {
-      console.error('Onboarding submission error:', error)
-      
-      // Enhanced error logging for debugging
-      console.group('❌ Registration Error Details')
-      console.log('Error message:', (error as Error).message)
-      console.log('Form data at time of error:', formData)
-      console.log('Error stack:', (error as Error).stack)
-      console.groupEnd()
-      
+      console.error('Enhanced submission error:', error)
       toast({
         title: "Registration Failed",
         description: (error as Error).message || "There was an error processing your registration. Please try again.",
@@ -268,37 +231,35 @@ function OnboardingContent() {
       })
     }
   }, [formData, validateForm, constructProfileData, onboarding, toast])
-
-  /**
-   * Success Handling
-   * 
-   * When onboarding completes successfully, we provide clear feedback
-   * and guide the user to their next logical destination.
-   */
+  
+  // Enhanced success handling with better navigation logic
   useEffect(() => {
-    if (onboarding.currentStep === 'registered' && onboarding.profile) {
-      setShowSuccessDialog(true)
+    if (onboarding.currentStep === 'registered' && !isNavigating) {
+      if (!showSuccessDialog) {
+        setShowSuccessDialog(true)
+        toast({
+          title: "Registration Successful!",
+          description: "Welcome to the creator economy! Redirecting to dashboard...",
+        })
+      }
       
-      toast({
-        title: "Registration Successful!",
-        description: "Welcome to the creator economy! Redirecting to dashboard...",
-      })
-      
-      // Auto-redirect to dashboard after showing success
+      setIsNavigating(true)
       const redirectTimeout = setTimeout(() => {
         router.push('/dashboard')
-      }, 3000)
+      }, 2500)
       
       return () => clearTimeout(redirectTimeout)
     }
-  }, [onboarding.currentStep, onboarding.profile, router, toast])
-
-  /**
-   * Onboarding Steps Configuration
-   * 
-   * This creates a visual progress indicator that reflects the actual
-   * workflow state from our business logic hooks.
-   */
+  }, [onboarding.currentStep, onboarding.profile, router, toast, showSuccessDialog, isNavigating])
+  
+  // Handle navigation state reset if user navigates away manually
+  useEffect(() => {
+    return () => {
+      setIsNavigating(false)
+    }
+  }, [])
+  
+  // Enhanced onboarding steps configuration with better state reflection
   const onboardingSteps: readonly OnboardingStep[] = useMemo(() => [
     {
       id: 'wallet',
@@ -313,25 +274,43 @@ function OnboardingContent() {
       title: 'Create Profile',
       description: 'Set up your creator profile and subscription pricing',
       icon: User,
-      completed: onboarding.currentStep === 'registered',
-      active: isConnected && onboarding.currentStep !== 'registered'
+      completed: onboarding.currentStep === 'registered' || showSuccessDialog,
+      active: isConnected && onboarding.currentStep !== 'registered' && !showSuccessDialog
     },
     {
       id: 'verify',
       title: 'Blockchain Registration',
       description: 'Complete registration on the blockchain',
       icon: Shield,
-      completed: onboarding.currentStep === 'registered',
-      active: onboarding.registrationProgress.isSubmitting || onboarding.registrationProgress.isConfirming
+      completed: onboarding.currentStep === 'registered' || showSuccessDialog,
+      active: onboarding.registrationProgress.isSubmitting || 
+             onboarding.registrationProgress.isConfirming ||
+             (onboarding.currentStep === 'registered' && !showSuccessDialog)
     }
-  ], [isConnected, onboarding.currentStep, onboarding.registrationProgress])
-
+  ], [
+    isConnected, 
+    onboarding.currentStep, 
+    onboarding.registrationProgress,
+    showSuccessDialog
+  ])
+  
   const currentStepIndex = onboardingSteps.findIndex(step => step.active)
-  const progressPercentage = ((onboardingSteps.filter(step => step.completed).length) / onboardingSteps.length) * 100
+  const completedSteps = onboardingSteps.filter(step => step.completed).length
+  const progressPercentage = (completedSteps / onboardingSteps.length) * 100
+  
+  // Enhanced debug information
+  useEffect(() => {
+    console.group('🔍 Enhanced Page: State Debug')
+    console.log('Progress Percentage:', progressPercentage)
+    console.log('Completed Steps:', completedSteps)
+    console.log('Current Step Index:', currentStepIndex)
+    console.log('Registration Progress:', onboarding.registrationProgress)
+    console.groupEnd()
+  }, [progressPercentage, completedSteps, currentStepIndex, onboarding.registrationProgress])
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Page Header with Clear Value Proposition */}
+    <div className="max-w-4xl mx-auto py-8 px-4">
+      {/* Enhanced Page Header */}
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2 mb-4">
           <Sparkles className="h-8 w-8 text-primary" />
@@ -342,32 +321,53 @@ function OnboardingContent() {
           and start monetizing your content on the blockchain.
         </p>
       </div>
-
-      {/* Progress Indicator */}
+      
+      {/* Enhanced Progress Indicator */}
       <Card className="mb-8">
-        <CardContent className="pt-6">
+        <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Setup Progress</h3>
-            <Badge variant="outline">
-              Step {currentStepIndex + 1} of {onboardingSteps.length}
-            </Badge>
+            <h2 className="text-lg font-semibold">Setup Progress</h2>
+            <span className="text-sm text-muted-foreground">
+              Step {Math.max(1, currentStepIndex + 1)} of {onboardingSteps.length}
+              {showSuccessDialog && " - Complete!"}
+            </span>
           </div>
           
           <Progress value={progressPercentage} className="mb-6" />
           
-          <div className="flex justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {onboardingSteps.map((step, index) => (
-              <OnboardingStepIndicator
+              <div
                 key={step.id}
-                step={step}
-                isFirst={index === 0}
-                isLast={index === onboardingSteps.length - 1}
-              />
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg transition-colors",
+                  step.completed && "bg-green-50 border border-green-200",
+                  step.active && "bg-blue-50 border border-blue-200",
+                  !step.completed && !step.active && "bg-gray-50"
+                )}
+              >
+                <div className={cn(
+                  "flex items-center justify-center w-8 h-8 rounded-full",
+                  step.completed && "bg-green-500 text-white",
+                  step.active && "bg-blue-500 text-white",
+                  !step.completed && !step.active && "bg-gray-300 text-gray-600"
+                )}>
+                  {step.completed ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <step.icon className="h-4 w-4" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{step.title}</p>
+                  <p className="text-xs text-muted-foreground">{step.description}</p>
+                </div>
+              </div>
             ))}
           </div>
         </CardContent>
       </Card>
-
+      
       {/* Responsive Navigation for Step Tracking */}
       <ResponsiveNavigation 
         userRole="disconnected"
@@ -377,7 +377,7 @@ function OnboardingContent() {
           console.log(`Navigation context changed to: ${context}`)
         }, [])}
       />
-
+      
       {/* Wallet Address Display */}
       {isConnected && address && (
         <Card className="mb-6">
@@ -409,7 +409,7 @@ function OnboardingContent() {
           </CardContent>
         </Card>
       )}
-
+      
       {/* Back Navigation */}
       <div className="mb-6">
         <Button
@@ -421,41 +421,71 @@ function OnboardingContent() {
           Back
         </Button>
       </div>
-
-      {/* Main Content Area with Step-by-Step Flow */}
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Primary Flow Panel */}
+      
+      {/* Enhanced Content Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          {!isConnected ? (
-            <WalletConnectionCard walletUI={walletUI} />
-          ) : onboarding.isRegistered ? (
-            <AlreadyRegisteredCard profile={onboarding.profile} />
-          ) : (
-            <CreatorProfileSetupCard
-              formData={formData}
-              formErrors={formErrors}
-              onFormChange={setFormData}
-              onSubmit={handleSubmit}
-              isLoading={onboarding.isLoading}
-              registrationProgress={onboarding.registrationProgress}
-            />
-          )}
+          {(() => {
+            if (!isConnected) {
+              return <WalletConnectionCard walletUI={walletUI} />
+            }
+            
+            if (onboarding.currentStep === 'checking') {
+              return <CheckingRegistrationCard />
+            }
+            
+            if (onboarding.currentStep === 'registered' || showSuccessDialog) {
+              return <RegistrationSuccessCard profile={onboarding.profile} isNavigating={isNavigating} />
+            }
+            
+            if (onboarding.currentStep === 'error') {
+              return <RegistrationErrorCard error={onboarding.error} onRetry={() => onboarding.reset()} />
+            }
+            
+            return (
+              <CreatorProfileSetupCard
+                formData={formData}
+                formErrors={formErrors}
+                onFormChange={setFormData}
+                onSubmit={handleSubmit}
+                isLoading={onboarding.registrationProgress.isSubmitting || onboarding.registrationProgress.isConfirming}
+                registrationProgress={onboarding.registrationProgress}
+              />
+            )
+          })()}
         </div>
-
-        {/* Information Sidebar */}
+        
         <div className="space-y-6">
           <BenefitsCard />
           <HelpCard />
         </div>
       </div>
-
-      {/* Success Dialog */}
-      <SuccessDialog
-        open={showSuccessDialog}
-        onOpenChange={setShowSuccessDialog}
-        profile={onboarding.profile}
-        onGoToDashboard={() => router.push('/dashboard')}
-      />
+      
+      {/* Enhanced Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+              Registration Successful!
+            </DialogTitle>
+            <DialogDescription>
+              Welcome to the creator economy! You're now registered as a creator and can start 
+              monetizing your content. {isNavigating ? "Redirecting to your dashboard..." : ""}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-between items-center pt-4">
+            <Button variant="outline" onClick={() => setShowSuccessDialog(false)}>
+              Stay Here
+            </Button>
+            <Button onClick={() => router.push('/dashboard')}>
+              Go to Dashboard
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -807,48 +837,60 @@ function HelpCard() {
   )
 }
 
-interface SuccessDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  profile: Creator | null
-  onGoToDashboard: () => void
+// Helper components for different states
+function CheckingRegistrationCard() {
+  return (
+    <Card>
+      <CardContent className="p-6 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Checking Registration Status</h3>
+        <p className="text-muted-foreground">Please wait while we verify your account...</p>
+      </CardContent>
+    </Card>
+  )
 }
 
-function SuccessDialog({ open, onOpenChange, profile, onGoToDashboard }: SuccessDialogProps) {
+interface RegistrationSuccessCardProps {
+  profile: Creator | null
+  isNavigating: boolean
+}
+
+function RegistrationSuccessCard({ profile, isNavigating }: RegistrationSuccessCardProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-green-100 rounded-full">
-            <Check className="h-6 w-6 text-green-600" />
-          </div>
-          <DialogTitle className="text-center">Welcome to the Creator Economy!</DialogTitle>
-          <DialogDescription className="text-center">
-            Your creator profile has been successfully registered on the blockchain.
-          </DialogDescription>
-        </DialogHeader>
-        
-        {profile && (
-          <div className="bg-muted p-4 rounded-lg">
-            <h4 className="font-medium mb-2">Your Creator Profile</h4>
-            <div className="space-y-1 text-sm">
-              <div>Subscription Price: {formatCurrency(BigInt(profile.subscriptionPrice), 6, 'USDC')}/month</div>
-              <div>Registration: {new Date(Number(profile.registrationTime) * 1000).toLocaleDateString()}</div>
-            </div>
-          </div>
+    <Card className="border-green-200 bg-green-50">
+      <CardContent className="p-6 text-center">
+        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2 text-green-800">Registration Complete!</h3>
+        <p className="text-green-700 mb-4">
+          {isNavigating 
+            ? "Successfully registered! Redirecting to your creator dashboard..." 
+            : "You're now a registered creator on the platform!"}
+        </p>
+        {isNavigating && (
+          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
         )}
-        
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-            Stay Here
-          </Button>
-          <Button onClick={onGoToDashboard} className="flex-1">
-            Go to Dashboard
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
+  )
+}
+
+interface RegistrationErrorCardProps {
+  error: Error | null
+  onRetry: () => void
+}
+
+function RegistrationErrorCard({ error, onRetry }: RegistrationErrorCardProps) {
+  return (
+    <Card className="border-red-200 bg-red-50">
+      <CardContent className="p-6 text-center">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2 text-red-800">Registration Failed</h3>
+        <p className="text-red-700 mb-4">{error?.message || "An error occurred during registration"}</p>
+        <Button onClick={onRetry} variant="outline">
+          Try Again
+        </Button>
+      </CardContent>
+    </Card>
   )
 }
 
