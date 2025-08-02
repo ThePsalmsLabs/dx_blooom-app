@@ -288,6 +288,9 @@ export interface ContentPublishingUI {
   // User feedback
   readonly errorMessage: string | null
   readonly successMessage: string | null
+  
+  // Published content information
+  readonly publishedContentId: bigint | null
 }
 
 /**
@@ -993,7 +996,8 @@ export function useContentPublishingUI(userAddress: Address | undefined): Conten
     creatorRequirements,
     transactionStatus,
     errorMessage,
-    successMessage
+    successMessage,
+    publishedContentId: publishingFlow.publishedContentId
   }
 }
 
