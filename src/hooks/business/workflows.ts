@@ -1137,11 +1137,14 @@ export interface CreatorOnboardingFlowResult {
   readonly isLoading: boolean
   readonly error: Error | null
   readonly isRegistered: boolean
+  
   // Creator profile data (available after successful registration)
   readonly profile: Creator | null
-  // Registration actions
-  readonly register: (subscriptionPrice: bigint) => void
+  
+  // 🔧 FIXED: Registration action now accepts both required parameters
+  readonly register: (subscriptionPrice: bigint, profileData: string) => void
   readonly reset: () => void
+  
   // Registration progress tracking
   readonly registrationProgress: {
     readonly isSubmitting: boolean
@@ -1191,19 +1194,18 @@ export function useCreatorOnboarding(
   })
   
   // Derived state for UI components
-  const isRegistered = registrationCheck.data ?? false 
+  const isRegistered = registrationCheck.data ?? false
   const isLoading = registrationCheck.isLoading || 
                    creatorProfile.isLoading || 
-                   workflowState.currentStep === 'registering' ||
-                   workflowState.currentStep === 'checking'
+                   registerCreator.isLoading
   
-  // Registration progress tracking for transaction feedback
+  // Registration progress tracking
   const registrationProgress = useMemo(() => ({
     isSubmitting: registerCreator.isLoading && !registerCreator.isConfirmed,
-    isConfirming: registerCreator.isConfirming,
+    isConfirming: registerCreator.isLoading && !registerCreator.isConfirmed,
     isConfirmed: registerCreator.isConfirmed,
     transactionHash: registerCreator.hash
-  }), [registerCreator])
+  }), [registerCreator.isLoading, registerCreator.isConfirmed, registerCreator.hash])
   
   // Profile data formatting for UI consumption
   const profileData = useMemo(() => {
@@ -1220,42 +1222,60 @@ export function useCreatorOnboarding(
     }
   }, [creatorProfile.data, isRegistered])
   
-  // Main registration action
-  const register = useCallback((subscriptionPrice: bigint) => {
+  // 🔧 FIXED: Register function now accepts both parameters
+  const register = useCallback(async (subscriptionPrice: bigint, profileData: string) => {
     if (!userAddress) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: new Error('Wallet connection required for registration')
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Wallet not connected') 
       })
       return
     }
     
     if (isRegistered) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: new Error('Already registered as creator')
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Already registered as creator') 
       })
       return
     }
     
-    if (subscriptionPrice <= BigInt(0)) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: new Error('Subscription price must be greater than 0')
+    // 🔧 ADDED: Validate profile data before sending transaction
+    if (!profileData || profileData.trim().length === 0) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Profile data cannot be empty') 
+      })
+      return
+    }
+    
+    // 🔧 ADDED: Validate subscription price before sending transaction  
+    if (subscriptionPrice < BigInt(10000) || subscriptionPrice > BigInt(100000000)) {
+      setWorkflowState({ 
+        currentStep: 'error', 
+        error: new Error('Subscription price must be between $0.01 and $100.00') 
       })
       return
     }
     
     try {
-      setWorkflowState(prev => ({ ...prev, error: null, currentStep: 'registering' }))
+      setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
       
-      // Call the contract registration function
-      // The profileData parameter can be enhanced later to include IPFS metadata
-      registerCreator.write({ 
-        subscriptionPrice, 
-        profileData: '' // Empty for now, can be enhanced with IPFS profile metadata
+      // 🔧 FIXED: Call registerCreator with both required parameters
+      console.group('🔧 Hook: Calling registerCreator with parameters')
+      console.log('Subscription Price (BigInt):', subscriptionPrice.toString())
+      console.log('Profile Data:', profileData)
+      console.log('Profile Data Length:', profileData.length)
+      console.groupEnd()
+      
+      // This calls your useRegisterCreator hook, which should map to the smart contract
+      registerCreator.write({
+        subscriptionPrice,
+        profileData
       })
+      
     } catch (error) {
+      console.error('Registration hook error:', error)
       setWorkflowState({ 
         currentStep: 'error', 
         error: error instanceof Error ? error : new Error('Registration failed')
@@ -1302,18 +1322,20 @@ export function useCreatorOnboarding(
     if (registerCreator.isLoading && !registerCreator.isConfirmed) {
       setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
     } else if (registerCreator.error) {
+      console.error('Registration transaction error:', registerCreator.error)
       setWorkflowState({ 
         currentStep: 'error', 
         error: registerCreator.error 
       })
     } else if (registerCreator.isConfirmed) {
+      console.log('✅ Registration transaction confirmed!')
       setWorkflowState(prev => ({ ...prev, currentStep: 'registered' }))
       
       // Refresh registration status and profile data after successful registration
       registrationCheck.refetch()
       creatorProfile.refetch()
     }
-  }, [registerCreator.isLoading, registerCreator.isConfirmed, registerCreator.error])
+  }, [registerCreator.isLoading, registerCreator.isConfirmed, registerCreator.error, registrationCheck, creatorProfile])
   
   // Effect: Handle transition from registered back to checking when address changes
   useEffect(() => {

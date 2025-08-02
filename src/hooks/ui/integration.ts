@@ -149,7 +149,7 @@ export interface CreatorOnboardingUI {
   readonly registrationForm: {
     readonly isSubmitting: boolean
     readonly validationError: string | null
-    readonly submitAction: (subscriptionPrice: string) => void  // Takes formatted price string
+    readonly submitAction: (subscriptionPrice: string, profileData?: string) => void  // Takes formatted price string and optional profile data
     readonly reset: () => void
   }
   
@@ -587,7 +587,7 @@ export function useCreatorOnboardingUI(userAddress: Address | undefined): Creato
   }, [onboardingFlow.currentStep])
   
   // Enhanced registration action with validation
-  const handleSubmitRegistration = useCallback((subscriptionPriceText: string) => {
+  const handleSubmitRegistration = useCallback((subscriptionPriceText: string, profileData: string = '') => {
     try {
       setValidationError(null)
       
@@ -605,10 +605,16 @@ export function useCreatorOnboardingUI(userAddress: Address | undefined): Creato
         throw new Error('Subscription price cannot exceed $100.00')
       }
       
+      
+      // Validate profile data
+      if (!profileData || profileData.trim().length === 0) {
+        throw new Error('Profile data cannot be empty')
+      }
+      
       // Convert to BigInt format (USDC has 6 decimals)
       const priceInSmallestUnit = BigInt(Math.round(priceNumber * 1000000))
       
-      onboardingFlow.register(priceInSmallestUnit)
+      onboardingFlow.register(priceInSmallestUnit, profileData)
     } catch (error) {
       setValidationError(error instanceof Error ? error.message : 'Invalid input')
     }

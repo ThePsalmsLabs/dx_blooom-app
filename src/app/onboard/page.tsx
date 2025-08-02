@@ -133,7 +133,7 @@ function OnboardingContent() {
   
   // Local form state for user input collection
   const [formData, setFormData] = useState<OnboardingFormData>({
-    subscriptionPrice: '3.00', // Default to $5/month
+    subscriptionPrice: '3.00', // Default to $3/month
     bio: '',
     websiteUrl: '',
     socialHandle: ''
@@ -146,8 +146,7 @@ function OnboardingContent() {
   /**
    * Form Validation Logic
    * 
-   * This function demonstrates how we maintain type safety and user experience
-   * by validating all inputs before submitting to the blockchain.
+   * Updated to ensure profile data is provided, preventing smart contract reverts.
    */
   const validateForm = useCallback((data: OnboardingFormData): Record<string, string> => {
     const errors: Record<string, string> = {}
@@ -161,12 +160,22 @@ function OnboardingContent() {
       errors.subscriptionPrice = 'Maximum subscription price is $100.00'
     }
     
-    // Optional bio validation for quality content
-    if (data.bio.length > 500) {
+    // Profile data validation to prevent contract revert
+    const hasProfileContent = [
+      data.bio?.trim(),
+      data.websiteUrl?.trim(),
+      data.socialHandle?.trim()
+    ].some(field => field && field.length > 0)
+    
+    if (!hasProfileContent) {
+      errors.bio = 'Please provide at least a bio, website, or social handle'
+    }
+    
+    // Individual field validation
+    if (data.bio && data.bio.length > 500) {
       errors.bio = 'Bio must be less than 500 characters'
     }
     
-    // URL validation for website field
     if (data.websiteUrl && !isValidUrl(data.websiteUrl)) {
       errors.websiteUrl = 'Please enter a valid website URL'
     }
@@ -175,10 +184,30 @@ function OnboardingContent() {
   }, [])
 
   /**
+   * Helper function to construct profile data from form inputs
+   * 
+   * Creates a non-empty profile string required by the smart contract.
+   */
+  const constructProfileData = useCallback((data: OnboardingFormData): string => {
+    const profileParts = [
+      data.bio?.trim() || '',
+      data.websiteUrl?.trim() || '',
+      data.socialHandle?.trim() || ''
+    ].filter(part => part.length > 0)
+    
+    // Ensure non-empty profile data
+    if (profileParts.length === 0) {
+      return `Creator Profile - Subscription: $${data.subscriptionPrice}/month`
+    }
+    
+    return profileParts.join(' | ')
+  }, [])
+
+  /**
    * Form Submission Handler
    * 
-   * This function shows how we bridge user input to blockchain transactions
-   * while maintaining excellent error handling and user feedback.
+   * Updated to pass both subscription price and profile data to the smart contract,
+   * fixing the "execution reverted" error.
    */
   const handleSubmit = useCallback(async () => {
     // Validate form data before proceeding
@@ -195,11 +224,27 @@ function OnboardingContent() {
     }
     
     try {
-      // Convert form data to blockchain-compatible format
-      const subscriptionPriceWei = BigInt(Math.floor(parseFloat(formData.subscriptionPrice) * 1000000)) // Convert to USDC decimals
+      // Convert subscription price to blockchain format (USDC has 6 decimals)
+      const subscriptionPriceWei = BigInt(Math.floor(parseFloat(formData.subscriptionPrice) * 1000000))
       
-      // Execute the registration through our business logic hook
-      onboarding.register(subscriptionPriceWei)
+      // Construct profile data from form data
+      const profileData = constructProfileData(formData)
+      
+      // Validate profile data before sending transaction
+      if (!profileData || profileData.trim().length === 0) {
+        throw new Error('Profile data cannot be empty')
+      }
+      
+      // Log the values being sent for debugging
+      console.group('🚀 Creator Registration Attempt')
+      console.log('Subscription Price (input):', formData.subscriptionPrice)
+      console.log('Subscription Price (wei):', subscriptionPriceWei.toString())
+      console.log('Profile Data:', profileData)
+      console.log('Profile Data Length:', profileData.length)
+      console.groupEnd()
+      
+      // Pass both required parameters to the registration function
+      onboarding.register(subscriptionPriceWei, profileData)
       
       toast({
         title: "Registration Started",
@@ -208,13 +253,21 @@ function OnboardingContent() {
       
     } catch (error) {
       console.error('Onboarding submission error:', error)
+      
+      // Enhanced error logging for debugging
+      console.group('❌ Registration Error Details')
+      console.log('Error message:', (error as Error).message)
+      console.log('Form data at time of error:', formData)
+      console.log('Error stack:', (error as Error).stack)
+      console.groupEnd()
+      
       toast({
         title: "Registration Failed",
-        description: "There was an error processing your registration. Please try again.",
+        description: (error as Error).message || "There was an error processing your registration. Please try again.",
         variant: "destructive"
       })
     }
-  }, [formData, validateForm, onboarding, toast])
+  }, [formData, validateForm, constructProfileData, onboarding, toast])
 
   /**
    * Success Handling
@@ -464,7 +517,7 @@ function WalletConnectionCard({ walletUI }: WalletConnectionCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-                        <WalletConnectButton variant="outline" size="lg" showModal={true} />
+        <WalletConnectButton variant="outline" size="lg" showModal={true} />
         
         {walletUI.error && (
           <Alert variant="destructive">
@@ -598,7 +651,7 @@ function CreatorProfileSetupCard({
 
         {/* Optional Profile Fields */}
         <div className="space-y-4">
-          <h4 className="font-medium">Optional Profile Information</h4>
+          <h4 className="font-medium">Profile Information</h4>
           
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>
@@ -780,9 +833,7 @@ function SuccessDialog({ open, onOpenChange, profile, onGoToDashboard }: Success
             <h4 className="font-medium mb-2">Your Creator Profile</h4>
             <div className="space-y-1 text-sm">
               <div>Subscription Price: {formatCurrency(BigInt(profile.subscriptionPrice), 6, 'USDC')}/month</div>
-
               <div>Registration: {new Date(Number(profile.registrationTime) * 1000).toLocaleDateString()}</div>
-
             </div>
           </div>
         )}
@@ -804,11 +855,11 @@ function SuccessDialog({ open, onOpenChange, profile, onGoToDashboard }: Success
 /**
  * Utility Functions
  */
-function isValidUrl(string: string): boolean {
+function isValidUrl(url: string): boolean {
   try {
-    new URL(string)
-    return true
-  } catch (_) {
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
+    return ['http:', 'https:'].includes(urlObj.protocol)
+  } catch {
     return false
   }
 }
