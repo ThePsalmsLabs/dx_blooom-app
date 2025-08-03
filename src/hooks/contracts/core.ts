@@ -28,8 +28,6 @@ import {
   useWriteContract, 
   useWaitForTransactionReceipt,
   useChainId,
-  useAccount,
-  useBlockNumber
 } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useEffect } from 'react'
@@ -42,7 +40,8 @@ import {
   getPayPerViewContract,
   getSubscriptionManagerContract,
   getCommerceIntegrationContract,
-  getPriceOracleContract
+  getPriceOracleContract,
+  getContractAddresses
 } from '@/lib/contracts/config'
 import { 
   CREATOR_REGISTRY_ABI,
@@ -662,13 +661,13 @@ export function useHasContentAccess(
  * 
  * @returns Write hook for content purchases
  */
-export function usePurchaseContent(): ContractWriteWithConfirmationResult {
+export function usePurchaseContent() {
   const chainId = useChainId()
   const queryClient = useQueryClient()
-  const contractConfig = useMemo(() => getPayPerViewContract(chainId), [chainId])
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
 
   const writeResult = useWriteContract()
-
+  
   const confirmationResult = useWaitForTransactionReceipt({
     hash: writeResult.data,
     query: {
@@ -676,30 +675,34 @@ export function usePurchaseContent(): ContractWriteWithConfirmationResult {
     }
   })
 
+  // Invalidate access queries when purchase is confirmed
   useEffect(() => {
     if (confirmationResult.isSuccess) {
       queryClient.invalidateQueries({ 
         predicate: (query) => 
-          query.queryKey.includes('hasAccess')
+          query.queryKey.includes('hasAccess') ||
+          query.queryKey.includes('hasPaidForContent')
       })
     }
   }, [confirmationResult.isSuccess, queryClient])
 
-  const writeWithValidation = useCallback((args?: unknown) => {
-    if (typeof args !== 'bigint') {
-      throw new Error('Expected a Bigint for content ID')
+  const write = useCallback((contentId: bigint) => {
+    if (!contentId) {
+      throw new Error('Content ID is required for purchase')
     }
-    const contentId = args
-    if (contentId <= BigInt(0)) {
-      throw new Error('Invalid content ID')
+
+    try {
+      writeResult.writeContract({
+        address: contractAddresses.PAY_PER_VIEW,
+        abi: PAY_PER_VIEW_ABI,
+        functionName: 'purchaseContentDirect', // This is the actual smart contract function
+        args: [contentId],
+      })
+    } catch (error) {
+      console.error('Purchase failed:', error)
+      throw error
     }
-    writeResult.writeContract({
-      address: contractConfig.address,
-      abi: PAY_PER_VIEW_ABI,
-      functionName: 'purchaseContentDirect',
-      args: [contentId],
-    })
-  }, [writeResult, contractConfig.address])
+  }, [writeResult, contractAddresses.PAY_PER_VIEW])
 
   return {
     hash: writeResult.data,
@@ -709,11 +712,11 @@ export function usePurchaseContent(): ContractWriteWithConfirmationResult {
     isSuccess: writeResult.isSuccess,
     isConfirming: confirmationResult.isLoading,
     isConfirmed: confirmationResult.isSuccess,
-    confirmationError: confirmationResult.error,
-    write: writeWithValidation,
+    write,
     reset: writeResult.reset
   }
 }
+
 
 // ===== SUBSCRIPTION MANAGER HOOKS =====
 // These hooks handle creator subscriptions and recurring access
@@ -951,9 +954,11 @@ export function useTokenAllowance(
  * 
  * @returns Write hook for token approvals
  */
-export function useApproveToken(): ContractWriteWithConfirmationResult {
+export function useApproveToken() {
+  const chainId = useChainId()
   const queryClient = useQueryClient()
-  
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
+
   const writeResult = useWriteContract()
   
   const confirmationResult = useWaitForTransactionReceipt({
@@ -963,55 +968,37 @@ export function useApproveToken(): ContractWriteWithConfirmationResult {
     }
   })
 
-  // Invalidate allowance queries when approval confirms
+  // Invalidate allowance queries when approval is confirmed
   useEffect(() => {
     if (confirmationResult.isSuccess) {
       queryClient.invalidateQueries({ 
-        predicate: (query) => query.queryKey.includes('allowance')
+        predicate: (query) => 
+          query.queryKey.includes('allowance')
       })
     }
   }, [confirmationResult.isSuccess, queryClient])
 
-  const writeWithValidation = useCallback((args?: unknown) => {
-    if (
-      !args ||
-      typeof args !== 'object' ||
-      !('tokenAddress' in args) ||
-      !('spender' in args) ||
-      !('amount' in args)
-    ) {
-      throw new Error('Invalid approval parameters');
+  const write = useCallback((params: {
+    tokenAddress: Address
+    spender: Address  
+    amount: bigint
+  }) => {
+    if (!params.tokenAddress || !params.spender || !params.amount) {
+      throw new Error('Token address, spender, and amount are required for approval')
     }
-  
-    const { tokenAddress, spender, amount } = args as {
-      tokenAddress: Address;
-      spender: Address;
-      amount: bigint;
-    };
-  
-    const isValidAddress = (addr: string) =>
-      typeof addr === 'string' && /^0x[a-fA-F0-9]{40}$/.test(addr) && addr !== '0x0000000000000000000000000000000000000000';
-  
-    if (!isValidAddress(tokenAddress)) {
-      throw new Error('Valid token address is required');
+
+    try {
+      writeResult.writeContract({
+        address: params.tokenAddress, // This will be the USDC contract address
+        abi: ERC20_ABI, // Standard ERC20 approval function
+        functionName: 'approve',
+        args: [params.spender, params.amount],
+      })
+    } catch (error) {
+      console.error('Token approval failed:', error)
+      throw error
     }
-  
-    if (!isValidAddress(spender)) {
-      throw new Error('Valid spender address is required');
-    }
-  
-    if (typeof amount !== 'bigint' || amount < BigInt(0)) {
-      throw new Error('Approval amount must be a non-negative bigint');
-    }
-  
-    writeResult.writeContract({
-      address: tokenAddress,
-      abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [spender, amount],
-    });
-  }, [writeResult]);
-  
+  }, [writeResult])
 
   return {
     hash: writeResult.data,
@@ -1021,8 +1008,7 @@ export function useApproveToken(): ContractWriteWithConfirmationResult {
     isSuccess: writeResult.isSuccess,
     isConfirming: confirmationResult.isLoading,
     isConfirmed: confirmationResult.isSuccess,
-    confirmationError: confirmationResult.error,
-    write: writeWithValidation,
+    write,
     reset: writeResult.reset
   }
 }
