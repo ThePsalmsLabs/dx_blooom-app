@@ -880,74 +880,83 @@ export function useContentPurchaseUI(
  * interface with validation feedback and publishing status tracking.
  */
 export function useContentPublishingUI(userAddress: Address | undefined): ContentPublishingUI {
-  const publishingFlow = useContentPublishingFlow(userAddress)
-  const creatorRegistration = useIsCreatorRegistered(userAddress)
-  
+  const publishingFlow = useContentPublishingFlow(userAddress);
+  const creatorRegistration = useIsCreatorRegistered(userAddress);
+
   // Format current step for display
   const currentStepText = useMemo(() => {
     switch (publishingFlow.currentStep) {
       case 'idle':
-        return 'Ready to publish content'
+        return 'Ready to publish content';
       case 'checking_creator':
-        return 'Verifying creator status...'
+        return 'Verifying creator status...';
       case 'validating_content':
-        return 'Validating content data...'
+        return 'Validating content data...';
       case 'registering':
-        return 'Publishing content...'
+        return 'Publishing content...';
       case 'completed':
-        return 'Content published successfully!'
+        return 'Content published successfully!';
       case 'error':
-        return 'Publishing failed'
+        return 'Publishing failed';
       default:
-        return 'Unknown status'
+        return 'Unknown status';
     }
-  }, [publishingFlow.currentStep])
-  
+  }, [publishingFlow.currentStep]);
+
   // Enhanced validation function
   const validateContent = useCallback((data: ContentPublishingData): boolean => {
-    // This would use the same validation logic as the workflow
-    // but provide immediate feedback for form validation
     return data.title.length > 0 && 
            data.ipfsHash.length > 0 && 
-           data.payPerViewPrice > BigInt(0)
-  }, [])
-  
+           data.payPerViewPrice > BigInt(0);
+  }, []);
+
   // Creator requirements formatting
   const creatorRequirements = useMemo(() => {
-    const isRegistered = creatorRegistration.data ?? false
+    const isRegistered = creatorRegistration.data ?? false;
     return {
       isRegisteredCreator: isRegistered,
       needsRegistration: !isRegistered,
       registrationText: isRegistered 
         ? 'You are registered as a creator' 
-        : 'You must register as a creator first'
-    }
-  }, [creatorRegistration.data])
-  
+        : 'You must register as a creator first',
+    };
+  }, [creatorRegistration.data]);
+
+  // Create stable action references
+  const publishingActions = useMemo(() => ({
+    publishAction: (data: ContentPublishingData) => {
+      publishingFlow.publish(data);
+    },
+    isProcessing: publishingFlow.isLoading,
+    reset: () => {
+      publishingFlow.reset();
+    },
+  }), [publishingFlow.publish, publishingFlow.isLoading, publishingFlow.reset]);
+
   // Create transaction status UI
   const transactionStatus: TransactionStatusUI = useMemo(() => {
-    const progress = publishingFlow.publishingProgress
+    const progress = publishingFlow.publishingProgress;
     
-    let status: TransactionStatusUI['status'] = 'idle'
-    let formattedStatus = 'Ready to publish'
-    let progressText = ''
+    let status: TransactionStatusUI['status'] = 'idle';
+    let formattedStatus = 'Ready to publish';
+    let progressText = '';
     
     if (progress.isSubmitting) {
-      status = 'submitting'
-      formattedStatus = 'Publishing content...'
-      progressText = 'Please confirm the transaction'
+      status = 'submitting';
+      formattedStatus = 'Publishing content...';
+      progressText = 'Please confirm the transaction';
     } else if (progress.isConfirming) {
-      status = 'confirming'
-      formattedStatus = 'Confirming publication...'
-      progressText = 'Waiting for blockchain confirmation'
+      status = 'confirming';
+      formattedStatus = 'Confirming publication...';
+      progressText = 'Waiting for blockchain confirmation';
     } else if (progress.isConfirmed) {
-      status = 'confirmed'
-      formattedStatus = 'Content published!'
-      progressText = 'Your content is now live on the platform'
+      status = 'confirmed';
+      formattedStatus = 'Content published!';
+      progressText = 'Your content is now live on the platform';
     } else if (publishingFlow.error) {
-      status = 'failed'
-      formattedStatus = 'Publishing failed'
-      progressText = formatWeb3Error(publishingFlow.error)
+      status = 'failed';
+      formattedStatus = 'Publishing failed';
+      progressText = formatWeb3Error(publishingFlow.error);
     }
     
     return {
@@ -959,26 +968,32 @@ export function useContentPublishingUI(userAddress: Address | undefined): Conten
         submitted: progress.isSubmitting || progress.isConfirming || progress.isConfirmed,
         confirming: progress.isConfirming,
         confirmed: progress.isConfirmed,
-        progressText
+        progressText,
       },
       retry: publishingFlow.reset,
       reset: publishingFlow.reset,
       viewTransaction: () => {
         if (progress.transactionHash) {
-          const baseUrl = 'https://basescan.org/tx/'
-          window.open(`${baseUrl}${progress.transactionHash}`, '_blank')
+          const baseUrl = 'https://basescan.org/tx/';
+          window.open(`${baseUrl}${progress.transactionHash}`, '_blank');
         }
-      }
-    }
-  }, [publishingFlow])
-  
+      },
+    };
+  }, [publishingFlow.publishingProgress, publishingFlow.error, publishingFlow.reset]);
+
   // Format success/error messages
-  const successMessage = publishingFlow.currentStep === 'completed' 
-    ? 'Your content has been published successfully!' 
-    : null
-    
-  const errorMessage = publishingFlow.error ? formatWeb3Error(publishingFlow.error) : null
-  
+  const successMessage = useMemo(() => 
+    publishingFlow.currentStep === 'completed' 
+      ? 'Your content has been published successfully!' 
+      : null,
+    [publishingFlow.currentStep]
+  );
+
+  const errorMessage = useMemo(() => 
+    publishingFlow.error ? formatWeb3Error(publishingFlow.error) : null,
+    [publishingFlow.error]
+  );
+
   return {
     canPublish: creatorRegistration.data ?? false,
     isLoading: publishingFlow.isLoading || creatorRegistration.isLoading,
@@ -986,21 +1001,16 @@ export function useContentPublishingUI(userAddress: Address | undefined): Conten
     validation: {
       isValid: false,
       errors: [],
-      validateContent
+      validateContent,
     },
-    publishingActions: {
-      publishAction: publishingFlow.publish,
-      isProcessing: publishingFlow.isLoading,
-      reset: publishingFlow.reset
-    },
+    publishingActions,
     creatorRequirements,
     transactionStatus,
     errorMessage,
     successMessage,
-    publishedContentId: publishingFlow.publishedContentId
-  }
+    publishedContentId: publishingFlow.publishedContentId,
+  };
 }
-
 // ===== CREATOR DASHBOARD UI INTEGRATION =====
 
 /**

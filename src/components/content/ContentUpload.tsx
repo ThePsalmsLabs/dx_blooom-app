@@ -16,6 +16,7 @@
  * - Seamless integration with smart contract registration
  * - Comprehensive error handling and recovery options
  * - Responsive design optimized for creator workflows
+ * - Optimized to prevent infinite re-render loops
  * 
  * This component showcases how complex Web3 operations can be transformed
  * into intuitive form-based experiences that feel familiar to creators from
@@ -24,7 +25,7 @@
 
 'use client'
 
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Upload,
   FileText,
@@ -72,7 +73,6 @@ import { cn } from '@/lib/utils'
 // Import our UI integration hooks and utilities
 import { useContentPublishingUI } from '@/hooks/ui/integration'
 import { TransactionStatusModal } from '@/components/web3/TransactionStatus'
-
 import { ContentCategory, categoryToString } from '@/types/contracts'
 
 // ===== REAL IPFS INTEGRATION WITH PROGRESS TRACKING =====
@@ -173,7 +173,7 @@ interface ContentFormData {
   category: ContentCategory | null
   price: string
   tags: string[]
-  accessType: 'public' | 'premium' | 'subscription'
+  accessType: 'free' | 'premium'
   file: File | null
   ipfsHash: string
   ipfsGateway: string
@@ -212,8 +212,8 @@ function validateFormData(formData: ContentFormData): ValidationErrors {
   }
   
   // Category validation
-  if (formData.category === null) {
-    errors.category = 'Please select a content category'
+  if (!formData.category) {
+    errors.category = 'Category is required'
   }
   
   // Price validation for premium content
@@ -292,6 +292,15 @@ export function ContentUploadForm({
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [networkStatus, setNetworkStatus] = useState<'online' | 'offline'>('online')
   
+  // Memoized values to prevent unnecessary re-renders
+  const publishedContentId = useMemo(() => publishingUI.publishedContentId, [publishingUI.publishedContentId])
+  const isProcessing = useMemo(() => publishingUI.publishingActions.isProcessing, [publishingUI.publishingActions.isProcessing])
+  
+  // Stable callback for onSuccess
+  const stableOnSuccess = useCallback((contentId: bigint) => {
+    onSuccess?.(contentId)
+  }, [onSuccess])
+  
   // Monitor network status
   useEffect(() => {
     const handleOnline = () => setNetworkStatus('online')
@@ -306,18 +315,32 @@ export function ContentUploadForm({
   
   // Handle successful content publication
   useEffect(() => {
-    if (publishingUI.publishedContentId) {
-      console.log('🎉 Content published successfully:', publishingUI.publishedContentId)
-      onSuccess?.(publishingUI.publishedContentId)
+    if (publishedContentId) {
+      console.log('🎉 Content published successfully:', publishedContentId)
+      stableOnSuccess(publishedContentId)
+      // Reset form on successful publication
+      setFormData({
+        title: '',
+        description: '',
+        category: null,
+        price: '1.00',
+        tags: [],
+        accessType: 'premium',
+        file: null,
+        ipfsHash: '',
+        ipfsGateway: ''
+      })
+      setUploadStatus('idle')
+      setShowTransactionModal(false)
     }
-  }, [publishingUI.publishedContentId, onSuccess])
+  }, [publishedContentId, stableOnSuccess])
   
   // Show transaction modal during registration
   useEffect(() => {
-    if (publishingUI.publishingActions.isProcessing && !showTransactionModal) {
+    if (isProcessing && !showTransactionModal) {
       setShowTransactionModal(true)
     }
-  }, [publishingUI.publishingActions.isProcessing, showTransactionModal])
+  }, [isProcessing, showTransactionModal])
   
   // ===== EVENT HANDLERS =====
   
@@ -462,7 +485,7 @@ export function ContentUploadForm({
         price: 'Invalid price format'
       }))
     }
-  }, [formData, publishingUI])
+  }, [formData, publishingUI.canPublish, publishingUI.publishingActions])
   
   // Get file type icon
   const getFileIcon = useCallback((file: File | null) => {
@@ -554,35 +577,44 @@ export function ContentUploadForm({
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading || networkStatus === 'offline'}
               >
-                {networkStatus === 'offline' ? 'No Connection' : 'Select File'}
+                {networkStatus === 'offline' ? (
+                  <>
+                    <WifiOff className="h-4 w-4 mr-2" />
+                    Offline
+                  </>
+                ) : (
+                  'Choose File'
+                )}
               </Button>
             </div>
           )}
           
           {uploadStatus === 'uploading' && (
             <div className="space-y-4">
-              <Loader2 className="h-12 w-12 mx-auto animate-spin" />
+              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
               <div>
                 <p className="text-lg font-medium">Uploading to IPFS...</p>
                 <Progress value={uploadProgress} className="mt-2" />
-                <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {Math.round(uploadProgress)}% complete
+                </p>
               </div>
             </div>
           )}
           
           {uploadStatus === 'success' && formData.file && (
             <div className="space-y-4">
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center justify-center space-x-4">
                 {getFileIcon(formData.file)}
-                <CheckCircle className="h-6 w-6 text-green-500" />
+                <CheckCircle className="h-8 w-8 text-green-500" />
               </div>
               <div>
-                <p className="text-lg font-medium text-green-700">Upload Complete!</p>
+                <p className="text-lg font-medium text-green-700">{formData.file.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {formData.file.name} ({(formData.file.size / 1024 / 1024).toFixed(2)} MB)
+                  Successfully uploaded to IPFS
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  IPFS Hash: {formData.ipfsHash.slice(0, 20)}...
+                  Hash: {formData.ipfsHash.slice(0, 20)}...
                 </p>
                 {formData.ipfsGateway && (
                   <a
@@ -598,9 +630,17 @@ export function ContentUploadForm({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+                size="sm"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, file: null, ipfsHash: '', ipfsGateway: '' }))
+                  setUploadStatus('idle')
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = ''
+                  }
+                }}
               >
-                Choose Different File
+                <X className="h-4 w-4 mr-2" />
+                Remove File
               </Button>
             </div>
           )}
@@ -610,12 +650,20 @@ export function ContentUploadForm({
               <AlertCircle className="h-12 w-12 mx-auto text-red-500" />
               <div>
                 <p className="text-lg font-medium text-red-700">Upload Failed</p>
-                <p className="text-sm text-muted-foreground">{validationErrors.file}</p>
+                <p className="text-sm text-muted-foreground">
+                  {validationErrors.file || 'Please try again'}
+                </p>
               </div>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  setUploadStatus('idle')
+                  setValidationErrors(prev => ({ ...prev, file: undefined }))
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = ''
+                  }
+                }}
               >
                 Try Again
               </Button>
@@ -623,7 +671,7 @@ export function ContentUploadForm({
           )}
         </div>
         {validationErrors.file && (
-          <p className="text-sm text-red-600">{validationErrors.file}</p>
+          <p className="text-sm text-red-500">{validationErrors.file}</p>
         )}
       </div>
       
@@ -645,18 +693,18 @@ export function ContentUploadForm({
             <TabsContent value="basic" className="space-y-4">
               {/* Title Input */}
               <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Enter a compelling title for your content"
+                  placeholder="Enter content title"
                   className={cn(validationErrors.title && 'border-red-500')}
                   maxLength={200}
                 />
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>{validationErrors.title && (
-                    <span className="text-red-600">{validationErrors.title}</span>
+                    <span className="text-red-500">{validationErrors.title}</span>
                   )}</span>
                   <span>{formData.title.length}/200</span>
                 </div>
@@ -664,19 +712,19 @@ export function ContentUploadForm({
               
               {/* Description Input */}
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description *</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe your content and what makes it valuable"
+                  placeholder="Describe your content..."
                   rows={4}
                   className={cn(validationErrors.description && 'border-red-500')}
                   maxLength={1000}
                 />
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>{validationErrors.description && (
-                    <span className="text-red-600">{validationErrors.description}</span>
+                    <span className="text-red-500">{validationErrors.description}</span>
                   )}</span>
                   <span>{formData.description.length}/1000</span>
                 </div>
@@ -687,11 +735,11 @@ export function ContentUploadForm({
               {/* Access Type Selection */}
               <div className="space-y-3">
                 <Label>Access Type</Label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <Button
                     type="button"
-                    variant={formData.accessType === 'public' ? 'default' : 'outline'}
-                    onClick={() => setFormData(prev => ({ ...prev, accessType: 'public' }))}
+                    variant={formData.accessType === 'free' ? 'default' : 'outline'}
+                    onClick={() => setFormData(prev => ({ ...prev, accessType: 'free' }))}
                     className="h-auto p-4 flex flex-col items-center gap-2"
                   >
                     <Globe className="h-5 w-5" />
@@ -705,15 +753,6 @@ export function ContentUploadForm({
                   >
                     <DollarSign className="h-5 w-5" />
                     <span className="text-sm">Pay-per-view</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={formData.accessType === 'subscription' ? 'default' : 'outline'}
-                    onClick={() => setFormData(prev => ({ ...prev, accessType: 'subscription' }))}
-                    className="h-auto p-4 flex flex-col items-center gap-2"
-                  >
-                    <Lock className="h-5 w-5" />
-                    <span className="text-sm">Subscription</span>
                   </Button>
                 </div>
               </div>
@@ -737,7 +776,7 @@ export function ContentUploadForm({
                     />
                   </div>
                   {validationErrors.price && (
-                    <p className="text-sm text-red-600">{validationErrors.price}</p>
+                    <p className="text-sm text-red-500">{validationErrors.price}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
                     Price range: $0.01 - $50.00
@@ -749,9 +788,8 @@ export function ContentUploadForm({
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  {formData.accessType === 'public' && 'Free content is accessible to all users without payment.'}
+                  {formData.accessType === 'free' && 'Free content is accessible to all users without payment.'}
                   {formData.accessType === 'premium' && 'Pay-per-view content requires a one-time purchase for permanent access.'}
-                  {formData.accessType === 'subscription' && 'Subscription content is available to your subscribers only.'}
                 </AlertDescription>
               </Alert>
             </TabsContent>
@@ -759,7 +797,7 @@ export function ContentUploadForm({
             <TabsContent value="tags" className="space-y-4">
               {/* Category Selection */}
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">Category *</Label>
                 <Select
                   value={formData.category?.toString() || ''}
                   onValueChange={(value) => setFormData(prev => ({ 
@@ -768,7 +806,7 @@ export function ContentUploadForm({
                   }))}
                 >
                   <SelectTrigger className={cn(validationErrors.category && 'border-red-500')}>
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.values(ContentCategory)
@@ -781,7 +819,7 @@ export function ContentUploadForm({
                   </SelectContent>
                 </Select>
                 {validationErrors.category && (
-                  <p className="text-sm text-red-600">{validationErrors.category}</p>
+                  <p className="text-sm text-red-500">{validationErrors.category}</p>
                 )}
               </div>
               
@@ -811,7 +849,6 @@ export function ContentUploadForm({
                   {formData.tags.length}/10 tags
                 </p>
                 
-                {/* Tag Display */}
                 {formData.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {formData.tags.map((tag) => (
@@ -832,7 +869,7 @@ export function ContentUploadForm({
                   </div>
                 )}
                 {validationErrors.tags && (
-                  <p className="text-sm text-red-600">{validationErrors.tags}</p>
+                  <p className="text-sm text-red-500">{validationErrors.tags}</p>
                 )}
               </div>
             </TabsContent>
@@ -847,7 +884,7 @@ export function ContentUploadForm({
             type="button" 
             variant="outline" 
             onClick={onCancel}
-            disabled={isUploading || publishingUI.publishingActions.isProcessing}
+            disabled={isUploading || isProcessing}
           >
             Cancel
           </Button>
@@ -857,11 +894,12 @@ export function ContentUploadForm({
           disabled={
             uploadStatus !== 'success' || 
             isUploading || 
-            publishingUI.publishingActions.isProcessing ||
+            isProcessing ||
             networkStatus === 'offline'
           }
+          className="min-w-[120px]"
         >
-          {publishingUI.publishingActions.isProcessing ? (
+          {isProcessing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Publishing...
@@ -875,47 +913,56 @@ export function ContentUploadForm({
   )
   
   // Render based on variant
-  if (variant === 'modal') {
-    return (
-      <>
-        <div className={cn('w-full max-w-2xl mx-auto', className)}>
+  return (
+    <>
+      {variant === 'modal' ? (
+        <Card className={cn('max-w-4xl mx-auto', className)}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload Content
+              {networkStatus === 'offline' && (
+                <WifiOff className="h-4 w-4 text-red-500" />
+              )}
+              {networkStatus === 'online' && isUploading && (
+                <Wifi className="h-4 w-4 text-blue-500 animate-pulse" />
+              )}
+            </CardTitle>
+            <CardDescription>
+              Share your content with the world and start earning
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {formContent}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className={cn('max-w-4xl mx-auto p-6', className)}>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload Content
+              {networkStatus === 'offline' && (
+                <WifiOff className="h-4 w-4 text-red-500" />
+              )}
+              {networkStatus === 'online' && isUploading && (
+                <Wifi className="h-4 w-4 text-blue-500 animate-pulse" />
+              )}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Share your content with the world and start earning
+            </p>
+          </div>
           {formContent}
         </div>
-        <TransactionStatusModal
-          isOpen={showTransactionModal}
-          onClose={() => setShowTransactionModal(false)}
-          transactionStatus={publishingUI.transactionStatus}
-        />
-      </>
-    )
-  }
-  
-  return (
-    <Card className={cn('w-full max-w-4xl mx-auto', className)}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5" />
-          Upload Content
-          {networkStatus === 'offline' && (
-            <WifiOff className="h-4 w-4 text-red-500" />
-          )}
-          {networkStatus === 'online' && isUploading && (
-            <Wifi className="h-4 w-4 text-blue-500 animate-pulse" />
-          )}
-        </CardTitle>
-        <CardDescription>
-          Share your content with the community and start earning from your work
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {formContent}
-      </CardContent>
+      )}
+      
       <TransactionStatusModal
         isOpen={showTransactionModal}
         onClose={() => setShowTransactionModal(false)}
         transactionStatus={publishingUI.transactionStatus}
       />
-    </Card>
+    </>
   )
 }
 
