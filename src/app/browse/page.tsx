@@ -404,7 +404,7 @@ function ContentPurchaseModal({
         
         <ContentPurchaseCard
           contentId={contentId}
-          userAddress={userAddress}
+          userAddress={userAddress as `0x${string}`} 
           onPurchaseSuccess={onPurchaseSuccess}
           onViewContent={onViewContent}
           variant="full"

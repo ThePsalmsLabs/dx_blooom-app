@@ -1,5 +1,5 @@
 /**
- * Enhanced Content Purchase Card Component - Fix 1 Implementation
+ * Content Purchase Card Component - Fix 1 Implementation
  * File: src/components/web3/ContentPurchaseCard.tsx
  * 
  * This enhanced implementation establishes complete integration between the 
@@ -17,23 +17,19 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { type Address } from 'viem'
 import {
   ShoppingCart,
   Lock,
-  Unlock,
   Eye,
-  Calendar,
-  User,
   CheckCircle,
   Clock,
   AlertCircle,
   CreditCard,
   Loader2,
-  DollarSign,
   Shield
 } from 'lucide-react'
 import {
@@ -46,7 +42,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/seperator'
@@ -251,7 +247,7 @@ export function ContentPurchaseCard({
 
     try {
       // Set purchasing state
-      setProgressState(prev => ({
+      setProgressState((prev: PurchaseProgressState) => ({
         ...prev,
         step: 'purchasing',
         showModal: true
@@ -260,7 +256,7 @@ export function ContentPurchaseCard({
       // Check if approval is needed first
       if (purchaseFlow.needsApproval) {
         // First approve USDC spending
-        setProgressState(prev => ({
+        setProgressState((prev: PurchaseProgressState) => ({
           ...prev,
           step: 'approving',
           message: 'Approving USDC spending...'
@@ -323,7 +319,7 @@ export function ContentPurchaseCard({
    * This function manages the transaction status modal visibility.
    */
   const handleModalClose = useCallback(() => {
-    setProgressState(prev => ({
+    setProgressState((prev: PurchaseProgressState) => ({
       ...prev,
       showModal: false
     }))

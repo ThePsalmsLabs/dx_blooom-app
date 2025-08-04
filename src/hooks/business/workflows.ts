@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useEffect } from 'react'
 import { Address, parseEventLogs } from 'viem'
-import { useChainId, useAccount } from 'wagmi'
+import { useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import {
@@ -24,7 +24,7 @@ import {
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
-import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abi'
+import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abi'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import type { Creator, ContentCategory, Content } from '@/types/contracts'
 
@@ -289,8 +289,8 @@ export function useX402ContentPurchaseFlow(
 
   const handleApproveAndPurchase = useCallback(() => {
     if (!contentData.data || !contentId) {
-      setWorkflowState({ 
-        currentStep: 'error', 
+      setWorkflowState({
+        currentStep: 'error',
         error: new Error('Content data required for purchase')
       })
       return
@@ -305,8 +305,8 @@ export function useX402ContentPurchaseFlow(
         amount: contentData.data.payPerViewPrice,
       })
     } catch (error) {
-      setWorkflowState({ 
-        currentStep: 'error', 
+      setWorkflowState({
+        currentStep: 'error',
         error: error instanceof Error ? error : new Error('Approval failed')
       })
     }
@@ -331,10 +331,10 @@ export function useX402ContentPurchaseFlow(
     }
     
     try {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'preparing_x402_payment' }))
-      setX402PaymentState(prev => ({ 
-        ...prev, 
-        isLoading: true, 
+      setWorkflowState(prev => ({ ...prev, currentStep: 'preparing_x402_payment', error: null }))
+      setX402PaymentState(prev => ({
+        ...prev,
+        isLoading: true,
         error: null,
         paymentProof: null,
         verificationResult: null
@@ -368,17 +368,17 @@ export function useX402ContentPurchaseFlow(
     } catch (error) {
       const purchaseError = error instanceof Error ? error : new Error('x402 purchase failed')
       setWorkflowState({ currentStep: 'x402_payment_failed', error: purchaseError })
-      setX402PaymentState(prev => ({ 
-        ...prev, 
-        isLoading: false, 
-        error: purchaseError 
+      setX402PaymentState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: purchaseError
       }))
       throw purchaseError
     }
   }, [
-    contentId, 
-    userAddress, 
-    contentData.data, 
+    contentId,
+    userAddress,
+    contentData.data,
     x402Config,
     chainId,
     contractAddresses.COMMERCE_INTEGRATION,
@@ -387,7 +387,7 @@ export function useX402ContentPurchaseFlow(
   
   const shareCapabilities = useMemo(() => {
     const canShare = Boolean(
-      farcasterContext && 
+      farcasterContext &&
       contentData.data &&
       workflowState.currentStep === 'completed'
     )
@@ -432,7 +432,7 @@ export function useX402ContentPurchaseFlow(
   
   return {
     hasAccess: hasAccess.data,
-    isLoading: hasAccess.isLoading || contentData.isLoading || 
+    isLoading: hasAccess.isLoading || contentData.isLoading ||
                approveToken.isLoading || purchaseContent.isLoading || x402PaymentState.isLoading,
     currentStep: workflowState.currentStep,
     error: workflowState.error || x402PaymentState.error,
@@ -674,7 +674,6 @@ export function useContentPurchaseFlow(
       }))
     }
   }, [
-    workflowState.currentStep,
     contentQuery.isLoading,
     contentQuery.error,
     content,
@@ -712,8 +711,7 @@ export function useContentPurchaseFlow(
   }, [
     approveToken.isLoading,
     approveToken.isConfirmed,
-    approveToken.error,
-    tokenAllowance
+    approveToken.error
   ])
 
   useEffect(() => {
@@ -742,9 +740,7 @@ export function useContentPurchaseFlow(
   }, [
     purchaseContent.isLoading,
     purchaseContent.isConfirmed,
-    purchaseContent.error,
-    accessQuery,
-    userBalance
+    purchaseContent.error
   ])
 
   const purchase = useCallback(async (): Promise<void> => {
@@ -910,6 +906,476 @@ export function getPurchaseFlowProgress(step: ContentPurchaseFlowStep): number {
       return 60
     case 'purchasing':
       return 80
+    case 'completed':
+      return 100
+    case 'error':
+      return 0
+    default:
+      return 0
+  }
+}
+
+// Extended Content Purchase Flow Hook with Commerce Protocol
+export enum CommercePaymentMethod {
+  ETH = 'ETH',
+  CUSTOM_TOKEN = 'CUSTOM_TOKEN'
+}
+
+export interface PaymentIntentState {
+  readonly intentId: string | null
+  readonly intentHash: string | null
+  readonly signature: string | null
+  readonly isCreated: boolean
+  readonly isSigned: boolean
+  readonly isExecuted: boolean
+  readonly deadline: bigint | null
+  readonly expectedAmount: bigint | null
+}
+
+export type CommerceProtocolFlowStep =
+  | 'idle'
+  | 'creating_intent'
+  | 'waiting_for_signature'
+  | 'signature_ready'
+  | 'executing_payment'
+  | 'processing_completion'
+  | 'completed'
+  | 'error'
+
+export interface ExtendedContentPurchaseFlowResult {
+  readonly content: Content | null
+  readonly hasAccess: boolean
+  readonly isLoading: boolean
+  readonly error: Error | null
+  readonly currentStep: string
+  readonly canAfford: boolean
+  readonly needsApproval: boolean
+  readonly userBalance: bigint | null
+  readonly purchase: () => Promise<void>
+  readonly approveAndPurchase: () => Promise<void>
+  readonly reset: () => void
+  readonly commerceProtocol: {
+    readonly isAvailable: boolean
+    readonly intentState: PaymentIntentState
+    readonly flowStep: CommerceProtocolFlowStep
+    readonly supportedTokens: readonly string[]
+    readonly createPaymentIntent: (method: CommercePaymentMethod, paymentToken?: Address) => Promise<void>
+    readonly executeSignedIntent: () => Promise<void>
+    readonly checkSignatureStatus: () => Promise<void>
+    readonly resetCommerceFlow: () => void
+  }
+}
+
+interface PlatformPaymentRequest {
+  readonly paymentType: number
+  readonly creator: Address
+  readonly contentId: bigint
+  readonly paymentToken: Address
+  readonly maxSlippage: number
+  readonly deadline: number
+}
+
+interface PaymentIntentResponse {
+  readonly intent: {
+    readonly recipientAmount: bigint
+    readonly deadline: bigint
+    readonly recipient: Address
+    readonly recipientCurrency: Address
+    readonly refundDestination: Address
+    readonly feeAmount: bigint
+    readonly id: string
+    readonly operator: Address
+  }
+  readonly context: {
+    readonly user: Address
+    readonly creator: Address
+    readonly paymentType: number
+    readonly contentId: bigint
+    readonly creatorAmount: bigint
+    readonly platformFee: bigint
+    readonly operatorFee: bigint
+    readonly paymentToken: Address
+    readonly expectedAmount: bigint
+  }
+}
+
+export function useExtendedContentPurchaseFlow(
+  contentId: bigint | undefined,
+  userAddress: Address | undefined
+): ExtendedContentPurchaseFlowResult {
+  const chainId = useChainId()
+  
+  const contractAddresses = useMemo(() => {
+    try {
+      return getContractAddresses(chainId)
+    } catch (error) {
+      console.error('Failed to get contract addresses:', error)
+      return null
+    }
+  }, [chainId])
+
+  const contentQuery = useContentById(contentId)
+  const accessQuery = useHasContentAccess(userAddress, contentId)
+  const userBalance = useTokenBalance(contractAddresses?.USDC, userAddress)
+  const tokenAllowance = useTokenAllowance(
+    contractAddresses?.USDC,
+    userAddress,
+    contractAddresses?.PAY_PER_VIEW
+  )
+  const approveToken = useApproveToken()
+  const purchaseContent = usePurchaseContent()
+
+  const { writeContract: writeCommerceContract, data: commerceHash } = useWriteContract()
+  const { isLoading: isCommerceConfirming, isSuccess: isCommerceConfirmed } = useWaitForTransactionReceipt({
+    hash: commerceHash
+  })
+
+  const [basicFlowState, setBasicFlowState] = useState<{
+    currentStep: string
+    error: Error | null
+  }>({
+    currentStep: 'checking_access',
+    error: null
+  })
+
+  const [commerceState, setCommerceState] = useState<{
+    flowStep: CommerceProtocolFlowStep
+    intentState: PaymentIntentState
+    selectedMethod: CommercePaymentMethod | null
+    selectedToken: Address | null
+    pollingForSignature: boolean
+  }>({
+    flowStep: 'idle',
+    intentState: {
+      intentId: null,
+      intentHash: null,
+      signature: null,
+      isCreated: false,
+      isSigned: false,
+      isExecuted: false,
+      deadline: null,
+      expectedAmount: null
+    },
+    selectedMethod: null,
+    selectedToken: null,
+    pollingForSignature: false
+  })
+
+  const isCommerceProtocolAvailable = useMemo(() => {
+    return Boolean(
+      contractAddresses?.COMMERCE_INTEGRATION &&
+      contractAddresses?.COMMERCE_PROTOCOL &&
+      contractAddresses.COMMERCE_INTEGRATION !== '0x'
+    )
+  }, [contractAddresses])
+
+  const supportedTokens = useMemo((): readonly string[] => {
+    return [
+      'ETH',
+      contractAddresses?.USDC || '',
+    ].filter(Boolean)
+  }, [contractAddresses])
+
+  const createPaymentIntent = useCallback(async (
+    method: CommercePaymentMethod,
+    paymentToken?: Address
+  ): Promise<void> => {
+    if (!contentId || !contractAddresses || !userAddress || !contentQuery.data) {
+      throw new Error('Missing required parameters for Commerce Protocol payment')
+    }
+
+    try {
+      setCommerceState(prev => ({
+        ...prev,
+        flowStep: 'creating_intent',
+        selectedMethod: method,
+        selectedToken: paymentToken || null
+      }))
+
+      let tokenAddress: Address
+      if (method === CommercePaymentMethod.ETH) {
+        tokenAddress = '0x0000000000000000000000000000000000000000' as Address
+      } else if (method === CommercePaymentMethod.CUSTOM_TOKEN && paymentToken) {
+        tokenAddress = paymentToken
+      } else {
+        throw new Error('Invalid payment method or missing token address')
+      }
+
+      const paymentRequest = {
+        paymentType: 0,
+        creator: contentQuery.data.creator,
+        contentId,
+        paymentToken: tokenAddress,
+        maxSlippage: BigInt(200),
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600)
+      }
+
+      console.log('Creating Commerce Protocol payment intent:', paymentRequest)
+
+      await writeCommerceContract({
+        address: contractAddresses.COMMERCE_INTEGRATION,
+        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+        functionName: 'createPaymentIntent',
+        args: [paymentRequest]
+      })
+
+    } catch (error) {
+      console.error('Failed to create payment intent:', error)
+      setCommerceState(prev => ({
+        ...prev,
+        flowStep: 'error'
+      }))
+      throw error
+    }
+  }, [contentId, contractAddresses, userAddress, contentQuery.data, writeCommerceContract])
+
+  const checkSignatureStatus = useCallback(async (): Promise<void> => {
+    if (!commerceState.intentState.intentId || !commerceState.intentState.intentHash) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/commerce/signature-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          intentId: commerceState.intentState.intentId,
+          intentHash: commerceState.intentState.intentHash
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Signature check failed: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (data.isSigned && data.signature) {
+        setCommerceState(prev => ({
+          ...prev,
+          flowStep: 'signature_ready',
+          intentState: {
+            ...prev.intentState,
+            signature: data.signature,
+            isSigned: true
+          },
+          pollingForSignature: false
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to check signature status:', error)
+    }
+  }, [commerceState.intentState.intentId, commerceState.intentState.intentHash])
+
+  const executeSignedIntent = useCallback(async (): Promise<void> => {
+    if (!commerceState.intentState.intentId || !commerceState.intentState.signature || !contractAddresses) {
+      throw new Error('Missing required data for intent execution')
+    }
+
+    try {
+      setCommerceState(prev => ({
+        ...prev,
+        flowStep: 'executing_payment'
+      }))
+
+      console.log('Executing signed payment intent:', commerceState.intentState.intentId)
+
+      await writeCommerceContract({
+        address: contractAddresses.COMMERCE_INTEGRATION,
+        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+        functionName: 'executePaymentWithSignature',
+        args: [commerceState.intentState.intentId as `0x${string}`]
+      })
+
+    } catch (error) {
+      console.error('Failed to execute signed intent:', error)
+      setCommerceState(prev => ({
+        ...prev,
+        flowStep: 'error'
+      }))
+      throw error
+    }
+  }, [commerceState.intentState.intentId, commerceState.intentState.signature, contractAddresses, writeCommerceContract])
+
+  const resetCommerceFlow = useCallback(() => {
+    setCommerceState({
+      flowStep: 'idle',
+      intentState: {
+        intentId: null,
+        intentHash: null,
+        signature: null,
+        isCreated: false,
+        isSigned: false,
+        isExecuted: false,
+        deadline: null,
+        expectedAmount: null
+      },
+      selectedMethod: null,
+      selectedToken: null,
+      pollingForSignature: false
+    })
+  }, [])
+
+  useEffect(() => {
+    if (isCommerceConfirmed && commerceHash) {
+      if (commerceState.flowStep === 'creating_intent') {
+        setCommerceState(prev => ({
+          ...prev,
+          flowStep: 'waiting_for_signature',
+          pollingForSignature: true,
+          intentState: {
+            ...prev.intentState,
+            isCreated: true
+          }
+        }))
+      } else if (commerceState.flowStep === 'executing_payment') {
+        setCommerceState(prev => ({
+          ...prev,
+          flowStep: 'processing_completion',
+          intentState: {
+            ...prev.intentState,
+            isExecuted: true
+          }
+        }))
+        
+        accessQuery.refetch()
+      }
+    }
+  }, [isCommerceConfirmed, commerceHash, commerceState.flowStep, accessQuery])
+
+  useEffect(() => {
+    if (!commerceState.pollingForSignature || commerceState.flowStep !== 'waiting_for_signature') {
+      return
+    }
+
+    const pollInterval = setInterval(() => {
+      checkSignatureStatus()
+    }, 3000)
+
+    const timeout = setTimeout(() => {
+      setCommerceState(prev => ({
+        ...prev,
+        pollingForSignature: false,
+        flowStep: 'error'
+      }))
+      clearInterval(pollInterval)
+    }, 300000)
+
+    return () => {
+      clearInterval(pollInterval)
+      clearTimeout(timeout)
+    }
+  }, [commerceState.pollingForSignature, commerceState.flowStep, checkSignatureStatus])
+
+  useEffect(() => {
+    if (commerceState.flowStep === 'processing_completion' && accessQuery.data === true) {
+      setCommerceState(prev => ({
+        ...prev,
+        flowStep: 'completed'
+      }))
+    }
+  }, [commerceState.flowStep, accessQuery.data])
+
+  const canAfford = useMemo(() => {
+    if (!userBalance.data || !contentQuery.data) return false
+    return userBalance.data >= contentQuery.data.payPerViewPrice
+  }, [userBalance.data, contentQuery.data])
+
+  const needsApproval = useMemo(() => {
+    if (!tokenAllowance.data || !contentQuery.data) return false
+    return tokenAllowance.data < contentQuery.data.payPerViewPrice
+  }, [tokenAllowance.data, contentQuery.data])
+
+  const purchase = useCallback(async (): Promise<void> => {
+    if (!contentId) throw new Error('Content ID required')
+    await purchaseContent.write(contentId)
+  }, [contentId, purchaseContent])
+
+  const approveAndPurchase = useCallback(async (): Promise<void> => {
+    if (!contentQuery.data || !contractAddresses) throw new Error('Missing data for approval')
+    await approveToken.write({
+      tokenAddress: contractAddresses.USDC,
+      spender: contractAddresses.PAY_PER_VIEW,
+      amount: contentQuery.data.payPerViewPrice
+    })
+  }, [contentQuery.data, contractAddresses, approveToken])
+
+  const reset = useCallback(() => {
+    setBasicFlowState({
+      currentStep: 'checking_access',
+      error: null
+    })
+    resetCommerceFlow()
+  }, [resetCommerceFlow])
+
+  return {
+    content: contentQuery.data || null,
+    hasAccess: accessQuery.data || false,
+    isLoading: contentQuery.isLoading || accessQuery.isLoading,
+    error: basicFlowState.error,
+    currentStep: basicFlowState.currentStep,
+    canAfford,
+    needsApproval,
+    userBalance: userBalance.data || null,
+    purchase,
+    approveAndPurchase,
+    reset,
+    commerceProtocol: {
+      isAvailable: isCommerceProtocolAvailable,
+      intentState: commerceState.intentState,
+      flowStep: commerceState.flowStep,
+      supportedTokens,
+      createPaymentIntent,
+      executeSignedIntent,
+      checkSignatureStatus,
+      resetCommerceFlow
+    }
+  }
+}
+
+export function getCommerceFlowStepMessage(step: CommerceProtocolFlowStep): string {
+  switch (step) {
+    case 'idle':
+      return 'Ready to start advanced payment'
+    case 'creating_intent':
+      return 'Creating payment intent...'
+    case 'waiting_for_signature':
+      return 'Waiting for payment authorization...'
+    case 'signature_ready':
+      return 'Payment authorized - ready to execute'
+    case 'executing_payment':
+      return 'Processing payment...'
+    case 'processing_completion':
+      return 'Finalizing payment...'
+    case 'completed':
+      return 'Payment completed successfully!'
+    case 'error':
+      return 'Payment error occurred'
+    default:
+      return 'Unknown payment status'
+  }
+}
+
+export function canPerformCommerceAction(step: CommerceProtocolFlowStep): boolean {
+  return step === 'idle' || step === 'signature_ready' || step === 'error'
+}
+
+export function getCommerceFlowProgress(step: CommerceProtocolFlowStep): number {
+  switch (step) {
+    case 'idle':
+      return 0
+    case 'creating_intent':
+      return 20
+    case 'waiting_for_signature':
+      return 40
+    case 'signature_ready':
+      return 60
+    case 'executing_payment':
+      return 80
+    case 'processing_completion':
+      return 90
     case 'completed':
       return 100
     case 'error':
