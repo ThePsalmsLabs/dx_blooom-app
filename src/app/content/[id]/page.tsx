@@ -1,433 +1,708 @@
-// src/app/content/[id]/page.tsx
-// Component 2.4: Cast to Frame Flow - Content Page Enhancement
-// Implements Mini App metadata with Frame v1 backward compatibility
+/**
+ * Content Display Page with Integrated Purchase Functionality - Fix 1 Integration
+ * File: src/app/content/[id]/page.tsx
+ * 
+ * This page demonstrates the complete integration of the enhanced ContentPurchaseCard
+ * within a content display context. It shows how the purchase functionality seamlessly
+ * integrates with content viewing, providing users with a smooth experience from
+ * discovery through purchase to content consumption.
+ * 
+ * Key Integration Features:
+ * - Dynamic content loading with proper error handling
+ * - Integrated purchase flow with the enhanced ContentPurchaseCard
+ * - Access-based content display with purchase prompts
+ * - Proper state management and user feedback
+ * - SEO optimization and social sharing preparation
+ */
 
-import React from 'react'
-import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { headers } from 'next/headers'
-import { getContractAddresses } from '@/lib/contracts/config'
+'use client'
+
+import React, { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAccount } from 'wagmi'
+import { type Address } from 'viem'
+import {
+  ArrowLeft,
+  Share2,
+  Bookmark,
+  Flag,
+  Eye,
+  Calendar,
+  Tag,
+  User,
+  Lock,
+  CheckCircle,
+  AlertCircle,
+  Loader2
+} from 'lucide-react'
+
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Separator,
+  Alert,
+  AlertDescription,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  Skeleton
+} from '@/components/ui/index'
+
+// Import layout components
+import { AppLayout } from '@/components/layout/AppLayout'
+import { RouteGuards } from '@/components/layout/RouteGuards'
+
+// Import the enhanced ContentPurchaseCard
+import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
+
+// Import business logic hooks
+import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
+
+// Import utility functions
+import { cn, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
 
 /**
- * Content Page Props Interface
+ * Page Props Interface
  * 
- * This interface defines the parameters that the content page receives
- * from Next.js dynamic routing, ensuring type safety for content ID handling.
+ * This interface defines the structure of props passed from Next.js App Router
+ * to our dynamic content page, ensuring type safety for route parameters.
  */
-interface ContentPageProps {
+interface ContentDisplayPageProps {
   readonly params: {
     readonly id: string
   }
-  readonly searchParams: {
-    readonly [key: string]: string | string[] | undefined
-  }
 }
 
 /**
- * Frame State Interface
+ * Content Access State Interface
  * 
- * This interface defines the structure of Frame interaction state
- * that gets encoded in Frame metadata for maintaining workflow context.
+ * This interface manages the various states of content access, providing
+ * clear distinctions between loading, accessible, and restricted content.
  */
-interface FrameState {
-  readonly contentId: string
-  readonly step: 'preview' | 'purchase' | 'confirmation' | 'access'
-  readonly userContext?: {
-    readonly address?: string
-    readonly hasAccess?: boolean
-  }
+interface ContentAccessState {
+  readonly status: 'loading' | 'accessible' | 'purchase_required' | 'error'
+  readonly message: string
+  readonly showPurchaseCard: boolean
 }
 
 /**
- * Mini App Embed Metadata Interface
+ * ContentDisplayPage Component
  * 
- * This interface defines the structure for Mini App metadata
- * according to the current Farcaster Mini Apps specification.
+ * This page component orchestrates the complete content viewing and purchasing
+ * experience. It demonstrates how the enhanced ContentPurchaseCard integrates
+ * seamlessly within a content consumption workflow, providing users with
+ * clear paths to access premium content.
  */
-interface MiniAppEmbed {
-  readonly version: '1'
-  readonly url: string
-  readonly metadata: {
-    readonly title: string
-    readonly description: string
-    readonly image: string
-    readonly action: {
-      readonly type: 'post'
-      readonly url: string
-    }
-    readonly button?: {
-      readonly title: string
-    }
-  }
-}
-
-/**
- * Content Fetching Function
- * 
- * This function fetches content data using your existing API infrastructure.
- * It demonstrates how Component 2.4 leverages your Phase 1 content API
- * without duplicating business logic or data access patterns.
- */
-async function fetchContentById(contentId: string): Promise<Content | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
-    
-    // Use your existing content API endpoint
-    const response = await fetch(`${baseUrl}/api/content/${contentId}`, {
-      // Enable caching for better performance
-      next: { revalidate: 300 }, // Revalidate every 5 minutes
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null
-      }
-      throw new Error(`Failed to fetch content: ${response.status}`)
-    }
-
-    const content = await response.json()
-    return content as Content
-  } catch (error) {
-    console.error('Error fetching content:', error)
-    return null
-  }
-}
-
-/**
- * Generate Frame Metadata for Mini Apps and Frame v1 Compatibility
- * 
- * This function creates comprehensive metadata that supports both the new
- * Mini Apps standard and provides backward compatibility with Frame v1.
- * The metadata enables content to be shared as interactive experiences
- * within Farcaster feeds.
- */
-function generateFrameMetadata(content: Content, contentId: string): Metadata {
-  const baseUrl = process.env.NEXT_PUBLIC_URL
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_URL is required for Frame functionality')
-  }
-
-  // Create frame state for interaction context
-  const initialFrameState: FrameState = {
-    contentId,
-    step: 'preview'
-  }
+export default function ContentDisplayPage({ params }: ContentDisplayPageProps) {
+  const router = useRouter()
+  const { address: userAddress, isConnected } = useAccount()
   
-  const encodedState = Buffer.from(JSON.stringify(initialFrameState)).toString('base64')
-  
-  // Generate dynamic image URL for content preview
-  const imageUrl = `${baseUrl}/api/og/content/${contentId}`
-  
-  // Format price for display
-  const priceDisplay = content.payPerViewPrice > BigInt(0) 
-    ? `$${(Number(content.payPerViewPrice) / 1e6).toFixed(2)} USDC`
-    : 'Free'
+  // Parse and validate content ID from route parameters
+  const contentId = useMemo(() => {
+    try {
+      const id = BigInt(params.id)
+      if (id <= 0) throw new Error('Invalid content ID')
+      return id
+    } catch {
+      return undefined
+    }
+  }, [params.id])
 
-  // Create Mini App embed metadata (primary standard)
-  const miniAppEmbed: MiniAppEmbed = {
-    version: '1',
-    url: `${baseUrl}/content/${contentId}`,
-    metadata: {
-      title: content.title,
-      description: `${content.description.slice(0, 100)}... | ${priceDisplay}`,
-      image: imageUrl,
-      action: {
-        type: 'post',
-        url: `${baseUrl}/api/farcaster/frame/${contentId}`
-      },
-      button: {
-        title: content.payPerViewPrice > BigInt(0) ? `Read Full - ${priceDisplay}` : 'Read Content'
+  // Core data hooks for content information and access control
+  const contentQuery = useContentById(contentId)
+  const accessQuery = useHasContentAccess(userAddress, contentId)
+  
+  // Local state for purchase success tracking
+  const [purchaseCompleted, setPurchaseCompleted] = useState(false)
+
+  /**
+   * Content Access State Computation
+   * 
+   * This computed value determines the current access state and appropriate
+   * user interface elements to display based on content availability and
+   * user access permissions.
+   */
+  const accessState = useMemo((): ContentAccessState => {
+    // Handle loading states
+    if (contentQuery.isLoading || accessQuery.isLoading) {
+      return {
+        status: 'loading',
+        message: 'Loading content...',
+        showPurchaseCard: false
       }
     }
-  }
 
-  return {
-    title: content.title,
-    description: content.description,
-    
-    // Open Graph metadata for general social sharing
-    openGraph: {
-      title: content.title,
-      description: content.description,
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: content.title,
-        }
-      ],
-      type: 'article',
-      siteName: 'Content Platform',
-    },
-    
-    // Twitter metadata
-    twitter: {
-      card: 'summary_large_image',
-      title: content.title,
-      description: content.description,
-      images: [imageUrl],
-    },
-
-    // Farcaster-specific metadata
-    other: {
-      // Primary: Mini App metadata (new standard)
-      'fc:miniapp': JSON.stringify(miniAppEmbed),
-      
-      // Backward compatibility: Frame v1 metadata (deprecated but supported until March 2025)
-      'fc:frame': 'vNext',
-      'fc:frame:image': imageUrl,
-      'fc:frame:image:aspect_ratio': '1.91:1',
-      'fc:frame:post_url': `${baseUrl}/api/farcaster/frame/${contentId}`,
-      'fc:frame:state': encodedState,
-      
-      // Frame buttons based on content pricing
-      ...(content.payPerViewPrice > BigInt(0) ? {
-        'fc:frame:button:1': `Purchase - ${priceDisplay}`,
-        'fc:frame:button:1:action': 'post',
-        'fc:frame:button:2': 'View Details',
-        'fc:frame:button:2:action': 'post',
-      } : {
-        'fc:frame:button:1': 'Read Content',
-        'fc:frame:button:1:action': 'post',
-        'fc:frame:button:2': 'Share',
-        'fc:frame:button:2:action': 'link',
-        'fc:frame:button:2:target': `${baseUrl}/content/${contentId}`,
-      }),
+    // Handle content loading errors
+    if (contentQuery.error || !contentQuery.data) {
+      return {
+        status: 'error',
+        message: 'Content not found or failed to load',
+        showPurchaseCard: false
+      }
     }
-  }
-}
 
-/**
- * Metadata Generation Function for Next.js
- * 
- * This function is called by Next.js during the build process and at runtime
- * to generate appropriate metadata for each content page. It ensures that
- * content shared on Farcaster becomes interactive Mini Apps and Frames.
- */
-export async function generateMetadata({ params }: ContentPageProps): Promise<Metadata> {
-  const contentId = params.id
-  
-  // Validate content ID format
-  if (!contentId || isNaN(Number(contentId))) {
+    // Handle content that is not active
+    if (!contentQuery.data.isActive) {
+      return {
+        status: 'error',
+        message: 'This content is no longer available',
+        showPurchaseCard: false
+      }
+    }
+
+    // User has access to content (either purchased or owns it)
+    if (accessQuery.data === true || purchaseCompleted) {
+      return {
+        status: 'accessible',
+        message: 'You have access to this content',
+        showPurchaseCard: false
+      }
+    }
+
+    // User needs to purchase content to access it
     return {
-      title: 'Content Not Found',
-      description: 'The requested content could not be found.',
+      status: 'purchase_required',
+      message: 'Purchase required to access this content',
+      showPurchaseCard: true
     }
-  }
+  }, [contentQuery, accessQuery, purchaseCompleted])
 
-  // Fetch content data
-  const content = await fetchContentById(contentId)
-  
-  if (!content) {
-    return {
-      title: 'Content Not Found',
-      description: 'The requested content could not be found.',
-    }
-  }
-
-  // Generate comprehensive metadata for social sharing and Farcaster integration
-  return generateFrameMetadata(content, contentId)
-}
-
-/**
- * Content Access Verification
- * 
- * This function checks if the user has access to the content based on
- * their wallet address and purchase history. It leverages your existing
- * access control infrastructure from Phase 1.
- */
-async function verifyContentAccess(
-  contentId: string, 
-  userAddress?: string
-): Promise<{ hasAccess: boolean; requiresPurchase: boolean }> {
-  if (!userAddress) {
-    return { hasAccess: false, requiresPurchase: true }
-  }
-
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
+  /**
+   * Purchase Success Handler
+   * 
+   * This function manages the post-purchase experience, updating local state
+   * and providing user feedback when a purchase is successfully completed.
+   */
+  const handlePurchaseSuccess = React.useCallback(() => {
+    setPurchaseCompleted(true)
     
-    // Use your existing access verification API
-    const response = await fetch(
-      `${baseUrl}/api/content/${contentId}/access?address=${userAddress}`,
-      { next: { revalidate: 60 } } // Cache for 1 minute
+    // Refresh access query to ensure UI reflects new access state
+    accessQuery.refetch()
+    
+    // Show success feedback (could integrate with toast system)
+    console.log('Purchase completed successfully!')
+  }, [accessQuery])
+
+  /**
+   * Content View Handler
+   * 
+   * This function manages navigation to the full content view once users
+   * have confirmed access to the content.
+   */
+  const handleViewContent = React.useCallback(() => {
+    if (accessState.status === 'accessible') {
+      // Navigate to full content view or unlock content display
+      router.push(`/content/${contentId}/view`)
+    }
+  }, [accessState.status, router, contentId])
+
+  /**
+   * Navigation Handler
+   * 
+   * This function provides users with a way to return to content discovery
+   * or their previous location in the application.
+   */
+  const handleGoBack = React.useCallback(() => {
+    router.back()
+  }, [router])
+
+  // Handle invalid content ID
+  if (!contentId) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Invalid content ID provided. Please check the URL and try again.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </AppLayout>
     )
-
-    if (!response.ok) {
-      return { hasAccess: false, requiresPurchase: true }
-    }
-
-    const accessData = await response.json()
-    return {
-      hasAccess: accessData.hasAccess || false,
-      requiresPurchase: !accessData.hasAccess
-    }
-  } catch (error) {
-    console.error('Error verifying content access:', error)
-    return { hasAccess: false, requiresPurchase: true }
   }
-}
-
-/**
- * Content Page Component
- * 
- * This component renders the complete content viewing experience,
- * handling both regular web visitors and Frame/Mini App contexts.
- * It demonstrates how the same component can serve multiple interaction
- * patterns while maintaining consistent functionality.
- */
-export default async function ContentPage({ params, searchParams }: ContentPageProps) {
-  const contentId = params.id
-  
-  // Validate content ID
-  if (!contentId || isNaN(Number(contentId))) {
-    notFound()
-  }
-
-  // Fetch content data
-  const content = await fetchContentById(contentId)
-  
-  if (!content) {
-    notFound()
-  }
-
-  // Detect Frame/Mini App context from headers
-  const headersList = headers()
-  const userAgent = (await headersList).get('user-agent') || ''
-  const isFrameContext = userAgent.includes('farcasterxyz') || searchParams.frame === 'true'
-  
-  // Get user address from search params (passed by Frame interactions)
-  const userAddress = searchParams.address as string | undefined
-  
-  // Verify content access
-  const accessInfo = await verifyContentAccess(contentId, userAddress)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto py-8 px-4">
-        {/* Content Header */}
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Content ID: {contentId}</span>
-              {isFrameContext && (
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                  Farcaster Frame
-                </span>
-              )}
-            </div>
-            
-            <h1 className="text-4xl font-bold leading-tight">{content.title}</h1>
-            
-            <div className="flex items-center gap-4 text-muted-foreground">
-              <span>By: {content.creator}</span>
-              <span>•</span>
-              <span>Category: {content.category}</span>
-              {content.payPerViewPrice > BigInt(0) && (
-                <>
-                  <span>•</span>
-                  <span className="font-semibold text-green-600">
-                    ${(Number(content.payPerViewPrice) / 1e6).toFixed(2)} USDC
-                  </span>
-                </>
-              )}
-            </div>
+    <AppLayout>
+      <RouteGuards requiredLevel='public'>
+        <div className="container mx-auto px-4 py-6 max-w-4xl">
+          {/* Navigation Breadcrumb */}
+          <div className="mb-6">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/browse">Browse Content</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
+                    {contentQuery.data?.title || `Content ${contentId}`}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
 
-          {/* Content Preview/Access */}
-          <div className="border rounded-lg p-6 bg-card">
-            <div className="space-y-4">
-              <p className="text-lg leading-relaxed">{content.description}</p>
-              
-              {/* Access Control Logic */}
-              {accessInfo.hasAccess ? (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 text-green-800">
-                      <span>✅</span>
-                      <span className="font-medium">Access Granted</span>
-                    </div>
-                    <p className="text-green-700 text-sm mt-1">
-                      You have full access to this content.
-                    </p>
-                  </div>
-                  
-                  {/* Full content would be displayed here */}
-                  <div className="prose max-w-none">
-                    <p className="text-muted-foreground">
-                      [Full content would be displayed here based on IPFS hash: {content.ipfsHash}]
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 text-blue-800">
-                      <span>🔒</span>
-                      <span className="font-medium">Premium Content</span>
-                    </div>
-                    <p className="text-blue-700 text-sm mt-1">
-                      Purchase access to read the full content.
-                    </p>
-                  </div>
-                  
-                  {/* Purchase Call-to-Action */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <button 
-                      className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                      onClick={() => {
-                        // This would trigger your existing purchase flow
-                        window.location.href = `/purchase/${contentId}`
-                      }}
-                    >
-                      Purchase Access - ${(Number(content.payPerViewPrice) / 1e6).toFixed(2)} USDC
-                    </button>
-                    
-                    <button 
-                      className="border border-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                      onClick={() => {
-                        window.location.href = `/creator/${content.creator}`
-                      }}
-                    >
-                      View Creator Profile
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* Back Navigation */}
+          <div className="mb-6">
+            <Button variant="ghost" onClick={handleGoBack} className="p-0">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Browse
+            </Button>
           </div>
 
-          {/* Frame Context Information */}
-          {isFrameContext && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-purple-800">
-                <span>🖼️</span>
-                <span className="font-medium">Farcaster Frame Context</span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content Area */}
+            <div className="lg:col-span-2 space-y-6">
+              <ContentHeaderSection
+                contentQuery={contentQuery}
+                accessState={accessState}
+              />
+
+              <ContentPreviewSection
+                content={contentQuery.data}
+                accessState={accessState}
+                isLoading={contentQuery.isLoading}
+              />
+
+              <ContentMetadataSection
+                content={contentQuery.data}
+                isLoading={contentQuery.isLoading}
+              />
+            </div>
+
+            {/* Sidebar with Purchase Card */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-6 space-y-6">
+                {/* Purchase Card Integration */}
+                {accessState.showPurchaseCard && contentId && (
+                  <ContentPurchaseCard
+                    contentId={contentId}
+                    userAddress={userAddress}
+                    onPurchaseSuccess={handlePurchaseSuccess}
+                    onViewContent={handleViewContent}
+                    variant="full"
+                    showPurchaseDetails={true}
+                    autoRedirectAfterPurchase={false}
+                    className="w-full"
+                  />
+                )}
+
+                {/* Access Status Card */}
+                {!accessState.showPurchaseCard && (
+                  <AccessStatusCard
+                    accessState={accessState}
+                    onViewContent={handleViewContent}
+                    isConnected={isConnected}
+                  />
+                )}
+
+                {/* Content Actions */}
+                <ContentActionsCard contentId={contentId} />
               </div>
-              <p className="text-purple-700 text-sm mt-1">
-                This content is being viewed within a Farcaster Frame. 
-                Interactions are optimized for the social feed experience.
+            </div>
+          </div>
+        </div>
+      </RouteGuards>
+    </AppLayout>
+  )
+}
+
+/**
+ * Content Header Section Component
+ * 
+ * This component displays the main content information including title,
+ * description, and access status indicators.
+ */
+function ContentHeaderSection({
+  contentQuery,
+  accessState
+}: {
+  contentQuery: any
+  accessState: ContentAccessState
+}) {
+  if (contentQuery.isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </CardHeader>
+      </Card>
+    )
+  }
+
+  if (!contentQuery.data) {
+    return (
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {accessState.message}
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  const content = contentQuery.data
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-2xl font-bold mb-2">
+              {content.title}
+            </CardTitle>
+            <CardDescription className="text-base leading-relaxed">
+              {content.description}
+            </CardDescription>
+          </div>
+          
+          <div className="ml-4">
+            <AccessStatusBadge accessState={accessState} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
+          <div className="flex items-center gap-1">
+            <User className="h-4 w-4" />
+            <span>{formatAddress(content.creator)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Eye className="h-4 w-4" />
+            <span>{formatCurrency(content.payPerViewPrice, 6, 'USDC')}</span>
+          </div>
+        </div>
+      </CardHeader>
+    </Card>
+  )
+}
+
+/**
+ * Content Preview Section Component
+ * 
+ * This component shows a preview of the content or prompts for purchase
+ * based on the user's access status.
+ */
+function ContentPreviewSection({
+  content,
+  accessState,
+  isLoading
+}: {
+  content: any
+  accessState: ContentAccessState
+  isLoading: boolean
+}) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        {accessState.status === 'accessible' ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-green-600 mb-4">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">You have access to this content</span>
+            </div>
+            
+            {/* This would show the actual content */}
+            <div className="prose prose-gray max-w-none">
+              <p className="text-gray-600 mb-4">
+                Content preview would be displayed here. This could include:
               </p>
+              <ul className="list-disc list-inside space-y-1 text-gray-600">
+                <li>Rich text content from IPFS</li>
+                <li>Embedded media and images</li>
+                <li>Interactive elements</li>
+                <li>Downloadable resources</li>
+              </ul>
+              
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-800 font-medium">
+                  🎉 Premium content unlocked! You now have full access to this content.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Lock className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Premium Content
+            </h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              This content requires purchase to access. Complete your purchase 
+              using the card on the right to unlock full access.
+            </p>
+            
+            {/* Content teaser */}
+            <div className="bg-gray-50 rounded-lg p-6 text-left max-w-md mx-auto">
+              <p className="text-gray-600 text-sm leading-relaxed">
+                This premium content includes valuable insights and detailed information
+                that will help you understand the topic in depth. Purchase to unlock
+                the complete content and gain full access...
+              </p>
+              <div className="mt-4 text-center">
+                <span className="text-gray-400 font-medium">
+                  Continue reading after purchase →
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * Content Metadata Section Component
+ * 
+ * This component displays additional information about the content such as
+ * category, tags, and creation details.
+ */
+function ContentMetadataSection({
+  content,
+  isLoading
+}: {
+  content: any
+  isLoading: boolean
+}) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-32" />
+            <div className="flex gap-2">
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-6 w-18" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!content) return null
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <Tag className="h-4 w-4" />
+          Content Details
+        </h3>
+        
+        <div className="space-y-4">
+          <div>
+            <span className="text-sm font-medium text-gray-600">Category:</span>
+            <Badge variant="secondary" className="ml-2">
+              {content.category || 'General'}
+            </Badge>
+          </div>
+          
+          {content.tags && content.tags.length > 0 && (
+            <div>
+              <span className="text-sm font-medium text-gray-600 block mb-2">Tags:</span>
+              <div className="flex flex-wrap gap-2">
+                {content.tags.map((tag: string, index: number) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
+          
+          <Separator />
+          
+          <div className="text-xs text-gray-500 space-y-1">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-3 w-3" />
+              <span>Content ID: {content.id?.toString()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <User className="h-3 w-3" />
+              <span>Creator: {formatAddress(content.creator)}</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
-          {/* Debug Information (Development Only) */}
-          {process.env.NODE_ENV === 'development' && (
-            <details className="bg-gray-50 border rounded-lg p-4">
-              <summary className="font-medium cursor-pointer">Debug Information</summary>
-              <div className="mt-4 space-y-2 text-sm font-mono">
-                <div>Content ID: {contentId}</div>
-                <div>User Address: {userAddress || 'Not provided'}</div>
-                <div>Has Access: {accessInfo.hasAccess.toString()}</div>
-                <div>Frame Context: {isFrameContext.toString()}</div>
-                <div>Content Price: {content.payPerViewPrice.toString()} wei</div>
-              </div>
-            </details>
+/**
+ * Access Status Card Component
+ * 
+ * This component displays the current access status when purchase is not required.
+ */
+function AccessStatusCard({
+  accessState,
+  onViewContent,
+  isConnected
+}: {
+  accessState: ContentAccessState
+  onViewContent: () => void
+  isConnected: boolean
+}) {
+  const getStatusIcon = () => {
+    switch (accessState.status) {
+      case 'accessible':
+        return <CheckCircle className="h-5 w-5 text-green-500" />
+      case 'loading':
+        return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+      case 'error':
+        return <AlertCircle className="h-5 w-5 text-red-500" />
+      default:
+        return <Lock className="h-5 w-5 text-gray-500" />
+    }
+  }
+
+  const getStatusColor = () => {
+    switch (accessState.status) {
+      case 'accessible':
+        return 'bg-green-50 border-green-200'
+      case 'loading':
+        return 'bg-blue-50 border-blue-200'
+      case 'error':
+        return 'bg-red-50 border-red-200'
+      default:
+        return 'bg-gray-50 border-gray-200'
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className={cn('rounded-lg p-4 text-center', getStatusColor())}>
+          <div className="flex justify-center mb-3">
+            {getStatusIcon()}
+          </div>
+          
+          <h3 className="font-semibold mb-2">
+            {accessState.status === 'accessible' ? 'Access Granted' :
+             accessState.status === 'loading' ? 'Checking Access' :
+             accessState.status === 'error' ? 'Access Error' : 'Access Required'}
+          </h3>
+          
+          <p className="text-sm text-gray-600 mb-4">
+            {accessState.message}
+          </p>
+          
+          {accessState.status === 'accessible' && (
+            <Button onClick={onViewContent} className="w-full">
+              <Eye className="h-4 w-4 mr-2" />
+              View Full Content
+            </Button>
+          )}
+          
+          {!isConnected && accessState.status !== 'accessible' && (
+            <p className="text-xs text-gray-500 mt-2">
+              Connect your wallet to check access status
+            </p>
           )}
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
+}
+
+/**
+ * Content Actions Card Component
+ * 
+ * This component provides additional actions users can take with content.
+ */
+function ContentActionsCard({ contentId }: { contentId: bigint }) {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <h3 className="font-semibold mb-4">Actions</h3>
+        
+        <div className="space-y-3">
+          <Button variant="outline" size="sm" className="w-full justify-start">
+            <Share2 className="h-4 w-4 mr-2" />
+            Share Content
+          </Button>
+          
+          <Button variant="outline" size="sm" className="w-full justify-start">
+            <Bookmark className="h-4 w-4 mr-2" />
+            Save for Later
+          </Button>
+          
+          <Button variant="outline" size="sm" className="w-full justify-start text-red-600 hover:text-red-700">
+            <Flag className="h-4 w-4 mr-2" />
+            Report Content
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * Access Status Badge Component
+ * 
+ * This component displays a visual indicator of the content access status.
+ */
+function AccessStatusBadge({ accessState }: { accessState: ContentAccessState }) {
+  switch (accessState.status) {
+    case 'accessible':
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-200">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Accessible
+        </Badge>
+      )
+    case 'purchase_required':
+      return (
+        <Badge variant="secondary">
+          <Lock className="h-3 w-3 mr-1" />
+          Purchase Required
+        </Badge>
+      )
+    case 'loading':
+      return (
+        <Badge variant="outline">
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          Loading
+        </Badge>
+      )
+    case 'error':
+      return (
+        <Badge variant="destructive">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Error
+        </Badge>
+      )
+    default:
+      return null
+  }
 }

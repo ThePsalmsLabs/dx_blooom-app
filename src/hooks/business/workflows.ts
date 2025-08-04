@@ -26,7 +26,7 @@ import {
 } from '@/lib/web3/x402-config'
 import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abi'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
-import type { Creator, ContentCategory } from '@/types/contracts'
+import type { Creator, ContentCategory, Content } from '@/types/contracts'
 
 // Farcaster Context Interface
 export interface FarcasterContext {
@@ -105,7 +105,7 @@ export function useFarcasterContext(): FarcasterContext | null {
   return farcasterContext
 }
 
-// Type Definitions
+// Type Definitions for X402ContentPurchaseFlow
 export type X402ContentPurchaseFlowStep = 
   | 'checking_access'
   | 'can_purchase'
@@ -130,7 +130,7 @@ export interface X402ContentPurchaseFlowResult {
   readonly isLoading: boolean
   readonly currentStep: X402ContentPurchaseFlowStep
   readonly error: Error | null
-  readonly content: any
+  readonly content: Content | null
   readonly canAfford: boolean
   readonly needsApproval: boolean
   readonly userBalance: bigint | undefined
@@ -436,7 +436,7 @@ export function useX402ContentPurchaseFlow(
                approveToken.isLoading || purchaseContent.isLoading || x402PaymentState.isLoading,
     currentStep: workflowState.currentStep,
     error: workflowState.error || x402PaymentState.error,
-    content: contentData.data,
+    content: contentData.data || null,
     canAfford,
     needsApproval,
     userBalance: userBalance.data,
@@ -463,48 +463,44 @@ export function useX402ContentPurchaseFlow(
   }
 }
 
+// Enhanced Content Purchase Flow Types and Hook
 export type ContentPurchaseFlowStep = 
-  | 'checking_access'
-  | 'cannot_purchase'
-  | 'need_approval'
-  | 'can_purchase'
-  | 'purchasing'
-  | 'completed'
-  | 'error'
+  | 'checking_access'        // Initial state - checking if user already has access
+  | 'loading_content'        // Loading content information from blockchain
+  | 'insufficient_balance'   // User doesn't have enough USDC
+  | 'need_approval'         // USDC approval required before purchase
+  | 'can_purchase'          // Ready to execute purchase transaction
+  | 'approving_tokens'      // Executing USDC approval transaction
+  | 'purchasing'            // Executing purchase transaction
+  | 'completed'             // Purchase completed successfully
+  | 'error'                 // An error occurred during the process
+
+export interface PurchaseProgress {
+  readonly isSubmitting: boolean      // Transaction submitted to mempool
+  readonly isConfirming: boolean      // Waiting for blockchain confirmation
+  readonly isConfirmed: boolean       // Transaction confirmed on blockchain
+  readonly transactionHash?: string    // Hash of the transaction
+  readonly blockNumber?: bigint       // Block number of confirmation
+  readonly gasUsed?: bigint           // Gas consumed by transaction
+}
 
 export interface ContentPurchaseFlowResult {
-  readonly currentStep: ContentPurchaseFlowStep
-  readonly isLoading: boolean
-  readonly error: Error | null
-  readonly hasAccess: boolean | null
-  readonly content: {
-    readonly id: bigint
-    readonly title: string
-    readonly description: string
-    readonly payPerViewPrice: bigint
-    readonly creator: Address
-    readonly category: number
-    readonly isActive: boolean
-  } | null
-  readonly canAfford: boolean
-  readonly needsApproval: boolean
-  readonly userBalance: bigint | null
-  readonly requiredAllowance: bigint | null
-  readonly purchase: () => void
-  readonly approveAndPurchase: () => void
-  readonly reset: () => void
-  readonly purchaseProgress: {
-    readonly isSubmitting: boolean
-    readonly isConfirming: boolean
-    readonly isConfirmed: boolean
-    readonly transactionHash: string | undefined
-  }
-  readonly approvalProgress: {
-    readonly isSubmitting: boolean
-    readonly isConfirming: boolean
-    readonly isConfirmed: boolean
-    readonly transactionHash: string | undefined
-  }
+  readonly content: Content | null                    // Content metadata
+  readonly hasAccess: boolean                         // Current access status
+  readonly isLoading: boolean                         // Overall loading state
+  readonly error: Error | null                        // Current error state
+  readonly currentStep: ContentPurchaseFlowStep       // Current workflow step
+  readonly canAfford: boolean                         // User has sufficient USDC
+  readonly needsApproval: boolean                     // USDC approval required
+  readonly requiredAllowance: bigint | null           // Amount needed for approval
+  readonly userBalance: bigint | null                 // User's USDC balance
+  readonly userAllowance: bigint | null               // Current USDC allowance
+  readonly purchaseProgress: PurchaseProgress         // Purchase transaction status
+  readonly approvalProgress: PurchaseProgress         // Approval transaction status
+  readonly purchase: () => Promise<void>              // Execute direct purchase
+  readonly approveAndPurchase: () => Promise<void>    // Approve tokens then purchase
+  readonly reset: () => void                          // Reset workflow state
+  readonly refetchData: () => Promise<void>           // Refresh all data
 }
 
 export function useContentPurchaseFlow(
@@ -512,228 +508,423 @@ export function useContentPurchaseFlow(
   userAddress: Address | undefined
 ): ContentPurchaseFlowResult {
   const chainId = useChainId()
-  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
   
-  const contentData = useContentById(contentId)
-  const hasAccess = useHasContentAccess(userAddress, contentId)
-  const userBalance = useTokenBalance(contractAddresses.USDC, userAddress)
+  const contractAddresses = useMemo(() => {
+    try {
+      return getContractAddresses(chainId)
+    } catch (error) {
+      console.error('Failed to get contract addresses:', error)
+      return null
+    }
+  }, [chainId])
+  
+  const contentQuery = useContentById(contentId)
+  const accessQuery = useHasContentAccess(userAddress, contentId)
+  const userBalance = useTokenBalance(contractAddresses?.USDC, userAddress)
   const tokenAllowance = useTokenAllowance(
-    contractAddresses.USDC,
+    contractAddresses?.USDC,
     userAddress,
-    contractAddresses.PAY_PER_VIEW
+    contractAddresses?.PAY_PER_VIEW
   )
+  
   const approveToken = useApproveToken()
   const purchaseContent = usePurchaseContent()
   
   const [workflowState, setWorkflowState] = useState<{
     currentStep: ContentPurchaseFlowStep
     error: Error | null
+    lastSuccessfulStep: ContentPurchaseFlowStep | null
   }>({
     currentStep: 'checking_access',
-    error: null
+    error: null,
+    lastSuccessfulStep: null
   })
-  
+
+  const content = useMemo(() => {
+    return contentQuery.data || null
+  }, [contentQuery.data])
+
+  const hasAccess = useMemo(() => {
+    return accessQuery.data === true
+  }, [accessQuery.data])
+
+  const userBalanceAmount = useMemo(() => {
+    return userBalance.data || null
+  }, [userBalance.data])
+
+  const userAllowanceAmount = useMemo(() => {
+    return tokenAllowance.data || null
+  }, [tokenAllowance.data])
+
   const canAfford = useMemo(() => {
-    if (!userBalance.data || !contentData.data) return false
-    return userBalance.data >= contentData.data.payPerViewPrice
-  }, [userBalance.data, contentData.data])
-  
+    if (!userBalanceAmount || !content) return false
+    return userBalanceAmount >= content.payPerViewPrice
+  }, [userBalanceAmount, content])
+
   const needsApproval = useMemo(() => {
-    if (!tokenAllowance.data || !contentData.data) return false
-    return tokenAllowance.data < contentData.data.payPerViewPrice
-  }, [tokenAllowance.data, contentData.data])
-  
+    if (!userAllowanceAmount || !content) return false
+    return userAllowanceAmount < content.payPerViewPrice
+  }, [userAllowanceAmount, content])
+
   const requiredAllowance = useMemo(() => {
-    if (!contentData.data) return null
-    return contentData.data.payPerViewPrice
-  }, [contentData.data])
-  
-  const isLoading = useMemo(() => {
-    return hasAccess.isLoading || 
-           contentData.isLoading || 
-           userBalance.isLoading ||
-           tokenAllowance.isLoading ||
-           workflowState.currentStep === 'purchasing' ||
-           workflowState.currentStep === 'checking_access'
-  }, [hasAccess.isLoading, contentData.isLoading, userBalance.isLoading, tokenAllowance.isLoading, workflowState.currentStep])
-  
-  const purchaseProgress = useMemo(() => ({
+    if (!content) return null
+    return content.payPerViewPrice
+  }, [content])
+
+  const purchaseProgress = useMemo((): PurchaseProgress => ({
     isSubmitting: purchaseContent.isLoading && !purchaseContent.isConfirmed,
     isConfirming: purchaseContent.isLoading && purchaseContent.isConfirmed,
     isConfirmed: purchaseContent.isConfirmed,
     transactionHash: purchaseContent.hash
   }), [purchaseContent])
-  
-  const approvalProgress = useMemo(() => ({
+
+  const approvalProgress = useMemo((): PurchaseProgress => ({
     isSubmitting: approveToken.isLoading && !approveToken.isConfirmed,
     isConfirming: approveToken.isLoading && approveToken.isConfirmed,
     isConfirmed: approveToken.isConfirmed,
     transactionHash: approveToken.hash
   }), [approveToken])
-  
-  const purchase = useCallback(() => {
-    if (!contentId) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: new Error('Content ID is required for purchase')
-      })
+
+  const isLoading = useMemo(() => {
+    return (
+      contentQuery.isLoading ||
+      accessQuery.isLoading ||
+      userBalance.isLoading ||
+      tokenAllowance.isLoading ||
+      workflowState.currentStep === 'checking_access' ||
+      workflowState.currentStep === 'loading_content' ||
+      workflowState.currentStep === 'purchasing' ||
+      workflowState.currentStep === 'approving_tokens'
+    )
+  }, [
+    contentQuery.isLoading,
+    accessQuery.isLoading,
+    userBalance.isLoading,
+    tokenAllowance.isLoading,
+    workflowState.currentStep
+  ])
+
+  useEffect(() => {
+    if (workflowState.currentStep === 'error') {
       return
     }
-    
-    if (workflowState.currentStep !== 'can_purchase') {
+
+    if (contentQuery.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'loading_content' }))
+      return
+    }
+
+    if (contentQuery.error || !content) {
       setWorkflowState({
         currentStep: 'error',
-        error: new Error('Cannot purchase in current state')
+        error: contentQuery.error || new Error('Content not found'),
+        lastSuccessfulStep: null
       })
       return
     }
-    
-    try {
-      setWorkflowState(prev => ({ ...prev, error: null }))
-      purchaseContent.write(contentId)
-    } catch (error) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: error instanceof Error ? error : new Error('Purchase failed')
-      })
-    }
-  }, [contentId, workflowState.currentStep, purchaseContent])
-  
-  const approveAndPurchase = useCallback(() => {
-    if (!contentData.data || !contentId) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: new Error('Content data required for purchase')
-      })
-      return
-    }
-    
-    try {
-      setWorkflowState(prev => ({ ...prev, error: null }))
-      
-      approveToken.write({
-        tokenAddress: contractAddresses.USDC,
-        spender: contractAddresses.PAY_PER_VIEW,
-        amount: contentData.data.payPerViewPrice,
-      })
-    } catch (error) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: error instanceof Error ? error : new Error('Approval failed')
-      })
-    }
-  }, [contentData.data, contentId, approveToken, contractAddresses])
-  
-  const reset = useCallback(() => {
-    setWorkflowState({ currentStep: 'checking_access', error: null })
-    approveToken.reset()
-    purchaseContent.reset()
-    hasAccess.refetch()
-  }, [approveToken, purchaseContent, hasAccess])
-  
-  useEffect(() => {
-    if (hasAccess.isLoading || contentData.isLoading) {
+
+    if (accessQuery.isLoading) {
       setWorkflowState(prev => ({ ...prev, currentStep: 'checking_access' }))
       return
     }
-    
-    if (hasAccess.error || contentData.error) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: hasAccess.error || contentData.error || new Error('Failed to load content data')
+
+    if (accessQuery.error) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: accessQuery.error,
+        lastSuccessfulStep: null
       })
       return
     }
-    
-    if (hasAccess.data === true) {
-      setWorkflowState({ 
-        currentStep: 'cannot_purchase', 
-        error: new Error('You already have access to this content')
-      })
+
+    if (hasAccess) {
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'completed',
+        error: null
+      }))
       return
     }
-    
+
+    if (userBalance.isLoading || tokenAllowance.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'checking_access' }))
+      return
+    }
+
     if (!canAfford) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: new Error('Insufficient USDC balance to purchase this content')
-      })
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'insufficient_balance',
+        error: new Error('Insufficient USDC balance')
+      }))
       return
     }
-    
+
     if (needsApproval) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'need_approval',
+        error: null
+      }))
     } else {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'can_purchase',
+        error: null
+      }))
     }
-  }, [hasAccess.data, hasAccess.isLoading, hasAccess.error, contentData.error, canAfford, needsApproval])
-  
+  }, [
+    workflowState.currentStep,
+    contentQuery.isLoading,
+    contentQuery.error,
+    content,
+    accessQuery.isLoading,
+    accessQuery.error,
+    hasAccess,
+    userBalance.isLoading,
+    tokenAllowance.isLoading,
+    canAfford,
+    needsApproval
+  ])
+
   useEffect(() => {
-    if (approveToken.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
-    } else if (approveToken.isConfirmed && needsApproval === false) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
-      tokenAllowance.refetch()
+    if (approveToken.isLoading && !approveToken.isConfirmed) {
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'approving_tokens',
+        error: null
+      }))
     } else if (approveToken.error) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: approveToken.error
+      setWorkflowState({
+        currentStep: 'error',
+        error: approveToken.error,
+        lastSuccessfulStep: 'need_approval'
       })
+    } else if (approveToken.isConfirmed) {
+      tokenAllowance.refetch()
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'can_purchase',
+        error: null,
+        lastSuccessfulStep: 'approving_tokens'
+      }))
     }
-  }, [approveToken.isLoading, approveToken.isConfirmed, approveToken.error, needsApproval, tokenAllowance])
-  
+  }, [
+    approveToken.isLoading,
+    approveToken.isConfirmed,
+    approveToken.error,
+    tokenAllowance
+  ])
+
   useEffect(() => {
-    if (purchaseContent.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'purchasing' }))
+    if (purchaseContent.isLoading && !purchaseContent.isConfirmed) {
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'purchasing',
+        error: null
+      }))
     } else if (purchaseContent.error) {
-      setWorkflowState({ currentStep: 'error', error: purchaseContent.error })
+      setWorkflowState({
+        currentStep: 'error',
+        error: purchaseContent.error,
+        lastSuccessfulStep: 'can_purchase'
+      })
     } else if (purchaseContent.isConfirmed) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'completed' }))
-      hasAccess.refetch()
+      accessQuery.refetch()
       userBalance.refetch()
+      setWorkflowState(prev => ({ 
+        ...prev, 
+        currentStep: 'completed',
+        error: null,
+        lastSuccessfulStep: 'purchasing'
+      }))
     }
-  }, [purchaseContent.isLoading, purchaseContent.error, purchaseContent.isConfirmed, hasAccess, userBalance])
-  
+  }, [
+    purchaseContent.isLoading,
+    purchaseContent.isConfirmed,
+    purchaseContent.error,
+    accessQuery,
+    userBalance
+  ])
+
+  const purchase = useCallback(async (): Promise<void> => {
+    if (!contentId || !contractAddresses) {
+      throw new Error('Missing required parameters for purchase')
+    }
+
+    if (workflowState.currentStep !== 'can_purchase') {
+      throw new Error(`Cannot purchase in current state: ${workflowState.currentStep}`)
+    }
+
+    if (!canAfford) {
+      throw new Error('Insufficient USDC balance')
+    }
+
+    try {
+      setWorkflowState(prev => ({ ...prev, error: null }))
+      await purchaseContent.write(contentId)
+    } catch (error) {
+      const purchaseError = error instanceof Error ? error : new Error('Purchase failed')
+      setWorkflowState({
+        currentStep: 'error',
+        error: purchaseError,
+        lastSuccessfulStep: 'can_purchase'
+      })
+      throw purchaseError
+    }
+  }, [
+    contentId,
+    contractAddresses,
+    workflowState.currentStep,
+    canAfford,
+    purchaseContent
+  ])
+
+  const approveAndPurchase = useCallback(async (): Promise<void> => {
+    if (!contentId || !contractAddresses || !content) {
+      throw new Error('Missing required parameters for approval and purchase')
+    }
+
+    if (workflowState.currentStep !== 'need_approval') {
+      throw new Error(`Cannot approve in current state: ${workflowState.currentStep}`)
+    }
+
+    if (!canAfford) {
+      throw new Error('Insufficient USDC balance')
+    }
+
+    try {
+      setWorkflowState(prev => ({ ...prev, error: null }))
+      await approveToken.write({
+        tokenAddress: contractAddresses.USDC,
+        spender: contractAddresses.PAY_PER_VIEW,
+        amount: content.payPerViewPrice
+      })
+    } catch (error) {
+      const approvalError = error instanceof Error ? error : new Error('Approval failed')
+      setWorkflowState({
+        currentStep: 'error',
+        error: approvalError,
+        lastSuccessfulStep: 'need_approval'
+      })
+      throw approvalError
+    }
+  }, [
+    contentId,
+    contractAddresses,
+    content,
+    workflowState.currentStep,
+    canAfford,
+    approveToken
+  ])
+
+  const reset = useCallback(() => {
+    setWorkflowState({
+      currentStep: 'checking_access',
+      error: null,
+      lastSuccessfulStep: null
+    })
+    if (approveToken.reset) approveToken.reset()
+    if (purchaseContent.reset) purchaseContent.reset()
+  }, [approveToken, purchaseContent])
+
+  const refetchData = useCallback(async (): Promise<void> => {
+    try {
+      await Promise.all([
+        contentQuery.refetch(),
+        accessQuery.refetch(),
+        userBalance.refetch(),
+        tokenAllowance.refetch()
+      ])
+    } catch (error) {
+      console.error('Failed to refetch data:', error)
+    }
+  }, [contentQuery, accessQuery, userBalance, tokenAllowance])
+
   return {
-    currentStep: workflowState.currentStep,
+    content,
+    hasAccess,
     isLoading,
     error: workflowState.error,
-    hasAccess: hasAccess.data || false,
-    content: contentData.data ? {
-      id: contentId || BigInt(0),
-      title: contentData.data.title,
-      description: contentData.data.description,
-      payPerViewPrice: contentData.data.payPerViewPrice,
-      creator: contentData.data.creator,
-      category: contentData.data.category,
-      isActive: contentData.data.isActive
-    } : null,
+    currentStep: workflowState.currentStep,
     canAfford,
     needsApproval,
-    userBalance: userBalance.data || null,
     requiredAllowance,
+    userBalance: userBalanceAmount,
+    userAllowance: userAllowanceAmount,
+    purchaseProgress,
+    approvalProgress,
     purchase,
     approveAndPurchase,
     reset,
-    purchaseProgress,
-    approvalProgress
+    refetchData
+  }
+}
+
+// Utility Functions for Purchase Flow
+export function getPurchaseFlowStepMessage(step: ContentPurchaseFlowStep): string {
+  switch (step) {
+    case 'checking_access':
+      return 'Checking your access status...'
+    case 'loading_content':
+      return 'Loading content information...'
+    case 'insufficient_balance':
+      return 'Insufficient USDC balance'
+    case 'need_approval':
+      return 'USDC approval required'
+    case 'can_purchase':
+      return 'Ready to purchase'
+    case 'approving_tokens':
+      return 'Approving USDC spending...'
+    case 'purchasing':
+      return 'Processing purchase...'
+    case 'completed':
+      return 'Purchase completed successfully!'
+    case 'error':
+      return 'An error occurred'
+    default:
+      return 'Unknown status'
+  }
+}
+
+export function canInitiatePurchaseAction(step: ContentPurchaseFlowStep): boolean {
+  return step === 'need_approval' || step === 'can_purchase'
+}
+
+export function isProcessingStep(step: ContentPurchaseFlowStep): boolean {
+  return step === 'approving_tokens' || step === 'purchasing'
+}
+
+export function getPurchaseFlowProgress(step: ContentPurchaseFlowStep): number {
+  switch (step) {
+    case 'checking_access':
+    case 'loading_content':
+      return 10
+    case 'insufficient_balance':
+      return 20
+    case 'need_approval':
+      return 30
+    case 'can_purchase':
+      return 40
+    case 'approving_tokens':
+      return 60
+    case 'purchasing':
+      return 80
+    case 'completed':
+      return 100
+    case 'error':
+      return 0
+    default:
+      return 0
   }
 }
 
 // ===== ENHANCED VALIDATION UTILITIES =====
-
-/**
- * Enhanced IPFS hash validation that supports both CID v0 and v1 formats
- * CID v0: Qm... (legacy format)
- * CID v1: baf..., bae..., bag... etc (modern format)
- */
 function validateIPFSHash(hash: string): boolean {
   if (!hash || hash.length < 10) return false
   
-  // Check for CID v0 (starts with Qm)
   if (hash.startsWith('Qm') && hash.length === 46) return true
   
-  // Check for CID v1 (starts with various prefixes)
   const cidV1Prefixes = ['baf', 'bae', 'bag', 'bah', 'bai', 'baj']
   const hasValidPrefix = cidV1Prefixes.some(prefix => hash.startsWith(prefix))
   
@@ -742,13 +933,9 @@ function validateIPFSHash(hash: string): boolean {
   return false
 }
 
-/**
- * Unified price validation that matches smart contract constraints
- * All price validations now use the same limits as ContentRegistry.sol
- */
 function validatePrice(price: bigint): { isValid: boolean; error?: string } {
   const MIN_PRICE = BigInt(0.01e6) // $0.01 in USDC (6 decimals)
-  const MAX_PRICE = BigInt(50e6)   // $50.00 in USDC (6 decimals) - matches smart contract
+  const MAX_PRICE = BigInt(50e6)   // $50.00 in USDC (6 decimals)
   
   if (price < MIN_PRICE) {
     return { isValid: false, error: 'Minimum price is $0.01' }
@@ -762,7 +949,6 @@ function validatePrice(price: bigint): { isValid: boolean; error?: string } {
 }
 
 // ===== ENHANCED CONTENT PUBLISHING WORKFLOW =====
-
 export interface ContentPublishingData {
   readonly title: string
   readonly description: string
@@ -826,7 +1012,6 @@ export function useContentPublishingFlow(
                    workflowState.currentStep !== 'completed' && 
                    workflowState.currentStep !== 'error'
   
-  // Enhanced progress tracking with detailed step descriptions
   const publishingProgress = useMemo(() => {
     const stepDescriptions: Record<ContentPublishingFlowStep, string> = {
       idle: 'Ready to publish',
@@ -848,11 +1033,9 @@ export function useContentPublishingFlow(
     }
   }, [registerContent, workflowState.currentStep])
   
-  // Enhanced validation with better error messages
   const validateContentData = useCallback((data: ContentPublishingData): string[] => {
     const errors: string[] = []
     
-    // Title validation
     if (!data.title || data.title.trim().length === 0) {
       errors.push('Content title is required')
     }
@@ -860,7 +1043,6 @@ export function useContentPublishingFlow(
       errors.push('Title must be less than 200 characters')
     }
     
-    // Description validation
     if (!data.description || data.description.trim().length === 0) {
       errors.push('Content description is required')
     }
@@ -868,18 +1050,15 @@ export function useContentPublishingFlow(
       errors.push('Description must be less than 1000 characters')
     }
     
-    // Enhanced IPFS hash validation
     if (!validateIPFSHash(data.ipfsHash)) {
       errors.push('Valid IPFS hash is required (supports both CID v0 and v1 formats)')
     }
     
-    // Unified price validation
     const priceValidation = validatePrice(data.payPerViewPrice)
     if (!priceValidation.isValid) {
       errors.push(priceValidation.error!)
     }
     
-    // Tags validation
     if (data.tags.length > 10) {
       errors.push('Maximum 10 tags allowed')
     }
@@ -894,7 +1073,6 @@ export function useContentPublishingFlow(
     return errors
   }, [])
   
-  // Enhanced publish function with complete error handling
   const publish = useCallback((data: ContentPublishingData) => {
     console.log('Starting content publishing workflow...', data)
     
@@ -969,7 +1147,6 @@ export function useContentPublishingFlow(
     registerContent.reset()
   }, [registerContent])
   
-  // Enhanced effect to handle transaction lifecycle
   useEffect(() => {
     if (registerContent.isLoading) {
       console.log('Transaction submitted, waiting for confirmation...')
@@ -988,7 +1165,6 @@ export function useContentPublishingFlow(
       console.log('Transaction successful, extracting content ID...')
       setWorkflowState(prev => ({ ...prev, currentStep: 'extracting_content_id' }))
       
-      // Extract content ID from transaction receipt
       const extractContentId = async () => {
         try {
           const publicClient = createPublicClient({
@@ -1002,7 +1178,6 @@ export function useContentPublishingFlow(
           
           console.log('Transaction receipt:', receipt)
           
-          // Parse the ContentRegistered event to get the content ID
           const contentRegisteredLogs = parseEventLogs({
             abi: CONTENT_REGISTRY_ABI,
             eventName: 'ContentRegistered',
@@ -1019,7 +1194,6 @@ export function useContentPublishingFlow(
               publishedContentId: contentId
             })
             
-            // Refresh related data
             creatorRegistration.refetch()
             userBalance.refetch()
           } else {
@@ -1027,7 +1201,6 @@ export function useContentPublishingFlow(
           }
         } catch (error) {
           console.error('Error extracting content ID:', error)
-          // Still mark as completed since the transaction succeeded
           setWorkflowState({
             currentStep: 'completed',
             error: null,
@@ -1062,6 +1235,7 @@ export function useContentPublishingFlow(
   }
 }
 
+// Enhanced Content Publishing Flow
 export interface EnhancedContentPublishingData extends ContentPublishingData {
   readonly framePreviewImage?: string
   readonly socialDescription?: string
@@ -1677,6 +1851,7 @@ export function useEnhancedContentPublishingFlow(
   }
 }
 
+// Creator Onboarding Flow
 export type CreatorOnboardingFlowStep = 
   | 'checking'
   | 'not_registered'
