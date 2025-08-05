@@ -30,7 +30,9 @@ import {
   AlertCircle,
   CreditCard,
   Loader2,
-  Shield
+  Shield,
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react'
 import {
   Card,
@@ -42,6 +44,8 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -73,17 +77,30 @@ interface ContentPurchaseCardProps {
   /** User's Ethereum address for purchase operations */
   readonly userAddress?: Address
   /** Callback executed when content is successfully purchased */
-  readonly onPurchaseSuccess?: () => void
+  readonly onPurchaseSuccess?: (contentId: bigint) => void
   /** Callback executed when user wants to view purchased content */
-  readonly onViewContent?: () => void
+  readonly onViewContent?: (contentId: bigint) => void
   /** Display variant - full shows complete details, compact for lists */
-  readonly variant?: 'full' | 'compact'
+  readonly variant?: 'full' | 'compact' | 'minimal'
   /** Additional CSS classes for custom styling */
   readonly className?: string
+  /** Whether to show creator information */
+  readonly showCreatorInfo?: boolean
   /** Whether to show detailed purchase information */
   readonly showPurchaseDetails?: boolean
   /** Whether to automatically redirect after successful purchase */
   readonly autoRedirectAfterPurchase?: boolean
+}
+
+/**
+ * Purchase State Management
+ */
+interface PurchaseState {
+  readonly status: 'idle' | 'checking' | 'approving' | 'purchasing' | 'completed' | 'error'
+  readonly message: string
+  readonly progress: number
+  readonly canRetry: boolean
+  readonly transactionHash?: string
 }
 
 /**
@@ -112,225 +129,176 @@ export function ContentPurchaseCard({
   onViewContent,
   variant = 'full',
   className,
+  showCreatorInfo = true,
   showPurchaseDetails = true,
   autoRedirectAfterPurchase = false
 }: ContentPurchaseCardProps) {
   const router = useRouter()
-  const { isConnected } = useAccount()
+  const { address: connectedAddress, isConnected } = useAccount()
   
-  // Core data hooks for content information and purchase workflow
+  // Use the connected address if no userAddress provided
+  const effectiveUserAddress = userAddress || connectedAddress
+
+  // Core data hooks
   const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(userAddress, contentId)
-  const purchaseFlow = useContentPurchaseFlow(contentId, userAddress)
+  const accessQuery = useHasContentAccess(effectiveUserAddress, contentId)
+  const purchaseFlow = useContentPurchaseFlow(contentId, effectiveUserAddress)
   
-  // Purchase progress state for UI feedback
-  const [progressState, setProgressState] = useState<PurchaseProgressState>({
-    step: 'idle',
+  // Local purchase state
+  const [purchaseState, setPurchaseState] = useState<PurchaseState>({
+    status: 'idle',
     message: 'Ready to purchase',
-    canRetry: false,
-    showModal: false
+    progress: 0,
+    canRetry: false
   })
 
   /**
-   * Effect: Update Progress State Based on Purchase Flow
-   * 
-   * This effect translates the purchase workflow state into user-friendly
-   * progress messages and modal visibility controls.
+   * Update purchase state based on purchase flow status
    */
   useEffect(() => {
-    const currentStep = purchaseFlow.currentStep
-    const hasError = purchaseFlow.error !== null
-    
-    if (hasError) {
-      setProgressState({
-        step: 'error',
-        message: `Purchase failed: ${purchaseFlow.error?.message || 'Unknown error'}`,
-        canRetry: true,
-        showModal: true
-      })
-      return
-    }
+    if (!purchaseFlow) return
+
+    const { currentStep, error, purchaseProgress, approvalProgress } = purchaseFlow
 
     switch (currentStep) {
       case 'checking_access':
-        setProgressState({
-          step: 'checking',
-          message: 'Checking access status...',
-          canRetry: false,
-          showModal: false
+        setPurchaseState({
+          status: 'checking',
+          message: 'Checking access...',
+          progress: 10,
+          canRetry: false
         })
         break
       
       case 'need_approval':
-        setProgressState({
-          step: 'idle',
-          message: 'USDC approval required before purchase',
-          canRetry: false,
-          showModal: false
+        setPurchaseState({
+          status: 'idle',
+          message: 'USDC approval required',
+          progress: 30,
+          canRetry: false
         })
         break
       
-      case 'can_purchase':
-        setProgressState({
-          step: 'idle',
-          message: 'Ready to purchase',
+      case 'approving_tokens':
+        setPurchaseState({
+          status: 'approving',
+          message: 'Approving USDC...',
+          progress: 50,
           canRetry: false,
-          showModal: false
+          transactionHash: approvalProgress.transactionHash
         })
         break
       
       case 'purchasing':
-        setProgressState({
-          step: 'purchasing',
-          message: 'Processing purchase transaction...',
+        setPurchaseState({
+          status: 'purchasing',
+          message: 'Processing purchase...',
+          progress: 80,
           canRetry: false,
-          showModal: true
+          transactionHash: purchaseProgress.transactionHash
         })
         break
       
       case 'completed':
-        setProgressState({
-          step: 'completed',
-          message: 'Purchase completed successfully!',
+        setPurchaseState({
+          status: 'completed',
+          message: 'Purchase completed!',
+          progress: 100,
           canRetry: false,
-          showModal: true
+          transactionHash: purchaseProgress.transactionHash
+        })
+        
+        // Call success callback
+        if (onPurchaseSuccess) {
+          onPurchaseSuccess(contentId)
+        }
+        
+        // Auto-redirect if enabled
+        if (autoRedirectAfterPurchase) {
+          setTimeout(() => {
+            router.push(`/content/${contentId}`)
+          }, 2000)
+        }
+        break
+      
+      case 'error':
+        setPurchaseState({
+          status: 'error',
+          message: error?.message || 'Purchase failed',
+          progress: 0,
+          canRetry: true
         })
         break
       
       default:
-        setProgressState({
-          step: 'idle',
+        setPurchaseState({
+          status: 'idle',
           message: 'Ready to purchase',
-          canRetry: false,
-          showModal: false
+          progress: 0,
+          canRetry: false
         })
     }
-  }, [purchaseFlow.currentStep, purchaseFlow.error])
+  }, [purchaseFlow, contentId, onPurchaseSuccess, autoRedirectAfterPurchase, router])
 
   /**
-   * Effect: Handle Purchase Success
-   * 
-   * This effect manages post-purchase actions including callbacks and redirects.
+   * Handle purchase action
    */
-  useEffect(() => {
-    if (purchaseFlow.currentStep === 'completed' && progressState.step === 'completed') {
-      // Execute success callback if provided
-      if (onPurchaseSuccess) {
-        onPurchaseSuccess()
-      }
-      
-      // Auto-redirect if enabled
-      if (autoRedirectAfterPurchase) {
-        setTimeout(() => {
-          router.push(`/content/${contentId}`)
-        }, 2000)
-      }
-    }
-  }, [purchaseFlow.currentStep, progressState.step, onPurchaseSuccess, autoRedirectAfterPurchase, router, contentId])
-
-  /**
-   * Purchase Action Handler
-   * 
-   * This function orchestrates the complete purchase flow, handling both
-   * approval requirements and direct purchases based on current state.
-   */
-  const handlePurchaseAction = useCallback(async () => {
-    if (!isConnected || !userAddress) {
+  const handlePurchase = useCallback(async () => {
+    if (!isConnected || !effectiveUserAddress) {
+      // Handle wallet connection
       console.error('Wallet not connected')
       return
     }
 
-    if (!contentId) {
-      console.error('Content ID not provided')
+    if (!purchaseFlow) {
+      console.error('Purchase flow not available')
       return
     }
 
     try {
-      // Set purchasing state
-      setProgressState((prev: PurchaseProgressState) => ({
-        ...prev,
-        step: 'purchasing',
-        showModal: true
-      }))
-
-      // Check if approval is needed first
       if (purchaseFlow.needsApproval) {
-        // First approve USDC spending
-        setProgressState((prev: PurchaseProgressState) => ({
-          ...prev,
-          step: 'approving',
-          message: 'Approving USDC spending...'
-        }))
-        
-        // Execute approval and purchase in sequence
         await purchaseFlow.approveAndPurchase()
       } else {
-        // Direct purchase without additional approval needed
         await purchaseFlow.purchase()
       }
     } catch (error) {
-      console.error('Purchase action failed:', error)
-      setProgressState({
-        step: 'error',
-        message: `Purchase failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        canRetry: true,
-        showModal: true
-      })
+      console.error('Purchase failed:', error)
+      // Error state will be handled by the useEffect above
     }
-  }, [isConnected, userAddress, contentId, purchaseFlow])
+  }, [isConnected, effectiveUserAddress, purchaseFlow])
 
   /**
-   * Content View Handler
-   * 
-   * This function handles the content viewing action for users who already
-   * have access to the content.
-   */
-  const handleViewContent = useCallback(() => {
-    if (onViewContent) {
-      onViewContent()
-    } else {
-      // Default behavior: navigate to content page
-      router.push(`/content/${contentId}`)
-    }
-  }, [onViewContent, router, contentId])
-
-  /**
-   * Retry Handler
-   * 
-   * This function allows users to retry failed purchase attempts.
+   * Handle retry action
    */
   const handleRetry = useCallback(() => {
-    setProgressState({
-      step: 'idle',
-      message: 'Ready to retry purchase',
-      canRetry: false,
-      showModal: false
-    })
-    
-    // Reset purchase flow error state
-    if (purchaseFlow.reset) {
+    if (purchaseFlow?.reset) {
       purchaseFlow.reset()
     }
+    setPurchaseState({
+      status: 'idle',
+      message: 'Ready to retry',
+      progress: 0,
+      canRetry: false
+    })
   }, [purchaseFlow])
 
   /**
-   * Modal Close Handler
-   * 
-   * This function manages the transaction status modal visibility.
+   * Handle view content action
    */
-  const handleModalClose = useCallback(() => {
-    setProgressState((prev: PurchaseProgressState) => ({
-      ...prev,
-      showModal: false
-    }))
-  }, [])
+  const handleViewContent = useCallback(() => {
+    if (onViewContent) {
+      onViewContent(contentId)
+    } else {
+      router.push(`/content/${contentId}`)
+    }
+  }, [onViewContent, contentId, router])
 
-  // Loading state while fetching content and access data
-  if (contentQuery.isLoading || accessQuery.isLoading || purchaseFlow.isLoading) {
+  // Loading state
+  if (contentQuery.isLoading || accessQuery.isLoading || purchaseFlow?.isLoading) {
     return <ContentPurchaseCardSkeleton variant={variant} className={className} />
   }
 
-  // Error state if content data cannot be loaded
+  // Error state - content not found
   if (contentQuery.error || !contentQuery.data) {
     return (
       <Card className={cn('w-full', className)}>
@@ -347,44 +315,90 @@ export function ContentPurchaseCard({
   }
 
   const content = contentQuery.data
-  const hasAccess = accessQuery.data || false
+  const hasAccess = accessQuery.data === true
+  const canAfford = purchaseFlow?.canAfford ?? false
+  const needsApproval = purchaseFlow?.needsApproval ?? false
 
-  // Render compact variant for space-constrained contexts
+  // Render compact variant
   if (variant === 'compact') {
     return (
-      <CompactPurchaseCard
-        content={content}
-        hasAccess={hasAccess}
-        progressState={progressState}
-        purchaseFlow={purchaseFlow}
-        onPurchaseAction={handlePurchaseAction}
-        onViewContent={handleViewContent}
-        className={className}
-      />
+      <Card className={cn('w-full', className)}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium truncate">{content.title}</h3>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 ml-4">
+              <AccessStatusBadge hasAccess={hasAccess} />
+              
+              {hasAccess ? (
+                <Button size="sm" onClick={handleViewContent}>
+                  <Eye className="h-3 w-3 mr-1" />
+                  View
+                </Button>
+              ) : (
+                <PurchaseButton
+                  onClick={handlePurchase}
+                  purchaseState={purchaseState}
+                  canAfford={canAfford}
+                  needsApproval={needsApproval}
+                  size="sm"
+                />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
-  // Render full variant with complete purchase interface
-  return (
-    <>
-      <Card className={cn('w-full max-w-md mx-auto', className)}>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg font-semibold line-clamp-2">
-                {content.title}
-              </CardTitle>
-              <CardDescription className="mt-1 line-clamp-2">
-                {content.description}
-              </CardDescription>
-            </div>
-            <AccessStatusBadge hasAccess={hasAccess} />
-          </div>
-        </CardHeader>
+  // Render minimal variant
+  if (variant === 'minimal') {
+    return (
+      <div className={cn('flex items-center gap-2', className)}>
+        <span className="text-sm font-medium">
+          {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
+        </span>
+        {hasAccess ? (
+          <Button size="sm" variant="outline" onClick={handleViewContent}>
+            <Eye className="h-3 w-3" />
+          </Button>
+        ) : (
+          <PurchaseButton
+            onClick={handlePurchase}
+            purchaseState={purchaseState}
+            canAfford={canAfford}
+            needsApproval={needsApproval}
+            size="sm"
+          />
+        )}
+      </div>
+    )
+  }
 
-        <CardContent className="space-y-4">
-          {/* Content Creator Information */}
-          <div className="flex items-center space-x-3">
+  // Full variant - comprehensive purchase experience
+  return (
+    <Card className={cn('w-full max-w-lg mx-auto', className)}>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg font-semibold line-clamp-2">
+              {content.title}
+            </CardTitle>
+            <CardDescription className="mt-1 line-clamp-2">
+              {content.description}
+            </CardDescription>
+          </div>
+          <AccessStatusBadge hasAccess={hasAccess} />
+        </div>
+        
+        {/* Creator Information */}
+        {showCreatorInfo && (
+          <div className="flex items-center space-x-3 mt-4">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="text-xs">
                 {formatAddress(content.creator).slice(0, 2).toUpperCase()}
@@ -394,73 +408,186 @@ export function ContentPurchaseCard({
               <p className="text-sm font-medium text-gray-900">
                 {formatAddress(content.creator)}
               </p>
-              <p className="text-xs text-gray-500">Content Creator</p>
+              <p className="text-xs text-gray-500">Creator</p>
             </div>
           </div>
+        )}
+      </CardHeader>
 
-          {/* Purchase Details Section */}
-          {showPurchaseDetails && (
-            <PurchaseDetailsSection
-              content={content}
-              purchaseFlow={purchaseFlow}
-              hasAccess={hasAccess}
+      <CardContent>
+        {/* Purchase Details */}
+        {showPurchaseDetails && (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Price</span>
+              <span className="font-medium">
+                {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
+              </span>
+            </div>
+            
+            {!hasAccess && purchaseFlow && (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Your Balance</span>
+                  <span className={cn(
+                    "font-medium",
+                    canAfford ? "text-green-600" : "text-red-600"
+                  )}>
+                    {purchaseFlow.userBalance ? 
+                      formatCurrency(purchaseFlow.userBalance, 6, 'USDC') : 
+                      '---'
+                    }
+                  </span>
+                </div>
+                
+                {needsApproval && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Approval Status</span>
+                    <Badge variant="outline">Required</Badge>
+                  </div>
+                )}
+              </>
+            )}
+            
+            <Separator />
+          </div>
+        )}
+
+        {/* Purchase Progress */}
+        {purchaseState.status !== 'idle' && purchaseState.status !== 'error' && (
+          <div className="space-y-2 mb-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">{purchaseState.message}</span>
+              <span className="text-sm text-muted-foreground">
+                {purchaseState.progress}%
+              </span>
+            </div>
+            <Progress value={purchaseState.progress} />
+            
+            {purchaseState.transactionHash && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Transaction Hash:</span>
+                <a
+                  href={`https://basescan.org/tx/${purchaseState.transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center hover:text-foreground"
+                >
+                  {`${purchaseState.transactionHash.slice(0, 6)}...${purchaseState.transactionHash.slice(-4)}`}
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Error State */}
+        {purchaseState.status === 'error' && (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {purchaseState.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Insufficient Balance Warning */}
+        {!hasAccess && !canAfford && purchaseFlow && (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Insufficient USDC balance. You need{' '}
+              {formatCurrency(content.payPerViewPrice, 6, 'USDC')} to purchase this content.
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+
+      <CardFooter className="flex gap-2">
+        {hasAccess ? (
+          <Button onClick={handleViewContent} className="w-full">
+            <Eye className="h-4 w-4 mr-2" />
+            View Content
+          </Button>
+        ) : (
+          <>
+            {purchaseState.canRetry && (
+              <Button
+                variant="outline"
+                onClick={handleRetry}
+                className="flex-1"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            )}
+            
+            <PurchaseButton
+              onClick={handlePurchase}
+              purchaseState={purchaseState}
+              canAfford={canAfford}
+              needsApproval={needsApproval}
+              className={purchaseState.canRetry ? "flex-1" : "w-full"}
             />
-          )}
+          </>
+        )}
+      </CardFooter>
+    </Card>
+  )
+}
 
-          {/* Progress Status */}
-          <PurchaseProgressSection
-            progressState={progressState}
-            purchaseFlow={purchaseFlow}
-          />
-        </CardContent>
-
-        <CardFooter>
-          <PurchaseActionButton
-            hasAccess={hasAccess}
-            progressState={progressState}
-            purchaseFlow={purchaseFlow}
-            onPurchaseAction={handlePurchaseAction}
-            onViewContent={handleViewContent}
-            onRetry={handleRetry}
-            isConnected={isConnected}
-          />
-        </CardFooter>
-      </Card>
-
-      {/* Transaction Status Modal */}
-      <TransactionStatusModal
-        isOpen={progressState.showModal}
-        onClose={handleModalClose}
-        transactionStatus={{
-          status: progressState.step === 'purchasing' ? 'submitting' : 
-                  progressState.step === 'completed' ? 'confirmed' :
-                  progressState.step === 'error' ? 'failed' : 'idle',
-          transactionHash: purchaseFlow.purchaseProgress.transactionHash || null,
-          formattedStatus: progressState.message,
-          canRetry: progressState.canRetry,
-          progress: {
-            submitted: purchaseFlow.purchaseProgress.isSubmitting,
-            confirming: purchaseFlow.purchaseProgress.isConfirming,
-            confirmed: purchaseFlow.purchaseProgress.isConfirmed,
-            progressText: getProgressText(purchaseFlow.purchaseProgress)
-          },
-          retry: handleRetry,
-          reset: purchaseFlow.reset || (() => {}),
-          viewTransaction: () => {
-            if (purchaseFlow.purchaseProgress.transactionHash) {
-              window.open(`https://sepolia.basescan.org/tx/${purchaseFlow.purchaseProgress.transactionHash}`, '_blank')
-            }
-          }
-        }}
-        transactionTitle="Content Purchase"
-        onSuccess={() => {
-          handleModalClose()
-          if (autoRedirectAfterPurchase) {
-            router.push(`/content/${contentId}`)
-          }
-        }}
-      />
-    </>
+/**
+ * Purchase Button Component
+ */
+function PurchaseButton({
+  onClick,
+  purchaseState,
+  canAfford,
+  needsApproval,
+  size = 'default',
+  className
+}: {
+  onClick: () => void
+  purchaseState: PurchaseState
+  canAfford: boolean
+  needsApproval: boolean
+  size?: 'default' | 'sm' | 'lg'
+  className?: string
+}) {
+  const isProcessing = ['checking', 'approving', 'purchasing'].includes(purchaseState.status)
+  const isCompleted = purchaseState.status === 'completed'
+  
+  if (isCompleted) {
+    return (
+      <Button size={size} className={cn("bg-green-600 hover:bg-green-700", className)} disabled>
+        <CheckCircle className="h-4 w-4 mr-2" />
+        Purchased!
+      </Button>
+    )
+  }
+  
+  if (isProcessing) {
+    return (
+      <Button size={size} className={className} disabled>
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        {purchaseState.status === 'approving' ? 'Approving...' : 'Processing...'}
+      </Button>
+    )
+  }
+  
+  const buttonText = needsApproval ? 'Approve & Purchase' : 'Purchase Content'
+  const ButtonIcon = needsApproval ? CreditCard : ShoppingCart
+  
+  return (
+    <Button 
+      onClick={onClick} 
+      size={size}
+      className={className}
+      disabled={!canAfford || isProcessing}
+    >
+      <ButtonIcon className="h-4 w-4 mr-2" />
+      {buttonText}
+    </Button>
   )
 }
 
@@ -472,17 +599,17 @@ export function ContentPurchaseCard({
 function AccessStatusBadge({ hasAccess }: { hasAccess: boolean }) {
   if (hasAccess) {
     return (
-      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+      <Badge variant="default" className="bg-green-100 text-green-800">
         <CheckCircle className="h-3 w-3 mr-1" />
         Owned
       </Badge>
     )
   }
-
+  
   return (
-    <Badge variant="secondary" className="bg-gray-100 text-gray-600 border-gray-200">
+    <Badge variant="outline">
       <Lock className="h-3 w-3 mr-1" />
-      Purchase Required
+      Premium
     </Badge>
   )
 }
@@ -759,51 +886,67 @@ function ContentPurchaseCardSkeleton({
   variant = 'full', 
   className 
 }: { 
-  variant?: 'full' | 'compact'
-  className?: string 
+  variant?: 'full' | 'compact' | 'minimal'
+  className?: string
 }) {
   if (variant === 'compact') {
     return (
       <Card className={cn('w-full', className)}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="h-4 bg-gray-200 rounded animate-pulse mb-2" />
-              <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-20" />
             </div>
-            <div className="flex gap-2 ml-4">
-              <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
-              <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-8 w-20" />
             </div>
           </div>
         </CardContent>
       </Card>
     )
   }
-
+  
+  if (variant === 'minimal') {
+    return (
+      <div className={cn('flex items-center gap-2', className)}>
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-8 w-16" />
+      </div>
+    )
+  }
+  
+  // Full variant skeleton
   return (
-    <Card className={cn('w-full max-w-md mx-auto', className)}>
+    <Card className={cn('w-full max-w-lg mx-auto', className)}>
       <CardHeader>
-        <div className="space-y-2">
-          <div className="h-5 bg-gray-200 rounded animate-pulse" />
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
-          <div className="flex-1 space-y-1">
-            <div className="h-4 bg-gray-200 rounded animate-pulse" />
-            <div className="h-3 bg-gray-200 rounded animate-pulse w-20" />
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-full" />
+          <div className="flex items-center space-x-3">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <div className="space-y-1">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
           </div>
         </div>
-        <div className="space-y-2">
-          <div className="h-16 bg-gray-200 rounded animate-pulse" />
-          <div className="h-8 bg-gray-200 rounded animate-pulse" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <div className="flex justify-between">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+          <div className="flex justify-between">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-16" />
+          </div>
         </div>
       </CardContent>
       <CardFooter>
-        <div className="h-10 bg-gray-200 rounded animate-pulse w-full" />
+        <Skeleton className="h-10 w-full" />
       </CardFooter>
     </Card>
   )

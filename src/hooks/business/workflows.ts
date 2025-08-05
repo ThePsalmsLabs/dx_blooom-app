@@ -1240,17 +1240,6 @@ export function useX402ContentPurchaseFlow(
   }
 }
 
-// Enhanced Content Purchase Flow Types and Hook
-export type ContentPurchaseFlowStep = 
-  | 'checking_access'        // Initial state - checking if user already has access
-  | 'loading_content'        // Loading content information from blockchain
-  | 'insufficient_balance'   // User doesn't have enough USDC
-  | 'need_approval'         // USDC approval required before purchase
-  | 'can_purchase'          // Ready to execute purchase transaction
-  | 'approving_tokens'      // Executing USDC approval transaction
-  | 'purchasing'            // Executing purchase transaction
-  | 'completed'             // Purchase completed successfully
-  | 'error'                 // An error occurred during the process
 
 export interface PurchaseProgress {
   readonly isSubmitting: boolean      // Transaction submitted to mempool
@@ -1298,12 +1287,57 @@ export interface ContentPurchaseFlowResult {
   readonly refetchData: () => Promise<void>           // Refresh all data
 }
 
+/**
+ * Purchase Flow Step Definitions
+ * 
+ * These steps represent the complete user journey from discovering content
+ * to successfully purchasing and accessing it.
+ */
+export type ContentPurchaseFlowStep = 
+  | 'checking_access'        // Initial state - checking if user already has access
+  | 'loading_content'        // Loading content information from blockchain
+  | 'insufficient_balance'   // User doesn't have enough USDC
+  | 'need_approval'         // USDC approval required before purchase
+  | 'can_purchase'          // Ready to execute purchase transaction
+  | 'approving_tokens'      // Executing USDC approval transaction
+  | 'purchasing'            // Executing purchase transaction
+  | 'completed'             // Purchase completed successfully
+  | 'error'                 // An error occurred during the process
+
+/**
+ * Transaction Progress Tracking
+ * 
+ * This interface tracks the real-time status of blockchain transactions,
+ * providing users with detailed feedback about what's happening.
+ */
+export interface PurchaseProgress {
+  readonly isSubmitting: boolean      // Transaction submitted to mempool
+  readonly isConfirming: boolean      // Waiting for blockchain confirmation
+  readonly isConfirmed: boolean       // Transaction confirmed on blockchain
+  readonly transactionHash?: string    // Hash of the transaction
+  readonly blockNumber?: bigint       // Block number of confirmation
+  readonly gasUsed?: bigint           // Gas consumed by transaction
+}
+
+/**
+ * Workflow State Management
+ * 
+ * This interface manages the overall state of the purchase workflow,
+ * including current step, error handling, and progress tracking.
+ */
+interface WorkflowState {
+  readonly currentStep: ContentPurchaseFlowStep
+  readonly error: Error | null
+  readonly lastSuccessfulStep: ContentPurchaseFlowStep | null
+}
+
 export function useContentPurchaseFlow(
   contentId: bigint | undefined,
   userAddress: Address | undefined
 ): ContentPurchaseFlowResult {
   const chainId = useChainId()
   
+  // Get contract addresses for the current chain
   const contractAddresses = useMemo(() => {
     try {
       return getContractAddresses(chainId)
@@ -1313,444 +1347,185 @@ export function useContentPurchaseFlow(
     }
   }, [chainId])
 
-  // Step 2: Verify Contract Configuration
-  useEffect(() => {
-    console.log('Contract Addresses:', contractAddresses)
-    if (!contractAddresses) {
-      console.error('Contract addresses not available for chainId:', chainId)
-    }
-  }, [contractAddresses, chainId])
-  
-  const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(userAddress, contentId)
-  const userBalance = useTokenBalance(contractAddresses?.USDC, userAddress)
-  const tokenAllowance = useTokenAllowance(
-    contractAddresses?.USDC,
-    userAddress,
-    contractAddresses?.PAY_PER_VIEW
-  )
-
-  // NEW: ETH balance fetching using wagmi's useBalance
-  const { data: ethBalance } = useBalance({
-    address: userAddress,
-    query: { enabled: !!userAddress }
-  })
-
-  // NEW: ETH price conversion using PriceOracle
-  const { data: requiredEthAmount } = useReadContract({
-    address: contractAddresses?.PRICE_ORACLE,
-    abi: PRICE_ORACLE_ABI,
-    functionName: 'convertFromUSDC',
-    args: contentQuery.data ? ['0x0000000000000000000000000000000000000000', contentQuery.data.payPerViewPrice] : undefined,
-    query: { 
-      enabled: !!(contractAddresses?.PRICE_ORACLE && contentQuery.data?.payPerViewPrice)
-    }
-  })
-
-  // Step 3: Check Balance Fetching
-  useEffect(() => {
-    console.log('Balance Debug:', {
-      tokenAddress: contractAddresses?.USDC,
-      userAddress,
-      balance: userBalance.data,
-      isLoading: userBalance.isLoading,
-      error: userBalance.error,
-      ethBalance: ethBalance?.value,
-      requiredEthAmount
-    })
-  }, [userBalance, contractAddresses?.USDC, userAddress, ethBalance, requiredEthAmount])
-  
-  const approveToken = useApproveToken()
-  const purchaseContent = usePurchaseContent()
-  
-  const [workflowState, setWorkflowState] = useState<{
-    currentStep: ContentPurchaseFlowStep
-    error: Error | null
-    lastSuccessfulStep: ContentPurchaseFlowStep | null
-  }>({
+  // Workflow state management
+  const [workflowState, setWorkflowState] = useState<WorkflowState>({
     currentStep: 'checking_access',
     error: null,
     lastSuccessfulStep: null
   })
 
-  const content = useMemo(() => {
-    return contentQuery.data || null
-  }, [contentQuery.data])
+  // Core data hooks - these connect to your existing smart contracts
+  const contentQuery = useContentById(contentId)
+  const accessQuery = useHasContentAccess(userAddress, contentId)
+  const userBalance = useTokenBalance(userAddress, contractAddresses?.USDC)
+  const tokenAllowance = useTokenAllowance(
+    userAddress, 
+    contractAddresses?.USDC, 
+    contractAddresses?.PAY_PER_VIEW
+  )
 
-  const hasAccess = useMemo(() => {
-    return accessQuery.data === true
-  }, [accessQuery.data])
+  // Transaction hooks - these handle the actual blockchain interactions
+  const purchaseContent = usePurchaseContent()
+  const approveToken = useApproveToken()
 
-  const userBalanceAmount = useMemo(() => {
-    return userBalance.data || null
-  }, [userBalance.data])
+  // Computed values that drive the UI state
+  const content = contentQuery.data
+  const hasAccess = accessQuery.data === true
+  const isLoading = contentQuery.isLoading || accessQuery.isLoading
+  const userBalanceAmount = userBalance.data || BigInt(0)
+  const userAllowanceAmount = tokenAllowance.data || BigInt(0)
 
-  const userAllowanceAmount = useMemo(() => {
-    return tokenAllowance.data || null
-  }, [tokenAllowance.data])
-
-  // NEW: Multi-token payment options calculation
-  const paymentOptions = useMemo((): PaymentOption[] => {
-    if (!content || !contractAddresses) return []
-
-    const options: PaymentOption[] = []
-
-    // Option 1: USDC Direct Payment (existing flow)
-    const usdcCanAfford = userBalanceAmount ? userBalanceAmount >= content.payPerViewPrice : false
-    const usdcNeedsApproval = userAllowanceAmount ? userAllowanceAmount < content.payPerViewPrice : true
-    
-    options.push({
-      method: 'USDC',
-      token: contractAddresses.USDC,
-      symbol: 'USDC',
-      balance: userBalanceAmount,
-      requiredAmount: content.payPerViewPrice,
-      canAfford: usdcCanAfford,
-      needsApproval: usdcNeedsApproval && usdcCanAfford,
-      recommended: usdcCanAfford && !usdcNeedsApproval
-    })
-
-    // Option 2: ETH Payment (using Commerce Protocol + PriceOracle)
-    const ethCanAfford = ethBalance?.value && requiredEthAmount ? 
-      ethBalance.value >= requiredEthAmount : false
-    
-    options.push({
-      method: 'ETH',
-      token: null, // ETH is native currency
-      symbol: 'ETH',
-      balance: ethBalance?.value || null,
-      requiredAmount: requiredEthAmount || null,
-      canAfford: ethCanAfford,
-      needsApproval: false, // ETH doesn't need approval
-      recommended: ethCanAfford // Recommend ETH if user has enough (no approval needed)
-    })
-
-    return options
-  }, [content, contractAddresses, userBalanceAmount, userAllowanceAmount, ethBalance, requiredEthAmount])
-
-  // NEW: Overall affordability check - THE KEY FIX FOR YOUR BUY BUTTON
+  /**
+   * Financial Calculations
+   * 
+   * These calculations determine whether the user can afford the content
+   * and whether additional token approvals are needed.
+   */
   const canAfford = useMemo(() => {
-    // User can afford if they have sufficient balance in ANY supported token
-    return paymentOptions.some(option => option.canAfford)
-  }, [paymentOptions])
+    if (!content || !userBalance.data) return false
+    return userBalance.data >= content.payPerViewPrice
+  }, [content, userBalance.data])
 
-  // NEW: Recommended payment method selection
-  const recommendedPayment = useMemo(() => {
-    // Prioritize options that don't need approval, then by availability
-    const availableOptions = paymentOptions.filter(option => option.canAfford)
-    
-    if (availableOptions.length === 0) return null
-    
-    // Prefer options that don't need approval (like ETH)
-    const noApprovalOptions = availableOptions.filter(option => !option.needsApproval)
-    if (noApprovalOptions.length > 0) {
-      return noApprovalOptions[0] // Return first no-approval option (likely ETH)
-    }
-    
-    return availableOptions[0] // Return first available option
-  }, [paymentOptions])
-
-  // Legacy compatibility properties
   const needsApproval = useMemo(() => {
-    // For backward compatibility, check if USDC payment needs approval
-    const usdcOption = paymentOptions.find(option => option.method === 'USDC')
-    return usdcOption?.needsApproval || false
-  }, [paymentOptions])
+    if (!content || !tokenAllowance.data) return true
+    return tokenAllowance.data < content.payPerViewPrice
+  }, [content, tokenAllowance.data])
 
   const requiredAllowance = useMemo(() => {
-    if (!content) return null
+    if (!content || !needsApproval) return null
     return content.payPerViewPrice
-  }, [content])
+  }, [content, needsApproval])
 
-  const purchaseProgress = useMemo((): PurchaseProgress => ({
-    isSubmitting: purchaseContent.isLoading && !purchaseContent.isConfirmed,
-    isConfirming: purchaseContent.isLoading && purchaseContent.isConfirmed,
+  /**
+   * Transaction Progress Tracking
+   * 
+   * These objects provide real-time updates on transaction status,
+   * giving users detailed feedback about what's happening on-chain.
+   */
+  const purchaseProgress: PurchaseProgress = useMemo(() => ({
+    isSubmitting: purchaseContent.isLoading,
+    isConfirming: purchaseContent.isConfirming,
     isConfirmed: purchaseContent.isConfirmed,
-    transactionHash: purchaseContent.hash
+    transactionHash: purchaseContent.hash,
+    blockNumber: undefined, // Not available in current wagmi v2 implementation
+    gasUsed: undefined // Not available in current wagmi v2 implementation
   }), [purchaseContent])
 
-  const approvalProgress = useMemo((): PurchaseProgress => ({
-    isSubmitting: approveToken.isLoading && !approveToken.isConfirmed,
-    isConfirming: approveToken.isLoading && approveToken.isConfirmed,
+  const approvalProgress: PurchaseProgress = useMemo(() => ({
+    isSubmitting: approveToken.isLoading,
+    isConfirming: approveToken.isConfirming,
     isConfirmed: approveToken.isConfirmed,
-    transactionHash: approveToken.hash
+    transactionHash: approveToken.hash,
+    blockNumber: undefined, // Not available in current wagmi v2 implementation
+    gasUsed: undefined // Not available in current wagmi v2 implementation
   }), [approveToken])
 
-  const isLoading = useMemo(() => {
-    return (
-      contentQuery.isLoading ||
-      accessQuery.isLoading ||
-      userBalance.isLoading ||
-      tokenAllowance.isLoading ||
-      workflowState.currentStep === 'checking_access' ||
-      workflowState.currentStep === 'loading_content' ||
-      workflowState.currentStep === 'purchasing' ||
-      workflowState.currentStep === 'approving_tokens'
-    )
-  }, [
-    contentQuery.isLoading,
-    accessQuery.isLoading,
-    userBalance.isLoading,
-    tokenAllowance.isLoading,
-    workflowState.currentStep
-  ])
-
-  // Use useRef to track the previous state and prevent unnecessary updates
-  const prevStateRef = useRef<{
-    contentQueryLoading: boolean
-    contentQueryError: Error | null
-    content: Content | null
-    accessQueryLoading: boolean
-    accessQueryError: Error | null
-    hasAccess: boolean
-    userBalanceLoading: boolean
-    tokenAllowanceLoading: boolean
-    userBalanceAmount: bigint | null
-    userAllowanceAmount: bigint | null
-  } | null>(null)
-
+  /**
+   * Workflow State Management Effects
+   * 
+   * These effects handle the complex state transitions that occur during
+   * the purchase flow, automatically moving users through the process.
+   */
+  
+  // Initial state determination
   useEffect(() => {
-    // Get current values
-    const currentState = {
-      contentQueryLoading: contentQuery.isLoading,
-      contentQueryError: contentQuery.error ?? null,
-      content: content ?? null,
-      accessQueryLoading: accessQuery.isLoading,
-      accessQueryError: accessQuery.error ?? null,
-      hasAccess,
-      userBalanceLoading: userBalance.isLoading,
-      tokenAllowanceLoading: tokenAllowance.isLoading,
-      userBalanceAmount: userBalanceAmount ?? null,
-      userAllowanceAmount: userAllowanceAmount ?? null
-    }
-
-    // Check if state has actually changed
-    const prevState = prevStateRef.current
-    if (prevState && 
-        prevState.contentQueryLoading === currentState.contentQueryLoading &&
-        prevState.contentQueryError === currentState.contentQueryError &&
-        prevState.content === currentState.content &&
-        prevState.accessQueryLoading === currentState.accessQueryLoading &&
-        prevState.accessQueryError === currentState.accessQueryError &&
-        prevState.hasAccess === currentState.hasAccess &&
-        prevState.userBalanceLoading === currentState.userBalanceLoading &&
-        prevState.tokenAllowanceLoading === currentState.tokenAllowanceLoading &&
-        prevState.userBalanceAmount === currentState.userBalanceAmount &&
-        prevState.userAllowanceAmount === currentState.userAllowanceAmount) {
-      return // No change, don't update
-    }
-
-    // Update the ref with current state
-    prevStateRef.current = currentState
-
-    if (workflowState.currentStep === 'error') {
-      return
-    }
-
-    if (contentQuery.isLoading) {
+    if (isLoading) {
       setWorkflowState(prev => ({ ...prev, currentStep: 'loading_content' }))
       return
     }
 
-    if (contentQuery.error || !content) {
+    if (accessQuery.error || contentQuery.error) {
       setWorkflowState({
         currentStep: 'error',
-        error: contentQuery.error || new Error('Content not found'),
-        lastSuccessfulStep: null
-      })
-      return
-    }
-
-    if (accessQuery.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'checking_access' }))
-      return
-    }
-
-    if (accessQuery.error) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: accessQuery.error,
+        error: accessQuery.error || contentQuery.error,
         lastSuccessfulStep: null
       })
       return
     }
 
     if (hasAccess) {
-      setWorkflowState(prev => ({ 
-        ...prev, 
+      setWorkflowState({
         currentStep: 'completed',
-        error: null
-      }))
+        error: null,
+        lastSuccessfulStep: 'completed'
+      })
       return
     }
 
-    if (userBalance.isLoading || tokenAllowance.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'checking_access' }))
+    if (!canAfford) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'insufficient_balance' }))
       return
     }
 
-    // Calculate affordability and approval needs inline to avoid dependency issues
-    // NEW: Use multi-token affordability check instead of just USDC
-    const currentCanAfford = paymentOptions.some(option => option.canAfford)
-    const currentNeedsApproval = recommendedPayment?.needsApproval || false
-
-    // Determine the target step based on current conditions
-    let targetStep: ContentPurchaseFlowStep
-    let targetError: Error | null = null
-
-    if (!currentCanAfford) {
-      targetStep = 'insufficient_balance'
-      targetError = new Error('Insufficient USDC balance')
-    } else if (currentNeedsApproval) {
-      targetStep = 'need_approval'
-      targetError = null
+    if (needsApproval) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
     } else {
-      targetStep = 'can_purchase'
-      targetError = null
+      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
     }
+  }, [hasAccess, isLoading, accessQuery.error, contentQuery.error, canAfford, needsApproval])
 
-    // Only update state if the step is actually changing
-    if (workflowState.currentStep !== targetStep) {
-      setWorkflowState(prev => ({ 
-        ...prev, 
-        currentStep: targetStep,
-        error: targetError
-      }))
-    }
-  }, [
-    contentQuery.isLoading,
-    contentQuery.error ?? null,
-    content ?? null,
-    accessQuery.isLoading,
-    accessQuery.error ?? null,
-    hasAccess,
-    userBalance.isLoading,
-    tokenAllowance.isLoading,
-    userBalanceAmount ?? null,
-    userAllowanceAmount ?? null
-  ])
-
-  // Use useRef to track approveToken state changes
-  const prevApproveTokenRef = useRef<{
-    isLoading: boolean
-    isConfirmed: boolean
-    error: Error | null
-  } | null>(null)
-
+  // Handle approval transaction state changes
   useEffect(() => {
-    const currentApproveToken = {
-      isLoading: approveToken.isLoading,
-      isConfirmed: approveToken.isConfirmed,
-      error: approveToken.error ?? null
-    }
-
-    const prevApproveToken = prevApproveTokenRef.current
-    if (prevApproveToken && 
-        prevApproveToken.isLoading === currentApproveToken.isLoading &&
-        prevApproveToken.isConfirmed === currentApproveToken.isConfirmed &&
-        prevApproveToken.error === currentApproveToken.error) {
-      return // No change, don't update
-    }
-
-    prevApproveTokenRef.current = currentApproveToken
-
-    if (approveToken.isLoading && !approveToken.isConfirmed) {
-      setWorkflowState(prev => ({ 
-        ...prev, 
-        currentStep: 'approving_tokens',
-        error: null
-      }))
+    if (approveToken.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'approving_tokens' }))
     } else if (approveToken.error) {
       setWorkflowState({
         currentStep: 'error',
         error: approveToken.error,
         lastSuccessfulStep: 'need_approval'
       })
-    } else if (approveToken.isConfirmed) {
+    } else if (approveToken.isSuccess) {
+      // Approval completed, refetch allowance and move to purchase step
       tokenAllowance.refetch()
-      setWorkflowState(prev => ({ 
-        ...prev, 
-        currentStep: 'can_purchase',
-        error: null,
-        lastSuccessfulStep: 'approving_tokens'
-      }))
+      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
     }
-  }, [
-    approveToken.isLoading,
-    approveToken.isConfirmed,
-    approveToken.error
-  ])
+  }, [approveToken.isLoading, approveToken.error, approveToken.isSuccess, tokenAllowance])
 
-  // Use useRef to track purchaseContent state changes
-  const prevPurchaseContentRef = useRef<{
-    isLoading: boolean
-    isConfirmed: boolean
-    error: Error | null
-  } | null>(null)
-
+  // Handle purchase transaction state changes
   useEffect(() => {
-    const currentPurchaseContent = {
-      isLoading: purchaseContent.isLoading,
-      isConfirmed: purchaseContent.isConfirmed,
-      error: purchaseContent.error ?? null
-    }
-
-    const prevPurchaseContent = prevPurchaseContentRef.current
-    if (prevPurchaseContent && 
-        prevPurchaseContent.isLoading === currentPurchaseContent.isLoading &&
-        prevPurchaseContent.isConfirmed === currentPurchaseContent.isConfirmed &&
-        prevPurchaseContent.error === currentPurchaseContent.error) {
-      return // No change, don't update
-    }
-
-    prevPurchaseContentRef.current = currentPurchaseContent
-
-    if (purchaseContent.isLoading && !purchaseContent.isConfirmed) {
-      setWorkflowState(prev => ({ 
-        ...prev, 
-        currentStep: 'purchasing',
-        error: null
-      }))
+    if (purchaseContent.isLoading) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'purchasing' }))
     } else if (purchaseContent.error) {
       setWorkflowState({
         currentStep: 'error',
         error: purchaseContent.error,
         lastSuccessfulStep: 'can_purchase'
       })
-    } else if (purchaseContent.isConfirmed) {
+    } else if (purchaseContent.isSuccess) {
+      // Purchase completed, refetch access status
       accessQuery.refetch()
       userBalance.refetch()
-      setWorkflowState(prev => ({ 
-        ...prev, 
+      setWorkflowState({
         currentStep: 'completed',
         error: null,
-        lastSuccessfulStep: 'purchasing'
-      }))
+        lastSuccessfulStep: 'completed'
+      })
     }
-  }, [
-    purchaseContent.isLoading,
-    purchaseContent.isConfirmed,
-    purchaseContent.error
-  ])
+  }, [purchaseContent.isLoading, purchaseContent.error, purchaseContent.isSuccess, accessQuery, userBalance])
 
-  const purchase = useCallback(async (): Promise<void> => {
+  /**
+   * Action Functions
+   * 
+   * These functions provide the interface that UI components use to
+   * trigger purchase actions. They handle all the complexity internally.
+   */
+
+  const purchase = useCallback(async () => {
     if (!contentId || !contractAddresses) {
-      throw new Error('Missing required parameters for purchase')
+      throw new Error('Missing required data for purchase')
     }
 
-    if (workflowState.currentStep !== 'can_purchase') {
-      throw new Error(`Cannot purchase in current state: ${workflowState.currentStep}`)
-    }
-
-    // Check affordability inline to avoid dependency issues
-    const currentCanAfford = userBalanceAmount && content ? userBalanceAmount >= content.payPerViewPrice : false
-    if (!currentCanAfford) {
+    if (!canAfford) {
       throw new Error('Insufficient USDC balance')
+    }
+
+    if (needsApproval) {
+      throw new Error('Token approval required before purchase')
     }
 
     try {
       setWorkflowState(prev => ({ ...prev, error: null }))
-      await purchaseContent.write(contentId)
+      purchaseContent.write(contentId)
     } catch (error) {
       const purchaseError = error instanceof Error ? error : new Error('Purchase failed')
       setWorkflowState({
@@ -1760,37 +1535,30 @@ export function useContentPurchaseFlow(
       })
       throw purchaseError
     }
-  }, [
-    contentId,
-    contractAddresses,
-    workflowState.currentStep,
-    userBalanceAmount,
-    content,
-    purchaseContent
-  ])
+  }, [contentId, contractAddresses, canAfford, needsApproval, purchaseContent])
 
-  const approveAndPurchase = useCallback(async (): Promise<void> => {
+  const approveAndPurchase = useCallback(async () => {
     if (!contentId || !contractAddresses || !content) {
-      throw new Error('Missing required parameters for approval and purchase')
+      throw new Error('Missing required data for purchase')
     }
 
-    if (workflowState.currentStep !== 'need_approval') {
-      throw new Error(`Cannot approve in current state: ${workflowState.currentStep}`)
-    }
-
-    // Check affordability inline to avoid dependency issues
-    const currentCanAfford = userBalanceAmount && content ? userBalanceAmount >= content.payPerViewPrice : false
-    if (!currentCanAfford) {
+    if (!canAfford) {
       throw new Error('Insufficient USDC balance')
     }
 
     try {
       setWorkflowState(prev => ({ ...prev, error: null }))
-      await approveToken.write({
+      
+      // First, approve the tokens
+      approveToken.write({
         tokenAddress: contractAddresses.USDC,
         spender: contractAddresses.PAY_PER_VIEW,
         amount: content.payPerViewPrice
       })
+      
+      // The purchase will be triggered automatically by the useEffect
+      // that monitors approval completion status
+      
     } catch (error) {
       const approvalError = error instanceof Error ? error : new Error('Approval failed')
       setWorkflowState({
@@ -1800,14 +1568,7 @@ export function useContentPurchaseFlow(
       })
       throw approvalError
     }
-  }, [
-    contentId,
-    contractAddresses,
-    content,
-    workflowState.currentStep,
-    userBalanceAmount,
-    approveToken
-  ])
+  }, [contentId, contractAddresses, content, canAfford, approveToken])
 
   const reset = useCallback(() => {
     setWorkflowState({
@@ -1815,8 +1576,13 @@ export function useContentPurchaseFlow(
       error: null,
       lastSuccessfulStep: null
     })
+    
+    // Reset transaction hooks if they have reset methods
     if (approveToken.reset) approveToken.reset()
     if (purchaseContent.reset) purchaseContent.reset()
+    
+    // Refetch all data to get current state
+    refetchData()
   }, [approveToken, purchaseContent])
 
   const refetchData = useCallback(async (): Promise<void> => {
@@ -1832,21 +1598,38 @@ export function useContentPurchaseFlow(
     }
   }, [contentQuery, accessQuery, userBalance, tokenAllowance])
 
+  /**
+   * Return the complete interface
+   * 
+   * This is what UI components receive - a clean, comprehensive interface
+   * that abstracts away all the complexity we've handled above.
+   */
   return {
-    content,
+    // Core data
+    content: content || null,
     hasAccess,
     isLoading,
     error: workflowState.error,
+    
+    // Workflow state
     currentStep: workflowState.currentStep,
     canAfford,
-    paymentOptions,
-    recommendedPayment,
     needsApproval,
     requiredAllowance,
+    
+    // Multi-token payment options (for compatibility with interface)
+    paymentOptions: [], // Currently only supports USDC, but interface requires this
+    recommendedPayment: null, // No recommendation logic implemented yet
+    
+    // Financial data
     userBalance: userBalanceAmount,
     userAllowance: userAllowanceAmount,
+    
+    // Transaction progress
     purchaseProgress,
     approvalProgress,
+    
+    // Actions
     purchase,
     approveAndPurchase,
     reset,
@@ -1854,7 +1637,12 @@ export function useContentPurchaseFlow(
   }
 }
 
-// Utility Functions for Purchase Flow
+/**
+ * Utility Functions for Purchase Flow Management
+ * 
+ * These helper functions make it easier for UI components to work
+ * with the purchase flow state and provide appropriate user feedback.
+ */
 export function getPurchaseFlowStepMessage(step: ContentPurchaseFlowStep): string {
   switch (step) {
     case 'checking_access':

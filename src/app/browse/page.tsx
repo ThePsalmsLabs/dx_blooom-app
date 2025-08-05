@@ -22,6 +22,7 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import type { Address } from 'viem'
 import {
   Search,
   Filter,
@@ -34,7 +35,10 @@ import {
   AlertCircle,
   RefreshCw,
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  X,
+  Users,
+  CheckCircle
 } from 'lucide-react'
 
 import {
@@ -55,7 +59,14 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton
 } from '@/components/ui/index'
 
 // Import our architectural layers - demonstrating clean separation
@@ -68,6 +79,74 @@ import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
 import { cn } from '@/lib/utils'
 import type { ContentCategory } from '@/types/contracts'
 import { isValidContentCategory } from '@/types/contracts'
+
+// Import business logic hooks
+import { useActiveContentPaginated } from '@/hooks/contracts/core'
+
+/**
+ * Content Filter Interface
+ * 
+ * This interface defines all the ways users can filter and sort content
+ * to find exactly what they're looking for.
+ */
+interface ContentFilters {
+  readonly search: string
+  readonly category: ContentCategory | 'all'
+  readonly priceRange: readonly [number, number]
+  readonly accessType: 'all' | 'free' | 'premium' | 'subscription'
+  readonly sortBy: 'newest' | 'oldest' | 'price_low' | 'price_high' | 'popular'
+  readonly tags: readonly string[]
+}
+
+/**
+ * View Mode Options
+ * 
+ * Different ways to display the content grid for different user preferences.
+ */
+type ViewMode = 'grid' | 'list' | 'compact'
+
+/**
+ * URL Parameters Interface
+ * 
+ * This maps URL search parameters to our internal filter state,
+ * enabling shareable links and browser back/forward navigation.
+ */
+interface BrowsePageParams {
+  readonly category?: ContentCategory
+  readonly search?: string
+  readonly view?: ViewMode
+  readonly sort?: ContentFilters['sortBy']
+  readonly access?: ContentFilters['accessType']
+  readonly minPrice?: string
+  readonly maxPrice?: string
+}
+
+/**
+ * Content Interaction State
+ * 
+ * Manages modal states and user interactions within the browse experience.
+ */
+interface ContentInteractionState {
+  readonly selectedContentId: bigint | null
+  readonly showPurchaseModal: boolean
+  readonly showFiltersModal: boolean
+  readonly showContentPreview: boolean
+  readonly lastPurchaseSuccess: boolean
+}
+
+/**
+ * Default Filter Configuration
+ * 
+ * Sensible defaults that provide a good starting experience for new users.
+ */
+const DEFAULT_FILTERS: ContentFilters = {
+  search: '',
+  category: 'all',
+  priceRange: [0, 100],
+  accessType: 'all',
+  sortBy: 'newest',
+  tags: []
+}
 
 /**
  * Search Parameters Interface
@@ -86,404 +165,583 @@ interface ContentDiscoveryParams {
 }
 
 /**
- * Content Interaction State Interface
+ * Complete Browse Page Implementation
  * 
- * This interface manages the various modal and interaction states that can occur
- * during content discovery, ensuring clean state management.
+ * This component orchestrates the entire content discovery and purchase experience,
+ * demonstrating how all our architectural layers work together seamlessly.
  */
-interface ContentInteractionState {
-  readonly selectedContentId: bigint | null
-  readonly showPurchaseModal: boolean
-  readonly showContentPreview: boolean
-  readonly lastPurchaseSuccess: boolean
-}
-
-
-
-
-/**
- * ContentDiscoveryPage Component
- * 
- * This component orchestrates the complete content discovery experience,
- * demonstrating how our modular architecture enables sophisticated features
- * while maintaining clean, maintainable code.
- */
-export default function ContentDiscoveryPage() {
-  // Navigation and URL state management
+export default function BrowsePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
-  // Wallet connection for purchase and access features
   const { address: userAddress, isConnected } = useAccount()
 
-  // Parse URL parameters into typed state
-  const discoveryParams: ContentDiscoveryParams = useMemo(() => {
+  // Parse URL parameters into typed state for seamless navigation
+  const urlParams: BrowsePageParams = useMemo(() => {
     const categoryParam = searchParams.get('category')
     const category = categoryParam ? parseInt(categoryParam, 10) : undefined
     
     return {
       category: category !== undefined && isValidContentCategory(category) ? category : undefined,
       search: searchParams.get('search') || undefined,
-      view: (searchParams.get('view') as 'grid' | 'list' | 'compact') || 'grid',
-      sort: (searchParams.get('sort') as 'newest' | 'oldest' | 'price_low' | 'price_high' | 'popular') || 'newest',
-      access: (searchParams.get('access') as 'all' | 'free' | 'premium' | 'subscription') || 'all',
+      view: (searchParams.get('view') as ViewMode) || 'grid',
+      sort: (searchParams.get('sort') as ContentFilters['sortBy']) || 'newest',
+      access: (searchParams.get('access') as ContentFilters['accessType']) || 'all',
       minPrice: searchParams.get('minPrice') || undefined,
       maxPrice: searchParams.get('maxPrice') || undefined
     }
   }, [searchParams])
 
-  // Content interaction state management
+  // Content filters state with URL parameter integration
+  const [filters, setFilters] = useState<ContentFilters>({
+    ...DEFAULT_FILTERS,
+    search: urlParams.search || '',
+    category: urlParams.category || 'all',
+    sortBy: urlParams.sort || 'newest',
+    accessType: urlParams.access || 'all',
+    priceRange: [
+      urlParams.minPrice ? parseFloat(urlParams.minPrice) : 0,
+      urlParams.maxPrice ? parseFloat(urlParams.maxPrice) : 100
+    ]
+  })
+
+  // View mode and interaction state
+  const [viewMode, setViewMode] = useState<ViewMode>(urlParams.view || 'grid')
+  const [currentPage, setCurrentPage] = useState(0)
   const [interactionState, setInteractionState] = useState<ContentInteractionState>({
     selectedContentId: null,
     showPurchaseModal: false,
+    showFiltersModal: false,
     showContentPreview: false,
     lastPurchaseSuccess: false
   })
 
-  // Convert URL parameters to filter format for ContentDiscoveryGrid
-  const initialFilters = useMemo(() => ({
-    search: discoveryParams.search || '',
-    category: discoveryParams.category || 'all' as const,
-    sortBy: discoveryParams.sort || 'newest' as const,
-    accessType: discoveryParams.access || 'all' as const,
-    priceRange: [
-      discoveryParams.minPrice ? parseFloat(discoveryParams.minPrice) : 0,
-      discoveryParams.maxPrice ? parseFloat(discoveryParams.maxPrice) : 100
-    ] as [number, number],
-    tags: [] as string[]
-  }), [discoveryParams])
+  // Load content data with our improved pagination hook
+  const itemsPerPage = 12
+  const contentQuery = useActiveContentPaginated(
+    currentPage * itemsPerPage,
+    itemsPerPage
+  )
 
   /**
-   * Content Selection Handler
+   * Filter Management Functions
    * 
-   * This function demonstrates how content selection flows through the application,
-   * checking access status and determining appropriate user actions.
+   * These functions handle user interactions with the filtering interface,
+   * providing immediate feedback and maintaining URL synchronization.
    */
+  
+  const handleSearchChange = useCallback((value: string) => {
+    setFilters(prev => ({ ...prev, search: value }))
+    setCurrentPage(0)
+    
+    // Update URL to maintain shareable state
+    const newParams = new URLSearchParams(searchParams.toString())
+    if (value) {
+      newParams.set('search', value)
+    } else {
+      newParams.delete('search')
+    }
+    router.replace(`/browse?${newParams.toString()}`)
+  }, [searchParams, router])
+
+  const handleFilterChange = useCallback((newFilters: Partial<ContentFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }))
+    setCurrentPage(0)
+    
+    // Update URL parameters for all filter changes
+    const newParams = new URLSearchParams(searchParams.toString())
+    
+    Object.entries(newFilters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '' && value !== 'all') {
+        if (key === 'priceRange' && Array.isArray(value)) {
+          if (value[0] > 0) newParams.set('minPrice', value[0].toString())
+          if (value[1] < 100) newParams.set('maxPrice', value[1].toString())
+        } else {
+          newParams.set(key, value.toString())
+        }
+      } else {
+        newParams.delete(key)
+        if (key === 'priceRange') {
+          newParams.delete('minPrice')
+          newParams.delete('maxPrice')
+        }
+      }
+    })
+    
+    router.replace(`/browse?${newParams.toString()}`)
+  }, [searchParams, router])
+
+  const handleClearFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS)
+    setCurrentPage(0)
+    router.replace('/browse')
+  }, [router])
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode)
+    const newParams = new URLSearchParams(searchParams.toString())
+    newParams.set('view', mode)
+    router.replace(`/browse?${newParams.toString()}`)
+  }, [searchParams, router])
+
+  /**
+   * Content Interaction Handlers
+   * 
+   * These functions manage user interactions with individual content items,
+   * including purchase flows and content viewing.
+   */
+  
   const handleContentSelect = useCallback((contentId: bigint) => {
     setInteractionState(prev => ({
       ...prev,
       selectedContentId: contentId,
-      showPurchaseModal: true,
-      showContentPreview: false
+      showPurchaseModal: true
     }))
   }, [])
 
-  /**
-   * Purchase Success Handler
-   * 
-   * This function handles post-purchase state updates and user feedback,
-   * demonstrating how successful transactions flow through the UI.
-   */
-  const handlePurchaseSuccess = useCallback(() => {
+  const handlePurchaseSuccess = useCallback((contentId: bigint) => {
     setInteractionState(prev => ({
       ...prev,
-      showPurchaseModal: false,
       lastPurchaseSuccess: true,
-      showContentPreview: true
+      showPurchaseModal: false
     }))
-
-    // Provide user feedback for successful purchase
-    // Note: In a real app, this would trigger a toast notification
-    console.log('Purchase successful, content unlocked')
-  }, [])
-
-  /**
-   * Content Viewing Handler
-   * 
-   * This function handles navigation to content viewing pages after successful
-   * purchase or for already-owned content.
-   */
-  const handleViewContent = useCallback(() => {
-    if (interactionState.selectedContentId) {
-      router.push(`/content/${interactionState.selectedContentId}`)
-    }
-  }, [interactionState.selectedContentId, router])
-
-  /**
-   * Modal Dismissal Handler
-   * 
-   * This function manages modal state cleanup while preserving important
-   * interaction context for user experience continuity.
-   */
-  const handleModalDismiss = useCallback(() => {
-    setInteractionState(prev => ({
-      ...prev,
-      showPurchaseModal: false,
-      showContentPreview: false,
-      selectedContentId: null
-    }))
-  }, [])
-
-  /**
-   * URL Parameter Update Handler
-   * 
-   * This function demonstrates how UI state synchronizes with URL parameters,
-   * enabling shareable links and browser navigation.
-   */
-  const updateURLParams = useCallback((updates: Partial<ContentDiscoveryParams>) => {
-    const newParams = new URLSearchParams(searchParams.toString())
     
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value && value !== 'all' && value !== '') {
-        newParams.set(key, value.toString())
-      } else {
-        newParams.delete(key)
-      }
-    })
+    // Refetch content data to update access status
+    contentQuery.refetch()
+    
+    // Show success feedback
+    setTimeout(() => {
+      setInteractionState(prev => ({ ...prev, lastPurchaseSuccess: false }))
+    }, 3000)
+  }, [contentQuery])
 
-    const newURL = `${window.location.pathname}?${newParams.toString()}`
-    router.replace(newURL)
-  }, [searchParams, router])
+  const handleViewContent = useCallback((contentId: bigint) => {
+    router.push(`/content/${contentId}`)
+  }, [router])
+
+  /**
+   * Computed State Values
+   * 
+   * These derived values help the UI provide appropriate feedback and state management.
+   */
+  
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filters.search !== '' ||
+      filters.category !== 'all' ||
+      filters.priceRange[0] !== 0 ||
+      filters.priceRange[1] !== 100 ||
+      filters.accessType !== 'all' ||
+      filters.tags.length > 0
+    )
+  }, [filters])
+
+  const totalResults = contentQuery.data?.total || BigInt(0)
+  const contentIds = contentQuery.data?.contentIds || []
+  const hasMoreContent = contentIds.length === itemsPerPage
 
   return (
-    <AppLayout className="bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Route Guard ensures proper access patterns */}
-      <RouteGuards
-        requiredLevel= 'public'  // Content discovery is available to all users
-      >
-        <div className="container mx-auto py-6 space-y-6">
-          {/* Page Header with Context and Actions */}
-          <ContentDiscoveryHeader
-            totalResults="Loading..." // This would be populated from actual query results
-            currentCategory={discoveryParams.category}
-            isConnected={isConnected}
-            onUpdateParams={updateURLParams}
-          />
+    <AppLayout>
+      <RouteGuards requiredLevel="public">
+        <div className="min-h-screen bg-gray-50">
+          <div className="container mx-auto px-4 py-8">
+            
+            {/* Page Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Discover Premium Content
+              </h1>
+              <p className="text-gray-600">
+                Explore and purchase high-quality content from verified creators using USDC.
+              </p>
+            </div>
 
-          {/* Quick Filter Tabs for Common Discovery Patterns */}
-          <QuickFilterTabs
-            activeFilter={discoveryParams.access || 'all'}
-            onFilterChange={(access) => updateURLParams({ access })}
-          />
+            {/* Search and Controls Header */}
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                
+                {/* Search Input */}
+                <div className="flex-1 max-w-md">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search content, creators, or topics..."
+                      value={filters.search}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
 
-          {/* Main Content Discovery Grid */}
-          <ContentDiscoveryGrid
-            initialFilters={initialFilters}
-            onContentSelect={handleContentSelect}
-            showCreatorInfo={true}
-            itemsPerPage={12}
-            className="min-h-[600px]"
-          />
+                {/* Results and Controls */}
+                <div className="flex items-center gap-4">
+                  
+                  {/* Results Count */}
+                  <div className="text-sm text-gray-500">
+                    {totalResults.toString()} {totalResults === BigInt(1) ? 'result' : 'results'}
+                  </div>
 
-          {/* Purchase Modal Integration */}
-          <ContentPurchaseModal
-            contentId={interactionState.selectedContentId}
-            userAddress={userAddress}
-            isOpen={interactionState.showPurchaseModal}
-            onClose={handleModalDismiss}
-            onPurchaseSuccess={handlePurchaseSuccess}
-            onViewContent={handleViewContent}
-          />
+                  {/* Clear Filters */}
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearFilters}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Clear filters
+                    </Button>
+                  )}
 
-          {/* Success State Feedback */}
-          {interactionState.lastPurchaseSuccess && (
-            <PurchaseSuccessAlert
-              onDismiss={() => setInteractionState(prev => ({ ...prev, lastPurchaseSuccess: false }))}
-              onViewContent={handleViewContent}
-            />
-          )}
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center border rounded-md">
+                    <Button
+                      variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleViewModeChange('grid')}
+                      className="rounded-r-none"
+                    >
+                      <Grid3x3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleViewModeChange('list')}
+                      className="rounded-none border-x"
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'compact' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => handleViewModeChange('compact')}
+                      className="rounded-l-none"
+                    >
+                      <Users className="h-4 w-4" />
+                    </Button>
+                  </div>
 
-          {/* Educational Content for New Users */}
-          {!isConnected && (
-            <GuestUserGuidance />
-          )}
+                  {/* Filters Button */}
+                  <Button
+                    variant="outline"
+                    onClick={() => setInteractionState(prev => ({ ...prev, showFiltersModal: true }))}
+                  >
+                    <SlidersHorizontal className="h-4 w-4 mr-2" />
+                    Filters
+                    {hasActiveFilters && (
+                      <Badge variant="secondary" className="ml-2">
+                        Active
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Filter Tabs */}
+            <div className="mb-6">
+              <Tabs 
+                value={filters.category === 'all' ? 'all' : filters.category.toString()} 
+                onValueChange={(value) => handleFilterChange({ 
+                  category: value === 'all' ? 'all' : parseInt(value) as ContentCategory 
+                })}
+              >
+                <TabsList className="grid w-full grid-cols-6">
+                  <TabsTrigger value="all">All Content</TabsTrigger>
+                  <TabsTrigger value="0">Articles</TabsTrigger>
+                  <TabsTrigger value="1">Videos</TabsTrigger>
+                  <TabsTrigger value="2">Audio</TabsTrigger>
+                  <TabsTrigger value="3">Images</TabsTrigger>
+                  <TabsTrigger value="4">Other</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* Success Message */}
+            {interactionState.lastPurchaseSuccess && (
+              <Alert className="mb-6 bg-green-50 border-green-200">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  Content purchased successfully! You now have access to view it.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Content Grid */}
+            <div className="mb-8">
+              {contentQuery.isLoading ? (
+                <ContentGridSkeleton viewMode={viewMode} />
+              ) : contentQuery.error ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Failed to load content. Please try again later.
+                  </AlertDescription>
+                </Alert>
+              ) : contentIds.length === 0 ? (
+                <EmptyState 
+                  hasFilters={hasActiveFilters} 
+                  onClearFilters={handleClearFilters} 
+                />
+              ) : (
+                <ContentGrid
+                  contentIds={contentIds}
+                  viewMode={viewMode}
+                  userAddress={userAddress}
+                  onContentSelect={handleContentSelect}
+                  onPurchaseSuccess={handlePurchaseSuccess}
+                  onViewContent={handleViewContent}
+                />
+              )}
+            </div>
+
+            {/* Pagination */}
+            {contentIds.length > 0 && (
+              <div className="flex justify-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-4 py-2 text-sm text-gray-600">
+                  Page {currentPage + 1}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={!hasMoreContent}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Purchase Modal */}
+        <Dialog 
+          open={interactionState.showPurchaseModal} 
+          onOpenChange={(open) => setInteractionState(prev => ({ ...prev, showPurchaseModal: open }))}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Purchase Content</DialogTitle>
+              <DialogDescription>
+                Complete your purchase to gain immediate access to this premium content.
+              </DialogDescription>
+            </DialogHeader>
+            {interactionState.selectedContentId && (
+              <ContentPurchaseCard
+                contentId={interactionState.selectedContentId}
+                userAddress={userAddress}
+                onPurchaseSuccess={handlePurchaseSuccess}
+                onViewContent={handleViewContent}
+                variant="full"
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Filters Modal - Placeholder for advanced filtering */}
+        <Dialog 
+          open={interactionState.showFiltersModal} 
+          onOpenChange={(open) => setInteractionState(prev => ({ ...prev, showFiltersModal: open }))}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Advanced Filters</DialogTitle>
+              <DialogDescription>
+                Refine your search with detailed filtering options.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Price Range Filter */}
+              <div>
+                <label className="text-sm font-medium">Price Range (USDC)</label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    type="number"
+                    placeholder="Min"
+                    value={filters.priceRange[0]}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange({
+                      priceRange: [parseFloat(e.target.value) || 0, filters.priceRange[1]]
+                    })}
+                  />
+                  <span>to</span>
+                  <Input
+                    type="number"
+                    placeholder="Max"
+                    value={filters.priceRange[1]}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange({
+                      priceRange: [filters.priceRange[0], parseFloat(e.target.value) || 100]
+                    })}
+                  />
+                </div>
+              </div>
+
+              {/* Sort By Filter */}
+              <div>
+                <label className="text-sm font-medium">Sort By</label>
+                <Select 
+                  value={filters.sortBy} 
+                  onValueChange={(value: ContentFilters['sortBy']) => handleFilterChange({ sortBy: value })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="price_low">Price: Low to High</SelectItem>
+                    <SelectItem value="price_high">Price: High to Low</SelectItem>
+                    <SelectItem value="popular">Most Popular</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Access Type Filter */}
+              <div>
+                <label className="text-sm font-medium">Access Type</label>
+                <Select 
+                  value={filters.accessType} 
+                  onValueChange={(value: ContentFilters['accessType']) => handleFilterChange({ accessType: value })}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Content</SelectItem>
+                    <SelectItem value="free">Free Content</SelectItem>
+                    <SelectItem value="premium">Premium Content</SelectItem>
+                    <SelectItem value="subscription">Subscription Content</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
       </RouteGuards>
     </AppLayout>
   )
 }
 
 /**
- * Supporting Components
+ * Content Grid Component
  * 
- * These components demonstrate how complex page interfaces can be broken down
- * into focused, reusable pieces while maintaining type safety and clear APIs.
+ * Renders the actual content items using our fixed ContentPurchaseCard component.
  */
+function ContentGrid({
+  contentIds,
+  viewMode,
+  userAddress,
+  onContentSelect,
+  onPurchaseSuccess,
+  onViewContent
+}: {
+  contentIds: readonly bigint[]
+  viewMode: ViewMode
+  userAddress?: Address
+  onContentSelect: (id: bigint) => void
+  onPurchaseSuccess: (id: bigint) => void
+  onViewContent: (id: bigint) => void
+}) {
+  const gridClassName = useMemo(() => {
+    switch (viewMode) {
+      case 'grid':
+        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+      case 'list':
+        return 'space-y-4'
+      case 'compact':
+        return 'grid grid-cols-1 lg:grid-cols-2 gap-3'
+      default:
+        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+    }
+  }, [viewMode])
 
-interface ContentDiscoveryHeaderProps {
-  readonly totalResults: string
-  readonly currentCategory?: ContentCategory
-  readonly isConnected: boolean
-  readonly onUpdateParams: (updates: Partial<ContentDiscoveryParams>) => void
-}
-
-function ContentDiscoveryHeader({
-  totalResults,
-  currentCategory,
-  isConnected,
-  onUpdateParams
-}: ContentDiscoveryHeaderProps) {
   return (
-    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-      {/* Page Title and Context */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold">Discover Content</h1>
-          {currentCategory && (
-            <Badge variant="secondary" className="capitalize">
-              {currentCategory}
-            </Badge>
-          )}
-        </div>
-        <p className="text-muted-foreground">
-          Explore decentralized content from creators worldwide. {totalResults} items available.
-        </p>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex items-center gap-3">
-        {isConnected && (
-          <Button
-            variant="outline"
-            onClick={() => window.open('/dashboard', '_blank')}
-            className="hidden sm:flex"
-          >
-            Creator Dashboard
-            <ExternalLink className="ml-2 h-4 w-4" />
-          </Button>
-        )}
-        
-        <Button
-          variant="default"
-          onClick={() => onUpdateParams({ sort: 'newest' })}
-        >
-          <TrendingUp className="mr-2 h-4 w-4" />
-          Latest Content
-        </Button>
-      </div>
+    <div className={gridClassName}>
+      {contentIds.map((contentId) => (
+        <ContentPurchaseCard
+          key={contentId.toString()}
+          contentId={contentId}
+          userAddress={userAddress}
+          onPurchaseSuccess={onPurchaseSuccess}
+          onViewContent={onViewContent}
+          variant={viewMode === 'list' ? 'full' : viewMode === 'compact' ? 'compact' : 'full'}
+          showCreatorInfo={viewMode !== 'compact'}
+          showPurchaseDetails={viewMode === 'list'}
+        />
+      ))}
     </div>
   )
 }
 
-interface QuickFilterTabsProps {
-  readonly activeFilter: string
-  readonly onFilterChange: (filter: 'all' | 'free' | 'premium' | 'subscription') => void
-}
+/**
+ * Loading Skeleton Component
+ */
+function ContentGridSkeleton({ viewMode }: { viewMode: ViewMode }) {
+  const items = Array.from({ length: 12 }, (_, i) => i)
+  
+  const gridClassName = viewMode === 'grid' 
+    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+    : viewMode === 'list'
+    ? 'space-y-4'
+    : 'grid grid-cols-1 lg:grid-cols-2 gap-3'
 
-function QuickFilterTabs({ activeFilter, onFilterChange }: QuickFilterTabsProps) {
   return (
-    <Tabs value={activeFilter} onValueChange={onFilterChange as (value: string) => void}>
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="all">All Content</TabsTrigger>
-        <TabsTrigger value="free">Free</TabsTrigger>
-        <TabsTrigger value="premium">Pay-per-View</TabsTrigger>
-        <TabsTrigger value="subscription">Subscription</TabsTrigger>
-      </TabsList>
-    </Tabs>
+    <div className={gridClassName}>
+      {items.map((i) => (
+        <Card key={i} className="animate-pulse">
+          <CardHeader>
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-1/3" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   )
 }
 
-interface ContentPurchaseModalProps {
-  readonly contentId: bigint | null
-  readonly userAddress?: string
-  readonly isOpen: boolean
-  readonly onClose: () => void
-  readonly onPurchaseSuccess: () => void
-  readonly onViewContent: () => void
-}
-
-function ContentPurchaseModal({
-  contentId,
-  userAddress,
-  isOpen,
-  onClose,
-  onPurchaseSuccess,
-  onViewContent
-}: ContentPurchaseModalProps) {
-  if (!contentId) return null
-
+/**
+ * Empty State Component
+ */
+function EmptyState({ 
+  hasFilters, 
+  onClearFilters 
+}: { 
+  hasFilters: boolean
+  onClearFilters: () => void 
+}) {
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Purchase Content</DialogTitle>
-          <DialogDescription>
-            Complete your purchase to unlock this content immediately.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <ContentPurchaseCard
-          contentId={contentId}
-          userAddress={userAddress as `0x${string}`} 
-          onPurchaseSuccess={onPurchaseSuccess}
-          onViewContent={onViewContent}
-          variant="full"
-        />
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-interface PurchaseSuccessAlertProps {
-  readonly onDismiss: () => void
-  readonly onViewContent: () => void
-}
-
-function PurchaseSuccessAlert({ onDismiss, onViewContent }: PurchaseSuccessAlertProps) {
-  return (
-    <Alert className="border-green-200 bg-green-50">
-      <AlertCircle className="h-4 w-4 text-green-600" />
-      <AlertDescription className="flex items-center justify-between">
-        <span className="text-green-800">
-          Purchase successful! Your content has been unlocked.
-        </span>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={onViewContent}>
-            View Content
-          </Button>
-          <Button size="sm" variant="outline" onClick={onDismiss}>
-            Dismiss
-          </Button>
+    <div className="text-center py-12">
+      <div className="mx-auto max-w-md">
+        <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+          <Search className="h-full w-full" />
         </div>
-      </AlertDescription>
-    </Alert>
-  )
-}
-
-function GuestUserGuidance() {
-  return (
-    <Card className="border-dashed">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Star className="h-5 w-5 text-primary" />
-          New to Web3 Content?
-        </CardTitle>
-        <CardDescription>
-          Connect your wallet to purchase and access premium content from creators.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-bold text-primary">1</span>
-            </div>
-            <div>
-              <h4 className="font-medium">Connect Wallet</h4>
-              <p className="text-sm text-muted-foreground">
-                Use MetaMask, Coinbase Wallet, or other supported wallets
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-bold text-primary">2</span>
-            </div>
-            <div>
-              <h4 className="font-medium">Browse & Purchase</h4>
-              <p className="text-sm text-muted-foreground">
-                Pay with USDC for instant access to premium content
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <Button className="w-full sm:w-auto">
-          Learn More About Web3 Content
-          <ExternalLink className="ml-2 h-4 w-4" />
-        </Button>
-      </CardContent>
-    </Card>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          {hasFilters ? 'No content matches your filters' : 'No content available'}
+        </h3>
+        <p className="text-gray-500 mb-6">
+          {hasFilters 
+            ? 'Try adjusting your search criteria or clearing filters to see more results.'
+            : 'Check back later as creators are continuously adding new premium content.'
+          }
+        </p>
+        {hasFilters && (
+          <Button onClick={onClearFilters}>
+            Clear All Filters
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }

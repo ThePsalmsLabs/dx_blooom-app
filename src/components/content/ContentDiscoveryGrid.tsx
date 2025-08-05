@@ -736,7 +736,7 @@ function ContentDisplayCard({
       <CardFooter className="pt-0">
         <ContentPurchaseCard
           contentId={contentId}
-          userAddress={userAddress}
+          userAddress={userAddress as `0x${string}`}
           variant="compact"
           onPurchaseSuccess={() => {
             // Refresh access control data
