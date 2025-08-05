@@ -20,7 +20,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { type Address } from 'viem'
@@ -37,14 +37,11 @@ import {
   Zap,
   Coins,
   Settings,
-  TrendingUp,
   AlertTriangle,
   Info,
   RefreshCw,
-  ArrowRight,
   Wallet,
-  GasStation,
-  Timer,
+  Fuel,
   Shield,
   ChevronDown,
   ChevronUp,
@@ -84,7 +81,7 @@ import {
 } from '@/hooks/business/workflows'
 
 // Import utility functions
-import { formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
+import { formatCurrency, formatAddress } from '@/lib/utils'
 
 /**
  * Payment Method Icon Component
@@ -122,7 +119,7 @@ function GasEstimateBadge({ estimate }: { estimate: 'Low' | 'Medium' | 'High' })
   
   return (
     <Badge variant="outline" className={cn('text-xs', colors[estimate])}>
-      <GasStation className="h-3 w-3 mr-1" />
+      <Fuel className="h-3 w-3 mr-1" />
       {estimate} Gas
     </Badge>
   )
@@ -227,7 +224,7 @@ export function EnhancedContentPurchaseCard({
 
   // Handle loading states
   if (purchaseFlow.isLoading) {
-    return <ContentPurchaseCardSkeleton variant={variant} className={className} />
+    return <ContentPurchaseCardSkeleton className={className} />
   }
 
   // Handle missing content
@@ -535,7 +532,7 @@ function PriceDisplaySection({
   onToggleDetails,
   onRefreshPrices
 }: {
-  content: any
+  content: { readonly payPerViewPrice: bigint; readonly title: string; readonly description: string }
   selectedToken: TokenInfo | null
   estimatedCost: bigint | null
   finalCost: bigint | null
@@ -808,7 +805,7 @@ function AdvancedOptionsSection({
 }: {
   isOpen: boolean
   onToggle: () => void
-  purchaseFlow: any
+  purchaseFlow: { readonly selectedMethod: PaymentMethod }
 }) {
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -838,11 +835,17 @@ function AdvancedOptionsSection({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-sm">Price Alerts</Label>
-              <Switch defaultChecked />
+              <Switch 
+                checked={false} 
+                onCheckedChange={() => {}} 
+              />
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-sm">Auto-refresh Prices</Label>
-              <Switch defaultChecked />
+              <Switch 
+                checked={false} 
+                onCheckedChange={() => {}} 
+              />
             </div>
           </div>
         </div>
@@ -990,7 +993,21 @@ function PriceAlertsSection({ alerts }: { alerts: ReadonlyArray<{ type: 'warning
   )
 }
 
-function CompactPurchaseCard({ content, hasAccess, purchaseFlow, onPurchaseAction, onViewContent, className }: any) {
+function CompactPurchaseCard({ 
+  content, 
+  hasAccess, 
+  purchaseFlow, 
+  onPurchaseAction, 
+  onViewContent, 
+  className 
+}: {
+  content: { readonly title: string; readonly payPerViewPrice: bigint }
+  hasAccess: boolean
+  purchaseFlow: { readonly selectedMethod: PaymentMethod; readonly canExecutePayment: boolean }
+  onPurchaseAction: () => void
+  onViewContent: () => void
+  className?: string
+}) {
   return (
     <Card className={cn('w-full', className)}>
       <CardContent className="p-4">
@@ -1027,7 +1044,7 @@ function CompactPurchaseCard({ content, hasAccess, purchaseFlow, onPurchaseActio
   )
 }
 
-function ContentPurchaseCardSkeleton({ variant, className }: { variant?: string; className?: string }) {
+function ContentPurchaseCardSkeleton({ className }: { className?: string }) {
   return (
     <Card className={cn('w-full', className)}>
       <CardContent className="p-6">
