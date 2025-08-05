@@ -442,19 +442,23 @@ export function useUnifiedContentPurchaseFlow(
       } catch (error) {
         console.error(`Failed to fetch info for token ${tokenAddress}:`, error)
         // Keep existing data if fetch fails
-        const existing = tokenPrices.get(tokenAddress)
-        if (existing) {
-          updatedPrices.set(tokenAddress, {
-            ...existing,
-            priceError: error instanceof Error ? error : new Error('Price fetch failed')
-          })
-        }
+        setTokenPrices(prevPrices => {
+          const existing = prevPrices.get(tokenAddress)
+          if (existing) {
+            updatedPrices.set(tokenAddress, {
+              ...existing,
+              priceError: error instanceof Error ? error : new Error('Price fetch failed')
+            })
+          }
+          return updatedPrices
+        })
+        return
       }
     }
 
     setTokenPrices(updatedPrices)
     setPriceUpdateCounter(prev => prev + 1)
-  }, [contractAddresses, contentQuery.data, customTokenAddress, tokenPrices, fetchTokenInfo])
+  }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo])
 
   /**
    * Payment Method Selection Handler
@@ -472,7 +476,7 @@ export function useUnifiedContentPurchaseFlow(
     
     // Refresh prices when method changes
     refreshPrices()
-  }, [refreshPrices])
+  }, [])
 
   /**
    * Custom Token Address Handler
@@ -486,7 +490,7 @@ export function useUnifiedContentPurchaseFlow(
     if (selectedMethod === PaymentMethod.CUSTOM_TOKEN) {
       refreshPrices()
     }
-  }, [customTokenAddress, selectedMethod, refreshPrices])
+  }, [customTokenAddress, selectedMethod])
 
   /**
    * Payment Execution Logic
@@ -623,14 +627,14 @@ export function useUnifiedContentPurchaseFlow(
         }
       }
     }
-  }, [finalConfig.priceUpdateInterval, refreshPrices])
+  }, [finalConfig.priceUpdateInterval])
 
   /**
    * Effect: Initial Price Loading
    */
   useEffect(() => {
     refreshPrices()
-  }, [refreshPrices])
+  }, [])
 
   /**
    * Effect: Handle Commerce Protocol Transaction Confirmations
@@ -1424,26 +1428,31 @@ export function useContentPurchaseFlow(
       return
     }
 
-    if (!canAfford) {
-      setWorkflowState(prev => ({ 
-        ...prev, 
-        currentStep: 'insufficient_balance',
-        error: new Error('Insufficient USDC balance')
-      }))
-      return
+    // Calculate affordability and approval needs inline to avoid dependency issues
+    const currentCanAfford = userBalanceAmount && content ? userBalanceAmount >= content.payPerViewPrice : false
+    const currentNeedsApproval = userAllowanceAmount && content ? userAllowanceAmount < content.payPerViewPrice : false
+
+    // Determine the target step based on current conditions
+    let targetStep: ContentPurchaseFlowStep
+    let targetError: Error | null = null
+
+    if (!currentCanAfford) {
+      targetStep = 'insufficient_balance'
+      targetError = new Error('Insufficient USDC balance')
+    } else if (currentNeedsApproval) {
+      targetStep = 'need_approval'
+      targetError = null
+    } else {
+      targetStep = 'can_purchase'
+      targetError = null
     }
 
-    if (needsApproval) {
+    // Only update state if the step is actually changing
+    if (workflowState.currentStep !== targetStep) {
       setWorkflowState(prev => ({ 
         ...prev, 
-        currentStep: 'need_approval',
-        error: null
-      }))
-    } else {
-      setWorkflowState(prev => ({ 
-        ...prev, 
-        currentStep: 'can_purchase',
-        error: null
+        currentStep: targetStep,
+        error: targetError
       }))
     }
   }, [
@@ -1455,8 +1464,9 @@ export function useContentPurchaseFlow(
     hasAccess,
     userBalance.isLoading,
     tokenAllowance.isLoading,
-    canAfford,
-    needsApproval
+    userBalanceAmount ?? null,
+    userAllowanceAmount ?? null,
+    workflowState.currentStep
   ])
 
   useEffect(() => {
@@ -1525,7 +1535,9 @@ export function useContentPurchaseFlow(
       throw new Error(`Cannot purchase in current state: ${workflowState.currentStep}`)
     }
 
-    if (!canAfford) {
+    // Check affordability inline to avoid dependency issues
+    const currentCanAfford = userBalanceAmount && content ? userBalanceAmount >= content.payPerViewPrice : false
+    if (!currentCanAfford) {
       throw new Error('Insufficient USDC balance')
     }
 
@@ -1545,7 +1557,8 @@ export function useContentPurchaseFlow(
     contentId,
     contractAddresses,
     workflowState.currentStep,
-    canAfford,
+    userBalanceAmount,
+    content,
     purchaseContent
   ])
 
@@ -1558,7 +1571,9 @@ export function useContentPurchaseFlow(
       throw new Error(`Cannot approve in current state: ${workflowState.currentStep}`)
     }
 
-    if (!canAfford) {
+    // Check affordability inline to avoid dependency issues
+    const currentCanAfford = userBalanceAmount && content ? userBalanceAmount >= content.payPerViewPrice : false
+    if (!currentCanAfford) {
       throw new Error('Insufficient USDC balance')
     }
 
@@ -1583,7 +1598,7 @@ export function useContentPurchaseFlow(
     contractAddresses,
     content,
     workflowState.currentStep,
-    canAfford,
+    userBalanceAmount,
     approveToken
   ])
 
