@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { Address, parseEventLogs } from 'viem'
-import { useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useContentById,
   useHasContentAccess,
@@ -16,6 +17,7 @@ import {
   useRegisterCreator,
 } from '@/hooks/contracts/core'
 import { getContractAddresses } from '@/lib/contracts/config'
+import { wagmiConfig } from '@/lib/web3/wagmi'
 import {
   getX402MiddlewareConfig,
   createX402PaymentProof,
@@ -24,7 +26,7 @@ import {
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
-import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI } from '@/lib/contracts/abi'
+import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI, ERC20_ABI } from '@/lib/contracts/abi'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import type { Creator, ContentCategory, Content } from '@/types/contracts'
 
@@ -309,13 +311,19 @@ export function useUnifiedContentPurchaseFlow(
         }
       }
 
-      // For ETH, use PriceOracle.getETHPrice
+      // Create public client for direct contract reads
+      const publicClient = createPublicClient({
+        chain: chainId === 8453 ? base : baseSepolia,
+        transport: http()
+      })
+
+      // For ETH, use PriceOracle.convertFromUSDC
       if (tokenAddress === '0x0000000000000000000000000000000000000000') {
-        const ethAmount = await readContract(wagmiConfig, {
+        const ethAmount = await publicClient.readContract({
           address: contractAddresses.PRICE_ORACLE,
           abi: PRICE_ORACLE_ABI,
-          functionName: 'getETHPrice',
-          args: [usdcAmount]
+          functionName: 'convertFromUSDC',
+          args: [tokenAddress, usdcAmount]
         }) as bigint
 
         return {
@@ -324,12 +332,12 @@ export function useUnifiedContentPurchaseFlow(
         }
       }
 
-      // For custom tokens, use PriceOracle.getTokenAmountForUSDC
-      const tokenAmount = await readContract(wagmiConfig, {
+      // For custom tokens, use PriceOracle.convertFromUSDC
+      const tokenAmount = await publicClient.readContract({
         address: contractAddresses.PRICE_ORACLE,
         abi: PRICE_ORACLE_ABI,
-        functionName: 'getTokenAmountForUSDC',
-        args: [tokenAddress, usdcAmount, 0] // 0 for auto-detect pool fee
+        functionName: 'convertFromUSDC',
+        args: [tokenAddress, usdcAmount]
       }) as bigint
 
       return {
@@ -340,7 +348,7 @@ export function useUnifiedContentPurchaseFlow(
       console.error('Price calculation failed:', error)
       return null
     }
-  }, [contractAddresses])
+  }, [contractAddresses, chainId])
 
   /**
    * Token Balance and Allowance Fetching
@@ -357,6 +365,12 @@ export function useUnifiedContentPurchaseFlow(
     const contentPrice = contentQuery.data?.payPerViewPrice || BigInt(0)
     const priceCalculation = await calculateTokenPrice(tokenAddress, contentPrice)
 
+    // Create public client for direct contract reads
+    const publicClient = createPublicClient({
+      chain: chainId === 8453 ? base : baseSepolia,
+      transport: http()
+    })
+
     // Fetch balance
     let balance: bigint | null = null
     if (isEth) {
@@ -365,7 +379,7 @@ export function useUnifiedContentPurchaseFlow(
     } else {
       // ERC-20 token balance
       try {
-        balance = await readContract(wagmiConfig, {
+        balance = await publicClient.readContract({
           address: tokenAddress,
           abi: ERC20_ABI,
           functionName: 'balanceOf',
@@ -381,7 +395,7 @@ export function useUnifiedContentPurchaseFlow(
     if (!isEth) {
       try {
         const spender = isUsdc ? contractAddresses.PAY_PER_VIEW : contractAddresses.COMMERCE_INTEGRATION
-        allowance = await readContract(wagmiConfig, {
+        allowance = await publicClient.readContract({
           address: tokenAddress,
           abi: ERC20_ABI,
           functionName: 'allowance',
@@ -550,8 +564,8 @@ export function useUnifiedContentPurchaseFlow(
           paymentType: 0, // PayPerView
           contentId,
           paymentToken,
-          maxSlippage: slippageTolerance,
-          deadline: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+          maxSlippage: BigInt(slippageTolerance),
+          deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
         }
 
         await writeCommerceContract({
