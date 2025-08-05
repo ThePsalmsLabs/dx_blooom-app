@@ -1381,7 +1381,54 @@ export function useContentPurchaseFlow(
     workflowState.currentStep
   ])
 
+  // Use useRef to track the previous state and prevent unnecessary updates
+  const prevStateRef = useRef<{
+    contentQueryLoading: boolean
+    contentQueryError: Error | null
+    content: Content | null
+    accessQueryLoading: boolean
+    accessQueryError: Error | null
+    hasAccess: boolean
+    userBalanceLoading: boolean
+    tokenAllowanceLoading: boolean
+    userBalanceAmount: bigint | null
+    userAllowanceAmount: bigint | null
+  } | null>(null)
+
   useEffect(() => {
+    // Get current values
+    const currentState = {
+      contentQueryLoading: contentQuery.isLoading,
+      contentQueryError: contentQuery.error ?? null,
+      content: content ?? null,
+      accessQueryLoading: accessQuery.isLoading,
+      accessQueryError: accessQuery.error ?? null,
+      hasAccess,
+      userBalanceLoading: userBalance.isLoading,
+      tokenAllowanceLoading: tokenAllowance.isLoading,
+      userBalanceAmount: userBalanceAmount ?? null,
+      userAllowanceAmount: userAllowanceAmount ?? null
+    }
+
+    // Check if state has actually changed
+    const prevState = prevStateRef.current
+    if (prevState && 
+        prevState.contentQueryLoading === currentState.contentQueryLoading &&
+        prevState.contentQueryError === currentState.contentQueryError &&
+        prevState.content === currentState.content &&
+        prevState.accessQueryLoading === currentState.accessQueryLoading &&
+        prevState.accessQueryError === currentState.accessQueryError &&
+        prevState.hasAccess === currentState.hasAccess &&
+        prevState.userBalanceLoading === currentState.userBalanceLoading &&
+        prevState.tokenAllowanceLoading === currentState.tokenAllowanceLoading &&
+        prevState.userBalanceAmount === currentState.userBalanceAmount &&
+        prevState.userAllowanceAmount === currentState.userAllowanceAmount) {
+      return // No change, don't update
+    }
+
+    // Update the ref with current state
+    prevStateRef.current = currentState
+
     if (workflowState.currentStep === 'error') {
       return
     }
@@ -1457,16 +1504,15 @@ export function useContentPurchaseFlow(
     }
   }, [
     contentQuery.isLoading,
-    contentQuery.error,
-    content,
+    contentQuery.error ?? null,
+    content ?? null,
     accessQuery.isLoading,
-    accessQuery.error,
+    accessQuery.error ?? null,
     hasAccess,
     userBalance.isLoading,
     tokenAllowance.isLoading,
     userBalanceAmount ?? null,
-    userAllowanceAmount ?? null,
-    workflowState.currentStep
+    userAllowanceAmount ?? null
   ])
 
   useEffect(() => {
