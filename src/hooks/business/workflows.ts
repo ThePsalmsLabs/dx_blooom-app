@@ -1294,6 +1294,14 @@ export function useContentPurchaseFlow(
       return null
     }
   }, [chainId])
+
+  // Step 2: Verify Contract Configuration
+  useEffect(() => {
+    console.log('Contract Addresses:', contractAddresses)
+    if (!contractAddresses) {
+      console.error('Contract addresses not available for chainId:', chainId)
+    }
+  }, [contractAddresses, chainId])
   
   const contentQuery = useContentById(contentId)
   const accessQuery = useHasContentAccess(userAddress, contentId)
@@ -1303,6 +1311,17 @@ export function useContentPurchaseFlow(
     userAddress,
     contractAddresses?.PAY_PER_VIEW
   )
+
+  // Step 3: Check Balance Fetching
+  useEffect(() => {
+    console.log('Balance Debug:', {
+      tokenAddress: contractAddresses?.USDC,
+      userAddress,
+      balance: userBalance.data,
+      isLoading: userBalance.isLoading,
+      error: userBalance.error
+    })
+  }, [userBalance, contractAddresses?.USDC, userAddress])
   
   const approveToken = useApproveToken()
   const purchaseContent = usePurchaseContent()
@@ -1515,7 +1534,30 @@ export function useContentPurchaseFlow(
     userAllowanceAmount ?? null
   ])
 
+  // Use useRef to track approveToken state changes
+  const prevApproveTokenRef = useRef<{
+    isLoading: boolean
+    isConfirmed: boolean
+    error: Error | null
+  } | null>(null)
+
   useEffect(() => {
+    const currentApproveToken = {
+      isLoading: approveToken.isLoading,
+      isConfirmed: approveToken.isConfirmed,
+      error: approveToken.error ?? null
+    }
+
+    const prevApproveToken = prevApproveTokenRef.current
+    if (prevApproveToken && 
+        prevApproveToken.isLoading === currentApproveToken.isLoading &&
+        prevApproveToken.isConfirmed === currentApproveToken.isConfirmed &&
+        prevApproveToken.error === currentApproveToken.error) {
+      return // No change, don't update
+    }
+
+    prevApproveTokenRef.current = currentApproveToken
+
     if (approveToken.isLoading && !approveToken.isConfirmed) {
       setWorkflowState(prev => ({ 
         ...prev, 
@@ -1543,7 +1585,30 @@ export function useContentPurchaseFlow(
     approveToken.error
   ])
 
+  // Use useRef to track purchaseContent state changes
+  const prevPurchaseContentRef = useRef<{
+    isLoading: boolean
+    isConfirmed: boolean
+    error: Error | null
+  } | null>(null)
+
   useEffect(() => {
+    const currentPurchaseContent = {
+      isLoading: purchaseContent.isLoading,
+      isConfirmed: purchaseContent.isConfirmed,
+      error: purchaseContent.error ?? null
+    }
+
+    const prevPurchaseContent = prevPurchaseContentRef.current
+    if (prevPurchaseContent && 
+        prevPurchaseContent.isLoading === currentPurchaseContent.isLoading &&
+        prevPurchaseContent.isConfirmed === currentPurchaseContent.isConfirmed &&
+        prevPurchaseContent.error === currentPurchaseContent.error) {
+      return // No change, don't update
+    }
+
+    prevPurchaseContentRef.current = currentPurchaseContent
+
     if (purchaseContent.isLoading && !purchaseContent.isConfirmed) {
       setWorkflowState(prev => ({ 
         ...prev, 

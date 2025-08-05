@@ -178,6 +178,22 @@ export function EnhancedContentPurchaseCard({
   const [customTokenInput, setCustomTokenInput] = useState('')
   const [showPriceDetails, setShowPriceDetails] = useState(false)
 
+  // Step 1: Add Debug Logging
+  useEffect(() => {
+    console.log('Purchase Flow Debug:', {
+      canAfford: purchaseFlow.canExecutePayment,
+      userBalance: purchaseFlow.selectedToken?.balance,
+      content: purchaseFlow.content,
+      contentPrice: purchaseFlow.content?.payPerViewPrice,
+      hasAccess: purchaseFlow.hasAccess,
+      isLoading: purchaseFlow.isLoading,
+      error: purchaseFlow.executionState.error,
+      currentStep: purchaseFlow.executionState.phase,
+      selectedMethod: purchaseFlow.selectedMethod,
+      selectedToken: purchaseFlow.selectedToken
+    })
+  }, [purchaseFlow])
+
   /**
    * Effect: Handle Purchase Success
    * 
@@ -225,6 +241,23 @@ export function EnhancedContentPurchaseCard({
   // Handle loading states
   if (purchaseFlow.isLoading) {
     return <ContentPurchaseCardSkeleton className={className} />
+  }
+
+  // Step 4: Ensure Proper Error Handling
+  if (purchaseFlow.executionState.error) {
+    return (
+      <Card className={cn('w-full', className)}>
+        <CardContent className="p-6">
+          <div className="text-red-600">
+            <AlertCircle className="h-4 w-4 inline mr-2" />
+            Error: {purchaseFlow.executionState.error.message}
+          </div>
+          <Button onClick={purchaseFlow.resetPayment} className="mt-2">
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   // Handle missing content
