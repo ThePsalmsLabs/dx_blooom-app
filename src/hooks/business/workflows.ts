@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { Address, parseEventLogs } from 'viem'
-import { useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
+import { useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance } from 'wagmi'
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { useQueryClient } from '@tanstack/react-query'
@@ -1261,13 +1261,31 @@ export interface PurchaseProgress {
   readonly gasUsed?: bigint           // Gas consumed by transaction
 }
 
+// Multi-token payment option interface
+export interface PaymentOption {
+  readonly method: 'USDC' | 'ETH' | 'OTHER_TOKEN'
+  readonly token: Address | null // null for ETH
+  readonly symbol: string
+  readonly balance: bigint | null
+  readonly requiredAmount: bigint | null
+  readonly canAfford: boolean
+  readonly needsApproval: boolean
+  readonly recommended?: boolean
+}
+
 export interface ContentPurchaseFlowResult {
   readonly content: Content | null                    // Content metadata
   readonly hasAccess: boolean                         // Current access status
   readonly isLoading: boolean                         // Overall loading state
   readonly error: Error | null                        // Current error state
   readonly currentStep: ContentPurchaseFlowStep       // Current workflow step
-  readonly canAfford: boolean                         // User has sufficient USDC
+  
+  // Multi-token affordability - THE KEY FIX
+  readonly canAfford: boolean                         // TRUE if user can afford with ANY supported token
+  readonly paymentOptions: PaymentOption[]            // All available payment methods
+  readonly recommendedPayment: PaymentOption | null   // Best payment option for user
+  
+  // Legacy single-token properties (for compatibility)
   readonly needsApproval: boolean                     // USDC approval required
   readonly requiredAllowance: bigint | null           // Amount needed for approval
   readonly userBalance: bigint | null                 // User's USDC balance
@@ -1312,6 +1330,23 @@ export function useContentPurchaseFlow(
     contractAddresses?.PAY_PER_VIEW
   )
 
+  // NEW: ETH balance fetching using wagmi's useBalance
+  const { data: ethBalance } = useBalance({
+    address: userAddress,
+    query: { enabled: !!userAddress }
+  })
+
+  // NEW: ETH price conversion using PriceOracle
+  const { data: requiredEthAmount } = useReadContract({
+    address: contractAddresses?.PRICE_ORACLE,
+    abi: PRICE_ORACLE_ABI,
+    functionName: 'convertFromUSDC',
+    args: contentQuery.data ? ['0x0000000000000000000000000000000000000000', contentQuery.data.payPerViewPrice] : undefined,
+    query: { 
+      enabled: !!(contractAddresses?.PRICE_ORACLE && contentQuery.data?.payPerViewPrice)
+    }
+  })
+
   // Step 3: Check Balance Fetching
   useEffect(() => {
     console.log('Balance Debug:', {
@@ -1319,9 +1354,11 @@ export function useContentPurchaseFlow(
       userAddress,
       balance: userBalance.data,
       isLoading: userBalance.isLoading,
-      error: userBalance.error
+      error: userBalance.error,
+      ethBalance: ethBalance?.value,
+      requiredEthAmount
     })
-  }, [userBalance, contractAddresses?.USDC, userAddress])
+  }, [userBalance, contractAddresses?.USDC, userAddress, ethBalance, requiredEthAmount])
   
   const approveToken = useApproveToken()
   const purchaseContent = usePurchaseContent()
@@ -1352,15 +1389,73 @@ export function useContentPurchaseFlow(
     return tokenAllowance.data || null
   }, [tokenAllowance.data])
 
-  const canAfford = useMemo(() => {
-    if (!userBalanceAmount || !content) return false
-    return userBalanceAmount >= content.payPerViewPrice
-  }, [userBalanceAmount, content])
+  // NEW: Multi-token payment options calculation
+  const paymentOptions = useMemo((): PaymentOption[] => {
+    if (!content || !contractAddresses) return []
 
+    const options: PaymentOption[] = []
+
+    // Option 1: USDC Direct Payment (existing flow)
+    const usdcCanAfford = userBalanceAmount ? userBalanceAmount >= content.payPerViewPrice : false
+    const usdcNeedsApproval = userAllowanceAmount ? userAllowanceAmount < content.payPerViewPrice : true
+    
+    options.push({
+      method: 'USDC',
+      token: contractAddresses.USDC,
+      symbol: 'USDC',
+      balance: userBalanceAmount,
+      requiredAmount: content.payPerViewPrice,
+      canAfford: usdcCanAfford,
+      needsApproval: usdcNeedsApproval && usdcCanAfford,
+      recommended: usdcCanAfford && !usdcNeedsApproval
+    })
+
+    // Option 2: ETH Payment (using Commerce Protocol + PriceOracle)
+    const ethCanAfford = ethBalance?.value && requiredEthAmount ? 
+      ethBalance.value >= requiredEthAmount : false
+    
+    options.push({
+      method: 'ETH',
+      token: null, // ETH is native currency
+      symbol: 'ETH',
+      balance: ethBalance?.value || null,
+      requiredAmount: requiredEthAmount || null,
+      canAfford: ethCanAfford,
+      needsApproval: false, // ETH doesn't need approval
+      recommended: ethCanAfford // Recommend ETH if user has enough (no approval needed)
+    })
+
+    return options
+  }, [content, contractAddresses, userBalanceAmount, userAllowanceAmount, ethBalance, requiredEthAmount])
+
+  // NEW: Overall affordability check - THE KEY FIX FOR YOUR BUY BUTTON
+  const canAfford = useMemo(() => {
+    // User can afford if they have sufficient balance in ANY supported token
+    return paymentOptions.some(option => option.canAfford)
+  }, [paymentOptions])
+
+  // NEW: Recommended payment method selection
+  const recommendedPayment = useMemo(() => {
+    // Prioritize options that don't need approval, then by availability
+    const availableOptions = paymentOptions.filter(option => option.canAfford)
+    
+    if (availableOptions.length === 0) return null
+    
+    // Prefer options that don't need approval (like ETH)
+    const noApprovalOptions = availableOptions.filter(option => !option.needsApproval)
+    if (noApprovalOptions.length > 0) {
+      return noApprovalOptions[0] // Return first no-approval option (likely ETH)
+    }
+    
+    return availableOptions[0] // Return first available option
+  }, [paymentOptions])
+
+  // Legacy compatibility properties
   const needsApproval = useMemo(() => {
-    if (!userAllowanceAmount || !content) return false
-    return userAllowanceAmount < content.payPerViewPrice
-  }, [userAllowanceAmount, content])
+    // For backward compatibility, check if USDC payment needs approval
+    const usdcOption = paymentOptions.find(option => option.method === 'USDC')
+    return usdcOption?.needsApproval || false
+  }, [paymentOptions])
 
   const requiredAllowance = useMemo(() => {
     if (!content) return null
@@ -1495,8 +1590,9 @@ export function useContentPurchaseFlow(
     }
 
     // Calculate affordability and approval needs inline to avoid dependency issues
-    const currentCanAfford = userBalanceAmount && content ? userBalanceAmount >= content.payPerViewPrice : false
-    const currentNeedsApproval = userAllowanceAmount && content ? userAllowanceAmount < content.payPerViewPrice : false
+    // NEW: Use multi-token affordability check instead of just USDC
+    const currentCanAfford = paymentOptions.some(option => option.canAfford)
+    const currentNeedsApproval = recommendedPayment?.needsApproval || false
 
     // Determine the target step based on current conditions
     let targetStep: ContentPurchaseFlowStep
@@ -1743,6 +1839,8 @@ export function useContentPurchaseFlow(
     error: workflowState.error,
     currentStep: workflowState.currentStep,
     canAfford,
+    paymentOptions,
+    recommendedPayment,
     needsApproval,
     requiredAllowance,
     userBalance: userBalanceAmount,
@@ -3519,4 +3617,20 @@ export function useCreatorOnboarding(
     reset,
     registrationProgress
   }
+}
+
+// Helper function to format payment options for UI display
+export function formatPaymentOption(option: PaymentOption): string {
+  if (!option.balance || !option.requiredAmount) return `${option.symbol}: Loading...`
+  
+  const hasEnough = option.canAfford ? '✅' : '❌'
+  const balanceFormatted = option.method === 'ETH' 
+    ? `${(Number(option.balance) / 1e18).toFixed(4)} ETH`
+    : `$${(Number(option.balance) / 1e6).toFixed(2)} USDC`
+  
+  const requiredFormatted = option.method === 'ETH'
+    ? `${(Number(option.requiredAmount) / 1e18).toFixed(4)} ETH`
+    : `$${(Number(option.requiredAmount) / 1e6).toFixed(2)} USDC`
+  
+  return `${hasEnough} ${option.symbol}: ${balanceFormatted} (need ${requiredFormatted})`
 }
