@@ -17,7 +17,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { type Address } from 'viem'
@@ -152,6 +152,36 @@ export function ContentPurchaseCard({
     canRetry: false
   })
 
+  // Ref to track if success callback has been called for current completion
+  const successCallbackCalledRef = useRef(false)
+  
+  // Ref to track if auto-redirect has been triggered
+  const autoRedirectTriggeredRef = useRef(false)
+  
+  // Ref to track the auto-redirect timeout
+  const autoRedirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Reset success callback ref when contentId changes or purchase flow resets
+  useEffect(() => {
+    successCallbackCalledRef.current = false
+    autoRedirectTriggeredRef.current = false
+    
+    // Clear any existing timeout
+    if (autoRedirectTimeoutRef.current) {
+      clearTimeout(autoRedirectTimeoutRef.current)
+      autoRedirectTimeoutRef.current = null
+    }
+  }, [contentId, purchaseFlow?.currentStep])
+
+  // Cleanup effect to clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoRedirectTimeoutRef.current) {
+        clearTimeout(autoRedirectTimeoutRef.current)
+      }
+    }
+  }, [])
+
   /**
    * Update purchase state based on purchase flow status
    */
@@ -160,85 +190,87 @@ export function ContentPurchaseCard({
 
     const { currentStep, error, purchaseProgress, approvalProgress } = purchaseFlow
 
+    // Helper function to create new state
+    const createNewState = (status: PurchaseState['status'], message: string, progress: number, canRetry: boolean, transactionHash?: string): PurchaseState => ({
+      status,
+      message,
+      progress,
+      canRetry,
+      transactionHash
+    })
+
+    let newState: PurchaseState
+
     switch (currentStep) {
       case 'checking_access':
-        setPurchaseState({
-          status: 'checking',
-          message: 'Checking access...',
-          progress: 10,
-          canRetry: false
-        })
+        newState = createNewState('checking', 'Checking access...', 10, false)
         break
       
       case 'need_approval':
-        setPurchaseState({
-          status: 'idle',
-          message: 'USDC approval required',
-          progress: 30,
-          canRetry: false
-        })
+        newState = createNewState('idle', 'USDC approval required', 30, false)
         break
       
       case 'approving_tokens':
-        setPurchaseState({
-          status: 'approving',
-          message: 'Approving USDC...',
-          progress: 50,
-          canRetry: false,
-          transactionHash: approvalProgress.transactionHash
-        })
+        newState = createNewState('approving', 'Approving USDC...', 50, false, approvalProgress.transactionHash)
         break
       
       case 'purchasing':
-        setPurchaseState({
-          status: 'purchasing',
-          message: 'Processing purchase...',
-          progress: 80,
-          canRetry: false,
-          transactionHash: purchaseProgress.transactionHash
-        })
+        newState = createNewState('purchasing', 'Processing purchase...', 80, false, purchaseProgress.transactionHash)
         break
       
       case 'completed':
-        setPurchaseState({
-          status: 'completed',
-          message: 'Purchase completed!',
-          progress: 100,
-          canRetry: false,
-          transactionHash: purchaseProgress.transactionHash
-        })
+        newState = createNewState('completed', 'Purchase completed!', 100, false, purchaseProgress.transactionHash)
         
         // Call success callback
-        if (onPurchaseSuccess) {
+        if (onPurchaseSuccess && !successCallbackCalledRef.current) {
           onPurchaseSuccess(contentId)
+          successCallbackCalledRef.current = true
         }
         
         // Auto-redirect if enabled
-        if (autoRedirectAfterPurchase) {
-          setTimeout(() => {
+        if (autoRedirectAfterPurchase && !autoRedirectTriggeredRef.current) {
+          autoRedirectTriggeredRef.current = true
+          
+          // Clear any existing timeout
+          if (autoRedirectTimeoutRef.current) {
+            clearTimeout(autoRedirectTimeoutRef.current)
+          }
+          
+          autoRedirectTimeoutRef.current = setTimeout(() => {
             router.push(`/content/${contentId}`)
           }, 2000)
         }
         break
       
       case 'error':
-        setPurchaseState({
-          status: 'error',
-          message: error?.message || 'Purchase failed',
-          progress: 0,
-          canRetry: true
-        })
+        newState = createNewState('error', error?.message || 'Purchase failed', 0, true)
         break
       
       default:
-        setPurchaseState({
-          status: 'idle',
-          message: 'Ready to purchase',
-          progress: 0,
-          canRetry: false
-        })
+        newState = createNewState('idle', 'Ready to purchase', 0, false)
     }
-  }, [purchaseFlow, contentId, onPurchaseSuccess, autoRedirectAfterPurchase, router])
+
+    // Only update state if it's actually different
+    setPurchaseState(prevState => {
+      if (prevState.status === newState.status && 
+          prevState.message === newState.message && 
+          prevState.progress === newState.progress && 
+          prevState.canRetry === newState.canRetry &&
+          prevState.transactionHash === newState.transactionHash) {
+        return prevState
+      }
+      return newState
+    })
+  }, [
+    purchaseFlow?.currentStep,
+    purchaseFlow?.error?.message,
+    purchaseFlow?.purchaseProgress?.transactionHash,
+    purchaseFlow?.approvalProgress?.transactionHash,
+    contentId,
+    onPurchaseSuccess,
+    autoRedirectAfterPurchase,
+    router
+  ])
 
   /**
    * Handle purchase action
@@ -265,7 +297,7 @@ export function ContentPurchaseCard({
       console.error('Purchase failed:', error)
       // Error state will be handled by the useEffect above
     }
-  }, [isConnected, effectiveUserAddress, purchaseFlow])
+  }, [isConnected, effectiveUserAddress, purchaseFlow?.needsApproval, purchaseFlow?.approveAndPurchase, purchaseFlow?.purchase])
 
   /**
    * Handle retry action
@@ -280,7 +312,7 @@ export function ContentPurchaseCard({
       progress: 0,
       canRetry: false
     })
-  }, [purchaseFlow])
+  }, [purchaseFlow?.reset])
 
   /**
    * Handle view content action
