@@ -24,9 +24,190 @@ import {
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
-import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abi'
+import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI } from '@/lib/contracts/abi'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import type { Creator, ContentCategory, Content } from '@/types/contracts'
+
+/**
+ * Supported Payment Methods Enum
+ * 
+ * This enum defines all payment methods available to users, providing clear
+ * categorization and routing logic for different payment flows.
+ */
+export enum PaymentMethod {
+  DIRECT_USDC = 'direct_usdc',    // Direct USDC transfer to creator
+  ETH = 'eth',                    // ETH payment via Commerce Protocol
+  CUSTOM_TOKEN = 'custom_token'   // Any ERC-20 token via Commerce Protocol
+}
+
+/**
+ * Payment Method Configuration Interface
+ * 
+ * This interface defines the configuration and display properties for each
+ * payment method, providing comprehensive information for UI presentation.
+ */
+export interface PaymentMethodConfig {
+  readonly id: PaymentMethod
+  readonly name: string
+  readonly description: string
+  readonly icon: string
+  readonly estimatedTime: string
+  readonly gasEstimate: 'Low' | 'Medium' | 'High'
+  readonly requiresApproval: boolean
+  readonly supportsSlippage: boolean
+  readonly isCommerceProtocol: boolean
+}
+
+/**
+ * Token Information Interface
+ * 
+ * This interface provides comprehensive information about supported tokens,
+ * including pricing data, balance information, and approval requirements.
+ */
+export interface TokenInfo {
+  readonly address: Address
+  readonly symbol: string
+  readonly name: string
+  readonly decimals: number
+  readonly isNative: boolean
+  readonly balance: bigint | null
+  readonly allowance: bigint | null
+  readonly priceInUSDC: bigint | null      // Current price in USDC
+  readonly requiredAmount: bigint | null    // Amount needed for purchase
+  readonly priceLoading: boolean
+  readonly priceError: Error | null
+}
+
+/**
+ * Payment Execution State Interface
+ * 
+ * This interface tracks the current state of payment execution across all
+ * payment methods, providing unified progress tracking and error handling.
+ */
+export interface PaymentExecutionState {
+  readonly phase: 'idle' | 'calculating' | 'approving' | 'creating_intent' | 'waiting_signature' | 'executing' | 'confirming' | 'completed' | 'error'
+  readonly progress: number                 // Progress percentage (0-100)
+  readonly message: string                  // User-friendly status message
+  readonly canRetry: boolean               // Whether user can retry the operation
+  readonly transactionHash: string | null  // Current transaction hash
+  readonly error: Error | null             // Current error state
+}
+
+/**
+ * Unified Purchase Flow Configuration Interface
+ * 
+ * This interface provides configuration options for the unified purchase flow,
+ * allowing fine-tuned control over behavior and user experience.
+ */
+export interface UnifiedPurchaseFlowConfig {
+  readonly enabledMethods: ReadonlyArray<PaymentMethod>
+  readonly defaultMethod: PaymentMethod
+  readonly defaultSlippage: number
+  readonly maxSlippage: number
+  readonly priceUpdateInterval: number
+  readonly enablePriceAlerts: boolean
+  readonly supportedTokens: ReadonlyArray<Address>
+}
+
+/**
+ * Unified Purchase Flow Result Interface
+ * 
+ * This interface provides the complete API for components to interact with
+ * the unified purchase system, encompassing all payment methods and features.
+ */
+export interface UnifiedPurchaseFlowResult {
+  // Content and access information
+  readonly content: Content | null
+  readonly hasAccess: boolean
+  readonly isLoading: boolean
+
+  // Payment method management
+  readonly selectedMethod: PaymentMethod
+  readonly availableMethods: ReadonlyArray<PaymentMethodConfig>
+  readonly setPaymentMethod: (method: PaymentMethod) => void
+
+  // Token management
+  readonly selectedToken: TokenInfo | null
+  readonly supportedTokens: ReadonlyArray<TokenInfo>
+  readonly setCustomToken: (address: Address) => void
+
+  // Pricing and slippage
+  readonly slippageTolerance: number
+  readonly setSlippageTolerance: (slippage: number) => void
+  readonly estimatedCost: bigint | null
+  readonly finalCost: bigint | null        // Cost including slippage
+
+  // Payment execution
+  readonly executionState: PaymentExecutionState
+  readonly canExecutePayment: boolean
+  readonly executePayment: () => Promise<void>
+  readonly retryPayment: () => Promise<void>
+  readonly resetPayment: () => void
+
+  // Advanced features
+  readonly priceImpact: number | null      // Price impact percentage
+  readonly priceAlerts: ReadonlyArray<{ type: 'warning' | 'error', message: string }>
+  readonly refreshPrices: () => Promise<void>
+}
+
+
+/**
+ * Default Configuration
+ * 
+ * This configuration provides sensible defaults for the unified purchase flow,
+ * ensuring optimal user experience while maintaining flexibility for customization.
+ */
+const DEFAULT_CONFIG: UnifiedPurchaseFlowConfig = {
+  enabledMethods: [PaymentMethod.DIRECT_USDC, PaymentMethod.ETH, PaymentMethod.CUSTOM_TOKEN],
+  defaultMethod: PaymentMethod.DIRECT_USDC,
+  defaultSlippage: 100, // 1%
+  maxSlippage: 1000,    // 10%
+  priceUpdateInterval: 30000, // 30 seconds
+  enablePriceAlerts: true,
+  supportedTokens: [] // Will be populated dynamically
+}
+
+/**
+ * Payment Method Configurations
+ * 
+ * This array defines the display properties and characteristics of each
+ * supported payment method, providing comprehensive information for UI rendering.
+ */
+const PAYMENT_METHOD_CONFIGS: ReadonlyArray<PaymentMethodConfig> = [
+  {
+    id: PaymentMethod.DIRECT_USDC,
+    name: 'Direct USDC',
+    description: 'Pay directly with USDC - fastest and most efficient',
+    icon: 'dollar-sign',
+    estimatedTime: '~30 seconds',
+    gasEstimate: 'Low',
+    requiresApproval: true,
+    supportsSlippage: false,
+    isCommerceProtocol: false
+  },
+  {
+    id: PaymentMethod.ETH,
+    name: 'ETH Payment',
+    description: 'Pay with ETH - automatically converted to USDC for creator',
+    icon: 'zap',
+    estimatedTime: '~2-3 minutes',
+    gasEstimate: 'Medium',
+    requiresApproval: false,
+    supportsSlippage: true,
+    isCommerceProtocol: true
+  },
+  {
+    id: PaymentMethod.CUSTOM_TOKEN,
+    name: 'Custom Token',
+    description: 'Pay with any supported token - converted to USDC',
+    icon: 'coins',
+    estimatedTime: '~2-3 minutes',
+    gasEstimate: 'Medium',
+    requiresApproval: true,
+    supportsSlippage: true,
+    isCommerceProtocol: true
+  }
+] as const
 
 // Farcaster Context Interface
 export interface FarcasterContext {
