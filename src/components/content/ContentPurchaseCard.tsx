@@ -20,7 +20,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance } from 'wagmi'
 import { type Address } from 'viem'
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
@@ -440,14 +440,63 @@ export function ContentPurchaseCard({
     contractAddresses?.USDC, 
     effectiveUserAddress
   )
-  const ethBalance = useTokenBalance(undefined, effectiveUserAddress) // ETH balance
+  // Use correct hook for native ETH balance
+  const ethBalance = useBalance({
+    address: effectiveUserAddress,
+    query: { 
+      enabled: !!effectiveUserAddress,
+      staleTime: 1000 * 30,
+      refetchInterval: 1000 * 60
+    }
+  })
   
-  // Token allowance checking for USDC
-  const usdcAllowance = useTokenAllowance(
-    effectiveUserAddress,
+  // Token allowance checking for USDC with timeout fallback
+  const usdcAllowanceRaw = useTokenAllowance(
     contractAddresses?.USDC || null,
+    effectiveUserAddress,
     contractAddresses?.PAY_PER_VIEW || null
   )
+
+  // State to track if allowance check is stuck
+  const [allowanceStuck, setAllowanceStuck] = useState(false)
+
+  // Timeout to detect stuck allowance check
+  useEffect(() => {
+    console.log('🔍 Allowance check status:', {
+      isLoading: usdcAllowanceRaw.isLoading,
+      data: usdcAllowanceRaw.data,
+      error: usdcAllowanceRaw.error,
+      effectiveUserAddress,
+      usdcAddress: contractAddresses?.USDC,
+      spenderAddress: contractAddresses?.PAY_PER_VIEW
+    })
+
+    if (usdcAllowanceRaw.isLoading && effectiveUserAddress) {
+      const timer = setTimeout(() => {
+        console.warn('🚨 USDC allowance check stuck, using fallback value')
+        setAllowanceStuck(true)
+      }, 4000)
+      
+      return () => clearTimeout(timer)
+    } else if (!usdcAllowanceRaw.isLoading) {
+      setAllowanceStuck(false)
+    }
+  }, [usdcAllowanceRaw.isLoading, usdcAllowanceRaw.data, usdcAllowanceRaw.error, effectiveUserAddress, contractAddresses?.USDC, contractAddresses?.PAY_PER_VIEW])
+
+  // Create stable allowance object with fallback
+  const usdcAllowance = useMemo(() => {
+    if (allowanceStuck) {
+      return {
+        data: BigInt(0), // Assume no allowance if stuck
+        isLoading: false,
+        isError: false,
+        error: null,
+        isSuccess: true,
+        refetch: usdcAllowanceRaw.refetch
+      }
+    }
+    return usdcAllowanceRaw
+  }, [usdcAllowanceRaw, allowanceStuck])
   
   // Contract interaction hooks
   const { writeContract, data: writeData, error: writeError, isPending: isWritePending } = useWriteContract()
@@ -487,6 +536,8 @@ export function ContentPurchaseCard({
     lastSuccessfulStep: null
   })
 
+  // Remove this effect - we'll handle initialization in the main effect below
+
   /**
    * Multi-Payment Support Detection
    * This checks if the user's environment supports advanced payment methods
@@ -512,12 +563,24 @@ export function ContentPurchaseCard({
   const checkTokenBalances = useCallback(async (content: Content) => {
     if (!effectiveUserAddress || !content) return
 
+    console.log('🔄 Starting token balance check...', {
+      effectiveUserAddress,
+      contentId: contentId,
+      usdcBalanceLoading: usdcBalance.isLoading,
+      usdcAllowanceLoading: usdcAllowance.isLoading,
+      usdcBalanceData: usdcBalance.data,
+      usdcAllowanceData: usdcAllowance.data
+    })
+
     setPaymentState(prev => ({ ...prev, isCheckingBalances: true, errorMessage: null }))
 
     try {
       const multiPaymentSupported = checkMultiPaymentSupport()
       
       // Always create USDC token info (fallback mode)
+      // Force isLoading to false if we've been waiting too long or if allowance is stuck
+      const forceNotLoading = Date.now() > (window as any).__balanceCheckStart + 8000 || allowanceStuck
+      
       const usdcTokenInfo: TokenInfo = {
         address: contractAddresses?.USDC || '0x0000000000000000000000000000000000000000' as Address,
         symbol: 'USDC',
@@ -528,9 +591,11 @@ export function ContentPurchaseCard({
         hasEnoughBalance: (usdcBalance.data || BigInt(0)) >= content.payPerViewPrice,
         allowance: usdcAllowance.data || BigInt(0),
         needsApproval: (usdcAllowance.data || BigInt(0)) < content.payPerViewPrice,
-        isLoading: usdcBalance.isLoading || usdcAllowance.isLoading,
-        error: usdcBalance.error?.message || usdcAllowance.error?.message
+        isLoading: forceNotLoading ? false : (usdcBalance.isLoading || usdcAllowance.isLoading),
+        error: usdcBalance.error?.message || usdcAllowance.error?.message || (allowanceStuck ? 'Allowance check timed out' : undefined)
       }
+
+      console.log('💰 Created USDC token info:', usdcTokenInfo)
 
       const tokenInfos: Record<PaymentMethod, TokenInfo | null> = {
         [PaymentMethod.DIRECT_USDC]: usdcTokenInfo,
@@ -552,9 +617,9 @@ export function ContentPurchaseCard({
             symbol: 'ETH',
             name: 'Ethereum',
             decimals: 18,
-            balance: ethBalance.data || BigInt(0),
+            balance: ethBalance.data?.value || BigInt(0),
             requiredAmount: requiredEthAmount,
-            hasEnoughBalance: (ethBalance.data || BigInt(0)) >= requiredEthAmount,
+            hasEnoughBalance: (ethBalance.data?.value || BigInt(0)) >= requiredEthAmount,
             needsApproval: false,
             isLoading: ethBalance.isLoading || ethPriceQuery.isLoading,
             error: ethBalance.error?.message || ethPriceQuery.error?.message
@@ -564,6 +629,11 @@ export function ContentPurchaseCard({
           // ETH remains null, gracefully handled
         }
       }
+
+      console.log('✅ Token balance check completed successfully', {
+        tokenInfos,
+        multiPaymentSupported
+      })
 
       setPaymentState(prev => ({
         ...prev,
@@ -608,14 +678,15 @@ export function ContentPurchaseCard({
     usdcAllowance.data,
     usdcAllowance.isLoading,
     usdcAllowance.error,
-    ethBalance.data,
+    ethBalance.data?.value,
     ethBalance.isLoading,
     ethBalance.error,
     ethPriceQuery.data,
     ethPriceQuery.isLoading,
     ethPriceQuery.error,
     checkMultiPaymentSupport,
-    enableFallback
+    enableFallback,
+    allowanceStuck
   ])
 
   /**
@@ -623,9 +694,85 @@ export function ContentPurchaseCard({
    */
   useEffect(() => {
     if (contentQuery.data && effectiveUserAddress && !paymentState.isInitialized) {
+      // Set timer for forcing loading state to false
+      (window as any).__balanceCheckStart = Date.now()
       checkTokenBalances(contentQuery.data)
+    } else if (contentQuery.data && !effectiveUserAddress && !paymentState.isInitialized) {
+      // Initialize with no wallet connected state
+      setPaymentState(prev => ({
+        ...prev,
+        isInitialized: true,
+        multiPaymentSupported: false,
+        availableTokens: {
+          [PaymentMethod.DIRECT_USDC]: null,
+          [PaymentMethod.ETH]: null,
+          [PaymentMethod.CUSTOM_TOKEN]: null
+        },
+        isCheckingBalances: false,
+        errorMessage: null
+      }))
     }
   }, [contentQuery.data, effectiveUserAddress, paymentState.isInitialized, checkTokenBalances])
+
+  /**
+   * Fallback initialization timeout to prevent infinite loading
+   */
+  useEffect(() => {
+    if (!paymentState.isInitialized && contentQuery.data && effectiveUserAddress) {
+      // If not initialized after 5 seconds, force initialize with minimal state
+      const timeoutId = setTimeout(() => {
+        if (!paymentState.isInitialized && contentQuery.data) {
+          console.warn('⚠️ Token balance checking timed out, forcing initialization with current data')
+          const content = contentQuery.data
+          setPaymentState(prev => ({
+            ...prev,
+            isInitialized: true,
+            multiPaymentSupported: false,
+            availableTokens: {
+              [PaymentMethod.DIRECT_USDC]: {
+                address: contractAddresses?.USDC || '0x0000000000000000000000000000000000000000' as Address,
+                symbol: 'USDC',
+                name: 'USD Coin',
+                decimals: 6,
+                balance: usdcBalance.data || BigInt(0),
+                requiredAmount: content.payPerViewPrice,
+                hasEnoughBalance: (usdcBalance.data || BigInt(0)) >= content.payPerViewPrice,
+                needsApproval: (usdcAllowance.data || BigInt(0)) < content.payPerViewPrice,
+                isLoading: false,
+                error: usdcBalance.error?.message || 'Balance check timed out'
+              },
+              [PaymentMethod.ETH]: null,
+              [PaymentMethod.CUSTOM_TOKEN]: null
+            },
+            isCheckingBalances: false,
+            errorMessage: 'Advanced payment options unavailable - using USDC fallback'
+          }))
+        }
+      }, 5000)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [paymentState.isInitialized, contentQuery.data, effectiveUserAddress, contractAddresses, usdcBalance.data, usdcBalance.error, usdcAllowance.data])
+
+  /**
+   * Force loading state to false if stuck
+   */
+  useEffect(() => {
+    if (paymentState.isCheckingBalances && contentQuery.data && effectiveUserAddress) {
+      const timeoutId = setTimeout(() => {
+        if (paymentState.isCheckingBalances) {
+          console.warn('🚨 Force stopping stuck balance check')
+          setPaymentState(prev => ({
+            ...prev,
+            isCheckingBalances: false,
+            isInitialized: true
+          }))
+        }
+      }, 3000) // Force stop after 3 seconds
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [paymentState.isCheckingBalances, contentQuery.data, effectiveUserAddress])
 
   /**
    * Determine the best available payment method based on user's balances

@@ -1430,8 +1430,8 @@ export function useContentPurchaseFlow(
   
   // Allowance checking for tokens that need approval
   const usdcAllowance = useTokenAllowance(
-    userAddress,
     contractAddresses?.USDC || null,
+    userAddress,
     contractAddresses?.PAY_PER_VIEW || null
   )
   
