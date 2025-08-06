@@ -77,9 +77,9 @@ import type { Content } from '@/types/contracts'
  * to our dynamic content page, ensuring type safety for route parameters.
  */
 interface ContentDisplayPageProps {
-  readonly params: {
+  readonly params: Promise<{
     readonly id: string
-  }
+  }>
 }
 
 /**
@@ -106,16 +106,19 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
   const router = useRouter()
   const { address: userAddress, isConnected } = useAccount()
   
+  // Unwrap params using React.use() for Next.js 15 compatibility
+  const unwrappedParams = React.use(params) as { readonly id: string }
+  
   // Parse and validate content ID from route parameters
   const contentId = useMemo(() => {
     try {
-      const id = BigInt(params.id)
+      const id = BigInt(unwrappedParams.id)
       if (id <= 0) throw new Error('Invalid content ID')
       return id
     } catch {
       return undefined
     }
-  }, [params.id])
+  }, [unwrappedParams.id])
 
   // Core data hooks for content information and access control
   const contentQuery = useContentById(contentId)

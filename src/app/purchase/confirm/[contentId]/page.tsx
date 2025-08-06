@@ -81,9 +81,9 @@ import type { Content } from '@/types/contracts'
  * to our page component, ensuring type safety for the contentId parameter.
  */
 interface PurchaseConfirmationPageProps {
-  readonly params: {
+  readonly params: Promise<{
     readonly contentId: string
-  }
+  }>
 }
 
 /**
@@ -107,14 +107,17 @@ interface PurchaseIntentState {
  * blockchain transaction while preventing common error scenarios.
  */
 export default function PurchaseConfirmationPage({ params }: PurchaseConfirmationPageProps) {
+  // Unwrap params using React.use() for Next.js 15 compatibility
+  const unwrappedParams = React.use(params) as { readonly contentId: string }
+  
   // Extract and validate contentId from route parameters
   const contentId = useMemo(() => {
     try {
-      return BigInt(params.contentId)
+      return BigInt(unwrappedParams.contentId)
     } catch {
       return undefined
     }
-  }, [params.contentId])
+  }, [unwrappedParams.contentId])
 
   // Navigation and wallet state
   const router = useRouter()
@@ -272,7 +275,7 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
   if (contentQuery.error || !contentQuery.data) {
     return (
       <AppLayout>
-        <ContentNotFoundError contentId={params.contentId} />
+        <ContentNotFoundError contentId={unwrappedParams.contentId} />
       </AppLayout>
     )
   }

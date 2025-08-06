@@ -33,11 +33,12 @@ interface ErrorResponse {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ContentMetadata | ErrorResponse>> {
   try {
     // Extract and validate the content ID parameter
-    const contentIdParam = params.id
+    const unwrappedParams = await params
+    const contentIdParam = unwrappedParams.id
     
     if (!contentIdParam) {
       return NextResponse.json(

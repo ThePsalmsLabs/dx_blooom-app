@@ -92,10 +92,11 @@ function formatPriceForImage(priceWei: bigint): string {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contentId = params.id
+    const unwrappedParams = await params
+    const contentId = unwrappedParams.id
     
     // Validate content ID
     if (!contentId || isNaN(Number(contentId))) {
