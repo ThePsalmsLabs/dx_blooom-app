@@ -140,6 +140,8 @@ export function useContentById(contentId: bigint | undefined) {
  * - Controlling content visibility and access
  * - Providing immediate feedback after successful purchases
  */
+export const useContentDetails = useContentById;
+
 export function useHasContentAccess(
   userAddress: Address | undefined, 
   contentId: bigint | undefined

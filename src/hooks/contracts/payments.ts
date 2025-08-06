@@ -1,471 +1,409 @@
-/**
- * Advanced Multi-Token Payment System - Core Hooks Layer
- * File: src/hooks/contracts/payments.ts
- * 
- * This file contains the fundamental payment interaction hooks that bridge your 
- * sophisticated smart contract architecture with your React frontend. These hooks
- * handle both simple USDC purchases and advanced multi-token payments.
- * 
- * Why this file exists:
- * Your smart contracts support two payment tiers - simple direct purchases and 
- * advanced multi-token payments via Commerce Protocol. Your existing hooks were
- * incomplete, so this file provides working implementations that match your
- * contract architecture.
- * 
- * How it fits into your architecture:
- * - Extends your existing src/hooks/contracts/core.ts patterns
- * - Used by business logic hooks in src/hooks/business/workflows.ts  
- * - Consumed by UI components for purchase functionality
- * 
- * Dependencies:
- * - Your existing contract configuration in src/lib/contracts/config.ts
- * - Your contract ABIs in src/lib/contracts/abi.ts
- * - wagmi v2 hooks for blockchain interaction
- */
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { Address, parseUnits } from 'viem'
+import {
+  useAccount,
+  useBalance,
+  useChainId,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt
+} from 'wagmi'
+import { useQueryClient } from '@tanstack/react-query'
 
-import { 
-    useWriteContract, 
-    useWaitForTransactionReceipt,
-    useChainId,
-    useReadContract,
-    useBalance,
-    useAccount
-  } from 'wagmi'
-  import { useQueryClient } from '@tanstack/react-query'
-  import { useCallback, useMemo, useEffect, useState } from 'react'
-  import { type Address, type Hash, parseUnits, formatUnits } from 'viem'
-  import { getContractAddresses } from '@/lib/contracts/config'
-  import { 
-    PAY_PER_VIEW_ABI, 
-    COMMERCE_PROTOCOL_INTEGRATION_ABI, 
-    ERC20_ABI 
-  } from '@/lib/contracts/abi'
-  
-  // ===== TYPE DEFINITIONS =====
-  // These match your smart contract enums and structures
-  
-  export enum PaymentTier {
-    SIMPLE = 'simple',    // Direct USDC purchase via purchaseContentDirect()
-    ADVANCED = 'advanced' // Multi-token via createPurchaseIntent() + Commerce Protocol
-  }
-  
-  export enum PaymentMethod {
-    USDC = 0,        // Direct USDC payment (matches your contract enum)
-    ETH = 1,         // ETH payment with auto-conversion
-    OTHER_TOKEN = 2  // Any ERC20 token with auto-conversion
-  }
-  
-  export interface PaymentOption {
-    tier: PaymentTier
-    method: PaymentMethod
-    token: Address | null  // null for ETH
-    symbol: string
-    name: string
-    balance?: bigint
-    icon?: string
-    recommended?: boolean
-    description: string
-  }
-  
-  // ===== TIER 1: SIMPLE DIRECT PURCHASE HOOKS =====
-  /**
-   * Simple Direct Purchase Hook
-   * 
-   * This hook implements the basic purchaseContentDirect() flow from your PayPerView contract.
-   * It handles USDC-only purchases with proper approval flow. This is the fastest path to 
-   * get your buy buttons working since it doesn't require backend infrastructure.
-   * 
-   * Use this when: Users have USDC and want immediate purchases
-   * Flow: Check balance → Approve USDC → Call purchaseContentDirect()
-   */
-  export function useSimpleDirectPurchase() {
-    const chainId = useChainId()
-    const queryClient = useQueryClient()
-    const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
-    const { address: userAddress } = useAccount()
-  
-    // Contract interaction hooks for purchase and approval
-    const writeResult = useWriteContract()
-    const confirmationResult = useWaitForTransactionReceipt({
-      hash: writeResult.data,
-      query: { enabled: !!writeResult.data }
-    })
-  
-    // USDC approval transaction handling
-    const approveResult = useWriteContract()
-    const approveConfirmation = useWaitForTransactionReceipt({
-      hash: approveResult.data,
-      query: { enabled: !!approveResult.data }
-    })
-  
-    // Get user's USDC balance - essential for purchase validation
-    const { data: usdcBalance } = useBalance({ 
-      address: userAddress, 
-      token: contractAddresses.USDC 
-    })
-  
-    // Check current USDC allowance for PayPerView contract
-    const { data: usdcAllowance } = useReadContract({
-      address: contractAddresses.USDC,
-      abi: ERC20_ABI,
-      functionName: 'allowance',
-      args: userAddress ? [userAddress, contractAddresses.PAY_PER_VIEW] : undefined,
-      query: { enabled: !!userAddress }
-    })
-  
-    // Invalidate relevant queries when transactions complete
-    // This ensures UI updates immediately when balances or access changes
-    useEffect(() => {
-      if (confirmationResult.isSuccess || approveConfirmation.isSuccess) {
-        queryClient.invalidateQueries({ 
-          predicate: (query) => 
-            query.queryKey.includes('hasAccess') ||
-            query.queryKey.includes('allowance') ||
-            query.queryKey.includes('balance')
-        })
+import { getContractAddresses } from '@/lib/contracts/config'
+import { PAY_PER_VIEW_ABI, ERC20_ABI } from '@/lib/contracts/abi'
+
+/* -------------------------------------------------------------------------- */
+/*                                ENUMERATIONS                                */
+/* -------------------------------------------------------------------------- */
+
+export enum PaymentMethod {
+  USDC = 'USDC',
+  ETH = 'ETH',
+  OTHER_TOKEN = 'OTHER_TOKEN'
+}
+
+export enum PaymentTier {
+  SIMPLE = 'SIMPLE', // Direct USDC purchases
+  ADVANCED = 'ADVANCED' // Multi-token via Commerce Protocol
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  TYPES                                     */
+/* -------------------------------------------------------------------------- */
+
+interface PurchaseState {
+  step: 'idle' | 'checking' | 'approving' | 'purchasing' | 'completed' | 'error'
+  message: string
+  progress: number
+  transactionHash?: string
+  error?: Error
+}
+
+interface PaymentTokenInfo {
+  address: Address
+  symbol: string
+  decimals: number
+  balance: bigint
+  formattedBalance: string
+  hasEnoughBalance: boolean
+  needsApproval: boolean
+  allowance: bigint
+  requiredAmount: bigint
+  priceInUSDC?: bigint // For non-USDC tokens
+  isLoading: boolean
+  error?: string
+}
+
+/* -------------------------------------------------------------------------- */
+/*                           MAIN UNIFIED PAYMENT HOOK                        */
+/* -------------------------------------------------------------------------- */
+
+export function useUnifiedContentPurchase(
+  contentId: bigint | undefined,
+  userAddress: Address | undefined
+) {
+  const chainId = useChainId()
+  const queryClient = useQueryClient()
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
+
+  /* ------------------------------ LOCAL STATE ------------------------------ */
+
+  const [purchaseState, setPurchaseState] = useState<PurchaseState>({
+    step: 'idle',
+    message: 'Ready to purchase',
+    progress: 0
+  })
+
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.USDC)
+
+  /* --------------------------- WAGMI INTERACTION --------------------------- */
+
+  const { writeContract, data: txHash, error: txError } = useWriteContract()
+  const {
+    data: receipt,
+    isSuccess: isTxSuccess,
+    error: receiptError
+  } = useWaitForTransactionReceipt({
+    hash: txHash
+  })
+
+  /* ----------------------------- READ QUERIES ----------------------------- */
+
+  const {
+    data: hasAccess,
+    isLoading: isCheckingAccess
+  } = useReadContract({
+    address: contractAddresses?.PAY_PER_VIEW,
+    abi: PAY_PER_VIEW_ABI,
+    functionName: 'hasAccess',
+    args: userAddress && contentId ? [contentId, userAddress] : undefined,
+    query: {
+      enabled: Boolean(userAddress && contentId && contractAddresses?.PAY_PER_VIEW)
+    }
+  })
+
+  const { data: contentDetails, isLoading: isLoadingContent } = useReadContract({
+    address: contractAddresses?.CONTENT_REGISTRY,
+    abi: [], // TODO: replace with ContentRegistry ABI subset
+    functionName: 'getContent',
+    args: contentId ? [contentId] : undefined,
+    query: {
+      enabled: Boolean(contentId && contractAddresses?.CONTENT_REGISTRY)
+    }
+  })
+
+  // Token balances & allowances ------------------------------------------------
+
+  const { data: usdcBalance } = useBalance({
+    address: userAddress,
+    token: contractAddresses?.USDC,
+    query: {
+      enabled: Boolean(userAddress && contractAddresses?.USDC)
+    }
+  })
+
+  const { data: usdcAllowance } = useReadContract({
+    address: contractAddresses?.USDC,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args:
+      userAddress && contractAddresses?.PAY_PER_VIEW
+        ? [userAddress, contractAddresses.PAY_PER_VIEW]
+        : undefined,
+    query: {
+      enabled: Boolean(userAddress && contractAddresses?.USDC && contractAddresses?.PAY_PER_VIEW)
+    }
+  })
+
+  const { data: ethBalance } = useBalance({
+    address: userAddress,
+    query: { enabled: Boolean(userAddress) }
+  })
+
+  const { data: ethPriceInUSDC } = useReadContract({
+    address: contractAddresses?.PRICE_ORACLE,
+    abi: [], // TODO: replace with PriceOracle ABI subset
+    functionName: 'getPrice',
+    args: ['0x0000000000000000000000000000000000000000', contractAddresses?.USDC],
+    query: {
+      enabled: Boolean(contractAddresses?.PRICE_ORACLE && contractAddresses?.USDC)
+    }
+  })
+
+  /* ------------------------- TOKEN INFO DERIVATION ------------------------- */
+
+  const paymentTokensInfo = useMemo((): Record<PaymentMethod, PaymentTokenInfo | null> => {
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+    const contentPrice: bigint = (contentDetails as any)?.payPerViewPrice || BigInt(0)
+
+    if (!userAddress || contentPrice === BigInt(0)) {
+      return {
+        [PaymentMethod.USDC]: null,
+        [PaymentMethod.ETH]: null,
+        [PaymentMethod.OTHER_TOKEN]: null
       }
-    }, [confirmationResult.isSuccess, approveConfirmation.isSuccess, queryClient])
-  
-    // Approve USDC spending for PayPerView contract
-    const approveUSDC = useCallback(async (amount: bigint) => {
-      if (!userAddress) throw new Error('Wallet not connected')
-      
+    }
+
+    /* ------------------------------- USDC INFO ------------------------------ */
+
+    const usdcInfo: PaymentTokenInfo | null = contractAddresses?.USDC
+      ? {
+          address: contractAddresses.USDC,
+          symbol: 'USDC',
+          decimals: 6,
+          balance: usdcBalance?.value ?? BigInt(0),
+          formattedBalance: usdcBalance?.formatted ?? '0',
+          requiredAmount: contentPrice,
+          hasEnoughBalance: (usdcBalance?.value ?? BigInt(0)) >= contentPrice,
+          needsApproval: (usdcAllowance ?? BigInt(0)) < contentPrice,
+          allowance: usdcAllowance ?? BigInt(0),
+          isLoading: false,
+          error: undefined
+        }
+      : null
+
+    /* -------------------------------- ETH INFO ------------------------------ */
+
+    const ethInfo: PaymentTokenInfo | null =
+      contractAddresses?.COMMERCE_INTEGRATION && ethPriceInUSDC && ethBalance
+        ? {
+            address: '0x0000000000000000000000000000000000000000' as Address,
+            symbol: 'ETH',
+            decimals: 18,
+            balance: ethBalance.value,
+            formattedBalance: ethBalance.formatted,
+            requiredAmount: (contentPrice * parseUnits('1', 18)) / (ethPriceInUSDC as bigint),
+            hasEnoughBalance:
+              ethBalance.value >=
+              ((contentPrice * parseUnits('1', 18)) / (ethPriceInUSDC as bigint)),
+            needsApproval: false,
+            allowance: BigInt(0),
+            priceInUSDC: ethPriceInUSDC as bigint,
+            isLoading: false,
+            error: undefined
+          }
+        : null
+
+    return {
+      [PaymentMethod.USDC]: usdcInfo,
+      [PaymentMethod.ETH]: ethInfo,
+      [PaymentMethod.OTHER_TOKEN]: null
+    }
+  }, [
+    userAddress,
+    contentDetails,
+    usdcBalance,
+    usdcAllowance,
+    ethBalance,
+    ethPriceInUSDC,
+    contractAddresses
+  ])
+
+  /* --------------------- AVAILABLE PAYMENT METHOD ARRAY -------------------- */
+
+  const availablePaymentMethods = useMemo((): PaymentMethod[] => {
+    const available: PaymentMethod[] = []
+
+    if (paymentTokensInfo[PaymentMethod.USDC]) available.push(PaymentMethod.USDC)
+
+    if (
+      paymentTokensInfo[PaymentMethod.ETH] &&
+      contractAddresses?.COMMERCE_INTEGRATION
+    )
+      available.push(PaymentMethod.ETH)
+
+    if (paymentTokensInfo[PaymentMethod.OTHER_TOKEN])
+      available.push(PaymentMethod.OTHER_TOKEN)
+
+    return available
+  }, [paymentTokensInfo, contractAddresses])
+
+  /* --------------------------- SELECTED TOKEN INFO -------------------------- */
+
+  const selectedPaymentInfo = useMemo(() => paymentTokensInfo[selectedMethod], [
+    paymentTokensInfo,
+    selectedMethod
+  ])
+
+  /* -------------------------------------------------------------------------- */
+  /*                               ACTIONS                                     */
+  /* -------------------------------------------------------------------------- */
+
+  const executePurchase = useCallback(
+    async (method: PaymentMethod) => {
+      if (!userAddress || !contentId || !contractAddresses) {
+        throw new Error('Missing required parameters for purchase')
+      }
+
+      const tokenInfo = paymentTokensInfo[method]
+      if (!tokenInfo) throw new Error(`Payment method ${method} not available`)
+      if (!tokenInfo.hasEnoughBalance)
+        throw new Error(`Insufficient ${tokenInfo.symbol} balance`)
+
+      setPurchaseState({ step: 'checking', message: 'Preparing purchase...', progress: 20 })
+
       try {
-        console.log('💰 Approving USDC spending:', formatUnits(amount, 6), 'USDC')
-        
-        await approveResult.writeContractAsync({
+        if (method === PaymentMethod.USDC) {
+          return await executeUSDCPurchase(tokenInfo)
+        }
+        if (method === PaymentMethod.ETH || method === PaymentMethod.OTHER_TOKEN) {
+          return await executeAdvancedPurchase(method, tokenInfo)
+        }
+        throw new Error('Unsupported payment method')
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error('Purchase failed')
+        setPurchaseState({ step: 'error', message: error.message, progress: 0, error })
+        return { success: false, error }
+      }
+    },
+    [userAddress, contentId, contractAddresses, paymentTokensInfo]
+  )
+
+  /* ----------------------------- USDC PURCHASE ----------------------------- */
+
+  const executeUSDCPurchase = useCallback(
+    async (tokenInfo: PaymentTokenInfo) => {
+      if (!contractAddresses?.PAY_PER_VIEW || !contractAddresses?.USDC || !contentId) {
+        throw new Error('Missing contract addresses')
+      }
+
+      // Approve USDC if needed -------------------------------------------------
+      if (tokenInfo.needsApproval) {
+        setPurchaseState({
+          step: 'approving',
+          message: 'Approving USDC spending...',
+          progress: 40
+        })
+
+        writeContract({
           address: contractAddresses.USDC,
           abi: ERC20_ABI,
           functionName: 'approve',
-          args: [contractAddresses.PAY_PER_VIEW, amount],
+          args: [contractAddresses.PAY_PER_VIEW, tokenInfo.requiredAmount]
         })
-      } catch (error) {
-        console.error('❌ USDC approval failed:', error)
-        throw error
       }
-    }, [approveResult, contractAddresses, userAddress])
-  
-    // Execute direct content purchase using your contract's simple path
-    const purchaseDirect = useCallback(async (contentId: bigint) => {
-      if (!userAddress) throw new Error('Wallet not connected')
-      
-      try {
-        console.log('🛒 Starting direct purchase for content:', contentId.toString())
-        
-        const txHash = await writeResult.writeContractAsync({
-          address: contractAddresses.PAY_PER_VIEW,
-          abi: PAY_PER_VIEW_ABI,
-          functionName: 'purchaseContentDirect',
-          args: [contentId],
-        })
-  
-        console.log('✅ Direct purchase transaction submitted:', txHash)
-        return txHash
-      } catch (error) {
-        console.error('❌ Direct purchase failed:', error)
-        throw error
+
+      // Execute direct purchase ----------------------------------------------
+      setPurchaseState({ step: 'purchasing', message: 'Processing purchase...', progress: 80 })
+
+      writeContract({
+        address: contractAddresses.PAY_PER_VIEW,
+        abi: PAY_PER_VIEW_ABI,
+        functionName: 'purchaseContentDirect',
+        args: [contentId]
+      })
+
+      return { success: true }
+    },
+    [writeContract, contractAddresses, contentId]
+  )
+
+  /* ------------------------ ADVANCED TOKEN PURCHASE ------------------------ */
+
+  const executeAdvancedPurchase = useCallback(
+    async (method: PaymentMethod, tokenInfo: PaymentTokenInfo) => {
+      if (!contractAddresses?.COMMERCE_INTEGRATION || !contentId) {
+        throw new Error('Commerce Protocol not available')
       }
-    }, [writeResult, contractAddresses.PAY_PER_VIEW, userAddress])
-  
-    // Helper functions for purchase flow validation
-    const needsApproval = useCallback((requiredAmount: bigint) => {
-      return !usdcAllowance || usdcAllowance < requiredAmount
-    }, [usdcAllowance])
-  
-    const canAfford = useCallback((requiredAmount: bigint) => {
-      return usdcBalance?.value ? usdcBalance.value >= requiredAmount : false
-    }, [usdcBalance])
-  
-    return {
-      // Core purchase actions
-      approveUSDC,
-      purchaseDirect,
-      
-      // Transaction states for UI feedback
-      isApproving: approveResult.isPending,
-      isPurchasing: writeResult.isPending,
-      isConfirming: confirmationResult.isLoading,
-      isSuccess: confirmationResult.isSuccess,
-      error: writeResult.error || confirmationResult.error || approveResult.error,
-      
-      // Validation helpers for UI logic
-      needsApproval,
-      canAfford,
-      usdcBalance: usdcBalance?.value,
-      usdcAllowance,
-      
-      // Transaction hashes for tracking
-      purchaseHash: writeResult.data,
-      approveHash: approveResult.data,
-      
-      // Reset function for error recovery
-      reset: () => {
-        writeResult.reset()
-        approveResult.reset()
-      }
-    }
-  }
-  
-  // ===== TIER 2: ADVANCED MULTI-TOKEN HOOKS =====
-  /**
-   * Advanced Multi-Token Purchase Hook
-   * 
-   * This hook implements your sophisticated createPurchaseIntent() + Commerce Protocol flow.
-   * It supports ETH, USDC, and any ERC20 token with automatic conversion to USDC for creators.
-   * This leverages your Uniswap V4 integration and Commerce Protocol infrastructure.
-   * 
-   * Use this when: You have backend signature service set up and want to accept any token
-   * Flow: Create intent → Wait for signature → Execute payment → Process completion
-   */
-  export function useAdvancedMultiTokenPurchase() {
-    const chainId = useChainId()
-    const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
-    const { address: userAddress } = useAccount()
-  
-    // Multi-step process state management
-    // This tracks the complex flow through your Commerce Protocol integration
-    const [currentStep, setCurrentStep] = useState<
-      'idle' | 'creating_intent' | 'awaiting_signature' | 'executing_payment' | 'processing' | 'completed' | 'error'
-    >('idle')
-    
-    const [paymentIntent, setPaymentIntent] = useState<{
-      intentId: string
-      expectedAmount: bigint
-      deadline: bigint
-    } | null>(null)
-  
-    // Step 1: Create payment intent using your PayPerView.createPurchaseIntent()
-    const createIntentResult = useWriteContract()
-    const createIntentConfirmation = useWaitForTransactionReceipt({
-      hash: createIntentResult.data,
-      query: { enabled: !!createIntentResult.data }
-    })
-  
-    // Step 2: Execute payment using your CommerceProtocolIntegration
-    const executePaymentResult = useWriteContract()
-    const executePaymentConfirmation = useWaitForTransactionReceipt({
-      hash: executePaymentResult.data,
-      query: { enabled: !!executePaymentResult.data }
-    })
-  
-    // Create payment intent - this calls your contract's createPurchaseIntent function
-    const createPaymentIntent = useCallback(async (params: {
-      contentId: bigint
-      paymentMethod: PaymentMethod
-      paymentToken: Address | null
-      maxSlippage: bigint
-    }) => {
-      if (!userAddress) throw new Error('Wallet not connected')
-      
-      try {
-        setCurrentStep('creating_intent')
-        console.log('🎯 Creating payment intent with your advanced system:', params)
-        
-        const txHash = await createIntentResult.writeContractAsync({
-          address: contractAddresses.PAY_PER_VIEW,
-          abi: PAY_PER_VIEW_ABI,
-          functionName: 'createPurchaseIntent',
-          args: [
-            params.contentId,
-            params.paymentMethod,
-            params.paymentToken || '0x0000000000000000000000000000000000000000',
-            params.maxSlippage
-          ],
-        })
-  
-        console.log('✅ Payment intent creation transaction:', txHash)
-        return txHash
-      } catch (error) {
-        setCurrentStep('error')
-        console.error('❌ Failed to create payment intent:', error)
-        throw error
-      }
-    }, [createIntentResult, contractAddresses.PAY_PER_VIEW, userAddress])
-  
-    // Execute payment with signature - this uses your Commerce Protocol integration
-    const executePayment = useCallback(async (intentId: string) => {
-      if (!userAddress) throw new Error('Wallet not connected')
-      
-      try {
-        setCurrentStep('executing_payment')
-        console.log('⚡ Executing payment through Commerce Protocol for intent:', intentId)
-        
-        // Convert intentId to proper bytes16 format for your contract
-        const intentIdBytes = intentId.startsWith('0x') ? intentId : `0x${intentId}`
-        
-        const txHash = await executePaymentResult.writeContractAsync({
-          address: contractAddresses.COMMERCE_INTEGRATION,
-          abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
-          functionName: 'executePaymentWithSignature',
-          args: [intentIdBytes as `0x${string}`],
-        })
-  
-        console.log('✅ Payment execution transaction:', txHash)
-        return txHash
-      } catch (error) {
-        setCurrentStep('error')
-        console.error('❌ Failed to execute payment:', error)
-        throw error
-      }
-    }, [executePaymentResult, contractAddresses.COMMERCE_INTEGRATION, userAddress])
-  
-    // State management for the multi-step process
-    // This provides clear feedback to users about where they are in the flow
-    useEffect(() => {
-      if (createIntentConfirmation.isSuccess) {
-        setCurrentStep('awaiting_signature')
-        console.log('📋 Payment intent confirmed, notifying backend for signature...')
-        // In a real implementation, you'd notify your backend service here
-      }
-    }, [createIntentConfirmation.isSuccess])
-  
-    useEffect(() => {
-      if (executePaymentConfirmation.isSuccess) {
-        setCurrentStep('processing')
-        console.log('🎉 Payment executed successfully through Commerce Protocol!')
-      }
-    }, [executePaymentConfirmation.isSuccess])
-  
-    const reset = useCallback(() => {
-      setCurrentStep('idle')
-      setPaymentIntent(null)
-      createIntentResult.reset()
-      executePaymentResult.reset()
-    }, [createIntentResult, executePaymentResult])
-  
-    return {
-      // Multi-step process state
-      currentStep,
-      paymentIntent,
-      
-      // Primary actions for the flow
-      createPaymentIntent,
-      executePayment,
-      reset,
-      
-      // Transaction states for UI feedback
-      isCreatingIntent: createIntentResult.isPending,
-      isExecutingPayment: executePaymentResult.isPending,
-      isConfirming: createIntentConfirmation.isLoading || executePaymentConfirmation.isLoading,
-      error: createIntentResult.error || executePaymentResult.error,
-      
-      // Transaction details for tracking
-      createIntentHash: createIntentResult.data,
-      executePaymentHash: executePaymentResult.data,
-      
-      // Human-readable step descriptions for UI
-      stepDescription: {
-        'idle': 'Ready to start payment',
-        'creating_intent': 'Creating payment intent...',
-        'awaiting_signature': 'Waiting for payment authorization...',
-        'executing_payment': 'Processing payment...',
-        'processing': 'Finalizing transaction...',
-        'completed': 'Payment completed successfully!',
-        'error': 'Payment failed'
-      }[currentStep]
-    }
-  }
-  
-  // ===== UNIFIED SYSTEM HOOK =====
-  /**
-   * Unified Purchase Hook - Business Logic Layer
-   * 
-   * This hook combines both simple and advanced payment systems into a single interface.
-   * It automatically handles payment method selection and provides a consistent API
-   * regardless of which underlying system is used.
-   * 
-   * This is what your components should primarily use - it abstracts away the complexity
-   * of choosing between simple USDC purchases and advanced multi-token payments.
-   */
-  export function useUnifiedContentPurchase(
-    contentId: bigint | undefined,
-    userAddress: Address | undefined
-  ) {
-    const [selectedTier, setSelectedTier] = useState<PaymentTier>(PaymentTier.SIMPLE)
-    const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.USDC)
-    
-    const simplePurchase = useSimpleDirectPurchase()
-    const advancedPurchase = useAdvancedMultiTokenPurchase()
-    
-    // Check if user already has access to this content
-    const { data: hasAccess } = useReadContract({
-      address: getContractAddresses(useChainId()).PAY_PER_VIEW,
-      abi: PAY_PER_VIEW_ABI,
-      functionName: 'hasAccess',
-      args: userAddress && contentId ? [contentId, userAddress] : undefined,
-      query: { enabled: !!userAddress && contentId !== undefined }
-    })
-  
-    // Define available payment options based on your contract capabilities
-    const paymentOptions = useMemo((): PaymentOption[] => [
-      {
-        tier: PaymentTier.SIMPLE,
-        method: PaymentMethod.USDC,
-        token: getContractAddresses(useChainId()).USDC,
-        symbol: 'USDC',
-        name: 'USD Coin',
-        recommended: true,
-        description: 'Direct payment - fastest and most reliable'
-      },
-      {
-        tier: PaymentTier.ADVANCED,
-        method: PaymentMethod.ETH,
-        token: null,
-        symbol: 'ETH',
-        name: 'Ethereum',
-        description: 'Pay with ETH - automatically converted to USDC'
-      }
-      // Additional tokens can be added here as needed
-    ], [])
-  
-    // Unified purchase action that routes to appropriate system
-    const startPurchase = useCallback(async () => {
-      if (!contentId) throw new Error('Content ID required')
-      
-      if (selectedTier === PaymentTier.SIMPLE && selectedMethod === PaymentMethod.USDC) {
-        return simplePurchase.purchaseDirect(contentId)
-      } else {
-        return advancedPurchase.createPaymentIntent({
+
+      setPurchaseState({ step: 'purchasing', message: 'Creating payment intent...', progress: 60 })
+
+      writeContract({
+        address: contractAddresses.PAY_PER_VIEW,
+        abi: PAY_PER_VIEW_ABI,
+        functionName: 'createPurchaseIntent',
+        args: [
           contentId,
-          paymentMethod: selectedMethod,
-          paymentToken: paymentOptions.find(opt => opt.method === selectedMethod)?.token || null,
-          maxSlippage: BigInt(100) // 1% default slippage tolerance
-        })
-      }
-    }, [contentId, selectedTier, selectedMethod, simplePurchase, advancedPurchase, paymentOptions])
-  
-    const isLoading = simplePurchase.isPurchasing || 
-                     simplePurchase.isApproving || 
-                     advancedPurchase.isCreatingIntent || 
-                     advancedPurchase.isExecutingPayment
-  
-    return {
-      // Payment method selection
-      paymentOptions,
-      selectedTier,
-      setSelectedTier,
-      selectedMethod,
-      setSelectedMethod,
-      
-      // Unified purchase actions
-      startPurchase,
-      approveUSDC: simplePurchase.approveUSDC,
-      executeAdvancedPayment: advancedPurchase.executePayment,
-      
-      // Unified state
-      hasAccess: !!hasAccess,
-      canPurchase: !hasAccess && !isLoading,
-      isLoading,
-      error: simplePurchase.error || advancedPurchase.error,
-      
-      // Access to specific systems for advanced UI needs
-      simple: simplePurchase,
-      advanced: advancedPurchase,
-      
-      // Reset function
-      reset: () => {
-        simplePurchase.reset()
-        advancedPurchase.reset()
-      }
+          method === PaymentMethod.ETH ? 1 : 2,
+          method === PaymentMethod.ETH
+            ? '0x0000000000000000000000000000000000000000'
+            : tokenInfo.address,
+          BigInt(500) // 5% slippage tolerance
+        ]
+      })
+
+      return { success: true }
+    },
+    [writeContract, contractAddresses, contentId]
+  )
+
+  /* --------------------- TRANSACTION RECEIPT MONITORING -------------------- */
+
+  useEffect(() => {
+    if (isTxSuccess && receipt) {
+      setPurchaseState({
+        step: 'completed',
+        message: 'Purchase completed successfully!',
+        progress: 100,
+        transactionHash: receipt.transactionHash
+      })
+      queryClient.invalidateQueries({ queryKey: ['hasAccess'] })
     }
+
+    if (txError || receiptError) {
+      setPurchaseState({
+        step: 'error',
+        message: txError?.message || receiptError?.message || 'Transaction failed',
+        progress: 0,
+        error: txError || receiptError || new Error('Unknown transaction error')
+      })
+    }
+  }, [isTxSuccess, receipt, txError, receiptError, queryClient])
+
+  /* ----------------------------- MISC HELPERS ------------------------------ */
+
+  const retry = useCallback(() => {
+    setPurchaseState({ step: 'idle', message: 'Ready to purchase', progress: 0 })
+  }, [])
+
+  const changePaymentMethod = useCallback(
+    (method: PaymentMethod) => {
+      if (availablePaymentMethods.includes(method)) setSelectedMethod(method)
+    },
+    [availablePaymentMethods]
+  )
+
+  /* -------------------------------- RETURN -------------------------------- */
+
+  return {
+    // general status ---------------------------------------------------------
+    hasAccess: Boolean(hasAccess),
+    isLoading: isCheckingAccess || isLoadingContent,
+    error: null,
+
+    // payment method data ----------------------------------------------------
+    availablePaymentMethods,
+    selectedMethod,
+    selectedPaymentInfo,
+    paymentTokensInfo,
+
+    // purchase state ---------------------------------------------------------
+    purchaseState,
+
+    // actions ----------------------------------------------------------------
+    executePurchase,
+    changePaymentMethod,
+    retry
   }
+}

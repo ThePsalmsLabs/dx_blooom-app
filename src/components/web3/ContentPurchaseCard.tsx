@@ -1,344 +1,161 @@
-/**
- * Content Purchase Card Component - Fix 1 Implementation
- * File: src/components/web3/ContentPurchaseCard.tsx
- * 
- * This enhanced implementation establishes complete integration between the 
- * ContentPurchaseCard component and the direct USDC purchase functionality,
- * ensuring users can successfully purchase content with proper approval flows
- * and real-time transaction feedback.
- * 
- * Key Integration Points:
- * - Direct connection to PayPerView.purchaseContentDirect function
- * - Comprehensive USDC approval flow management
- * - Real-time transaction status with progress feedback
- * - Proper error handling and state management
- * - Integration with existing useContentPurchaseFlow hook
- */
-
-'use client'
-
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
-import { type Address } from 'viem'
+import React, { useState, useCallback, useMemo } from 'react'
+import { Address } from 'viem'
 import {
-  ShoppingCart,
-  Lock,
   Eye,
   CheckCircle,
-  Clock,
-  AlertCircle,
-  CreditCard,
   Loader2,
-  Shield,
-  ExternalLink,
-  RefreshCw
+  Wallet,
+  CreditCard,
+  Zap,
+  AlertCircle,
+  RefreshCw,
+  DollarSign,
+  Coins
 } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Skeleton } from '@/components/ui/skeleton'
-
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/seperator'
+import { Progress } from '@/components/ui/progress'
+
 import { cn } from '@/lib/utils'
 
-// Import business logic hooks for purchase workflow
-import { useContentPurchaseFlow, type ContentPurchaseFlowResult } from '@/hooks/business/workflows'
-import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
+import {
+  useUnifiedContentPurchase,
+  PaymentMethod
+} from '@/hooks/contracts/payments'
+import { useContentById as useContentDetails } from '@/hooks/contracts/content'
 
-// Import transaction status modal for real-time feedback
-import { TransactionStatusModal } from './TransactionStatus'
+/* -------------------------------------------------------------------------- */
+/*                              INTERNAL TYPES                                */
+/* -------------------------------------------------------------------------- */
 
-// Import utility functions for formatting
-import { formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
+interface PaymentOption {
+  id: PaymentMethod
+  name: string
+  icon: React.ComponentType<{ className?: string }>
+  description: string
+  estimatedTime: string
+  gasLevel: 'Low' | 'Medium' | 'High'
+  available: boolean
+}
 
-// Import types
-import type { Content } from '@/types/contracts'
-
-/**
- * Enhanced Props Interface for ContentPurchaseCard
- * 
- * This interface ensures type safety and provides comprehensive configuration
- * options for the purchase card component.
- */
 interface ContentPurchaseCardProps {
-  /** Content ID as BigInt for blockchain compatibility */
-  readonly contentId: bigint
-  /** User's Ethereum address for purchase operations */
-  readonly userAddress?: Address
-  /** Callback executed when content is successfully purchased */
-  readonly onPurchaseSuccess?: (contentId: bigint) => void
-  /** Callback executed when user wants to view purchased content */
-  readonly onViewContent?: (contentId: bigint) => void
-  /** Display variant - full shows complete details, compact for lists */
-  readonly variant?: 'full' | 'compact' | 'minimal'
-  /** Additional CSS classes for custom styling */
-  readonly className?: string
-  /** Whether to show creator information */
-  readonly showCreatorInfo?: boolean
-  /** Whether to show detailed purchase information */
-  readonly showPurchaseDetails?: boolean
-  /** Whether to automatically redirect after successful purchase */
-  readonly autoRedirectAfterPurchase?: boolean
+  contentId: bigint
+  userAddress?: Address
+  onPurchaseSuccess?: (contentId: bigint) => void
+  onViewContent?: (contentId: bigint) => void
+  variant?: 'full' | 'compact' | 'minimal'
+  className?: string
 }
 
-/**
- * Purchase State Management
- */
-interface PurchaseState {
-  readonly status: 'idle' | 'checking' | 'approving' | 'purchasing' | 'completed' | 'error'
-  readonly message: string
-  readonly progress: number
-  readonly canRetry: boolean
-  readonly transactionHash?: string
-}
+/* -------------------------------------------------------------------------- */
+/*                             MAIN COMPONENT                                 */
+/* -------------------------------------------------------------------------- */
 
-/**
- * Purchase Progress State Interface
- * 
- * This interface manages the various states during the purchase process,
- * providing clear progression tracking for users.
- */
-interface PurchaseProgressState {
-  readonly step: 'idle' | 'checking' | 'approving' | 'purchasing' | 'completed' | 'error'
-  readonly message: string
-  readonly canRetry: boolean
-  readonly showModal: boolean
-}
-
-/**
- * Enhanced ContentPurchaseCard Component
- * 
- * This component provides a complete purchase experience with proper integration
- * to the PayPerView smart contract, handling all aspects of the USDC purchase flow.
- */
 export function ContentPurchaseCard({
   contentId,
   userAddress,
   onPurchaseSuccess,
   onViewContent,
   variant = 'full',
-  className,
-  showCreatorInfo = true,
-  showPurchaseDetails = true,
-  autoRedirectAfterPurchase = false
+  className
 }: ContentPurchaseCardProps) {
-  const router = useRouter()
-  const { address: connectedAddress, isConnected } = useAccount()
-  
-  // Use the connected address if no userAddress provided
-  const effectiveUserAddress = userAddress || connectedAddress
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.USDC)
 
-  // Core data hooks
-  const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(effectiveUserAddress, contentId)
-  const purchaseFlow = useContentPurchaseFlow(contentId, effectiveUserAddress)
-  
-  // Local purchase state
-  const [purchaseState, setPurchaseState] = useState<PurchaseState>({
-    status: 'idle',
-    message: 'Ready to purchase',
-    progress: 0,
-    canRetry: false
-  })
+  const unifiedPurchase = useUnifiedContentPurchase(contentId, userAddress)
+  const contentDetails = useContentDetails(contentId)
 
-  // Ref to track if success callback has been called for current completion
-  const successCallbackCalledRef = useRef(false)
-  
-  // Ref to track if auto-redirect has been triggered
-  const autoRedirectTriggeredRef = useRef(false)
-  
-  // Ref to track the auto-redirect timeout
-  const autoRedirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const priceDisplay = contentDetails.data
+    ? (Number(contentDetails.data.payPerViewPrice) / 1_000_000).toFixed(2)
+    : '—'
 
-  // Reset success callback ref when contentId changes or purchase flow resets
-  useEffect(() => {
-    successCallbackCalledRef.current = false
-    autoRedirectTriggeredRef.current = false
-    
-    // Clear any existing timeout
-    if (autoRedirectTimeoutRef.current) {
-      clearTimeout(autoRedirectTimeoutRef.current)
-      autoRedirectTimeoutRef.current = null
-    }
-  }, [contentId, purchaseFlow?.currentStep])
+  /* ------------------------- PAYMENT OPTIONS ARRAY ------------------------ */
 
-  // Cleanup effect to clear timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (autoRedirectTimeoutRef.current) {
-        clearTimeout(autoRedirectTimeoutRef.current)
+  const paymentOptions: PaymentOption[] = useMemo(
+    () => [
+      {
+        id: PaymentMethod.USDC,
+        name: 'USDC',
+        icon: DollarSign,
+        description: 'Direct payment with USDC',
+        estimatedTime: '~15 sec',
+        gasLevel: 'Low',
+        available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.USDC)
+      },
+      {
+        id: PaymentMethod.ETH,
+        name: 'ETH',
+        icon: Zap,
+        description: 'Pay with ETH via Commerce Protocol',
+        estimatedTime: '~45 sec',
+        gasLevel: 'Medium',
+        available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.ETH)
+      },
+      {
+        id: PaymentMethod.OTHER_TOKEN,
+        name: 'Other Token',
+        icon: Coins,
+        description: 'Pay with any supported ERC-20',
+        estimatedTime: '~60 sec',
+        gasLevel: 'High',
+        available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.OTHER_TOKEN)
       }
+    ],
+    [unifiedPurchase.availablePaymentMethods]
+  )
+
+  /* -------------- FILTER + AUTO-SELECT BEST AVAILABLE METHOD -------------- */
+
+  const availableOptions = paymentOptions.filter((opt) => opt.available)
+
+  React.useEffect(() => {
+    if (availableOptions.length > 0 && !availableOptions.find((o) => o.id === selectedMethod)) {
+      const bestOption =
+        availableOptions.find((o) => o.id === PaymentMethod.USDC) ||
+        availableOptions.find((o) => o.id === PaymentMethod.ETH) ||
+        availableOptions[0]
+      setSelectedMethod(bestOption.id)
     }
-  }, [])
+  }, [availableOptions, selectedMethod])
 
-  /**
-   * Update purchase state based on purchase flow status
-   */
-  useEffect(() => {
-    if (!purchaseFlow) return
+  /* ----------------------------- HANDLERS --------------------------------- */
 
-    const { currentStep, error, purchaseProgress, approvalProgress } = purchaseFlow
-
-    // Helper function to create new state
-    const createNewState = (status: PurchaseState['status'], message: string, progress: number, canRetry: boolean, transactionHash?: string): PurchaseState => ({
-      status,
-      message,
-      progress,
-      canRetry,
-      transactionHash
-    })
-
-    let newState: PurchaseState
-
-    switch (currentStep) {
-      case 'checking_access':
-        newState = createNewState('checking', 'Checking access...', 10, false)
-        break
-      
-      case 'need_approval':
-        newState = createNewState('idle', 'USDC approval required', 30, false)
-        break
-      
-      case 'approving_tokens':
-        newState = createNewState('approving', 'Approving USDC...', 50, false, approvalProgress.transactionHash)
-        break
-      
-      case 'purchasing':
-        newState = createNewState('purchasing', 'Processing purchase...', 80, false, purchaseProgress.transactionHash)
-        break
-      
-      case 'completed':
-        newState = createNewState('completed', 'Purchase completed!', 100, false, purchaseProgress.transactionHash)
-        
-        // Call success callback
-        if (onPurchaseSuccess && !successCallbackCalledRef.current) {
-          onPurchaseSuccess(contentId)
-          successCallbackCalledRef.current = true
-        }
-        
-        // Auto-redirect if enabled
-        if (autoRedirectAfterPurchase && !autoRedirectTriggeredRef.current) {
-          autoRedirectTriggeredRef.current = true
-          
-          // Clear any existing timeout
-          if (autoRedirectTimeoutRef.current) {
-            clearTimeout(autoRedirectTimeoutRef.current)
-          }
-          
-          autoRedirectTimeoutRef.current = setTimeout(() => {
-            router.push(`/content/${contentId}`)
-          }, 2000)
-        }
-        break
-      
-      case 'error':
-        newState = createNewState('error', error?.message || 'Purchase failed', 0, true)
-        break
-      
-      default:
-        newState = createNewState('idle', 'Ready to purchase', 0, false)
-    }
-
-    // Only update state if it's actually different
-    setPurchaseState(prevState => {
-      if (prevState.status === newState.status && 
-          prevState.message === newState.message && 
-          prevState.progress === newState.progress && 
-          prevState.canRetry === newState.canRetry &&
-          prevState.transactionHash === newState.transactionHash) {
-        return prevState
-      }
-      return newState
-    })
-  }, [
-    purchaseFlow?.currentStep,
-    purchaseFlow?.error?.message,
-    purchaseFlow?.purchaseProgress?.transactionHash,
-    purchaseFlow?.approvalProgress?.transactionHash,
-    contentId,
-    onPurchaseSuccess,
-    autoRedirectAfterPurchase,
-    router
-  ])
-
-  /**
-   * Handle purchase action
-   */
   const handlePurchase = useCallback(async () => {
-    if (!isConnected || !effectiveUserAddress) {
-      // Handle wallet connection
-      console.error('Wallet not connected')
-      return
-    }
-
-    if (!purchaseFlow) {
-      console.error('Purchase flow not available')
-      return
-    }
-
     try {
-      if (purchaseFlow.needsApproval) {
-        await purchaseFlow.approveAndPurchase()
-      } else {
-        await purchaseFlow.purchase()
-      }
-    } catch (error) {
-      console.error('Purchase failed:', error)
-      // Error state will be handled by the useEffect above
+      const result = await unifiedPurchase.executePurchase(selectedMethod)
+      if (result.success) onPurchaseSuccess?.(contentId)
+    } catch (err) {
+      console.error('Purchase failed:', err)
     }
-  }, [isConnected, effectiveUserAddress, purchaseFlow?.needsApproval, purchaseFlow?.approveAndPurchase, purchaseFlow?.purchase])
+  }, [unifiedPurchase, selectedMethod, contentId, onPurchaseSuccess])
 
-  /**
-   * Handle retry action
-   */
-  const handleRetry = useCallback(() => {
-    if (purchaseFlow?.reset) {
-      purchaseFlow.reset()
-    }
-    setPurchaseState({
-      status: 'idle',
-      message: 'Ready to retry',
-      progress: 0,
-      canRetry: false
-    })
-  }, [purchaseFlow?.reset])
-
-  /**
-   * Handle view content action
-   */
   const handleViewContent = useCallback(() => {
-    if (onViewContent) {
-      onViewContent(contentId)
-    } else {
-      router.push(`/content/${contentId}`)
-    }
-  }, [onViewContent, contentId, router])
+    onViewContent?.(contentId)
+  }, [onViewContent, contentId])
 
-  // Loading state
-  if (contentQuery.isLoading || accessQuery.isLoading || purchaseFlow?.isLoading) {
-    return <ContentPurchaseCardSkeleton variant={variant} className={className} />
+  /* ----------------------------- RENDERING -------------------------------- */
+
+  if (unifiedPurchase.isLoading || contentDetails.isLoading) {
+    return (
+      <Card className={cn('w-full', className)}>
+        <CardContent className="flex items-center justify-center p-6">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          <span>Loading content details...</span>
+        </CardContent>
+      </Card>
+    )
   }
 
-  // Error state - content not found
-  if (contentQuery.error || !contentQuery.data) {
+  if (unifiedPurchase.error || contentDetails.error) {
     return (
       <Card className={cn('w-full', className)}>
         <CardContent className="p-6">
-          <Alert>
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Unable to load content information. Please try again later.
+              Failed to load content information. Please refresh and try again.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -346,650 +163,241 @@ export function ContentPurchaseCard({
     )
   }
 
-  const content = contentQuery.data
-  const hasAccess = accessQuery.data === true
-  const canAfford = purchaseFlow?.canAfford ?? false
-  const needsApproval = purchaseFlow?.needsApproval ?? false
-
-  // Render compact variant
-  if (variant === 'compact') {
+  if (unifiedPurchase.hasAccess) {
     return (
-      <Card className={cn('w-full', className)}>
-        <CardContent className="p-4">
+      <Card className={cn('w-full border-green-200 bg-green-50', className)}>
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium truncate">{content.title}</h3>
-              <p className="text-sm text-muted-foreground">
-                {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2 ml-4">
-              <AccessStatusBadge hasAccess={hasAccess} />
-              
-              {hasAccess ? (
-                <Button size="sm" onClick={handleViewContent}>
-                  <Eye className="h-3 w-3 mr-1" />
-                  View
-                </Button>
-              ) : (
-                <PurchaseButton
-                  onClick={handlePurchase}
-                  purchaseState={purchaseState}
-                  canAfford={canAfford}
-                  needsApproval={needsApproval}
-                  size="sm"
-                />
-              )}
-            </div>
+            <CardTitle className="text-lg">Access Granted</CardTitle>
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Purchased
+            </Badge>
           </div>
-        </CardContent>
+        </CardHeader>
+        <CardFooter>
+          <Button onClick={handleViewContent} className="w-full">
+            <Eye className="h-4 w-4 mr-2" />
+            View Content
+          </Button>
+        </CardFooter>
       </Card>
     )
   }
 
-  // Render minimal variant
-  if (variant === 'minimal') {
-    return (
-      <div className={cn('flex items-center gap-2', className)}>
-        <span className="text-sm font-medium">
-          {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
-        </span>
-        {hasAccess ? (
-          <Button size="sm" variant="outline" onClick={handleViewContent}>
-            <Eye className="h-3 w-3" />
-          </Button>
-        ) : (
-          <PurchaseButton
-            onClick={handlePurchase}
-            purchaseState={purchaseState}
-            canAfford={canAfford}
-            needsApproval={needsApproval}
-            size="sm"
-          />
-        )}
-      </div>
-    )
-  }
-
-  // Full variant - comprehensive purchase experience
   return (
-    <Card className={cn('w-full max-w-lg mx-auto', className)}>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold line-clamp-2">
-              {content.title}
-            </CardTitle>
-            <CardDescription className="mt-1 line-clamp-2">
-              {content.description}
-            </CardDescription>
-          </div>
-          <AccessStatusBadge hasAccess={hasAccess} />
+    <Card className={cn('w-full', className)}>
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">Purchase Content</CardTitle>
+          <Badge variant="outline">{priceDisplay}</Badge>
         </div>
-        
-        {/* Creator Information */}
-        {showCreatorInfo && (
-          <div className="flex items-center space-x-3 mt-4">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs">
-                {formatAddress(content.creator).slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">
-                {formatAddress(content.creator)}
-              </p>
-              <p className="text-xs text-gray-500">Creator</p>
-            </div>
-          </div>
-        )}
       </CardHeader>
 
-      <CardContent>
-        {/* Purchase Details */}
-        {showPurchaseDetails && (
+      <CardContent className="space-y-4">
+        {/* Payment Method Selection */}
+        {availableOptions.length > 1 && (
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Price</span>
-              <span className="font-medium">
-                {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
-              </span>
-            </div>
-            
-            {!hasAccess && purchaseFlow && (
-              <>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Your Balance</span>
-                  <span className={cn(
-                    "font-medium",
-                    canAfford ? "text-green-600" : "text-red-600"
-                  )}>
-                    {purchaseFlow.userBalance ? 
-                      formatCurrency(purchaseFlow.userBalance, 6, 'USDC') : 
-                      '---'
-                    }
-                  </span>
-                </div>
-                
-                {needsApproval && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Approval Status</span>
-                    <Badge variant="outline">Required</Badge>
+            <h4 className="text-sm font-medium">Choose Payment Method</h4>
+            <div className="grid gap-2">
+              {availableOptions.map((option) => {
+                const Icon = option.icon
+                const isSelected = selectedMethod === option.id
+                return (
+                  <div
+                    key={option.id}
+                    className={cn(
+                      'p-3 border rounded-lg cursor-pointer transition-colors',
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    )}
+                    onClick={() => setSelectedMethod(option.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Icon className="h-4 w-4" />
+                        <div>
+                          <div className="font-medium">{option.name}</div>
+                          <div className="text-xs text-gray-600">{option.description}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="outline" className="text-xs">
+                          {option.gasLevel} Gas
+                        </Badge>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {option.estimatedTime}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </>
-            )}
-            
-            <Separator />
-          </div>
-        )}
-
-        {/* Purchase Progress */}
-        {purchaseState.status !== 'idle' && purchaseState.status !== 'error' && (
-          <div className="space-y-2 mb-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">{purchaseState.message}</span>
-              <span className="text-sm text-muted-foreground">
-                {purchaseState.progress}%
-              </span>
+                )
+              })}
             </div>
-            <Progress value={purchaseState.progress} />
-            
-            {purchaseState.transactionHash && (
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Transaction Hash:</span>
-                <a
-                  href={`https://basescan.org/tx/${purchaseState.transactionHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center hover:text-foreground"
-                >
-                  {`${purchaseState.transactionHash.slice(0, 6)}...${purchaseState.transactionHash.slice(-4)}`}
-                  <ExternalLink className="h-3 w-3 ml-1" />
-                </a>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Error State */}
-        {purchaseState.status === 'error' && (
-          <Alert className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {purchaseState.message}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Payment Status */}
+        <PaymentStatus unifiedPurchase={unifiedPurchase} selectedMethod={selectedMethod} />
 
-        {/* Insufficient Balance Warning */}
-        {!hasAccess && !canAfford && purchaseFlow && (
-          <Alert className="mb-4">
-            <AlertCircle className="h-4 w-4" />
+        {availableOptions.length === 0 && (
+          <Alert>
+            <Wallet className="h-4 w-4" />
             <AlertDescription>
-              Insufficient USDC balance. You need{' '}
-              {formatCurrency(content.payPerViewPrice, 6, 'USDC')} to purchase this content.
+              No supported payment methods available. Please ensure you have USDC, ETH, or other
+              supported tokens in your wallet.
             </AlertDescription>
           </Alert>
         )}
       </CardContent>
 
       <CardFooter className="flex gap-2">
-        {hasAccess ? (
-          <Button onClick={handleViewContent} className="w-full">
-            <Eye className="h-4 w-4 mr-2" />
-            View Content
+        {unifiedPurchase.purchaseState.step === 'error' && (
+          <Button variant="outline" onClick={unifiedPurchase.retry} className="flex-1">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
           </Button>
-        ) : (
-          <>
-            {purchaseState.canRetry && (
-              <Button
-                variant="outline"
-                onClick={handleRetry}
-                className="flex-1"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            )}
-            
-            <PurchaseButton
-              onClick={handlePurchase}
-              purchaseState={purchaseState}
-              canAfford={canAfford}
-              needsApproval={needsApproval}
-              className={purchaseState.canRetry ? "flex-1" : "w-full"}
-            />
-          </>
         )}
+
+        <PurchaseButton
+          unifiedPurchase={unifiedPurchase}
+          selectedMethod={selectedMethod}
+          availableOptions={availableOptions}
+          onPurchase={handlePurchase}
+          className={
+            unifiedPurchase.purchaseState.step === 'error' ? 'flex-1' : 'w-full'
+          }
+        />
       </CardFooter>
     </Card>
   )
 }
 
-/**
- * Purchase Button Component
- */
+/* -------------------------------------------------------------------------- */
+/*                              STATUS SUBCOMPONENT                            */
+/* -------------------------------------------------------------------------- */
+
+function PaymentStatus({
+  unifiedPurchase,
+  selectedMethod
+}: {
+  unifiedPurchase: ReturnType<typeof useUnifiedContentPurchase>
+  selectedMethod: PaymentMethod
+}) {
+  const { purchaseState, selectedPaymentInfo } = unifiedPurchase
+
+  if (purchaseState.step === 'idle' && selectedPaymentInfo) {
+    return (
+      <div className="p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium">
+            {selectedMethod === PaymentMethod.USDC ? 'USDC Balance' : 'Token Balance'}
+          </span>
+          <span
+            className={cn(
+              'text-sm font-medium',
+              selectedPaymentInfo.hasEnoughBalance ? 'text-green-600' : 'text-red-600'
+            )}
+          >
+            {selectedPaymentInfo.formattedBalance}
+          </span>
+        </div>
+
+        {selectedPaymentInfo.needsApproval && (
+          <div className="text-xs text-amber-600">Token approval required for first-time purchase</div>
+        )}
+      </div>
+    )
+  }
+
+  if (purchaseState.step === 'approving' || purchaseState.step === 'purchasing') {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">{purchaseState.message}</span>
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+        <Progress value={purchaseState.step === 'approving' ? 40 : 80} />
+      </div>
+    )
+  }
+
+  if (purchaseState.step === 'error') {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{purchaseState.message}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  return null
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             PURCHASE BUTTON SUB                            */
+/* -------------------------------------------------------------------------- */
+
 function PurchaseButton({
-  onClick,
-  purchaseState,
-  canAfford,
-  needsApproval,
-  size = 'default',
+  unifiedPurchase,
+  selectedMethod,
+  availableOptions,
+  onPurchase,
   className
 }: {
-  onClick: () => void
-  purchaseState: PurchaseState
-  canAfford: boolean
-  needsApproval: boolean
-  size?: 'default' | 'sm' | 'lg'
+  unifiedPurchase: ReturnType<typeof useUnifiedContentPurchase>
+  selectedMethod: PaymentMethod
+  availableOptions: PaymentOption[]
+  onPurchase: () => void
   className?: string
 }) {
-  const isProcessing = ['checking', 'approving', 'purchasing'].includes(purchaseState.status)
-  const isCompleted = purchaseState.status === 'completed'
-  
-  if (isCompleted) {
+  const { purchaseState, selectedPaymentInfo } = unifiedPurchase
+
+  if (purchaseState.step === 'completed') {
     return (
-      <Button size={size} className={cn("bg-green-600 hover:bg-green-700", className)} disabled>
+      <Button className={cn('bg-green-600 hover:bg-green-700', className)} disabled>
         <CheckCircle className="h-4 w-4 mr-2" />
-        Purchased!
+        Purchase Complete!
       </Button>
     )
   }
-  
-  if (isProcessing) {
+
+  if (purchaseState.step === 'approving' || purchaseState.step === 'purchasing') {
     return (
-      <Button size={size} className={className} disabled>
+      <Button className={className} disabled>
         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        {purchaseState.status === 'approving' ? 'Approving...' : 'Processing...'}
+        {purchaseState.step === 'approving' ? 'Approving...' : 'Processing...'}
       </Button>
     )
   }
-  
-  const buttonText = needsApproval ? 'Approve & Purchase' : 'Purchase Content'
-  const ButtonIcon = needsApproval ? CreditCard : ShoppingCart
-  
+
+  if (availableOptions.length === 0) {
+    return (
+      <Button className={className} disabled>
+        <Wallet className="h-4 w-4 mr-2" />
+        No Payment Methods Available
+      </Button>
+    )
+  }
+
+  if (selectedPaymentInfo && !selectedPaymentInfo.hasEnoughBalance) {
+    return (
+      <Button className={className} disabled>
+        <AlertCircle className="h-4 w-4 mr-2" />
+        Insufficient {selectedMethod === PaymentMethod.USDC ? 'USDC' : 'Balance'}
+      </Button>
+    )
+  }
+
+  const buttonText = selectedPaymentInfo?.needsApproval
+    ? `Approve & Purchase with ${availableOptions.find((opt) => opt.id === selectedMethod)?.name}`
+    : `Purchase with ${availableOptions.find((opt) => opt.id === selectedMethod)?.name}`
+
   return (
-    <Button 
-      onClick={onClick} 
-      size={size}
-      className={className}
-      disabled={!canAfford || isProcessing}
-    >
-      <ButtonIcon className="h-4 w-4 mr-2" />
+    <Button className={className} onClick={onPurchase} disabled={!selectedPaymentInfo?.hasEnoughBalance}>
+      <CreditCard className="h-4 w-4 mr-2" />
       {buttonText}
     </Button>
   )
-}
-
-/**
- * Access Status Badge Component
- * 
- * This component displays the current access status for the content.
- */
-function AccessStatusBadge({ hasAccess }: { hasAccess: boolean }) {
-  if (hasAccess) {
-    return (
-      <Badge variant="default" className="bg-green-100 text-green-800">
-        <CheckCircle className="h-3 w-3 mr-1" />
-        Owned
-      </Badge>
-    )
-  }
-  
-  return (
-    <Badge variant="outline">
-      <Lock className="h-3 w-3 mr-1" />
-      Premium
-    </Badge>
-  )
-}
-
-/**
- * Purchase Details Section Component
- * 
- * This component displays pricing and purchase information.
- */
-function PurchaseDetailsSection({ 
-  content, 
-  purchaseFlow, 
-  hasAccess 
-}: { 
-  content: Content
-  purchaseFlow: ContentPurchaseFlowResult
-  hasAccess: boolean 
-}) {
-  return (
-    <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-gray-600">Price</span>
-        <span className="font-semibold">
-          {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
-        </span>
-      </div>
-      
-      {!hasAccess && (
-        <>
-          <div className="flex justify-between items-center text-xs text-gray-500">
-            <span>Platform Fee</span>
-            <span>$0.00</span>
-          </div>
-          <Separator />
-          <div className="flex justify-between items-center font-medium">
-            <span>Total</span>
-            <span>{formatCurrency(content.payPerViewPrice, 6, 'USDC')}</span>
-          </div>
-          
-          {purchaseFlow.userBalance !== undefined && (
-            <div className="pt-2 border-t">
-              <div className="flex justify-between items-center text-sm">
-                <span>Your USDC Balance</span>
-                <span className={cn(
-                  purchaseFlow.canAfford ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
-                )}>
-                  {formatCurrency(purchaseFlow.userBalance || BigInt(0), 6, 'USDC')}
-                </span>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-/**
- * Purchase Progress Section Component
- * 
- * This component shows the current progress of the purchase operation.
- */
-function PurchaseProgressSection({ 
-  progressState, 
-  purchaseFlow 
-}: { 
-  progressState: PurchaseProgressState
-  purchaseFlow: ContentPurchaseFlowResult 
-}) {
-  const getProgressIcon = () => {
-    switch (progressState.step) {
-      case 'checking':
-      case 'approving':
-      case 'purchasing':
-        return <Loader2 className="h-4 w-4 animate-spin" />
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />
-      default:
-        return purchaseFlow.needsApproval 
-          ? <CreditCard className="h-4 w-4 text-amber-500" />
-          : <Clock className="h-4 w-4 text-gray-500" />
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        {getProgressIcon()}
-        <span className="text-sm font-medium">{progressState.message}</span>
-      </div>
-
-      {purchaseFlow.needsApproval && progressState.step === 'idle' && (
-        <Alert className="bg-amber-50 border-amber-200">
-          <Shield className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-800 text-xs">
-            First-time purchase requires USDC approval. This is secure and only happens once per wallet.
-          </AlertDescription>
-        </Alert>
-      )}
-    </div>
-  )
-}
-
-/**
- * Purchase Action Button Component
- * 
- * This component renders the appropriate action button based on current state.
- */
-function PurchaseActionButton({
-  hasAccess,
-  progressState,
-  purchaseFlow,
-  onPurchaseAction,
-  onViewContent,
-  onRetry,
-  isConnected
-}: {
-  hasAccess: boolean
-  progressState: PurchaseProgressState
-  purchaseFlow: ContentPurchaseFlowResult
-  onPurchaseAction: () => void
-  onViewContent: () => void
-  onRetry: () => void
-  isConnected: boolean
-}) {
-  // User already has access - show view button
-  if (hasAccess) {
-    return (
-      <Button onClick={onViewContent} className="w-full">
-        <Eye className="h-4 w-4 mr-2" />
-        View Content
-      </Button>
-    )
-  }
-
-  // Wallet not connected
-  if (!isConnected) {
-    return (
-      <Button disabled className="w-full">
-        <AlertCircle className="h-4 w-4 mr-2" />
-        Connect Wallet to Purchase
-      </Button>
-    )
-  }
-
-  // Error state - show retry button
-  if (progressState.step === 'error' && progressState.canRetry) {
-    return (
-      <Button onClick={onRetry} variant="outline" className="w-full">
-        <AlertCircle className="h-4 w-4 mr-2" />
-        Retry Purchase
-      </Button>
-    )
-  }
-
-  // Cannot afford the content
-  if (!purchaseFlow.canAfford && purchaseFlow.userBalance !== undefined) {
-    return (
-      <Button disabled className="w-full">
-        <AlertCircle className="h-4 w-4 mr-2" />
-        Insufficient USDC Balance
-      </Button>
-    )
-  }
-
-  // Processing state
-  const isProcessing = progressState.step === 'purchasing' || 
-                      progressState.step === 'approving' || 
-                      progressState.step === 'checking'
-
-  if (isProcessing) {
-    return (
-      <Button disabled className="w-full">
-        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        {progressState.step === 'approving' ? 'Approving...' : 'Processing...'}
-      </Button>
-    )
-  }
-
-  // Main purchase button
-  const needsApproval = purchaseFlow.needsApproval && progressState.step === 'idle'
-  
-  return (
-    <Button 
-      onClick={onPurchaseAction} 
-      className="w-full"
-      disabled={!purchaseFlow.canAfford}
-    >
-      {needsApproval ? (
-        <>
-          <CreditCard className="h-4 w-4 mr-2" />
-          Approve & Purchase
-        </>
-      ) : (
-        <>
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Purchase Content
-        </>
-      )}
-    </Button>
-  )
-}
-
-/**
- * Compact Purchase Card Component
- * 
- * This component provides a space-efficient version for use in content lists.
- */
-function CompactPurchaseCard({
-  content,
-  hasAccess,
-  progressState,
-  purchaseFlow,
-  onPurchaseAction,
-  onViewContent,
-  className
-}: {
-  content: Content
-  hasAccess: boolean
-  progressState: PurchaseProgressState
-  purchaseFlow: ContentPurchaseFlowResult
-  onPurchaseAction: () => void
-  onViewContent: () => void
-  className?: string
-}) {
-  return (
-    <Card className={cn('w-full', className)}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium truncate">{content.title}</h3>
-            <p className="text-sm text-gray-500">
-              {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2 ml-4">
-            <AccessStatusBadge hasAccess={hasAccess} />
-            
-            {hasAccess ? (
-              <Button size="sm" onClick={onViewContent}>
-                <Eye className="h-3 w-3 mr-1" />
-                View
-              </Button>
-            ) : (
-              <Button 
-                size="sm" 
-                onClick={onPurchaseAction}
-                disabled={progressState.step === 'purchasing' || !purchaseFlow.canAfford}
-              >
-                {progressState.step === 'purchasing' ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <ShoppingCart className="h-3 w-3 mr-1" />
-                )}
-                Buy
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * Content Purchase Card Skeleton Component
- * 
- * This component provides loading states while data is being fetched.
- */
-function ContentPurchaseCardSkeleton({ 
-  variant = 'full', 
-  className 
-}: { 
-  variant?: 'full' | 'compact' | 'minimal'
-  className?: string
-}) {
-  if (variant === 'compact') {
-    return (
-      <Card className={cn('w-full', className)}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-6 w-16" />
-              <Skeleton className="h-8 w-20" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-  
-  if (variant === 'minimal') {
-    return (
-      <div className={cn('flex items-center gap-2', className)}>
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-8 w-16" />
-      </div>
-    )
-  }
-  
-  // Full variant skeleton
-  return (
-    <Card className={cn('w-full max-w-lg mx-auto', className)}>
-      <CardHeader>
-        <div className="space-y-3">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-full" />
-          <div className="flex items-center space-x-3">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <div className="space-y-1">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <Skeleton className="h-4 w-12" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-          <div className="flex justify-between">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Skeleton className="h-10 w-full" />
-      </CardFooter>
-    </Card>
-  )
-}
-
-/**
- * Utility function to get progress text for transaction status
- */
-function getProgressText(progress: { isSubmitting: boolean; isConfirming: boolean; isConfirmed: boolean }): string {
-  if (progress.isSubmitting) return 'Submitting transaction...'
-  if (progress.isConfirming) return 'Confirming on blockchain...'
-  if (progress.isConfirmed) return 'Transaction confirmed!'
-  return 'Preparing transaction...'
 }
