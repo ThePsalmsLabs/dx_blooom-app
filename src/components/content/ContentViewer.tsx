@@ -75,7 +75,7 @@ import {
   useHasContentAccess,
   useCreatorProfile
 } from '@/hooks/contracts/core'
-import { useContentAccessControl } from '@/hooks/business/workflows'
+
 import { useAccount } from 'wagmi'
 import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
 import { categoryToString, type ContentCategory } from '@/types/contracts'
@@ -152,7 +152,7 @@ export function ContentViewer({
 
   // Content data and access control using our architectural layers
   const contentQuery = useContentById(contentId)
-  const accessControl = useContentAccessControl(contentId, userAddress)
+  const accessControl = useHasContentAccess(userAddress, contentId)
   const creatorProfile = useCreatorProfile(contentQuery.data?.creator)
 
   // IPFS content loading state
@@ -167,8 +167,8 @@ export function ContentViewer({
     if (contentQuery.isLoading || accessControl.isLoading) return 'loading'
     if (contentQuery.error || !contentQuery.data) return 'content_not_found'
     if (!contentQuery.data.isActive) return 'content_inactive'
-    if (accessControl.error) return 'error'
-    if (accessControl.data) return 'granted'
+    if (accessControl.isError) return 'error'
+    if (accessControl.data === true) return 'granted'
     return 'denied'
   }, [userAddress, contentQuery, accessControl])
 
@@ -270,7 +270,7 @@ export function ContentViewer({
   }
 
   if (accessStatus === 'error') {
-    return <AccessErrorState error={accessControl.error} />
+    return <AccessErrorState error={accessControl.error || new Error('Access verification failed')} />
   }
 
   if (accessStatus === 'denied') {
