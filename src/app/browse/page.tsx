@@ -7,11 +7,17 @@
  * 
  * Integration Showcase:
  * - ContentDiscoveryGrid provides sophisticated filtering and view options
- * - ContentPurchaseCard handles complete purchase workflows
+ * - ContentPurchaseCard handles complete multi-token purchase workflows
  * - useActiveContentPaginated manages efficient content loading
- * - useContentPurchaseFlow orchestrates transaction logic
+ * - useContentPurchaseFlow orchestrates multi-payment transaction logic
  * - SubgraphQueryService enables advanced search capabilities
  * - AppLayout provides consistent navigation and responsive design
+ * 
+ * Enhanced Multi-Token Purchase Flow:
+ * - Users can purchase content with USDC, ETH, or any supported ERC-20 token
+ * - Automatic payment method recommendations based on user balances
+ * - Graceful fallback to USDC-only mode when advanced features are unavailable
+ * - Real-time balance checking and approval handling
  * 
  * This page validates that complex content discovery can feel intuitive and performant
  * while maintaining the transparency and control that Web3 users expect.
@@ -38,7 +44,8 @@ import {
   ExternalLink,
   X,
   Users,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react'
 
 import {
@@ -73,7 +80,7 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
-import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
+import { ContentPurchaseCard } from '@/components/content/ContentPurchaseCard'
 
 // Import utility functions and types that ensure type safety
 import { cn } from '@/lib/utils'
@@ -82,6 +89,8 @@ import { isValidContentCategory } from '@/types/contracts'
 
 // Import business logic hooks
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
+import { useContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
+import { formatCurrency, formatAddress } from '@/lib/utils'
 
 /**
  * Content Filter Interface
@@ -539,6 +548,10 @@ export default function BrowsePage() {
                 onPurchaseSuccess={handlePurchaseSuccess}
                 onViewContent={handleViewContent}
                 variant="full"
+                enableMultiPayment={true}
+                enableFallback={true}
+                showCreatorInfo={true}
+                showPurchaseDetails={true}
               />
             )}
           </DialogContent>
@@ -673,6 +686,8 @@ function ContentGrid({
           variant={viewMode === 'list' ? 'full' : viewMode === 'compact' ? 'compact' : 'full'}
           showCreatorInfo={viewMode !== 'compact'}
           showPurchaseDetails={viewMode === 'list'}
+          enableMultiPayment={true}
+          enableFallback={true}
         />
       ))}
     </div>

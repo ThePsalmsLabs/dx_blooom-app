@@ -36,9 +36,9 @@ import type { Creator, ContentCategory, Content } from '@/types/contracts'
  * Supported Payment Methods Enum
  */
 export enum PaymentMethod {
-  DIRECT_USDC = 'direct_usdc',    // Direct USDC transfer to creator
-  ETH = 'eth',                    // ETH payment via Commerce Protocol
-  CUSTOM_TOKEN = 'custom_token'   // Any ERC-20 token via Commerce Protocol
+  DIRECT_USDC = 'DIRECT_USDC',    // Direct USDC transfer to creator
+  ETH = 'ETH',                    // ETH payment via Commerce Protocol
+  CUSTOM_TOKEN = 'CUSTOM_TOKEN'   // Any ERC-20 token via Commerce Protocol
 }
 
 /**
@@ -56,6 +56,28 @@ export interface PaymentMethodConfig {
   readonly isCommerceProtocol: boolean
 }
 
+export interface PaymentOption {
+  readonly method: PaymentMethod
+  readonly token: Address | null
+  readonly symbol: string
+  readonly balance: bigint | null
+  readonly requiredAmount: bigint | null
+  readonly canAfford: boolean
+  readonly needsApproval: boolean
+  readonly recommended?: boolean
+  readonly estimatedTime: string
+  readonly gasEstimate: 'Low' | 'Medium' | 'High'
+}
+
+// Transaction progress interface
+export interface PurchaseProgress {
+  readonly isSubmitting: boolean
+  readonly isConfirming: boolean  
+  readonly isConfirmed: boolean
+  readonly transactionHash?: string
+  readonly error?: Error | null
+}
+
 /**
  * Token Information Interface
  */
@@ -71,6 +93,10 @@ export interface TokenInfo {
   readonly requiredAmount: bigint | null    // Amount needed for purchase
   readonly priceLoading: boolean
   readonly priceError: Error | null
+  readonly hasEnoughBalance: boolean        // Whether user has enough balance
+  readonly needsApproval: boolean          // Whether approval is needed
+  readonly isLoading: boolean              // Whether balance/allowance data is loading
+  readonly error: string | null            // Error message if any
 }
 
 /**
@@ -289,7 +315,11 @@ export function useUnifiedContentPurchaseFlow(
       priceInUSDC: null,
       requiredAmount: null,
       priceLoading: true,
-      priceError: null
+      priceError: null,
+      hasEnoughBalance: false,
+      needsApproval: false,
+      isLoading: true,
+      error: null
     }
   }, [selectedMethod, customTokenAddress, contractAddresses, tokenPrices])
 
@@ -417,7 +447,11 @@ export function useUnifiedContentPurchaseFlow(
       priceInUSDC: priceCalculation?.priceInUSDC || null,
       requiredAmount: priceCalculation?.requiredAmount || null,
       priceLoading: false,
-      priceError: null
+      priceError: null,
+      hasEnoughBalance: (balance || BigInt(0)) >= contentPrice,
+      needsApproval: (allowance || BigInt(0)) < contentPrice,
+      isLoading: false,
+      error: null
     }
   }, [contractAddresses, userAddress, contentQuery.data, calculateTokenPrice])
 
@@ -1252,7 +1286,7 @@ export interface PurchaseProgress {
 
 // Multi-token payment option interface
 export interface PaymentOption {
-  readonly method: 'USDC' | 'ETH' | 'OTHER_TOKEN'
+  readonly method: PaymentMethod
   readonly token: Address | null // null for ETH
   readonly symbol: string
   readonly balance: bigint | null
@@ -1263,28 +1297,32 @@ export interface PaymentOption {
 }
 
 export interface ContentPurchaseFlowResult {
-  readonly content: Content | null                    // Content metadata
-  readonly hasAccess: boolean                         // Current access status
-  readonly isLoading: boolean                         // Overall loading state
-  readonly error: Error | null                        // Current error state
-  readonly currentStep: ContentPurchaseFlowStep       // Current workflow step
+  readonly content: Content | null
+  readonly hasAccess: boolean
+  readonly isLoading: boolean
+  readonly error: Error | null
+  readonly currentStep: ContentPurchaseFlowStep
   
-  // Multi-token affordability - THE KEY FIX
+  // CRITICAL FIX: Multi-token affordability
   readonly canAfford: boolean                         // TRUE if user can afford with ANY supported token
   readonly paymentOptions: PaymentOption[]            // All available payment methods
   readonly recommendedPayment: PaymentOption | null   // Best payment option for user
   
-  // Legacy single-token properties (for compatibility)
-  readonly needsApproval: boolean                     // USDC approval required
-  readonly requiredAllowance: bigint | null           // Amount needed for approval
-  readonly userBalance: bigint | null                 // User's USDC balance
-  readonly userAllowance: bigint | null               // Current USDC allowance
-  readonly purchaseProgress: PurchaseProgress         // Purchase transaction status
-  readonly approvalProgress: PurchaseProgress         // Approval transaction status
-  readonly purchase: () => Promise<void>              // Execute direct purchase
-  readonly approveAndPurchase: () => Promise<void>    // Approve tokens then purchase
-  readonly reset: () => void                          // Reset workflow state
-  readonly refetchData: () => Promise<void>           // Refresh all data
+  // Legacy properties for backward compatibility
+  readonly needsApproval: boolean
+  readonly requiredAllowance: bigint | null
+  readonly userBalance: bigint | null
+  readonly userAllowance: bigint | null
+  readonly purchaseProgress: PurchaseProgress
+  readonly approvalProgress: PurchaseProgress
+  
+  // Actions
+  readonly purchase: () => Promise<void>
+  readonly approveAndPurchase: () => Promise<void>
+  readonly reset: () => void
+  readonly refetchData: () => Promise<void>
+  readonly selectPaymentMethod: (method: PaymentMethod) => void
+  readonly selectedMethod: PaymentMethod
 }
 
 /**
@@ -1336,119 +1374,230 @@ export function useContentPurchaseFlow(
   userAddress: Address | undefined
 ): ContentPurchaseFlowResult {
   const chainId = useChainId()
+  const contractAddresses = getContractAddresses(chainId)
   
-  // Get contract addresses for the current chain
-  const contractAddresses = useMemo(() => {
-    try {
-      return getContractAddresses(chainId)
-    } catch (error) {
-      console.error('Failed to get contract addresses:', error)
-      return null
-    }
-  }, [chainId])
-
-  // Workflow state management
-  const [workflowState, setWorkflowState] = useState<WorkflowState>({
+  // State management
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.DIRECT_USDC)
+  const [workflowState, setWorkflowState] = useState<{
+    currentStep: ContentPurchaseFlowStep
+    error: Error | null
+    lastSuccessfulStep: ContentPurchaseFlowStep | null
+  }>({
     currentStep: 'checking_access',
     error: null,
     lastSuccessfulStep: null
   })
 
-  // Core data hooks - these connect to your existing smart contracts
+  // Core data fetching
   const contentQuery = useContentById(contentId)
   const accessQuery = useHasContentAccess(userAddress, contentId)
-  const userBalance = useTokenBalance(userAddress, contractAddresses?.USDC)
-  const tokenAllowance = useTokenAllowance(
-    userAddress, 
-    contractAddresses?.USDC, 
-    contractAddresses?.PAY_PER_VIEW
-  )
-
-  // Transaction hooks - these handle the actual blockchain interactions
-  const purchaseContent = usePurchaseContent()
-  const approveToken = useApproveToken()
-
-  // Computed values that drive the UI state
-  const content = contentQuery.data
-  const hasAccess = accessQuery.data === true
-  const isLoading = contentQuery.isLoading || accessQuery.isLoading
-  const userBalanceAmount = userBalance.data || BigInt(0)
-  const userAllowanceAmount = tokenAllowance.data || BigInt(0)
-
-  /**
-   * Financial Calculations
-   * 
-   * These calculations determine whether the user can afford the content
-   * and whether additional token approvals are needed.
-   */
-  const canAfford = useMemo(() => {
-    if (!content || !userBalance.data) return false
-    return userBalance.data >= content.payPerViewPrice
-  }, [content, userBalance.data])
-
-  const needsApproval = useMemo(() => {
-    if (!content || !tokenAllowance.data) return true
-    return tokenAllowance.data < content.payPerViewPrice
-  }, [content, tokenAllowance.data])
-
-  const requiredAllowance = useMemo(() => {
-    if (!content || !needsApproval) return null
-    return content.payPerViewPrice
-  }, [content, needsApproval])
-
-  /**
-   * Transaction Progress Tracking
-   * 
-   * These objects provide real-time updates on transaction status,
-   * giving users detailed feedback about what's happening on-chain.
-   */
-  const purchaseProgress: PurchaseProgress = useMemo(() => ({
-    isSubmitting: purchaseContent.isLoading,
-    isConfirming: purchaseContent.isConfirming,
-    isConfirmed: purchaseContent.isConfirmed,
-    transactionHash: purchaseContent.hash,
-    blockNumber: undefined, // Not available in current wagmi v2 implementation
-    gasUsed: undefined // Not available in current wagmi v2 implementation
-  }), [purchaseContent])
-
-  const approvalProgress: PurchaseProgress = useMemo(() => ({
-    isSubmitting: approveToken.isLoading,
-    isConfirming: approveToken.isConfirming,
-    isConfirmed: approveToken.isConfirmed,
-    transactionHash: approveToken.hash,
-    blockNumber: undefined, // Not available in current wagmi v2 implementation
-    gasUsed: undefined // Not available in current wagmi v2 implementation
-  }), [approveToken])
-
-  /**
-   * Workflow State Management Effects
-   * 
-   * These effects handle the complex state transitions that occur during
-   * the purchase flow, automatically moving users through the process.
-   */
   
-  // Initial state determination
+  // Multi-token balance fetching
+  const usdcBalance = useTokenBalance(contractAddresses?.USDC, userAddress)
+  const ethBalance = useTokenBalance(undefined, userAddress) // ETH balance
+  
+  // Allowance checking for tokens that need approval
+  const usdcAllowance = useTokenAllowance(
+    userAddress,
+    contractAddresses?.USDC || null,
+    contractAddresses?.PAY_PER_VIEW || null
+  )
+  
+  // Price oracle for token conversion
+  const ethPriceQuery = useReadContract({
+    address: contractAddresses?.PRICE_ORACLE,
+    abi: [
+      {
+        name: 'getTokenPrice',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [{ name: 'token', type: 'address' }],
+        outputs: [{ name: 'price', type: 'uint256' }]
+      }
+    ],
+    functionName: 'getTokenPrice',
+    args: ['0x0000000000000000000000000000000000000000'] as const, // ETH price
+    query: { enabled: !!contractAddresses?.PRICE_ORACLE }
+  })
+  
+  // Contract interaction hooks
+  const { writeContract: writeApproval, data: approvalHash, error: approvalError, isPending: isApprovalPending } = useWriteContract()
+  const { writeContract: writePurchase, data: purchaseHash, error: purchaseError, isPending: isPurchasePending } = useWriteContract()
+  
+  // Transaction receipt monitoring
+  const approvalReceipt = useWaitForTransactionReceipt({ hash: approvalHash })
+  const purchaseReceipt = useWaitForTransactionReceipt({ hash: purchaseHash })
+
+  // Calculate token information for all supported payment methods
+  const tokenInfos = useMemo((): Record<PaymentMethod, TokenInfo | null> => {
+    if (!contentQuery.data || !userAddress) return {
+      [PaymentMethod.DIRECT_USDC]: null,
+      [PaymentMethod.ETH]: null,
+      [PaymentMethod.CUSTOM_TOKEN]: null
+    }
+
+    const contentPrice = contentQuery.data.payPerViewPrice
+
+    // USDC Token Info
+    const usdcInfo: TokenInfo = {
+      address: contractAddresses?.USDC || '0x0000000000000000000000000000000000000000' as Address,
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6,
+      isNative: false,
+      balance: usdcBalance.data || BigInt(0),
+      allowance: usdcAllowance.data || BigInt(0),
+      priceInUSDC: BigInt(1000000), // 1 USDC = 1 USDC
+      requiredAmount: contentPrice,
+      priceLoading: false,
+      priceError: null,
+      hasEnoughBalance: (usdcBalance.data || BigInt(0)) >= contentPrice,
+      needsApproval: (usdcAllowance.data || BigInt(0)) < contentPrice,
+      isLoading: usdcBalance.isLoading || usdcAllowance.isLoading,
+      error: usdcBalance.error?.message || usdcAllowance.error?.message || null
+    }
+
+    // ETH Token Info (if supported)
+    let ethInfo: TokenInfo | null = null
+    if (contractAddresses?.COMMERCE_INTEGRATION && ethPriceQuery.data) {
+      const ethPriceInUsdc = ethPriceQuery.data as bigint
+      const requiredEthAmount = ethPriceInUsdc > BigInt(0) 
+        ? (contentPrice * BigInt(1e18)) / ethPriceInUsdc
+        : BigInt(0)
+
+      ethInfo = {
+        address: '0x0000000000000000000000000000000000000000' as Address, // ETH is native
+        symbol: 'ETH',
+        name: 'Ethereum',
+        decimals: 18,
+        isNative: true,
+        balance: ethBalance.data || BigInt(0),
+        allowance: null, // ETH doesn't need allowance
+        priceInUSDC: ethPriceInUsdc,
+        requiredAmount: requiredEthAmount,
+        priceLoading: ethPriceQuery.isLoading,
+        priceError: ethPriceQuery.error,
+        hasEnoughBalance: (ethBalance.data || BigInt(0)) >= requiredEthAmount,
+        needsApproval: false, // ETH doesn't need approval
+        isLoading: ethBalance.isLoading || ethPriceQuery.isLoading,
+        error: ethBalance.error?.message || ethPriceQuery.error?.message || null
+      }
+    }
+
+    return {
+      [PaymentMethod.DIRECT_USDC]: usdcInfo,
+      [PaymentMethod.ETH]: ethInfo,
+      [PaymentMethod.CUSTOM_TOKEN]: null // Can be populated by user selection
+    }
+  }, [
+    contentQuery.data,
+    userAddress,
+    contractAddresses,
+    usdcBalance.data,
+    usdcBalance.isLoading,
+    usdcBalance.error,
+    usdcAllowance.data,
+    usdcAllowance.isLoading,
+    usdcAllowance.error,
+    ethBalance.data,
+    ethBalance.isLoading,
+    ethBalance.error,
+    ethPriceQuery.data,
+    ethPriceQuery.isLoading,
+    ethPriceQuery.error
+  ])
+
+  // Convert token infos to payment options for UI
+  const paymentOptions = useMemo((): PaymentOption[] => {
+    const options: PaymentOption[] = []
+
+    // Always include USDC option
+    const usdcInfo = tokenInfos[PaymentMethod.DIRECT_USDC]
+    if (usdcInfo) {
+      options.push({
+        method: PaymentMethod.DIRECT_USDC,
+        token: usdcInfo.address,
+        symbol: usdcInfo.symbol,
+        balance: usdcInfo.balance,
+        requiredAmount: usdcInfo.requiredAmount,
+        canAfford: usdcInfo.hasEnoughBalance,
+        needsApproval: usdcInfo.needsApproval,
+        recommended: usdcInfo.hasEnoughBalance && !usdcInfo.needsApproval,
+        estimatedTime: '~15 seconds',
+        gasEstimate: 'Low'
+      })
+    }
+
+    // Include ETH option if available
+    const ethInfo = tokenInfos[PaymentMethod.ETH]
+    if (ethInfo && contractAddresses?.COMMERCE_INTEGRATION) {
+      options.push({
+        method: PaymentMethod.ETH,
+        token: null,
+        symbol: ethInfo.symbol,
+        balance: ethInfo.balance,
+        requiredAmount: ethInfo.requiredAmount,
+        canAfford: ethInfo.hasEnoughBalance,
+        needsApproval: false,
+        recommended: ethInfo.hasEnoughBalance,
+        estimatedTime: '~45 seconds',
+        gasEstimate: 'Medium'
+      })
+    }
+
+    return options
+  }, [tokenInfos, contractAddresses])
+
+  // Determine recommended payment method
+  const recommendedPayment = useMemo((): PaymentOption | null => {
+    // First preference: Method user can afford without approval
+    const noApprovalOptions = paymentOptions.filter(option => option.canAfford && !option.needsApproval)
+    if (noApprovalOptions.length > 0) {
+      return noApprovalOptions[0] // Return first available
+    }
+
+    // Second preference: Method user can afford (even with approval)
+    const affordableOptions = paymentOptions.filter(option => option.canAfford)
+    if (affordableOptions.length > 0) {
+      return affordableOptions[0]
+    }
+
+    return null
+  }, [paymentOptions])
+
+  // CRITICAL FIX: Multi-token affordability calculation
+  const canAfford = useMemo((): boolean => {
+    return paymentOptions.some(option => option.canAfford)
+  }, [paymentOptions])
+
+  // Determine if current selected method needs approval
+  const needsApproval = useMemo((): boolean => {
+    const selectedOption = paymentOptions.find(option => option.method === selectedMethod)
+    return selectedOption?.needsApproval || false
+  }, [paymentOptions, selectedMethod])
+
+  // Get user balance for selected method (for backward compatibility)
+  const userBalance = useMemo((): bigint | null => {
+    const selectedOption = paymentOptions.find(option => option.method === selectedMethod)
+    return selectedOption?.balance || null
+  }, [paymentOptions, selectedMethod])
+
+  // Calculate required allowance for selected method
+  const requiredAllowance = useMemo((): bigint | null => {
+    if (selectedMethod !== PaymentMethod.DIRECT_USDC) return null
+    const usdcInfo = tokenInfos[PaymentMethod.DIRECT_USDC]
+    return usdcInfo && usdcInfo.needsApproval ? usdcInfo.requiredAmount : null
+  }, [selectedMethod, tokenInfos])
+
+  // Update workflow state based on data changes
   useEffect(() => {
-    if (isLoading) {
+    if (!contentQuery.data) {
       setWorkflowState(prev => ({ ...prev, currentStep: 'loading_content' }))
       return
     }
 
-    if (accessQuery.error || contentQuery.error) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: accessQuery.error || contentQuery.error,
-        lastSuccessfulStep: null
-      })
-      return
-    }
-
-    if (hasAccess) {
-      setWorkflowState({
-        currentStep: 'completed',
-        error: null,
-        lastSuccessfulStep: 'completed'
-      })
+    if (accessQuery.data === true) {
+      setWorkflowState(prev => ({ ...prev, currentStep: 'completed' }))
       return
     }
 
@@ -1457,108 +1606,123 @@ export function useContentPurchaseFlow(
       return
     }
 
-    if (needsApproval) {
+    if (needsApproval && selectedMethod === PaymentMethod.DIRECT_USDC) {
       setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
-    } else {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+      return
     }
-  }, [hasAccess, isLoading, accessQuery.error, contentQuery.error, canAfford, needsApproval])
 
-  // Handle approval transaction state changes
-  useEffect(() => {
-    if (approveToken.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'approving_tokens' }))
-    } else if (approveToken.error) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: approveToken.error,
-        lastSuccessfulStep: 'need_approval'
-      })
-    } else if (approveToken.isSuccess) {
-      // Approval completed, refetch allowance and move to purchase step
-      tokenAllowance.refetch()
-      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
-    }
-  }, [approveToken.isLoading, approveToken.error, approveToken.isSuccess, tokenAllowance])
+    setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+  }, [contentQuery.data, accessQuery.data, canAfford, needsApproval, selectedMethod])
 
-  // Handle purchase transaction state changes
-  useEffect(() => {
-    if (purchaseContent.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'purchasing' }))
-    } else if (purchaseContent.error) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: purchaseContent.error,
-        lastSuccessfulStep: 'can_purchase'
-      })
-    } else if (purchaseContent.isSuccess) {
-      // Purchase completed, refetch access status
-      accessQuery.refetch()
-      userBalance.refetch()
-      setWorkflowState({
-        currentStep: 'completed',
-        error: null,
-        lastSuccessfulStep: 'completed'
-      })
-    }
-  }, [purchaseContent.isLoading, purchaseContent.error, purchaseContent.isSuccess, accessQuery, userBalance])
-
-  /**
-   * Action Functions
-   * 
-   * These functions provide the interface that UI components use to
-   * trigger purchase actions. They handle all the complexity internally.
-   */
-
-  const purchase = useCallback(async () => {
-    if (!contentId || !contractAddresses) {
+  // Purchase function implementation
+  const purchase = useCallback(async (): Promise<void> => {
+    if (!contentId || !contractAddresses || !contentQuery.data) {
       throw new Error('Missing required data for purchase')
     }
 
     if (!canAfford) {
-      throw new Error('Insufficient USDC balance')
-    }
-
-    if (needsApproval) {
-      throw new Error('Token approval required before purchase')
+      throw new Error('Insufficient balance for selected payment method')
     }
 
     try {
       setWorkflowState(prev => ({ ...prev, error: null }))
-      purchaseContent.write(contentId)
+
+      if (selectedMethod === PaymentMethod.DIRECT_USDC) {
+        // Direct USDC purchase
+        if (needsApproval) {
+          throw new Error('Token approval required before purchase')
+        }
+
+        await writePurchase({
+          address: contractAddresses.PAY_PER_VIEW,
+          abi: [{
+            name: 'purchaseContentDirect',
+            type: 'function',
+            stateMutability: 'nonpayable',
+            inputs: [{ name: 'contentId', type: 'uint256' }],
+            outputs: []
+          }],
+          functionName: 'purchaseContentDirect',
+          args: [contentId]
+        })
+      } else if (selectedMethod === PaymentMethod.ETH && contractAddresses.COMMERCE_INTEGRATION) {
+        // ETH purchase via Commerce Protocol
+        const ethInfo = tokenInfos[PaymentMethod.ETH]
+        if (!ethInfo) throw new Error('ETH payment information not available')
+
+        await writePurchase({
+          address: contractAddresses.COMMERCE_INTEGRATION,
+          abi: [{
+            name: 'createPaymentIntent',
+            type: 'function',
+            stateMutability: 'payable',
+            inputs: [{
+              name: 'request',
+              type: 'tuple',
+              components: [
+                { name: 'paymentType', type: 'uint8' },
+                { name: 'creator', type: 'address' },
+                { name: 'contentId', type: 'uint256' },
+                { name: 'paymentToken', type: 'address' },
+                { name: 'maxSlippage', type: 'uint256' },
+                { name: 'deadline', type: 'uint256' }
+              ]
+            }]
+          }],
+          functionName: 'createPaymentIntent',
+          args: [{
+            paymentType: 0, // PayPerView
+            creator: contentQuery.data.creator,
+            contentId: contentId,
+            paymentToken: '0x0000000000000000000000000000000000000000' as Address,
+            maxSlippage: BigInt(300), // 3%
+            deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour
+          }],
+          value: ethInfo.requiredAmount || BigInt(0)
+        })
+      } else {
+        throw new Error('Unsupported payment method')
+      }
     } catch (error) {
       const purchaseError = error instanceof Error ? error : new Error('Purchase failed')
       setWorkflowState({
         currentStep: 'error',
         error: purchaseError,
-        lastSuccessfulStep: 'can_purchase'
+        lastSuccessfulStep: workflowState.currentStep
       })
       throw purchaseError
     }
-  }, [contentId, contractAddresses, canAfford, needsApproval, purchaseContent])
+  }, [contentId, contractAddresses, contentQuery.data, canAfford, selectedMethod, needsApproval, writePurchase, tokenInfos, workflowState.currentStep])
 
-  const approveAndPurchase = useCallback(async () => {
-    if (!contentId || !contractAddresses || !content) {
-      throw new Error('Missing required data for purchase')
+  // Approve and purchase function
+  const approveAndPurchase = useCallback(async (): Promise<void> => {
+    if (!contentId || !contractAddresses || !contentQuery.data) {
+      throw new Error('Missing required data for approval and purchase')
     }
 
-    if (!canAfford) {
-      throw new Error('Insufficient USDC balance')
+    if (selectedMethod !== PaymentMethod.DIRECT_USDC) {
+      throw new Error('Approval only required for USDC purchases')
     }
 
     try {
-      setWorkflowState(prev => ({ ...prev, error: null }))
-      
-      // First, approve the tokens
-      approveToken.write({
-        tokenAddress: contractAddresses.USDC,
-        spender: contractAddresses.PAY_PER_VIEW,
-        amount: content.payPerViewPrice
+      setWorkflowState(prev => ({ ...prev, error: null, currentStep: 'approving_tokens' }))
+
+      // Approve USDC spending
+      await writeApproval({
+        address: contractAddresses.USDC,
+        abi: [{
+          name: 'approve',
+          type: 'function',
+          stateMutability: 'nonpayable',
+          inputs: [
+            { name: 'spender', type: 'address' },
+            { name: 'amount', type: 'uint256' }
+          ],
+          outputs: [{ name: '', type: 'bool' }]
+        }],
+        functionName: 'approve',
+        args: [contractAddresses.PAY_PER_VIEW, contentQuery.data.payPerViewPrice]
       })
-      
-      // The purchase will be triggered automatically by the useEffect
-      // that monitors approval completion status
-      
     } catch (error) {
       const approvalError = error instanceof Error ? error : new Error('Approval failed')
       setWorkflowState({
@@ -1568,62 +1732,83 @@ export function useContentPurchaseFlow(
       })
       throw approvalError
     }
-  }, [contentId, contractAddresses, content, canAfford, approveToken])
+  }, [contentId, contractAddresses, contentQuery.data, selectedMethod, writeApproval])
 
+  // Auto-purchase after approval completes
+  useEffect(() => {
+    if (approvalReceipt.isSuccess && workflowState.currentStep === 'approving_tokens') {
+      purchase().catch(console.error)
+    }
+  }, [approvalReceipt.isSuccess, workflowState.currentStep, purchase])
+
+  // Progress tracking
+  const purchaseProgress: PurchaseProgress = useMemo(() => ({
+    isSubmitting: isPurchasePending,
+    isConfirming: purchaseReceipt.isLoading,
+    isConfirmed: purchaseReceipt.isSuccess,
+    transactionHash: purchaseHash,
+    error: (purchaseError || purchaseReceipt.error) as Error | null
+  }), [isPurchasePending, purchaseReceipt.isLoading, purchaseReceipt.isSuccess, purchaseHash, purchaseError, purchaseReceipt.error])
+
+  const approvalProgress: PurchaseProgress = useMemo(() => ({
+    isSubmitting: isApprovalPending,
+    isConfirming: approvalReceipt.isLoading,
+    isConfirmed: approvalReceipt.isSuccess,
+    transactionHash: approvalHash,
+    error: (approvalError || approvalReceipt.error) as Error | null
+  }), [isApprovalPending, approvalReceipt.isLoading, approvalReceipt.isSuccess, approvalHash, approvalError, approvalReceipt.error])
+
+  // Reset function
   const reset = useCallback(() => {
     setWorkflowState({
       currentStep: 'checking_access',
       error: null,
       lastSuccessfulStep: null
     })
-    
-    // Reset transaction hooks if they have reset methods
-    if (approveToken.reset) approveToken.reset()
-    if (purchaseContent.reset) purchaseContent.reset()
-    
-    // Refetch all data to get current state
-    refetchData()
-  }, [approveToken, purchaseContent])
+    setSelectedMethod(PaymentMethod.DIRECT_USDC)
+  }, [])
 
+  // Refetch data function
   const refetchData = useCallback(async (): Promise<void> => {
-    try {
-      await Promise.all([
-        contentQuery.refetch(),
-        accessQuery.refetch(),
-        userBalance.refetch(),
-        tokenAllowance.refetch()
-      ])
-    } catch (error) {
-      console.error('Failed to refetch data:', error)
-    }
-  }, [contentQuery, accessQuery, userBalance, tokenAllowance])
+    await Promise.allSettled([
+      contentQuery.refetch(),
+      accessQuery.refetch(),
+      usdcBalance.refetch(),
+      ethBalance.refetch(),
+      usdcAllowance.refetch(),
+      ethPriceQuery.refetch()
+    ])
+  }, [contentQuery, accessQuery, usdcBalance, ethBalance, usdcAllowance, ethPriceQuery])
 
-  /**
-   * Return the complete interface
-   * 
-   * This is what UI components receive - a clean, comprehensive interface
-   * that abstracts away all the complexity we've handled above.
-   */
+  // Payment method selection
+  const selectPaymentMethod = useCallback((method: PaymentMethod) => {
+    const option = paymentOptions.find(opt => opt.method === method)
+    if (!option) {
+      throw new Error(`Payment method ${method} is not available`)
+    }
+    setSelectedMethod(method)
+  }, [paymentOptions])
+
   return {
     // Core data
-    content: content || null,
-    hasAccess,
-    isLoading,
+    content: contentQuery.data || null,
+    hasAccess: accessQuery.data || false,
+    isLoading: contentQuery.isLoading || accessQuery.isLoading,
     error: workflowState.error,
     
     // Workflow state
     currentStep: workflowState.currentStep,
+    
+    // CRITICAL FIX: Multi-token affordability
     canAfford,
+    paymentOptions,
+    recommendedPayment,
+    
+    // Legacy compatibility
     needsApproval,
     requiredAllowance,
-    
-    // Multi-token payment options (for compatibility with interface)
-    paymentOptions: [], // Currently only supports USDC, but interface requires this
-    recommendedPayment: null, // No recommendation logic implemented yet
-    
-    // Financial data
-    userBalance: userBalanceAmount,
-    userAllowance: userAllowanceAmount,
+    userBalance,
+    userAllowance: selectedMethod === PaymentMethod.DIRECT_USDC ? usdcAllowance.data || BigInt(0) : BigInt(0),
     
     // Transaction progress
     purchaseProgress,
@@ -1633,7 +1818,9 @@ export function useContentPurchaseFlow(
     purchase,
     approveAndPurchase,
     reset,
-    refetchData
+    refetchData,
+    selectPaymentMethod,
+    selectedMethod
   }
 }
 
@@ -1810,7 +1997,7 @@ export function useExtendedContentPurchaseFlow(
   const approveToken = useApproveToken()
   const purchaseContent = usePurchaseContent()
 
-  const { writeContract: writeCommerceContract, data: commerceHash } = useWriteContract()
+  const { writeContract: writeCommerceContract, data: commerceHash, isPending: isCommercePending } = useWriteContract()
   const { isLoading: isCommerceConfirming, isSuccess: isCommerceConfirmed } = useWaitForTransactionReceipt({
     hash: commerceHash
   })

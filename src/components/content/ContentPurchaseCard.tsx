@@ -68,7 +68,7 @@ import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks and utilities
 import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance } from '@/hooks/contracts/core'
-import { useContentPurchaseFlow } from '@/hooks/business/workflows'
+import { ContentPurchaseFlowResult, useContentPurchaseFlow } from '@/hooks/business/workflows'
 import { formatCurrency, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
 
@@ -143,6 +143,12 @@ interface ContentPurchaseCardProps {
   readonly showPurchaseDetails?: boolean
   readonly enableMultiPayment?: boolean
   readonly enableFallback?: boolean // Graceful fallback to USDC-only mode
+}
+
+interface PurchaseProgressState {
+  step: 'idle' | 'approving' | 'purchasing' | 'checking' | 'error'
+  canRetry: boolean
+  message?: string
 }
 
 /**
@@ -225,6 +231,178 @@ function useContractABIs() {
 }
 
 /**
+ * Enhanced Purchase Action Button Component
+ * 
+ * This component now makes intelligent decisions based on ALL available payment methods,
+ * not just USDC. It shows the appropriate action based on what tokens the user has.
+ */
+function PurchaseActionButton({
+  hasAccess,
+  progressState,
+  purchaseFlow,
+  onPurchaseAction,
+  onViewContent,
+  onRetry,
+  isConnected
+}: {
+  hasAccess: boolean
+  progressState: PurchaseProgressState
+  purchaseFlow: ContentPurchaseFlowResult
+  onPurchaseAction: () => void
+  onViewContent: () => void
+  onRetry: () => void
+  isConnected: boolean
+}) {
+  
+  // Generate button content based on current state and available payment options
+  const buttonContent = useMemo(() => {
+    // User already has access - show view button
+    if (hasAccess) {
+      return {
+        onClick: onViewContent,
+        disabled: false,
+        variant: 'default' as const,
+        icon: Eye,
+        text: 'View Content',
+        className: 'w-full bg-green-600 hover:bg-green-700'
+      }
+    }
+
+    // Wallet not connected
+    if (!isConnected) {
+      return {
+        onClick: () => {},
+        disabled: true,
+        variant: 'default' as const,
+        icon: Wallet,
+        text: 'Connect Wallet to Purchase',
+        className: 'w-full'
+      }
+    }
+
+    // Error state - show retry button
+    if (progressState.step === 'error' && progressState.canRetry) {
+      return {
+        onClick: onRetry,
+        disabled: false,
+        variant: 'outline' as const,
+        icon: AlertCircle,
+        text: 'Retry Purchase',
+        className: 'w-full border-red-300 text-red-700 hover:bg-red-50'
+      }
+    }
+
+    // Processing state
+    const isProcessing = progressState.step === 'purchasing' || 
+                        progressState.step === 'approving' || 
+                        progressState.step === 'checking'
+
+    if (isProcessing) {
+      return {
+        onClick: () => {},
+        disabled: true,
+        variant: 'default' as const,
+        icon: Loader2,
+        text: progressState.step === 'approving' ? 'Approving...' : 'Processing...',
+        className: 'w-full',
+        iconClassName: 'animate-spin'
+      }
+    }
+
+    // CRITICAL FIX: Check if user can afford with ANY supported token
+    if (!purchaseFlow.canAfford) {
+      // Show which tokens they need
+      const lowestPriceOption = purchaseFlow.paymentOptions
+        .filter(option => option.requiredAmount !== null)
+        .sort((a, b) => {
+          if (!a.requiredAmount || !b.requiredAmount) return 0
+          return a.requiredAmount < b.requiredAmount ? -1 : 1
+        })[0]
+
+      const insufficientText = lowestPriceOption 
+        ? `Insufficient Balance (Need ${formatCurrency(lowestPriceOption.requiredAmount!, lowestPriceOption.symbol === 'USDC' ? 6 : 18, lowestPriceOption.symbol)})`
+        : 'Insufficient Balance'
+
+      return {
+        onClick: () => {},
+        disabled: true,
+        variant: 'default' as const,
+        icon: AlertCircle,
+        text: insufficientText,
+        className: 'w-full bg-gray-100 text-gray-500 cursor-not-allowed'
+      }
+    }
+
+    // Determine the best action based on recommended payment method
+    const recommended = purchaseFlow.recommendedPayment
+    const needsApproval = recommended?.needsApproval || purchaseFlow.needsApproval
+
+    if (needsApproval && purchaseFlow.selectedMethod === PaymentMethod.DIRECT_USDC) {
+      return {
+        onClick: onPurchaseAction,
+        disabled: false,
+        variant: 'default' as const,
+        icon: CreditCard,
+        text: 'Approve & Purchase',
+        className: 'w-full bg-blue-600 hover:bg-blue-700'
+      }
+    }
+
+    // Standard purchase - determine icon based on payment method
+    let icon = ShoppingCart
+    let text = 'Purchase Content'
+    let className = 'w-full bg-green-600 hover:bg-green-700'
+
+    if (recommended?.method === PaymentMethod.ETH) {
+      icon = Zap
+      text = `Purchase with ETH`
+      className = 'w-full bg-purple-600 hover:bg-purple-700'
+    } else if (recommended?.method === PaymentMethod.DIRECT_USDC) {
+      icon = DollarSign
+      text = 'Purchase with USDC'
+      className = 'w-full bg-green-600 hover:bg-green-700'
+    }
+
+    return {
+      onClick: onPurchaseAction,
+      disabled: false,
+      variant: 'default' as const,
+      icon,
+      text,
+      className
+    }
+  }, [
+    hasAccess,
+    isConnected,
+    progressState,
+    purchaseFlow.canAfford,
+    purchaseFlow.paymentOptions,
+    purchaseFlow.recommendedPayment,
+    purchaseFlow.needsApproval,
+    purchaseFlow.selectedMethod,
+    onViewContent,
+    onRetry,
+    onPurchaseAction
+  ])
+
+  const { onClick, disabled, variant, icon: Icon, text, className, iconClassName } = buttonContent
+
+  return (
+    <Button 
+      onClick={onClick}
+      disabled={disabled}
+      variant={variant}
+      className={className}
+    >
+      <Icon className={`h-4 w-4 mr-2 ${iconClassName || ''}`} />
+      {text}
+    </Button>
+  )
+}
+
+
+
+/**
  * Production-Ready Multi-Payment ContentPurchaseCard Component
  */
 export function ContentPurchaseCard({
@@ -259,10 +437,10 @@ export function ContentPurchaseCard({
   
   // Token balance hooks for multi-payment support
   const usdcBalance = useTokenBalance(
-    effectiveUserAddress, 
-    contractAddresses?.USDC || null
+    contractAddresses?.USDC, 
+    effectiveUserAddress
   )
-  const ethBalance = useTokenBalance(effectiveUserAddress, undefined) // ETH balance
+  const ethBalance = useTokenBalance(undefined, effectiveUserAddress) // ETH balance
   
   // Token allowance checking for USDC
   const usdcAllowance = useTokenAllowance(
@@ -923,17 +1101,10 @@ export function ContentPurchaseCard({
             )}
 
             {/* Multi-Payment Options Display */}
-            {(enableMultiPayment && paymentState.multiPaymentSupported) ? (
+            {(enableMultiPayment && paymentState.multiPaymentSupported && primaryPurchaseFlow.paymentOptions.length > 1) ? (
               <PaymentOptionsDisplay
-                paymentMethods={DEFAULT_PAYMENT_METHODS}
-                selectedMethod={paymentState.selectedMethod}
-                availableTokens={paymentState.availableTokens}
-                recommendedMethod={recommendedPaymentMethod}
-                isCheckingBalances={paymentState.isCheckingBalances}
-                onMethodChange={handlePaymentMethodChange}
-                onRefreshBalances={() => contentQuery.data && checkTokenBalances(contentQuery.data)}
-                customTokenAddress={paymentState.customTokenAddress}
-                onCustomTokenAddressChange={(address) => setPaymentState(prev => ({ ...prev, customTokenAddress: address }))}
+                purchaseFlow={primaryPurchaseFlow}
+                onPaymentMethodSelect={handlePaymentMethodChange}
               />
             ) : (
               /* Fallback to Simple USDC Display */
@@ -1009,134 +1180,140 @@ export function ContentPurchaseCard({
 }
 
 /**
- * Payment Options Display Component
- * This is your integrated PaymentOptionsDisplay component
+ * Purchase Action Button Component
+ * 
+ * This component now makes intelligent decisions based on ALL available payment methods,
+ * not just USDC. It shows the appropriate action based on what tokens the user has.
  */
-function PaymentOptionsDisplay({
-  paymentMethods,
-  selectedMethod,
-  availableTokens,
-  recommendedMethod,
-  isCheckingBalances,
-  onMethodChange,
-  onRefreshBalances,
-  customTokenAddress,
-  onCustomTokenAddressChange
+function PaymentOptionsDisplay({ 
+  purchaseFlow,
+  onPaymentMethodSelect
 }: {
-  paymentMethods: PaymentMethodConfig[]
-  selectedMethod: PaymentMethod
-  availableTokens: Record<PaymentMethod, TokenInfo | null>
-  recommendedMethod: PaymentMethod
-  isCheckingBalances: boolean
-  onMethodChange: (method: PaymentMethod) => void
-  onRefreshBalances: () => void
-  customTokenAddress: string
-  onCustomTokenAddressChange: (address: string) => void
+  purchaseFlow: ContentPurchaseFlowResult
+  onPaymentMethodSelect: (method: PaymentMethod) => void
 }) {
-  const [showOptions, setShowOptions] = useState(false)
+  if (purchaseFlow.paymentOptions.length <= 1) {
+    return null // Don't show options if only one method available
+  }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label className="text-sm font-medium">Payment Method</Label>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRefreshBalances}
-          disabled={isCheckingBalances}
-        >
-          <RefreshCw className={cn("h-3 w-3", isCheckingBalances && "animate-spin")} />
-        </Button>
+        <span className="text-sm font-medium text-gray-700">Payment Options</span>
+        {purchaseFlow.recommendedPayment && (
+          <Badge variant="secondary" className="text-xs">
+            Recommended: {purchaseFlow.recommendedPayment.symbol}
+          </Badge>
+        )}
       </div>
 
-      <Collapsible open={showOptions} onOpenChange={setShowOptions}>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
-            <div className="flex items-center gap-2">
-              {React.createElement(
-                paymentMethods.find(m => m.id === selectedMethod)?.icon || DollarSign, 
-                { className: "h-4 w-4" }
-              )}
-              <span>{paymentMethods.find(m => m.id === selectedMethod)?.name || 'USDC'}</span>
-              {selectedMethod === recommendedMethod && (
-                <Badge variant="secondary" className="text-xs">Recommended</Badge>
-              )}
-            </div>
-            {showOptions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        </CollapsibleTrigger>
-
-        <CollapsibleContent className="space-y-2 mt-2">
-          <Tabs value={selectedMethod} onValueChange={(value) => onMethodChange(value as PaymentMethod)}>
-            <TabsList className="grid w-full grid-cols-3">
-              {paymentMethods.filter(method => method.isAvailable).map((method) => {
-                const token = availableTokens[method.id]
-                const hasBalance = token?.hasEnoughBalance ?? false
+      <div className="grid gap-2">
+        {purchaseFlow.paymentOptions.map((option) => {
+          const isSelected = option.method === purchaseFlow.selectedMethod
+          const canAfford = option.canAfford
+          
+          return (
+            <button
+              key={option.method}
+              onClick={() => onPaymentMethodSelect(option.method)}
+              disabled={!canAfford}
+              className={`
+                relative flex items-center justify-between p-3 rounded-lg border transition-colors
+                ${isSelected 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : canAfford 
+                    ? 'border-gray-200 hover:border-gray-300 bg-white' 
+                    : 'border-gray-100 bg-gray-50 cursor-not-allowed'
+                }
+              `}
+            >
+              <div className="flex items-center space-x-3">
+                <div className={`
+                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
+                  ${option.method === PaymentMethod.ETH 
+                    ? 'bg-purple-100 text-purple-700' 
+                    : 'bg-green-100 text-green-700'
+                  }
+                `}>
+                  {option.symbol === 'ETH' ? '⟠' : '$'}
+                </div>
                 
-                return (
-                  <TabsTrigger 
-                    key={method.id} 
-                    value={method.id}
-                    className="text-xs"
-                    disabled={isCheckingBalances || (!token && method.id !== PaymentMethod.DIRECT_USDC)}
-                  >
-                    <div className="flex flex-col items-center">
-                      <method.icon className="h-3 w-3 mb-1" />
-                      <span>{method.name}</span>
-                      {hasBalance && <div className="w-1 h-1 bg-green-500 rounded-full mt-1" />}
-                    </div>
-                  </TabsTrigger>
-                )
-              })}
-            </TabsList>
-
-            {paymentMethods.filter(method => method.isAvailable).map((method) => {
-              const token = availableTokens[method.id]
-              
-              return (
-                <TabsContent key={method.id} value={method.id} className="mt-3">
-                  <div className="p-3 bg-gray-50 rounded-lg space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{method.name}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {method.gasEstimate} Gas
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-gray-600">{method.description}</p>
-                    
-                    {/* Custom Token Address Input */}
-                    {method.id === PaymentMethod.CUSTOM_TOKEN && (
-                      <div className="space-y-2">
-                        <Label htmlFor="custom-token-address" className="text-xs font-medium">
-                          Token Contract Address
-                        </Label>
-                        <Input
-                          id="custom-token-address"
-                          placeholder="0x..."
-                          value={customTokenAddress}
-                          onChange={(e) => onCustomTokenAddressChange(e.target.value)}
-                          className="text-xs"
-                        />
-                        {customTokenAddress && !/^0x[a-fA-F0-9]{40}$/.test(customTokenAddress) && (
-                          <p className="text-xs text-red-600">
-                            Please enter a valid token address
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    
-                    {token && (
-                      <TokenBalanceDisplay token={token} />
-                    )}
+                <div className="text-left">
+                  <div className="font-medium text-sm text-gray-900">
+                    {option.symbol}
                   </div>
-                </TabsContent>
-              )
-            })}
-          </Tabs>
-        </CollapsibleContent>
-      </Collapsible>
+                  <div className="text-xs text-gray-500">
+                    {option.estimatedTime} • {option.gasEstimate} gas
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className={`text-sm font-medium ${canAfford ? 'text-gray-900' : 'text-red-600'}`}>
+                  {option.balance !== null 
+                    ? formatCurrency(
+                        option.balance, 
+                        option.symbol === 'USDC' ? 6 : 18, 
+                        option.symbol
+                      )
+                    : '---'
+                  }
+                </div>
+                <div className="text-xs text-gray-500">
+                  Need: {option.requiredAmount 
+                    ? formatCurrency(
+                        option.requiredAmount, 
+                        option.symbol === 'USDC' ? 6 : 18, 
+                        option.symbol
+                      )
+                    : '---'
+                  }
+                </div>
+              </div>
+
+              {!canAfford && (
+                <div className="absolute inset-0 bg-gray-50 bg-opacity-75 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-gray-500 font-medium">Insufficient Balance</span>
+                </div>
+              )}
+
+              {option.recommended && canAfford && (
+                <div className="absolute -top-1 -right-1">
+                  <Badge variant="default" className="text-xs bg-green-600">
+                    Best
+                  </Badge>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {!purchaseFlow.canAfford && (
+        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start space-x-2">
+            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-amber-800">
+              <div className="font-medium">Insufficient funds in all available tokens</div>
+              <div className="mt-1">
+                Add funds to any of these tokens to complete your purchase.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+
+/**
+ * Export the components for use in your ContentPurchaseCard
+ */
+export { 
+  PurchaseActionButton, 
+  PaymentOptionsDisplay,
+  type PurchaseProgressState 
 }
 
 /**
