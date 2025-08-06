@@ -3541,70 +3541,105 @@ export function useCreatorOnboarding(
   ])
   
   useEffect(() => {
+    // First, let's add comprehensive logging to understand what's happening
+    console.group('🔍 Registration Check Effect - Enhanced Debug')
+    console.log('Current Step:', workflowState.currentStep)
+    console.log('Has Just Registered:', workflowState.hasJustRegistered)
+    console.log('Registration Check Data:', registrationCheck.data, typeof registrationCheck.data)
+    console.log('Registration Check Loading:', registrationCheck.isLoading)
+    console.log('Registration Check Error:', registrationCheck.error)
+    console.log('Registration Check Success:', registrationCheck.isSuccess)
+    console.log('User Address:', userAddress)
+    console.groupEnd()
+
+    // Skip checks if we just registered - this prevents interference
     if (workflowState.hasJustRegistered) {
       console.log('🛡️ Protected: Ignoring registration check because we just registered')
       return
     }
     
+    // Skip checks during registration process
     if (workflowState.currentStep === 'registering') {
       console.log('🛡️ Protected: Ignoring registration check during registration process')
       return
     }
+
+    // If we don't have a user address, we can't check registration
+    if (!userAddress) {
+      console.log('⚠️ No user address available, staying in checking state')
+      return
+    }
     
+    // Handle loading state - keep showing loading while the contract call is in progress
     if (registrationCheck.isLoading) {
+      // Only log this once to avoid spam
       if (workflowState.currentStep === 'checking') {
-        // Already in checking state, no need to update
-        return
+        console.log('⏳ Registration check still loading...')
       }
       return
     }
     
+    // Handle error state - this is critical for debugging
     if (registrationCheck.error) {
-      setWorkflowState(prev => {
-        if (prev.currentStep === 'error' && prev.error?.message === 'Failed to check registration status') {
-          return prev
-        }
-        return { 
-          ...prev,
-          currentStep: 'error', 
-          error: new Error('Failed to check registration status')
-        }
-      })
+      console.error('❌ Registration check failed:', registrationCheck.error)
+      setWorkflowState(prev => ({ 
+        ...prev,
+        currentStep: 'error', 
+        error: new Error(`Failed to check registration status: ${registrationCheck.error?.message || 'Unknown error'}`)
+      }))
       return
     }
-    
-    if (workflowState.currentStep === 'checking') {
+
+    // The key fix: Handle the case where we have a successful response
+    // Only proceed if we're in checking state and the query was successful
+    if (workflowState.currentStep === 'checking' && registrationCheck.isSuccess) {
+      // registrationCheck.data will be either true, false, or undefined
+      // We need to handle all three cases explicitly
+      
       if (registrationCheck.data === true) {
-        console.log('📊 Registration check confirmed: User is registered')
-        setWorkflowState(prev => {
-          if (prev.currentStep === 'registered' && !prev.hasJustRegistered) {
-            return prev
-          }
-          return { 
-            ...prev, 
-            currentStep: 'registered',
-            hasJustRegistered: false
-          }
-        })
+        console.log('📊 Registration check confirmed: User IS registered')
+        setWorkflowState(prev => ({ 
+          ...prev, 
+          currentStep: 'registered',
+          hasJustRegistered: false,
+          error: null
+        }))
+      } else if (registrationCheck.data === false) {
+        console.log('📊 Registration check confirmed: User is NOT registered')
+        setWorkflowState(prev => ({ 
+          ...prev, 
+          currentStep: 'not_registered',
+          error: null
+        }))
       } else {
-        console.log('📊 Registration check confirmed: User is not registered')
-        setWorkflowState(prev => {
-          if (prev.currentStep === 'not_registered') {
-            return prev
-          }
-          return { 
-            ...prev, 
-            currentStep: 'not_registered'
-          }
-        })
+        // This is the case that was causing your infinite loading!
+        // registrationCheck.data is undefined, which means the contract call
+        // succeeded but returned an unexpected value
+        console.warn('⚠️ Registration check returned unexpected data:', registrationCheck.data)
+        console.warn('This usually means:')
+        console.warn('1. Contract address is wrong')
+        console.warn('2. Contract ABI mismatch') 
+        console.warn('3. Function doesnt exist')
+        console.warn('4. Network connectivity issue')
+        
+        // Instead of staying stuck, let's treat undefined as "not registered"
+        // but log it clearly so you can investigate
+        console.log('🔄 Treating undefined result as not registered for now')
+        setWorkflowState(prev => ({ 
+          ...prev, 
+          currentStep: 'not_registered',
+          error: null
+        }))
       }
     }
   }, [
     registrationCheck.isLoading, 
     registrationCheck.error, 
-    registrationCheck.data, 
+    registrationCheck.data,
+    registrationCheck.isSuccess, // Added this to the dependency array
     workflowState.currentStep,
-    workflowState.hasJustRegistered
+    workflowState.hasJustRegistered,
+    userAddress // Added this to ensure we react to address changes
   ])
   
   useEffect(() => {

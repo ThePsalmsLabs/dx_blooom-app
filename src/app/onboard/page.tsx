@@ -234,7 +234,15 @@ function OnboardingContent() {
   
   // Enhanced success handling with better navigation logic
   useEffect(() => {
+    console.log('🔍 Success handling effect triggered:', {
+      currentStep: onboarding.currentStep,
+      isNavigating,
+      showSuccessDialog
+    })
+    
     if (onboarding.currentStep === 'registered' && !isNavigating) {
+      console.log('✅ Registration successful, showing dialog and setting up redirect')
+      
       if (!showSuccessDialog) {
         setShowSuccessDialog(true)
         toast({
@@ -245,10 +253,22 @@ function OnboardingContent() {
       
       setIsNavigating(true)
       const redirectTimeout = setTimeout(() => {
-        router.push('/dashboard')
+        console.log('🔄 Auto-redirecting to dashboard...')
+        try {
+          // Add a small delay to allow blockchain data to update
+          setTimeout(() => {
+            router.push('/dashboard')
+            console.log('✅ Auto-redirect initiated successfully')
+          }, 1000) // Additional 1 second delay
+        } catch (error) {
+          console.error('❌ Auto-redirect failed:', error)
+        }
       }, 2500)
       
-      return () => clearTimeout(redirectTimeout)
+      return () => {
+        console.log('🧹 Cleaning up redirect timeout')
+        clearTimeout(redirectTimeout)
+      }
     }
   }, [onboarding.currentStep, onboarding.profile, router, toast, showSuccessDialog, isNavigating])
   
@@ -479,7 +499,21 @@ function OnboardingContent() {
             <Button variant="outline" onClick={() => setShowSuccessDialog(false)}>
               Stay Here
             </Button>
-            <Button onClick={() => router.push('/dashboard')}>
+            <Button onClick={() => {
+              console.log('🚀 Dashboard button clicked!')
+              console.log('Current router state:', router)
+              try {
+                // Close the dialog first
+                setShowSuccessDialog(false)
+                // Then navigate to dashboard
+                setTimeout(() => {
+                  router.push('/dashboard')
+                  console.log('✅ Navigation initiated successfully')
+                }, 100)
+              } catch (error) {
+                console.error('❌ Navigation failed:', error)
+              }
+            }}>
               Go to Dashboard
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

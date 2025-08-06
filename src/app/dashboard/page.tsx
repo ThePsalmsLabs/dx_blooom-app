@@ -137,6 +137,14 @@ export default function SubscriptionManagementPage() {
   const pendingEarnings = useCreatorPendingEarnings(userAddress as `0x${string}` | undefined)
   const dashboardUI = useCreatorDashboardUI(userAddress as `0x${string}` | undefined)
 
+  // Force refresh creator data when dashboard loads (helps with post-registration navigation)
+  useEffect(() => {
+    if (isConnected && userAddress) {
+      console.log('🔄 Forcing creator data refresh on dashboard load')
+      creatorProfile.refetch()
+    }
+  }, [isConnected, userAddress, creatorProfile])
+
   // Dashboard state management
   const [managementState, setManagementState] = useState<SubscriptionManagementState>({
     activeTab: 'overview',
@@ -155,11 +163,21 @@ export default function SubscriptionManagementPage() {
    * providing clear upgrade paths for non-creators while protecting creator-only features.
    */
   useEffect(() => {
-    if (isConnected && dashboardUI.isRegistered === false) {
-      // Non-creator trying to access dashboard - redirect to onboarding
-      router.push('/onboard')
+    console.log('🔍 Dashboard verification effect:', {
+      isConnected,
+      isRegistered: dashboardUI.isRegistered,
+      isLoading: dashboardUI.isLoading
+    })
+    
+    // Only redirect if we're connected, not loading, and definitely not registered
+    if (isConnected && !dashboardUI.isLoading && dashboardUI.isRegistered === false) {
+      console.log('⚠️ Non-creator detected, redirecting to onboarding')
+      // Add a small delay to prevent rapid redirects
+      setTimeout(() => {
+        router.push('/onboard')
+      }, 500)
     }
-  }, [isConnected, dashboardUI.isRegistered, router])
+  }, [isConnected, dashboardUI.isRegistered, dashboardUI.isLoading, router])
 
   /**
    * Tab Change Handler
@@ -276,7 +294,13 @@ export default function SubscriptionManagementPage() {
   if (dashboardUI.isLoading) {
     return (
       <AppLayout>
-        <DashboardSkeleton />
+        <div className="container mx-auto py-16 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold mb-2">Verifying Creator Status</h1>
+          <p className="text-muted-foreground mb-6">
+            Please wait while we verify your creator registration...
+          </p>
+        </div>
       </AppLayout>
     )
   }
