@@ -1036,43 +1036,75 @@ export function useX402ContentPurchaseFlow(
   }, [x402Config, farcasterContext, contentId, userAddress, contentData.data])
 
   useEffect(() => {
+    let newStep: X402ContentPurchaseFlowStep
+    let newError: Error | null = null
+
     if (hasAccess.isLoading || contentData.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'checking_access' }))
+      newStep = 'checking_access'
     } else if (hasAccess.error || contentData.error) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: hasAccess.error || contentData.error 
-      })
+      newStep = 'error'
+      newError = hasAccess.error || contentData.error
     } else if (hasAccess.data === true) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'completed' }))
+      newStep = 'completed'
     } else if (!canAfford) {
-      setWorkflowState({ 
-        currentStep: 'error', 
-        error: new Error('Insufficient USDC balance to purchase this content')
-      })
+      newStep = 'error'
+      newError = new Error('Insufficient USDC balance to purchase this content')
     } else if (needsApproval) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
+      newStep = 'need_approval'
     } else {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+      newStep = 'can_purchase'
     }
+
+    // Only update state if the step or error has actually changed
+    setWorkflowState(prev => {
+      if (prev.currentStep === newStep && prev.error === newError) {
+        return prev
+      }
+      return { ...prev, currentStep: newStep, error: newError }
+    })
   }, [hasAccess.data, hasAccess.isLoading, hasAccess.error, contentData.error, canAfford, needsApproval])
 
   useEffect(() => {
     if (approveToken.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'need_approval') {
+          return prev
+        }
+        return { ...prev, currentStep: 'need_approval' }
+      })
     } else if (approveToken.isConfirmed && needsApproval === false) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'can_purchase') {
+          return prev
+        }
+        return { ...prev, currentStep: 'can_purchase' }
+      })
       tokenAllowance.refetch()
     }
   }, [approveToken.isLoading, approveToken.isConfirmed, needsApproval, tokenAllowance])
 
   useEffect(() => {
     if (purchaseContent.isLoading) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'purchasing' }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'purchasing') {
+          return prev
+        }
+        return { ...prev, currentStep: 'purchasing' }
+      })
     } else if (purchaseContent.error) {
-      setWorkflowState({ currentStep: 'error', error: purchaseContent.error })
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'error' && prev.error === purchaseContent.error) {
+          return prev
+        }
+        return { currentStep: 'error', error: purchaseContent.error }
+      })
     } else if (purchaseContent.isConfirmed) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'completed' }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'completed') {
+          return prev
+        }
+        return { ...prev, currentStep: 'completed' }
+      })
       hasAccess.refetch()
       userBalance.refetch()
     }
@@ -1591,27 +1623,27 @@ export function useContentPurchaseFlow(
 
   // Update workflow state based on data changes
   useEffect(() => {
+    let newStep: ContentPurchaseFlowStep
+
     if (!contentQuery.data) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'loading_content' }))
-      return
+      newStep = 'loading_content'
+    } else if (accessQuery.data === true) {
+      newStep = 'completed'
+    } else if (!canAfford) {
+      newStep = 'insufficient_balance'
+    } else if (needsApproval && selectedMethod === PaymentMethod.DIRECT_USDC) {
+      newStep = 'need_approval'
+    } else {
+      newStep = 'can_purchase'
     }
 
-    if (accessQuery.data === true) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'completed' }))
-      return
-    }
-
-    if (!canAfford) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'insufficient_balance' }))
-      return
-    }
-
-    if (needsApproval && selectedMethod === PaymentMethod.DIRECT_USDC) {
-      setWorkflowState(prev => ({ ...prev, currentStep: 'need_approval' }))
-      return
-    }
-
-    setWorkflowState(prev => ({ ...prev, currentStep: 'can_purchase' }))
+    // Only update state if the step has actually changed
+    setWorkflowState(prev => {
+      if (prev.currentStep === newStep) {
+        return prev
+      }
+      return { ...prev, currentStep: newStep }
+    })
   }, [contentQuery.data, accessQuery.data, canAfford, needsApproval, selectedMethod])
 
   // Purchase function implementation
@@ -2588,20 +2620,40 @@ export function useContentPublishingFlow(
   useEffect(() => {
     if (registerContent.isLoading) {
       console.log('Transaction submitted, waiting for confirmation...')
-      setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'registering') {
+          return prev
+        }
+        return { ...prev, currentStep: 'registering' }
+      })
     } else if (registerContent.isConfirming) {
       console.log('Transaction confirmed, waiting for receipt...')
-      setWorkflowState(prev => ({ ...prev, currentStep: 'confirming' }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'confirming') {
+          return prev
+        }
+        return { ...prev, currentStep: 'confirming' }
+      })
     } else if (registerContent.error) {
       console.error('Transaction error:', registerContent.error)
-      setWorkflowState({
-        currentStep: 'error',
-        error: registerContent.error,
-        publishedContentId: null
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'error' && prev.error === registerContent.error) {
+          return prev
+        }
+        return {
+          currentStep: 'error',
+          error: registerContent.error,
+          publishedContentId: null
+        }
       })
     } else if (registerContent.isSuccess && registerContent.hash) {
       console.log('Transaction successful, extracting content ID...')
-      setWorkflowState(prev => ({ ...prev, currentStep: 'extracting_content_id' }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'extracting_content_id') {
+          return prev
+        }
+        return { ...prev, currentStep: 'extracting_content_id' }
+      })
       
       const extractContentId = async () => {
         try {
@@ -3501,34 +3553,50 @@ export function useCreatorOnboarding(
     
     if (registrationCheck.isLoading) {
       if (workflowState.currentStep === 'checking') {
-        setWorkflowState(prev => ({ ...prev, currentStep: 'checking' }))
+        // Already in checking state, no need to update
+        return
       }
       return
     }
     
     if (registrationCheck.error) {
-      setWorkflowState(prev => ({ 
-        ...prev,
-        currentStep: 'error', 
-        error: new Error('Failed to check registration status')
-      }))
+      setWorkflowState(prev => {
+        if (prev.currentStep === 'error' && prev.error?.message === 'Failed to check registration status') {
+          return prev
+        }
+        return { 
+          ...prev,
+          currentStep: 'error', 
+          error: new Error('Failed to check registration status')
+        }
+      })
       return
     }
     
     if (workflowState.currentStep === 'checking') {
       if (registrationCheck.data === true) {
         console.log('📊 Registration check confirmed: User is registered')
-        setWorkflowState(prev => ({ 
-          ...prev, 
-          currentStep: 'registered',
-          hasJustRegistered: false
-        }))
+        setWorkflowState(prev => {
+          if (prev.currentStep === 'registered' && !prev.hasJustRegistered) {
+            return prev
+          }
+          return { 
+            ...prev, 
+            currentStep: 'registered',
+            hasJustRegistered: false
+          }
+        })
       } else {
         console.log('📊 Registration check confirmed: User is not registered')
-        setWorkflowState(prev => ({ 
-          ...prev, 
-          currentStep: 'not_registered'
-        }))
+        setWorkflowState(prev => {
+          if (prev.currentStep === 'not_registered') {
+            return prev
+          }
+          return { 
+            ...prev, 
+            currentStep: 'not_registered'
+          }
+        })
       }
     }
   }, [
@@ -3544,10 +3612,15 @@ export function useCreatorOnboarding(
         registrationCheck.data === true && 
         !registrationCheck.isLoading) {
       console.log('🎯 Data refresh confirmed registration - clearing just registered flag')
-      setWorkflowState(prev => ({ 
-        ...prev, 
-        hasJustRegistered: false 
-      }))
+      setWorkflowState(prev => {
+        if (!prev.hasJustRegistered) {
+          return prev
+        }
+        return { 
+          ...prev, 
+          hasJustRegistered: false 
+        }
+      })
     }
   }, [workflowState.hasJustRegistered, registrationCheck.data, registrationCheck.isLoading])
   
