@@ -89,7 +89,7 @@ import { isValidContentCategory } from '@/types/contracts'
 
 // Import business logic hooks
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
-import { useContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
+import { useUnifiedContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
 import { formatCurrency, formatAddress } from '@/lib/utils'
 
 /**

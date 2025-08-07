@@ -24,6 +24,8 @@ import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTr
 import { type Address } from 'viem'
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
+import { getContractAddresses } from '@/lib/contracts/config'
+import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, ERC20_ABI } from '@/lib/contracts/abis'
 import {
   ShoppingCart,
   Lock,
@@ -68,18 +70,11 @@ import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks and utilities
 import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance } from '@/hooks/contracts/core'
-import { ContentPurchaseFlowResult, useContentPurchaseFlow } from '@/hooks/business/workflows'
+import { useUnifiedContentPurchaseFlow, UnifiedPurchaseFlowResult, PaymentMethod } from '@/hooks/business/workflows'
 import { formatCurrency, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
 
-/**
- * Payment Methods Enum - Comprehensive Payment Options
- */
-export enum PaymentMethod {
-  DIRECT_USDC = 'DIRECT_USDC',
-  ETH = 'ETH', 
-  CUSTOM_TOKEN = 'CUSTOM_TOKEN'
-}
+
 
 /**
  * Payment Method Configuration Interface
@@ -156,7 +151,7 @@ interface PurchaseProgressState {
  */
 const DEFAULT_PAYMENT_METHODS: PaymentMethodConfig[] = [
   {
-    id: PaymentMethod.DIRECT_USDC,
+    id: PaymentMethod.USDC,
     name: 'USDC',
     description: 'Direct payment with USDC - fastest and cheapest',
     estimatedTime: '~15 sec',
@@ -176,7 +171,7 @@ const DEFAULT_PAYMENT_METHODS: PaymentMethodConfig[] = [
     isAvailable: true
   },
   {
-    id: PaymentMethod.CUSTOM_TOKEN,
+    id: PaymentMethod.OTHER_TOKEN,
     name: 'Other Token',
     description: 'Pay with any supported ERC-20 token',
     estimatedTime: '~60 sec',
@@ -247,7 +242,7 @@ function PurchaseActionButton({
 }: {
   hasAccess: boolean
   progressState: PurchaseProgressState
-  purchaseFlow: ContentPurchaseFlowResult
+  purchaseFlow: UnifiedPurchaseFlowResult
   onPurchaseAction: () => void
   onViewContent: () => void
   onRetry: () => void
@@ -310,17 +305,10 @@ function PurchaseActionButton({
     }
 
     // CRITICAL FIX: Check if user can afford with ANY supported token
-    if (!purchaseFlow.canAfford) {
-      // Show which tokens they need
-      const lowestPriceOption = purchaseFlow.paymentOptions
-        .filter(option => option.requiredAmount !== null)
-        .sort((a, b) => {
-          if (!a.requiredAmount || !b.requiredAmount) return 0
-          return a.requiredAmount < b.requiredAmount ? -1 : 1
-        })[0]
-
-      const insufficientText = lowestPriceOption 
-        ? `Insufficient Balance (Need ${formatCurrency(lowestPriceOption.requiredAmount!, lowestPriceOption.symbol === 'USDC' ? 6 : 18, lowestPriceOption.symbol)})`
+    if (!purchaseFlow.canExecutePayment) {
+      // Show information about required amount
+      const insufficientText = purchaseFlow.content 
+        ? `Insufficient Balance (Need ${formatCurrency(purchaseFlow.estimatedCost || BigInt(0), 6, 'USDC')})`
         : 'Insufficient Balance'
 
       return {
@@ -333,11 +321,10 @@ function PurchaseActionButton({
       }
     }
 
-    // Determine the best action based on recommended payment method
-    const recommended = purchaseFlow.recommendedPayment
-    const needsApproval = recommended?.needsApproval || purchaseFlow.needsApproval
+    // Determine the best action based on selected payment method
+    const needsApproval = purchaseFlow.selectedToken?.needsApproval || false
 
-    if (needsApproval && purchaseFlow.selectedMethod === PaymentMethod.DIRECT_USDC) {
+    if (needsApproval && purchaseFlow.selectedMethod === PaymentMethod.USDC) {
       return {
         onClick: onPurchaseAction,
         disabled: false,
@@ -353,11 +340,11 @@ function PurchaseActionButton({
     let text = 'Purchase Content'
     let className = 'w-full bg-green-600 hover:bg-green-700'
 
-    if (recommended?.method === PaymentMethod.ETH) {
+    if (purchaseFlow.selectedMethod === PaymentMethod.ETH) {
       icon = Zap
       text = `Purchase with ETH`
       className = 'w-full bg-purple-600 hover:bg-purple-700'
-    } else if (recommended?.method === PaymentMethod.DIRECT_USDC) {
+    } else if (purchaseFlow.selectedMethod === PaymentMethod.USDC) {
       icon = DollarSign
       text = 'Purchase with USDC'
       className = 'w-full bg-green-600 hover:bg-green-700'
@@ -375,10 +362,9 @@ function PurchaseActionButton({
     hasAccess,
     isConnected,
     progressState,
-    purchaseFlow.canAfford,
-    purchaseFlow.paymentOptions,
-    purchaseFlow.recommendedPayment,
-    purchaseFlow.needsApproval,
+    purchaseFlow.canExecutePayment,
+    purchaseFlow.availableMethods,
+    purchaseFlow.selectedToken?.needsApproval,
     purchaseFlow.selectedMethod,
     onViewContent,
     onRetry,
@@ -422,8 +408,14 @@ export function ContentPurchaseCard({
   const chainId = useChainId()
   
   // Safe contract configuration
-  const contractAddresses = useContractAddresses()
-  const contractABIs = useContractABIs()
+  const contractAddresses = useMemo(() => {
+    try {
+      return getContractAddresses(chainId)
+    } catch (error) {
+      console.warn('Failed to get contract addresses:', error)
+      return null
+    }
+  }, [chainId])
   
   // Use connected address if no userAddress provided
   const effectiveUserAddress = userAddress || connectedAddress
@@ -432,8 +424,8 @@ export function ContentPurchaseCard({
   const contentQuery = useContentById(contentId)
   const accessQuery = useHasContentAccess(effectiveUserAddress, contentId)
   
-  // Primary purchase flow hook (your existing USDC flow)
-  const primaryPurchaseFlow = useContentPurchaseFlow(contentId, effectiveUserAddress)
+  // Primary purchase flow hook (unified multi-token flow)
+  const primaryPurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress)
   
   // Token balance hooks for multi-payment support
   const usdcBalance = useTokenBalance(
@@ -452,9 +444,9 @@ export function ContentPurchaseCard({
   
   // Token allowance checking for USDC with timeout fallback
   const usdcAllowanceRaw = useTokenAllowance(
-    contractAddresses?.USDC || null,
+    contractAddresses?.USDC || undefined,
     effectiveUserAddress,
-    contractAddresses?.PAY_PER_VIEW || null
+    contractAddresses?.PAY_PER_VIEW || undefined
   )
 
   // State to track if allowance check is stuck
@@ -508,11 +500,11 @@ export function ContentPurchaseCard({
   // Price oracle for token conversions (with error handling)
   const ethPriceQuery = useReadContract({
     address: contractAddresses?.PRICE_ORACLE || undefined,
-    abi: contractABIs.PRICE_ORACLE_ABI,
+    abi: PRICE_ORACLE_ABI as any,
     functionName: 'getTokenPrice',
     args: contractAddresses ? ['0x0000000000000000000000000000000000000000', contractAddresses.USDC] : undefined,
     query: { 
-      enabled: !!(contractAddresses?.PRICE_ORACLE && contractABIs.PRICE_ORACLE_ABI.length > 0),
+      enabled: !!(contractAddresses?.PRICE_ORACLE && PRICE_ORACLE_ABI.length > 0),
       retry: 3,
       retryDelay: 1000
     }
@@ -520,11 +512,14 @@ export function ContentPurchaseCard({
 
   // Multi-payment state management
   const [paymentState, setPaymentState] = useState<MultiPaymentState>({
-    selectedMethod: PaymentMethod.DIRECT_USDC,
+    selectedMethod: PaymentMethod.USDC,
     availableTokens: {
-      [PaymentMethod.DIRECT_USDC]: null,
+      [PaymentMethod.USDC]: null,
       [PaymentMethod.ETH]: null,
-      [PaymentMethod.CUSTOM_TOKEN]: null
+      [PaymentMethod.WETH]: null,
+      [PaymentMethod.CBETH]: null,
+      [PaymentMethod.DAI]: null,
+      [PaymentMethod.OTHER_TOKEN]: null
     },
     customTokenAddress: '',
     showPaymentOptions: false,
@@ -549,12 +544,12 @@ export function ContentPurchaseCard({
     )
     
     const hasRequiredABIs = !!(
-      contractABIs.COMMERCE_PROTOCOL_INTEGRATION_ABI.length > 0 &&
-      contractABIs.PRICE_ORACLE_ABI.length > 0
+      COMMERCE_PROTOCOL_INTEGRATION_ABI.length > 0 &&
+      PRICE_ORACLE_ABI.length > 0
     )
     
     return hasRequiredContracts && hasRequiredABIs && enableMultiPayment
-  }, [contractAddresses, contractABIs, enableMultiPayment])
+  }, [contractAddresses, enableMultiPayment])
 
   /**
    * Robust Token Balance Checking
@@ -598,36 +593,51 @@ export function ContentPurchaseCard({
       console.log('💰 Created USDC token info:', usdcTokenInfo)
 
       const tokenInfos: Record<PaymentMethod, TokenInfo | null> = {
-        [PaymentMethod.DIRECT_USDC]: usdcTokenInfo,
+        [PaymentMethod.USDC]: usdcTokenInfo,
         [PaymentMethod.ETH]: null,
-        [PaymentMethod.CUSTOM_TOKEN]: null
+        [PaymentMethod.WETH]: null,
+        [PaymentMethod.CBETH]: null,
+        [PaymentMethod.DAI]: null,
+        [PaymentMethod.OTHER_TOKEN]: null
       }
 
-      // Only add advanced payment methods if multi-payment is supported
-      if (multiPaymentSupported) {
-        try {
-          // Calculate ETH requirements using price oracle data
-          const ethPriceInUsdc = typeof ethPriceQuery.data === 'bigint' ? ethPriceQuery.data : BigInt(2000000000) // Default $2000/ETH
-          const requiredEthAmount = ethPriceInUsdc > BigInt(0) ? 
-            (content.payPerViewPrice * BigInt(1e18)) / ethPriceInUsdc : 
-            BigInt(0)
-
-          tokenInfos[PaymentMethod.ETH] = {
-            address: '0x0000000000000000000000000000000000000000' as Address,
-            symbol: 'ETH',
-            name: 'Ethereum',
-            decimals: 18,
-            balance: ethBalance.data?.value || BigInt(0),
-            requiredAmount: requiredEthAmount,
-            hasEnoughBalance: (ethBalance.data?.value || BigInt(0)) >= requiredEthAmount,
-            needsApproval: false,
-            isLoading: ethBalance.isLoading || ethPriceQuery.isLoading,
-            error: ethBalance.error?.message || ethPriceQuery.error?.message
+      // Add all supported payment methods using the unified workflow
+      if (multiPaymentSupported && primaryPurchaseFlow) {
+        console.log('🔍 Checking available payment methods from unified flow...')
+        
+        // Use data from the unified purchase flow which handles all tokens
+        const availableMethods = primaryPurchaseFlow.availableMethods.map(config => config.id)
+        availableMethods.forEach((method: PaymentMethod) => {
+          const methodTokenInfo = primaryPurchaseFlow.supportedTokens.find(token => {
+            // Match token to payment method based on address or symbol
+            if (method === PaymentMethod.ETH) return token.isNative
+            if (method === PaymentMethod.USDC) return token.symbol === 'USDC'
+            if (method === PaymentMethod.WETH) return token.symbol === 'WETH'
+            if (method === PaymentMethod.CBETH) return token.symbol === 'cbETH'
+            if (method === PaymentMethod.DAI) return token.symbol === 'DAI'
+            return false
+          })
+          if (methodTokenInfo) {
+            console.log(`✅ Found ${methodTokenInfo.symbol} token info:`, {
+              balance: methodTokenInfo.formattedBalance,
+              hasEnoughBalance: methodTokenInfo.hasEnoughBalance,
+              needsApproval: methodTokenInfo.needsApproval
+            })
+            
+            tokenInfos[method] = {
+              address: methodTokenInfo.address,
+              symbol: methodTokenInfo.symbol,
+              name: methodTokenInfo.name,
+              decimals: methodTokenInfo.decimals,
+              balance: methodTokenInfo.balance || BigInt(0),
+              requiredAmount: methodTokenInfo.requiredAmount || BigInt(0),
+              hasEnoughBalance: methodTokenInfo.hasEnoughBalance,
+              needsApproval: methodTokenInfo.needsApproval,
+              isLoading: methodTokenInfo.isLoading,
+              error: methodTokenInfo.error
+            }
           }
-        } catch (error) {
-          console.warn('ETH payment option unavailable:', error)
-          // ETH remains null, gracefully handled
-        }
+        })
       }
 
       console.log('✅ Token balance check completed successfully', {
@@ -649,7 +659,7 @@ export function ContentPurchaseCard({
       setPaymentState(prev => ({
         ...prev,
         availableTokens: {
-          [PaymentMethod.DIRECT_USDC]: {
+          [PaymentMethod.USDC]: {
             address: contractAddresses?.USDC || '0x0000000000000000000000000000000000000000' as Address,
             symbol: 'USDC',
             name: 'USD Coin',
@@ -661,7 +671,10 @@ export function ContentPurchaseCard({
             error: 'Unable to check balance'
           },
           [PaymentMethod.ETH]: null,
-          [PaymentMethod.CUSTOM_TOKEN]: null
+          [PaymentMethod.WETH]: null,
+          [PaymentMethod.CBETH]: null,
+          [PaymentMethod.DAI]: null,
+          [PaymentMethod.OTHER_TOKEN]: null
         },
         isCheckingBalances: false,
         isInitialized: true,
@@ -704,9 +717,12 @@ export function ContentPurchaseCard({
         isInitialized: true,
         multiPaymentSupported: false,
         availableTokens: {
-          [PaymentMethod.DIRECT_USDC]: null,
+          [PaymentMethod.USDC]: null,
           [PaymentMethod.ETH]: null,
-          [PaymentMethod.CUSTOM_TOKEN]: null
+          [PaymentMethod.WETH]: null,
+          [PaymentMethod.CBETH]: null,
+          [PaymentMethod.DAI]: null,
+          [PaymentMethod.OTHER_TOKEN]: null
         },
         isCheckingBalances: false,
         errorMessage: null
@@ -729,7 +745,7 @@ export function ContentPurchaseCard({
             isInitialized: true,
             multiPaymentSupported: false,
             availableTokens: {
-              [PaymentMethod.DIRECT_USDC]: {
+              [PaymentMethod.USDC]: {
                 address: contractAddresses?.USDC || '0x0000000000000000000000000000000000000000' as Address,
                 symbol: 'USDC',
                 name: 'USD Coin',
@@ -742,7 +758,10 @@ export function ContentPurchaseCard({
                 error: usdcBalance.error?.message || 'Balance check timed out'
               },
               [PaymentMethod.ETH]: null,
-              [PaymentMethod.CUSTOM_TOKEN]: null
+              [PaymentMethod.WETH]: null,
+              [PaymentMethod.CBETH]: null,
+              [PaymentMethod.DAI]: null,
+              [PaymentMethod.OTHER_TOKEN]: null
             },
             isCheckingBalances: false,
             errorMessage: 'Advanced payment options unavailable - using USDC fallback'
@@ -781,8 +800,8 @@ export function ContentPurchaseCard({
     const tokens = paymentState.availableTokens
     
     // First preference: USDC if available and user has enough
-    if (tokens[PaymentMethod.DIRECT_USDC]?.hasEnoughBalance) {
-      return PaymentMethod.DIRECT_USDC
+    if (tokens[PaymentMethod.USDC]?.hasEnoughBalance) {
+      return PaymentMethod.USDC
     }
     
     // Second preference: ETH if available and user has enough
@@ -791,12 +810,12 @@ export function ContentPurchaseCard({
     }
     
     // Third preference: Custom token if available and user has enough
-    if (tokens[PaymentMethod.CUSTOM_TOKEN]?.hasEnoughBalance) {
-      return PaymentMethod.CUSTOM_TOKEN
+    if (tokens[PaymentMethod.OTHER_TOKEN]?.hasEnoughBalance) {
+      return PaymentMethod.OTHER_TOKEN
     }
     
     // Fallback to USDC (will show insufficient balance)
-    return PaymentMethod.DIRECT_USDC
+    return PaymentMethod.USDC
   }, [paymentState.availableTokens])
 
   /**
@@ -806,7 +825,7 @@ export function ContentPurchaseCard({
     const tokenInfo = paymentState.availableTokens[method]
     
     // Validate that the payment method is actually available
-    if (!tokenInfo && method !== PaymentMethod.DIRECT_USDC) {
+    if (!tokenInfo && method !== PaymentMethod.USDC) {
       setPaymentState(prev => ({
         ...prev,
         errorMessage: `${method} payment is not currently available`
@@ -854,7 +873,7 @@ export function ContentPurchaseCard({
 
       // Route to appropriate purchase method
       switch (paymentState.selectedMethod) {
-        case PaymentMethod.DIRECT_USDC:
+        case PaymentMethod.USDC:
           await handleDirectUSDCPurchase()
           break
         
@@ -866,7 +885,7 @@ export function ContentPurchaseCard({
           }
           break
         
-        case PaymentMethod.CUSTOM_TOKEN:
+        case PaymentMethod.OTHER_TOKEN:
           if (paymentState.multiPaymentSupported && paymentState.customTokenAddress) {
             await handleCustomTokenPurchase()
           } else {
@@ -922,14 +941,10 @@ export function ContentPurchaseCard({
    */
   const handleDirectUSDCPurchase = useCallback(async () => {
     try {
-      if (primaryPurchaseFlow.needsApproval) {
-        setPaymentState(prev => ({ ...prev, paymentStep: 'approving' }))
-        await primaryPurchaseFlow.approveAndPurchase()
-      } else {
-        await primaryPurchaseFlow.purchase()
-      }
+      setPaymentState(prev => ({ ...prev, paymentStep: 'executing' }))
+      await primaryPurchaseFlow.executePayment()
     } catch (error) {
-      console.error('USDC purchase failed:', error)
+      console.error('Purchase failed:', error)
       throw new Error(`USDC purchase failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }, [primaryPurchaseFlow])
@@ -938,7 +953,7 @@ export function ContentPurchaseCard({
    * ETH Purchase via Commerce Protocol
    */
   const handleETHPurchase = useCallback(async () => {
-    if (!contentQuery.data || !contractAddresses || !contractABIs.COMMERCE_PROTOCOL_INTEGRATION_ABI.length) {
+    if (!contentQuery.data || !contractAddresses || !COMMERCE_PROTOCOL_INTEGRATION_ABI.length) {
       throw new Error('ETH payment infrastructure not available')
     }
 
@@ -959,7 +974,7 @@ export function ContentPurchaseCard({
 
       await writeContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
-        abi: contractABIs.COMMERCE_PROTOCOL_INTEGRATION_ABI,
+        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as any,
         functionName: 'createPaymentIntent',
         args: [paymentRequest],
         value: selectedToken.requiredAmount
@@ -971,7 +986,7 @@ export function ContentPurchaseCard({
   }, [
     contentQuery.data,
     contractAddresses,
-    contractABIs,
+
     paymentState.availableTokens,
     contentId,
     writeContract
@@ -998,7 +1013,7 @@ export function ContentPurchaseCard({
     }
 
     // Get or create token info for the custom token
-    let selectedToken = paymentState.availableTokens[PaymentMethod.CUSTOM_TOKEN]
+    let selectedToken = paymentState.availableTokens[PaymentMethod.OTHER_TOKEN]
     
     // If no token info exists, create basic info
     if (!selectedToken) {
@@ -1046,7 +1061,7 @@ export function ContentPurchaseCard({
 
         await writeContract({
           address: tokenAddress,
-          abi: contractABIs.ERC20_ABI,
+          abi: ERC20_ABI as any,
           functionName: 'approve',
           args: [contractAddresses.COMMERCE_INTEGRATION, requiredAmount],
         })
@@ -1072,7 +1087,7 @@ export function ContentPurchaseCard({
 
       await writeContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
-        abi: contractABIs.COMMERCE_PROTOCOL_INTEGRATION_ABI,
+        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as any,
         functionName: 'createPaymentIntent',
         args: [paymentRequest]
       })
@@ -1105,7 +1120,7 @@ export function ContentPurchaseCard({
   }, [
     contentQuery.data,
     contractAddresses,
-    contractABIs,
+
     paymentState.customTokenAddress,
     paymentState.availableTokens,
     contentId,
@@ -1135,9 +1150,7 @@ export function ContentPurchaseCard({
       errorMessage: null
     }))
     
-    if (primaryPurchaseFlow.reset) {
-      primaryPurchaseFlow.reset()
-    }
+    primaryPurchaseFlow.resetPayment()
     
     // Refresh data
     if (contentQuery.data) {
@@ -1248,7 +1261,7 @@ export function ContentPurchaseCard({
             )}
 
             {/* Multi-Payment Options Display */}
-            {(enableMultiPayment && paymentState.multiPaymentSupported && primaryPurchaseFlow.paymentOptions.length > 1) ? (
+            {(enableMultiPayment && paymentState.multiPaymentSupported && primaryPurchaseFlow.availableMethods.length > 1) ? (
               <PaymentOptionsDisplay
                 purchaseFlow={primaryPurchaseFlow}
                 onPaymentMethodSelect={handlePaymentMethodChange}
@@ -1336,10 +1349,10 @@ function PaymentOptionsDisplay({
   purchaseFlow,
   onPaymentMethodSelect
 }: {
-  purchaseFlow: ContentPurchaseFlowResult
+  purchaseFlow: UnifiedPurchaseFlowResult
   onPaymentMethodSelect: (method: PaymentMethod) => void
 }) {
-  if (purchaseFlow.paymentOptions.length <= 1) {
+  if (purchaseFlow.availableMethods.length <= 1) {
     return null // Don't show options if only one method available
   }
 
@@ -1347,22 +1360,30 @@ function PaymentOptionsDisplay({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-gray-700">Payment Options</span>
-        {purchaseFlow.recommendedPayment && (
-          <Badge variant="secondary" className="text-xs">
-            Recommended: {purchaseFlow.recommendedPayment.symbol}
-          </Badge>
-        )}
+        <Badge variant="secondary" className="text-xs">
+          Selected: {purchaseFlow.selectedToken?.symbol || 'None'}
+        </Badge>
       </div>
 
       <div className="grid gap-2">
-        {purchaseFlow.paymentOptions.map((option) => {
-          const isSelected = option.method === purchaseFlow.selectedMethod
-          const canAfford = option.canAfford
+        {purchaseFlow.availableMethods.map((methodConfig) => {
+          const method = methodConfig.id
+          const isSelected = method === purchaseFlow.selectedMethod
+          const tokenInfo = purchaseFlow.supportedTokens.find(token => {
+            // Match token to payment method based on address or symbol
+            if (method === PaymentMethod.ETH) return token.isNative
+            if (method === PaymentMethod.USDC) return token.symbol === 'USDC'
+            if (method === PaymentMethod.WETH) return token.symbol === 'WETH'
+            if (method === PaymentMethod.CBETH) return token.symbol === 'cbETH'
+            if (method === PaymentMethod.DAI) return token.symbol === 'DAI'
+            return false
+          })
+          const canAfford = tokenInfo?.hasEnoughBalance || false
           
           return (
             <button
-              key={option.method}
-              onClick={() => onPaymentMethodSelect(option.method)}
+              key={method}
+              onClick={() => onPaymentMethodSelect(method)}
               disabled={!canAfford}
               className={`
                 relative flex items-center justify-between p-3 rounded-lg border transition-colors
@@ -1377,41 +1398,54 @@ function PaymentOptionsDisplay({
               <div className="flex items-center space-x-3">
                 <div className={`
                   w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
-                  ${option.method === PaymentMethod.ETH 
-                    ? 'bg-purple-100 text-purple-700' 
+                  ${method === PaymentMethod.ETH 
+                    ? 'bg-purple-100 text-purple-700'
+                    : method === PaymentMethod.WETH
+                    ? 'bg-blue-100 text-blue-700'
+                    : method === PaymentMethod.CBETH
+                    ? 'bg-orange-100 text-orange-700'
+                    : method === PaymentMethod.DAI
+                    ? 'bg-yellow-100 text-yellow-700'
                     : 'bg-green-100 text-green-700'
                   }
                 `}>
-                  {option.symbol === 'ETH' ? '⟠' : '$'}
+                  {method === PaymentMethod.ETH ? '⟠' : 
+                   method === PaymentMethod.WETH ? '🔗' :
+                   method === PaymentMethod.CBETH ? '🏛️' :
+                   method === PaymentMethod.DAI ? '🔶' :
+                   '$'}
                 </div>
                 
                 <div className="text-left">
                   <div className="font-medium text-sm text-gray-900">
-                    {option.symbol}
+                    {tokenInfo?.symbol || 'Token'}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {option.estimatedTime} • {option.gasEstimate} gas
+                    {method === PaymentMethod.USDC ? '~15s' :
+                     method === PaymentMethod.ETH ? '~45s' :
+                     method === PaymentMethod.DAI ? '~30s' :
+                     '~45s'} • {method === PaymentMethod.USDC || method === PaymentMethod.DAI ? 'Low' : 'Medium'} gas
                   </div>
                 </div>
               </div>
 
               <div className="text-right">
                 <div className={`text-sm font-medium ${canAfford ? 'text-gray-900' : 'text-red-600'}`}>
-                  {option.balance !== null 
+                  {tokenInfo?.balance !== null 
                     ? formatCurrency(
-                        option.balance, 
-                        option.symbol === 'USDC' ? 6 : 18, 
-                        option.symbol
+                        tokenInfo?.balance || BigInt(0), 
+                        tokenInfo?.decimals || 18, 
+                        tokenInfo?.symbol || 'Token'
                       )
                     : '---'
                   }
                 </div>
                 <div className="text-xs text-gray-500">
-                  Need: {option.requiredAmount 
+                  Need: {tokenInfo?.requiredAmount 
                     ? formatCurrency(
-                        option.requiredAmount, 
-                        option.symbol === 'USDC' ? 6 : 18, 
-                        option.symbol
+                        tokenInfo.requiredAmount, 
+                        tokenInfo?.decimals || 18, 
+                        tokenInfo?.symbol || 'Token'
                       )
                     : '---'
                   }
@@ -1424,7 +1458,7 @@ function PaymentOptionsDisplay({
                 </div>
               )}
 
-              {option.recommended && canAfford && (
+              {isSelected && canAfford && (
                 <div className="absolute -top-1 -right-1">
                   <Badge variant="default" className="text-xs bg-green-600">
                     Best
@@ -1436,7 +1470,7 @@ function PaymentOptionsDisplay({
         })}
       </div>
 
-      {!purchaseFlow.canAfford && (
+      {!purchaseFlow.canExecutePayment && (
         <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-start space-x-2">
             <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -1550,7 +1584,7 @@ function PaymentProgressDisplay({
   method: PaymentMethod 
 }) {
   const message = step === 'approving' ? 
-    `Approving ${method === PaymentMethod.DIRECT_USDC ? 'USDC' : 'token'} spending...` :
+    `Approving ${method === PaymentMethod.USDC ? 'USDC' : 'token'} spending...` :
     'Processing payment...'
   
   const progress = step === 'approving' ? 60 : 80
@@ -1602,7 +1636,7 @@ function PurchaseButton({
   const canPurchase = selectedToken?.hasEnoughBalance ?? false
   const needsApproval = selectedToken?.needsApproval ?? false
   
-  const buttonText = needsApproval && selectedMethod === PaymentMethod.DIRECT_USDC ? 
+  const buttonText = needsApproval && selectedMethod === PaymentMethod.USDC ? 
     'Approve & Purchase' : 
     'Purchase Content'
   const ButtonIcon = needsApproval ? CreditCard : ShoppingCart
@@ -1659,7 +1693,7 @@ function CompactPurchaseCard({
                 hasAccess={hasAccess}
                 selectedToken={selectedToken}
                 paymentStep={paymentStep}
-                selectedMethod={PaymentMethod.DIRECT_USDC}
+                selectedMethod={PaymentMethod.USDC}
                 onClick={onPurchaseAction}
                 className="text-xs px-2 py-1 h-8"
               />
@@ -1702,7 +1736,7 @@ function MinimalPurchaseCard({
           hasAccess={hasAccess}
           selectedToken={selectedToken}
           paymentStep={paymentStep}
-          selectedMethod={PaymentMethod.DIRECT_USDC}
+          selectedMethod={PaymentMethod.USDC}
           onClick={onPurchaseAction}
           className="text-xs px-2 py-1 h-7"
         />

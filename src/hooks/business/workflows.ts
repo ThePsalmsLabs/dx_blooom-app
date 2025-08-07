@@ -26,9 +26,10 @@ import {
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
-import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI, ERC20_ABI } from '@/lib/contracts/abis'
+import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import type { Creator, ContentCategory, Content } from '@/types/contracts'
+
 
 // ===== ENUMS AND INTERFACES =====
 
@@ -36,9 +37,117 @@ import type { Creator, ContentCategory, Content } from '@/types/contracts'
  * Supported Payment Methods Enum
  */
 export enum PaymentMethod {
-  DIRECT_USDC = 'DIRECT_USDC',    // Direct USDC transfer to creator
-  ETH = 'ETH',                    // ETH payment via Commerce Protocol
-  CUSTOM_TOKEN = 'CUSTOM_TOKEN'   // Any ERC-20 token via Commerce Protocol
+  USDC = 0,        // Direct USDC payment via PayPerView.purchaseContentDirect()
+  ETH = 1,         // ETH payment via Commerce Protocol
+  WETH = 2,        // Wrapped ETH payment via Commerce Protocol
+  CBETH = 3,       // Coinbase ETH payment via Commerce Protocol
+  DAI = 4,         // DAI stablecoin payment via Commerce Protocol
+  OTHER_TOKEN = 99 // Custom token payment via Commerce Protocol
+}
+
+export enum PaymentTier {
+  SIMPLE = 'SIMPLE',     // Direct USDC only
+  ADVANCED = 'ADVANCED'  // Multi-token via payment intents
+}
+
+/**
+ * Base Sepolia Testnet Token Addresses
+ * These are popular tokens available on Base Sepolia for testing
+ */
+export const BASE_SEPOLIA_TOKENS = {
+  USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as Address,
+  WETH: '0x4200000000000000000000000000000000000006' as Address, // Wrapped ETH on Base
+  DAI: '0xf175520c52418dfe19c8098071a252da48cd1c19' as Address,  // DAI on Base Sepolia
+  CBETH: '0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2' as Address, // cbETH on Base Sepolia
+} as const
+
+/**
+ * Token Configuration for Multi-Payment Support
+ */
+export interface TokenConfig {
+  readonly address: Address
+  readonly symbol: string
+  readonly name: string
+  readonly decimals: number
+  readonly isNative: boolean
+  readonly isStablecoin: boolean
+  readonly estimatedGas: 'Low' | 'Medium' | 'High'
+  readonly poolFee: number // Uniswap V3 pool fee (in basis points)
+}
+
+export const SUPPORTED_TOKENS: Record<PaymentMethod, TokenConfig | null> = {
+  [PaymentMethod.USDC]: {
+    address: BASE_SEPOLIA_TOKENS.USDC,
+    symbol: 'USDC',
+    name: 'USD Coin',
+    decimals: 6,
+    isNative: false,
+    isStablecoin: true,
+    estimatedGas: 'Low',
+    poolFee: 100 // 0.01%
+  },
+  [PaymentMethod.ETH]: {
+    address: '0x0000000000000000000000000000000000000000' as Address,
+    symbol: 'ETH',
+    name: 'Ethereum',
+    decimals: 18,
+    isNative: true,
+    isStablecoin: false,
+    estimatedGas: 'Medium',
+    poolFee: 500 // 0.05%
+  },
+  [PaymentMethod.WETH]: {
+    address: BASE_SEPOLIA_TOKENS.WETH,
+    symbol: 'WETH',
+    name: 'Wrapped Ethereum',
+    decimals: 18,
+    isNative: false,
+    isStablecoin: false,
+    estimatedGas: 'Medium',
+    poolFee: 500 // 0.05%
+  },
+  [PaymentMethod.CBETH]: {
+    address: BASE_SEPOLIA_TOKENS.CBETH,
+    symbol: 'cbETH',
+    name: 'Coinbase Wrapped Staked ETH',
+    decimals: 18,
+    isNative: false,
+    isStablecoin: false,
+    estimatedGas: 'Medium',
+    poolFee: 500 // 0.05%
+  },
+  [PaymentMethod.DAI]: {
+    address: BASE_SEPOLIA_TOKENS.DAI,
+    symbol: 'DAI',
+    name: 'Dai Stablecoin',
+    decimals: 18,
+    isNative: false,
+    isStablecoin: true,
+    estimatedGas: 'Low',
+    poolFee: 100 // 0.01%
+  },
+  [PaymentMethod.OTHER_TOKEN]: null // Will be dynamically configured
+}
+
+interface ContentDetails {
+  creator: Address
+  ipfsHash: string
+  title: string
+  description: string
+  category: number
+  payPerViewPrice: bigint
+  isActive: boolean
+  createdAt: bigint
+  purchaseCount: bigint
+  tags: readonly string[]
+  isReported: boolean
+  reportCount: bigint
+}
+
+interface PaymentIntentResult {
+  intentId: string  // bytes16 returned as hex string
+  expectedAmount: bigint
+  deadline: bigint
 }
 
 /**
@@ -81,22 +190,31 @@ export interface PurchaseProgress {
 /**
  * Token Information Interface
  */
-export interface TokenInfo {
-  readonly address: Address
-  readonly symbol: string
-  readonly name: string
-  readonly decimals: number
-  readonly isNative: boolean
-  readonly balance: bigint | null
-  readonly allowance: bigint | null
-  readonly priceInUSDC: bigint | null      // Current price in USDC
-  readonly requiredAmount: bigint | null    // Amount needed for purchase
-  readonly priceLoading: boolean
-  readonly priceError: Error | null
-  readonly hasEnoughBalance: boolean        // Whether user has enough balance
-  readonly needsApproval: boolean          // Whether approval is needed
-  readonly isLoading: boolean              // Whether balance/allowance data is loading
-  readonly error: string | null            // Error message if any
+interface TokenInfo {
+  address: Address
+  symbol: string
+  name: string
+  decimals: number
+  isNative: boolean
+  balance: bigint | null
+  formattedBalance: string
+  hasEnoughBalance: boolean
+  needsApproval: boolean
+  allowance: bigint | null
+  requiredAmount: bigint | null
+  priceInUSDC?: bigint | null
+  priceLoading: boolean
+  priceError: string | null
+  isLoading: boolean
+  error?: string
+}
+
+interface ContentPurchaseFlowState {
+  step: 'idle' | 'loading_content' | 'checking_access' | 'insufficient_balance' | 'need_approval' | 'can_purchase' | 'approving_tokens' | 'purchasing' | 'completed' | 'error'
+  message: string
+  progress: number
+  transactionHash?: string
+  error?: Error
 }
 
 /**
@@ -168,8 +286,8 @@ export interface UnifiedPurchaseFlowResult {
  * Default Configuration for Unified Purchase Flow
  */
 const DEFAULT_CONFIG: UnifiedPurchaseFlowConfig = {
-  enabledMethods: [PaymentMethod.DIRECT_USDC, PaymentMethod.ETH, PaymentMethod.CUSTOM_TOKEN],
-  defaultMethod: PaymentMethod.DIRECT_USDC,
+  enabledMethods: [PaymentMethod.USDC, PaymentMethod.ETH, PaymentMethod.OTHER_TOKEN],
+  defaultMethod: PaymentMethod.USDC,
   defaultSlippage: 100, // 1%
   maxSlippage: 1000,    // 10%
   priceUpdateInterval: 30000, // 30 seconds
@@ -182,7 +300,7 @@ const DEFAULT_CONFIG: UnifiedPurchaseFlowConfig = {
  */
 const PAYMENT_METHOD_CONFIGS: ReadonlyArray<PaymentMethodConfig> = [
   {
-    id: PaymentMethod.DIRECT_USDC,
+    id: PaymentMethod.USDC,
     name: 'USDC Direct',
     description: 'Pay directly with USDC - fastest and cheapest option',
     icon: '💵',
@@ -195,7 +313,7 @@ const PAYMENT_METHOD_CONFIGS: ReadonlyArray<PaymentMethodConfig> = [
   {
     id: PaymentMethod.ETH,
     name: 'Ethereum (ETH)',
-    description: 'Pay with ETH via Commerce Protocol with automatic conversion',
+    description: 'Pay with native ETH via Commerce Protocol',
     icon: '⟠',
     estimatedTime: '~45 seconds',
     gasEstimate: 'Medium',
@@ -204,7 +322,40 @@ const PAYMENT_METHOD_CONFIGS: ReadonlyArray<PaymentMethodConfig> = [
     isCommerceProtocol: true
   },
   {
-    id: PaymentMethod.CUSTOM_TOKEN,
+    id: PaymentMethod.WETH,
+    name: 'Wrapped ETH (WETH)',
+    description: 'Pay with Wrapped ETH - excellent liquidity',
+    icon: '🔗',
+    estimatedTime: '~45 seconds',
+    gasEstimate: 'Medium',
+    requiresApproval: true,
+    supportsSlippage: true,
+    isCommerceProtocol: true
+  },
+  {
+    id: PaymentMethod.CBETH,
+    name: 'Coinbase ETH (cbETH)',
+    description: 'Pay with Coinbase staked ETH',
+    icon: '🏛️',
+    estimatedTime: '~45 seconds',
+    gasEstimate: 'Medium',
+    requiresApproval: true,
+    supportsSlippage: true,
+    isCommerceProtocol: true
+  },
+  {
+    id: PaymentMethod.DAI,
+    name: 'DAI Stablecoin',
+    description: 'Pay with DAI stablecoin - stable value',
+    icon: '🔶',
+    estimatedTime: '~30 seconds',
+    gasEstimate: 'Low',
+    requiresApproval: true,
+    supportsSlippage: true,
+    isCommerceProtocol: true
+  },
+  {
+    id: PaymentMethod.OTHER_TOKEN,
     name: 'Custom Token',
     description: 'Pay with any supported ERC-20 token',
     icon: '🎯',
@@ -287,30 +438,51 @@ export function useUnifiedContentPurchaseFlow(
   }, [contractAddresses, finalConfig.enabledMethods])
 
   /**
-   * Current Token Information
+   * Current Token Information with Multi-Token Support
    */
   const selectedToken = useMemo((): TokenInfo | null => {
     if (!contractAddresses) return null
 
-    const tokenAddress = selectedMethod === PaymentMethod.DIRECT_USDC 
-      ? contractAddresses.USDC
-      : selectedMethod === PaymentMethod.ETH
-      ? '0x0000000000000000000000000000000000000000' as Address // ETH placeholder
-      : customTokenAddress
+    // Get token configuration for selected method
+    const tokenConfig = SUPPORTED_TOKENS[selectedMethod]
+    if (!tokenConfig && selectedMethod !== PaymentMethod.OTHER_TOKEN) return null
 
-    if (!tokenAddress) return null
+    // Determine token address
+    let tokenAddress: Address
+    let symbol: string
+    let name: string
+    let decimals: number
+    let isNative: boolean
 
+    if (selectedMethod === PaymentMethod.OTHER_TOKEN && customTokenAddress) {
+      tokenAddress = customTokenAddress
+      symbol = 'TOKEN'
+      name = 'Custom Token'
+      decimals = 18
+      isNative = false
+    } else if (tokenConfig) {
+      tokenAddress = tokenConfig.address
+      symbol = tokenConfig.symbol
+      name = tokenConfig.name
+      decimals = tokenConfig.decimals
+      isNative = tokenConfig.isNative
+    } else {
+      return null
+    }
+
+    // Check if we have cached token info
     const cached = tokenPrices.get(tokenAddress)
     if (cached) return cached
 
     // Return basic info for uncached tokens
     return {
       address: tokenAddress,
-      symbol: selectedMethod === PaymentMethod.ETH ? 'ETH' : selectedMethod === PaymentMethod.DIRECT_USDC ? 'USDC' : 'TOKEN',
-      name: selectedMethod === PaymentMethod.ETH ? 'Ethereum' : selectedMethod === PaymentMethod.DIRECT_USDC ? 'USD Coin' : 'Custom Token',
-      decimals: selectedMethod === PaymentMethod.ETH ? 18 : selectedMethod === PaymentMethod.DIRECT_USDC ? 6 : 18,
-      isNative: selectedMethod === PaymentMethod.ETH,
+      symbol,
+      name,
+      decimals,
+      isNative,
       balance: null,
+      formattedBalance: '0.00',
       allowance: null,
       priceInUSDC: null,
       requiredAmount: null,
@@ -319,22 +491,23 @@ export function useUnifiedContentPurchaseFlow(
       hasEnoughBalance: false,
       needsApproval: false,
       isLoading: true,
-      error: null
+      error: undefined
     }
   }, [selectedMethod, customTokenAddress, contractAddresses, tokenPrices])
 
   /**
-   * Price Calculation with Oracle Integration
+   * Enhanced Price Calculation with Multi-Token Support
    */
   const calculateTokenPrice = useCallback(async (
     tokenAddress: Address,
-    usdcAmount: bigint
+    usdcAmount: bigint,
+    paymentMethod: PaymentMethod
   ): Promise<{ requiredAmount: bigint; priceInUSDC: bigint } | null> => {
     if (!contractAddresses) return null
 
     try {
       // For direct USDC, return 1:1 pricing
-      if (tokenAddress === contractAddresses.USDC) {
+      if (tokenAddress === contractAddresses.USDC || paymentMethod === PaymentMethod.USDC) {
         return {
           requiredAmount: usdcAmount,
           priceInUSDC: usdcAmount
@@ -347,13 +520,17 @@ export function useUnifiedContentPurchaseFlow(
         transport: http()
       })
 
-      // For ETH, use PriceOracle.convertFromUSDC
-      if (tokenAddress === '0x0000000000000000000000000000000000000000') {
+      // Get token configuration
+      const tokenConfig = SUPPORTED_TOKENS[paymentMethod]
+      const poolFee = tokenConfig?.poolFee || 3000
+
+      // For ETH, use PriceOracle.getETHPrice
+      if (tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH) {
         const ethAmount = await publicClient.readContract({
           address: contractAddresses.PRICE_ORACLE,
-          abi: PRICE_ORACLE_ABI,
-          functionName: 'convertFromUSDC',
-          args: [tokenAddress, usdcAmount]
+          abi: PRICE_ORACLE_ABI as any,
+          functionName: 'getETHPrice' as any,
+          args: [usdcAmount]
         }) as bigint
 
         return {
@@ -362,12 +539,12 @@ export function useUnifiedContentPurchaseFlow(
         }
       }
 
-      // For custom tokens, use PriceOracle.convertFromUSDC
+      // For all other tokens, use PriceOracle.getTokenAmountForUSDC
       const tokenAmount = await publicClient.readContract({
         address: contractAddresses.PRICE_ORACLE,
-        abi: PRICE_ORACLE_ABI,
-        functionName: 'convertFromUSDC',
-        args: [tokenAddress, usdcAmount]
+        abi: PRICE_ORACLE_ABI as any,
+        functionName: 'getTokenAmountForUSDC' as any,
+        args: [tokenAddress, usdcAmount, poolFee]
       }) as bigint
 
       return {
@@ -375,25 +552,30 @@ export function useUnifiedContentPurchaseFlow(
         priceInUSDC: usdcAmount
       }
     } catch (error) {
-      console.error('Price calculation failed:', error)
+      console.error(`Price calculation failed for ${paymentMethod}:`, error)
       return null
     }
   }, [contractAddresses, chainId])
 
   /**
-   * Token Balance and Allowance Fetching
+   * Enhanced Token Balance and Allowance Fetching with Multi-Token Support
    */
-  const fetchTokenInfo = useCallback(async (tokenAddress: Address): Promise<TokenInfo> => {
+  const fetchTokenInfo = useCallback(async (
+    tokenAddress: Address, 
+    paymentMethod: PaymentMethod
+  ): Promise<TokenInfo> => {
     if (!contractAddresses || !userAddress) {
       throw new Error('Missing required data for token info fetch')
     }
 
-    const isEth = tokenAddress === '0x0000000000000000000000000000000000000000'
-    const isUsdc = tokenAddress === contractAddresses.USDC
+    // Get token configuration
+    const tokenConfig = SUPPORTED_TOKENS[paymentMethod]
+    const isEth = tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH
+    const isUsdc = tokenAddress === contractAddresses.USDC || paymentMethod === PaymentMethod.USDC
 
     // Calculate required amount for current content
     const contentPrice = contentQuery.data?.payPerViewPrice || BigInt(0)
-    const priceCalculation = await calculateTokenPrice(tokenAddress, contentPrice)
+    const priceCalculation = await calculateTokenPrice(tokenAddress, contentPrice, paymentMethod)
 
     // Create public client for direct contract reads
     const publicClient = createPublicClient({
@@ -401,11 +583,24 @@ export function useUnifiedContentPurchaseFlow(
       transport: http()
     })
 
+    // Determine token metadata
+    const symbol = tokenConfig?.symbol || (isEth ? 'ETH' : isUsdc ? 'USDC' : 'TOKEN')
+    const name = tokenConfig?.name || (isEth ? 'Ethereum' : isUsdc ? 'USD Coin' : 'Custom Token')
+    const decimals = tokenConfig?.decimals || (isEth ? 18 : isUsdc ? 6 : 18)
+    const isNative = tokenConfig?.isNative || isEth
+
     // Fetch balance
     let balance: bigint | null = null
+    let formattedBalance = '0.00'
+    
     if (isEth) {
-      // For ETH, we'll use a placeholder - in production you'd fetch actual ETH balance
-      balance = BigInt(0) 
+      // For ETH, fetch actual balance
+      try {
+        balance = await publicClient.getBalance({ address: userAddress })
+        formattedBalance = (Number(balance) / 1e18).toFixed(6)
+      } catch (error) {
+        console.error('ETH balance fetch failed:', error)
+      }
     } else {
       // ERC-20 token balance
       try {
@@ -415,83 +610,108 @@ export function useUnifiedContentPurchaseFlow(
           functionName: 'balanceOf',
           args: [userAddress]
         }) as bigint
+        formattedBalance = (Number(balance) / Math.pow(10, decimals)).toFixed(6)
       } catch (error) {
-        console.error('Balance fetch failed:', error)
+        console.error(`${symbol} balance fetch failed:`, error)
       }
     }
 
     // Fetch allowance (not applicable for ETH)
     let allowance: bigint | null = null
-    if (!isEth) {
+    if (!isEth && contractAddresses.PAY_PER_VIEW && contractAddresses.COMMERCE_INTEGRATION) {
       try {
         const spender = isUsdc ? contractAddresses.PAY_PER_VIEW : contractAddresses.COMMERCE_INTEGRATION
-        allowance = await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20_ABI,
-          functionName: 'allowance',
-          args: [userAddress, spender]
-        }) as bigint
+        if (spender) {
+          allowance = await publicClient.readContract({
+            address: tokenAddress,
+            abi: ERC20_ABI,
+            functionName: 'allowance',
+            args: [userAddress, spender]
+          }) as bigint
+        }
       } catch (error) {
-        console.error('Allowance fetch failed:', error)
+        console.error(`${symbol} allowance fetch failed:`, error)
       }
     }
 
+    const requiredAmount = priceCalculation?.requiredAmount || null
+    const hasEnoughBalance = balance !== null && requiredAmount !== null ? balance >= requiredAmount : false
+    const needsApproval = !isEth && allowance !== null && requiredAmount !== null ? allowance < requiredAmount : false
+
     return {
       address: tokenAddress,
-      symbol: isEth ? 'ETH' : isUsdc ? 'USDC' : 'TOKEN',
-      name: isEth ? 'Ethereum' : isUsdc ? 'USD Coin' : 'Custom Token',
-      decimals: isEth ? 18 : isUsdc ? 6 : 18,
-      isNative: isEth,
+      symbol,
+      name,
+      decimals,
+      isNative,
       balance,
+      formattedBalance,
       allowance,
       priceInUSDC: priceCalculation?.priceInUSDC || null,
-      requiredAmount: priceCalculation?.requiredAmount || null,
+      requiredAmount,
       priceLoading: false,
       priceError: null,
-      hasEnoughBalance: (balance || BigInt(0)) >= contentPrice,
-      needsApproval: (allowance || BigInt(0)) < contentPrice,
+      hasEnoughBalance,
+      needsApproval,
       isLoading: false,
-      error: null
+      error: undefined
     }
-  }, [contractAddresses, userAddress, contentQuery.data, calculateTokenPrice])
+  }, [contractAddresses, userAddress, contentQuery.data, calculateTokenPrice, chainId])
 
   /**
-   * Price Refresh Function
+   * Enhanced Price Refresh Function for All Supported Tokens
    */
   const refreshPrices = useCallback(async (): Promise<void> => {
     if (!contractAddresses || !contentQuery.data) return
 
-    const tokensToUpdate = [
-      contractAddresses.USDC,
-      '0x0000000000000000000000000000000000000000' as Address, // ETH
-      ...(customTokenAddress ? [customTokenAddress] : [])
-    ]
-
     const updatedPrices = new Map<Address, TokenInfo>()
 
-    for (const tokenAddress of tokensToUpdate) {
-      try {
-        const tokenInfo = await fetchTokenInfo(tokenAddress)
-        updatedPrices.set(tokenAddress, tokenInfo)
-      } catch (error) {
-        console.error(`Failed to fetch info for token ${tokenAddress}:`, error)
-        // Keep existing data if fetch fails
-        setTokenPrices(prevPrices => {
-          const existing = prevPrices.get(tokenAddress)
-          if (existing) {
-            updatedPrices.set(tokenAddress, {
-              ...existing,
-              priceError: error instanceof Error ? error : new Error('Price fetch failed')
-            })
+    // Get all payment methods to check
+    const methodsToCheck = Object.keys(SUPPORTED_TOKENS).map(key => parseInt(key) as PaymentMethod)
+    
+    for (const method of methodsToCheck) {
+      if (method === PaymentMethod.OTHER_TOKEN) {
+        // Handle custom token if set
+        if (customTokenAddress) {
+          try {
+            const tokenInfo = await fetchTokenInfo(customTokenAddress, method)
+            updatedPrices.set(customTokenAddress, tokenInfo)
+          } catch (error) {
+            console.error(`Failed to fetch custom token info:`, error)
           }
-          return updatedPrices
+        }
+        continue
+      }
+
+      const tokenConfig = SUPPORTED_TOKENS[method]
+      if (!tokenConfig) continue
+
+      try {
+        const tokenInfo = await fetchTokenInfo(tokenConfig.address, method)
+        updatedPrices.set(tokenConfig.address, tokenInfo)
+        console.log(`✅ Updated ${tokenConfig.symbol} info:`, {
+          symbol: tokenInfo.symbol,
+          balance: tokenInfo.formattedBalance,
+          hasEnoughBalance: tokenInfo.hasEnoughBalance,
+          needsApproval: tokenInfo.needsApproval
         })
-        return
+      } catch (error) {
+        console.error(`❌ Failed to fetch ${tokenConfig.symbol} info:`, error)
+        // Keep existing data if fetch fails
+        const existing = tokenPrices.get(tokenConfig.address)
+        if (existing) {
+          updatedPrices.set(tokenConfig.address, {
+            ...existing,
+            priceError: error instanceof Error ? error.message : 'Price fetch failed',
+            priceLoading: false
+          })
+        }
       }
     }
 
     setTokenPrices(updatedPrices)
     setPriceUpdateCounter(prev => prev + 1)
+    console.log(`💰 Price refresh completed for ${updatedPrices.size} tokens`)
   }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo])
 
   /**
@@ -521,7 +741,7 @@ export function useUnifiedContentPurchaseFlow(
     setCustomTokenAddress(address)
     
     // If currently on custom token method, refresh prices
-    if (selectedMethod === PaymentMethod.CUSTOM_TOKEN) {
+    if (selectedMethod === PaymentMethod.OTHER_TOKEN) {
       refreshPrices()
     }
   }, [customTokenAddress, selectedMethod])
@@ -544,7 +764,7 @@ export function useUnifiedContentPurchaseFlow(
         error: null
       })
 
-      if (selectedMethod === PaymentMethod.DIRECT_USDC) {
+      if (selectedMethod === PaymentMethod.USDC) {
         // Direct USDC payment flow
         const usdcAllowance = selectedToken?.allowance || BigInt(0)
         const requiredAmount = contentQuery.data.payPerViewPrice
@@ -583,41 +803,54 @@ export function useUnifiedContentPurchaseFlow(
         await purchaseContent.write(contentId)
 
       } else {
-        // Commerce Protocol payment flow
+        // Commerce Protocol payment flow for multi-token payments
         setExecutionState(prev => ({
           ...prev,
           phase: 'creating_intent',
           progress: 20,
-          message: 'Creating payment intent...'
+          message: `Creating ${selectedToken?.symbol || 'token'} payment intent...`
         }))
 
-        const paymentToken = selectedMethod === PaymentMethod.ETH 
-          ? '0x0000000000000000000000000000000000000000' as Address
-          : customTokenAddress!
+        // Get token configuration
+        const tokenConfig = SUPPORTED_TOKENS[selectedMethod]
+        let paymentToken: Address
+
+        if (selectedMethod === PaymentMethod.ETH) {
+          paymentToken = '0x0000000000000000000000000000000000000000' as Address
+        } else if (selectedMethod === PaymentMethod.OTHER_TOKEN && customTokenAddress) {
+          paymentToken = customTokenAddress
+        } else if (tokenConfig) {
+          paymentToken = tokenConfig.address
+        } else {
+          throw new Error(`Invalid payment method: ${selectedMethod}`)
+        }
 
         // Create payment intent through Commerce Protocol Integration
         const paymentRequest = {
-          user: userAddress,
-          creator: contentQuery.data.creator,
           paymentType: 0, // PayPerView
+          creator: contentQuery.data.creator,
           contentId,
           paymentToken,
           maxSlippage: BigInt(slippageTolerance),
           deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
         }
 
-        await writeCommerceContract({
+        console.log(`🚀 Creating payment intent for ${selectedToken?.symbol}:`, paymentRequest)
+
+        const result = await writeCommerceContract({
           address: contractAddresses.COMMERCE_INTEGRATION,
-          abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
-          functionName: 'createPaymentIntent',
+          abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as any,
+          functionName: 'createPaymentIntent' as any,
           args: [paymentRequest]
         })
+
+        console.log(`✅ Payment intent created:`, result)
 
         setExecutionState(prev => ({
           ...prev,
           phase: 'waiting_signature',
           progress: 40,
-          message: 'Waiting for payment authorization...'
+          message: 'Payment intent created. Waiting for backend signature...'
         }))
       }
 
@@ -715,7 +948,7 @@ export function useUnifiedContentPurchaseFlow(
   }, [selectedToken])
 
   const finalCost = useMemo(() => {
-    if (!estimatedCost || selectedMethod === PaymentMethod.DIRECT_USDC) {
+    if (!estimatedCost || selectedMethod === PaymentMethod.USDC) {
       return estimatedCost
     }
     
@@ -751,7 +984,7 @@ export function useUnifiedContentPurchaseFlow(
    * Price Impact Calculation
    */
   const priceImpact = useMemo(() => {
-    if (!estimatedCost || !finalCost || selectedMethod === PaymentMethod.DIRECT_USDC) {
+    if (!estimatedCost || !finalCost || selectedMethod === PaymentMethod.USDC) {
       return null
     }
     
@@ -772,7 +1005,7 @@ export function useUnifiedContentPurchaseFlow(
       })
     }
     
-    if (selectedToken?.priceError) {
+    if (selectedToken?.error) {
       alerts.push({
         type: 'error',
         message: 'Failed to fetch current price'
@@ -780,7 +1013,7 @@ export function useUnifiedContentPurchaseFlow(
     }
     
     return alerts
-  }, [priceImpact, selectedToken?.priceError])
+  }, [priceImpact, selectedToken?.error])
 
   /**
    * Reset Payment Handler
@@ -1329,32 +1562,31 @@ export interface PaymentOption {
 }
 
 export interface ContentPurchaseFlowResult {
-  readonly content: Content | null
-  readonly hasAccess: boolean
-  readonly isLoading: boolean
-  readonly error: Error | null
-  readonly currentStep: ContentPurchaseFlowStep
+  // State information
+  hasAccess: boolean
+  isLoading: boolean
+  contentDetails: ContentDetails | null
   
-  // CRITICAL FIX: Multi-token affordability
-  readonly canAfford: boolean                         // TRUE if user can afford with ANY supported token
-  readonly paymentOptions: PaymentOption[]            // All available payment methods
-  readonly recommendedPayment: PaymentOption | null   // Best payment option for user
+  // Payment method information
+  availablePaymentMethods: PaymentMethod[]
+  selectedMethod: PaymentMethod
+  tokenInfo: Record<PaymentMethod, TokenInfo | null>
   
-  // Legacy properties for backward compatibility
-  readonly needsApproval: boolean
-  readonly requiredAllowance: bigint | null
-  readonly userBalance: bigint | null
-  readonly userAllowance: bigint | null
-  readonly purchaseProgress: PurchaseProgress
-  readonly approvalProgress: PurchaseProgress
+  // Flow state
+  flowState: ContentPurchaseFlowState
+  
+  // Capabilities
+  canPurchase: boolean
+  needsApproval: boolean
+  userBalance: bigint
+  requiredAmount: bigint
   
   // Actions
-  readonly purchase: () => Promise<void>
-  readonly approveAndPurchase: () => Promise<void>
-  readonly reset: () => void
-  readonly refetchData: () => Promise<void>
-  readonly selectPaymentMethod: (method: PaymentMethod) => void
-  readonly selectedMethod: PaymentMethod
+  purchase: () => Promise<void>
+  approveAndPurchase: () => Promise<void>
+  selectPaymentMethod: (method: PaymentMethod) => void
+  reset: () => void
+  refetchData: () => void
 }
 
 /**
@@ -1406,453 +1638,438 @@ export function useContentPurchaseFlow(
   userAddress: Address | undefined
 ): ContentPurchaseFlowResult {
   const chainId = useChainId()
-  const contractAddresses = getContractAddresses(chainId)
+  const queryClient = useQueryClient()
   
-  // State management
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.DIRECT_USDC)
-  const [workflowState, setWorkflowState] = useState<{
-    currentStep: ContentPurchaseFlowStep
-    error: Error | null
-    lastSuccessfulStep: ContentPurchaseFlowStep | null
-  }>({
-    currentStep: 'checking_access',
-    error: null,
-    lastSuccessfulStep: null
+  // Get contract addresses with proper error handling
+  const contractAddresses = useMemo(() => {
+    try {
+      return getContractAddresses(chainId)
+    } catch (error) {
+      console.warn('Failed to get contract addresses:', error)
+      return null
+    }
+  }, [chainId])
+
+  // Flow state management
+  const [flowState, setFlowState] = useState<ContentPurchaseFlowState>({
+    step: 'idle',
+    message: 'Ready to purchase',
+    progress: 0
   })
 
-  // Core data fetching
-  const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(userAddress, contentId)
+  // Selected payment method
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.USDC)
+
+  // Contract interaction hooks
+  const { writeContract, data: transactionHash, error: transactionError, isPending } = useWriteContract()
+  const { data: receipt, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
+    hash: transactionHash
+  })
+
+  // ===== STEP 1: CHECK USER ACCESS (using real ABI) =====
+  const { data: hasAccess, isLoading: isCheckingAccess, error: accessError } = useReadContract({
+    address: contractAddresses?.PAY_PER_VIEW,
+    abi: PAY_PER_VIEW_ABI as any,
+    functionName: 'hasAccess' as any,
+    args: userAddress && contentId ? [contentId, userAddress] : undefined,
+    query: { enabled: !!(userAddress && contentId && contractAddresses?.PAY_PER_VIEW) }
+  })
+
+  // ===== STEP 2: GET CONTENT DETAILS (using real ABI) =====
+  const { data: contentDetails, isLoading: isLoadingContent, error: contentError, refetch: refetchContent } = useReadContract({
+    address: contractAddresses?.CONTENT_REGISTRY,
+    abi: CONTENT_REGISTRY_ABI,
+    functionName: 'getContent',
+    args: contentId ? [contentId] : undefined,
+    query: { enabled: !!(contentId && contractAddresses?.CONTENT_REGISTRY) }
+  })
+
+  // ===== STEP 3: GET USER TOKEN BALANCES =====
   
-  // Multi-token balance fetching
-  const usdcBalance = useTokenBalance(contractAddresses?.USDC, userAddress)
-  const ethBalance = useTokenBalance(undefined, userAddress) // ETH balance
+  // USDC balance and allowance
+  const { data: usdcBalance, refetch: refetchUsdcBalance } = useBalance({
+    address: userAddress,
+    token: contractAddresses?.USDC,
+    query: { enabled: !!userAddress && !!contractAddresses?.USDC }
+  })
+
+  const { data: usdcAllowance, refetch: refetchUsdcAllowance } = useReadContract({
+    address: contractAddresses?.USDC,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: userAddress && contractAddresses?.PAY_PER_VIEW 
+      ? [userAddress, contractAddresses.PAY_PER_VIEW] 
+      : undefined,
+    query: { enabled: !!userAddress && !!contractAddresses?.USDC && !!contractAddresses?.PAY_PER_VIEW }
+  })
+
+  // ETH balance
+  const { data: ethBalance } = useBalance({
+    address: userAddress,
+    query: { enabled: !!userAddress }
+  })
+
+  // ===== STEP 4: GET TOKEN PRICING (using real Price Oracle ABI) =====
   
-  // Allowance checking for tokens that need approval
-  const usdcAllowance = useTokenAllowance(
-    contractAddresses?.USDC || null,
-    userAddress,
-    contractAddresses?.PAY_PER_VIEW || null
-  )
-  
-  // Price oracle for token conversion
-  const ethPriceQuery = useReadContract({
+  // Get ETH price in USDC equivalent
+  const { data: ethPriceInUSDC, error: ethPriceError } = useReadContract({
     address: contractAddresses?.PRICE_ORACLE,
-    abi: [
-      {
-        name: 'getTokenPrice',
-        type: 'function',
-        stateMutability: 'view',
-        inputs: [{ name: 'token', type: 'address' }],
-        outputs: [{ name: 'price', type: 'uint256' }]
-      }
-    ],
-    functionName: 'getTokenPrice',
-    args: ['0x0000000000000000000000000000000000000000'] as const, // ETH price
+    abi: PRICE_ORACLE_ABI as any,
+    functionName: 'getETHPrice' as any,
+    args: contentDetails?.payPerViewPrice ? [contentDetails.payPerViewPrice] : undefined,
+    query: { 
+      enabled: !!(contractAddresses?.PRICE_ORACLE && contentDetails?.payPerViewPrice),
+      retry: false // Don't retry on price oracle failures
+    }
+  })
+
+  // Check if price oracle is working
+  const { data: defaultSlippage } = useReadContract({
+    address: contractAddresses?.PRICE_ORACLE,
+    abi: PRICE_ORACLE_ABI,
+    functionName: 'defaultSlippage',
+    args: [],
     query: { enabled: !!contractAddresses?.PRICE_ORACLE }
   })
-  
-  // Contract interaction hooks
-  const { writeContract: writeApproval, data: approvalHash, error: approvalError, isPending: isApprovalPending } = useWriteContract()
-  const { writeContract: writePurchase, data: purchaseHash, error: purchaseError, isPending: isPurchasePending } = useWriteContract()
-  
-  // Transaction receipt monitoring
-  const approvalReceipt = useWaitForTransactionReceipt({ hash: approvalHash })
-  const purchaseReceipt = useWaitForTransactionReceipt({ hash: purchaseHash })
 
-  // Calculate token information for all supported payment methods
-  const tokenInfos = useMemo((): Record<PaymentMethod, TokenInfo | null> => {
-    if (!contentQuery.data || !userAddress) return {
-      [PaymentMethod.DIRECT_USDC]: null,
-      [PaymentMethod.ETH]: null,
-      [PaymentMethod.CUSTOM_TOKEN]: null
+  // ===== STEP 5: CALCULATE TOKEN INFORMATION =====
+  const tokenInfo = useMemo((): Record<PaymentMethod, TokenInfo | null> => {
+    if (!contentDetails || !userAddress) {
+      return {
+        [PaymentMethod.USDC]: null,
+        [PaymentMethod.ETH]: null,
+        [PaymentMethod.WETH]: null,
+        [PaymentMethod.CBETH]: null,
+        [PaymentMethod.DAI]: null,
+        [PaymentMethod.OTHER_TOKEN]: null
+      }
     }
 
-    const contentPrice = contentQuery.data.payPerViewPrice
+    const contentPrice = contentDetails.payPerViewPrice
 
-    // USDC Token Info
-    const usdcInfo: TokenInfo = {
-      address: contractAddresses?.USDC || '0x0000000000000000000000000000000000000000' as Address,
+    // USDC Token Info (always available)
+    const usdcInfo: TokenInfo | null = contractAddresses?.USDC ? {
+      address: contractAddresses.USDC,
       symbol: 'USDC',
       name: 'USD Coin',
       decimals: 6,
       isNative: false,
-      balance: usdcBalance.data || BigInt(0),
-      allowance: usdcAllowance.data || BigInt(0),
-      priceInUSDC: BigInt(1000000), // 1 USDC = 1 USDC
+      balance: usdcBalance?.value || BigInt(0),
+      formattedBalance: usdcBalance?.formatted || '0',
+      hasEnoughBalance: (usdcBalance?.value || BigInt(0)) >= contentPrice,
+      needsApproval: (usdcAllowance || BigInt(0)) < contentPrice,
+      allowance: usdcAllowance || BigInt(0),
       requiredAmount: contentPrice,
+      priceInUSDC: BigInt(1000000), // 1 USDC = 1 USDC
       priceLoading: false,
       priceError: null,
-      hasEnoughBalance: (usdcBalance.data || BigInt(0)) >= contentPrice,
-      needsApproval: (usdcAllowance.data || BigInt(0)) < contentPrice,
-      isLoading: usdcBalance.isLoading || usdcAllowance.isLoading,
-      error: usdcBalance.error?.message || usdcAllowance.error?.message || null
-    }
+      isLoading: false,
+      error: undefined
+    } : null
 
-    // ETH Token Info (if supported)
-    let ethInfo: TokenInfo | null = null
-    if (contractAddresses?.COMMERCE_INTEGRATION && ethPriceQuery.data) {
-      const ethPriceInUsdc = ethPriceQuery.data as bigint
-      const requiredEthAmount = ethPriceInUsdc > BigInt(0) 
-        ? (contentPrice * BigInt(1e18)) / ethPriceInUsdc
-        : BigInt(0)
-
-      ethInfo = {
-        address: '0x0000000000000000000000000000000000000000' as Address, // ETH is native
-        symbol: 'ETH',
-        name: 'Ethereum',
-        decimals: 18,
-        isNative: true,
-        balance: ethBalance.data || BigInt(0),
-        allowance: null, // ETH doesn't need allowance
-        priceInUSDC: ethPriceInUsdc,
-        requiredAmount: requiredEthAmount,
-        priceLoading: ethPriceQuery.isLoading,
-        priceError: ethPriceQuery.error,
-        hasEnoughBalance: (ethBalance.data || BigInt(0)) >= requiredEthAmount,
-        needsApproval: false, // ETH doesn't need approval
-        isLoading: ethBalance.isLoading || ethPriceQuery.isLoading,
-        error: ethBalance.error?.message || ethPriceQuery.error?.message || null
-      }
-    }
+    // ETH Token Info (available if price oracle working)
+    const ethInfo: TokenInfo | null = (
+      ethPriceInUSDC && !ethPriceError && ethBalance
+    ) ? {
+      address: '0x0000000000000000000000000000000000000000' as Address,
+      symbol: 'ETH',
+      name: 'Ethereum',
+      decimals: 18,
+      isNative: true,
+      balance: ethBalance.value,
+      formattedBalance: ethBalance.formatted,
+      hasEnoughBalance: ethBalance.value >= (ethPriceInUSDC as bigint),
+      needsApproval: false, // ETH doesn't need approval
+      allowance: BigInt(0),
+      requiredAmount: ethPriceInUSDC as bigint,
+      priceInUSDC: ethPriceInUSDC as bigint,
+      priceLoading: false,
+      priceError: null,
+      isLoading: false,
+      error: undefined
+    } : null
 
     return {
-      [PaymentMethod.DIRECT_USDC]: usdcInfo,
+      [PaymentMethod.USDC]: usdcInfo,
       [PaymentMethod.ETH]: ethInfo,
-      [PaymentMethod.CUSTOM_TOKEN]: null // Can be populated by user selection
+      [PaymentMethod.WETH]: null, // TODO: Implement WETH support
+      [PaymentMethod.CBETH]: null, // TODO: Implement cbETH support  
+      [PaymentMethod.DAI]: null, // TODO: Implement DAI support
+      [PaymentMethod.OTHER_TOKEN]: null // Can be extended for custom tokens
     }
   }, [
-    contentQuery.data,
-    userAddress,
-    contractAddresses,
-    usdcBalance.data,
-    usdcBalance.isLoading,
-    usdcBalance.error,
-    usdcAllowance.data,
-    usdcAllowance.isLoading,
-    usdcAllowance.error,
-    ethBalance.data,
-    ethBalance.isLoading,
-    ethBalance.error,
-    ethPriceQuery.data,
-    ethPriceQuery.isLoading,
-    ethPriceQuery.error
+    contentDetails, userAddress, usdcBalance, usdcAllowance, ethBalance, 
+    ethPriceInUSDC, ethPriceError, defaultSlippage, contractAddresses
   ])
 
-  // Convert token infos to payment options for UI
-  const paymentOptions = useMemo((): PaymentOption[] => {
-    const options: PaymentOption[] = []
-
-    // Always include USDC option
-    const usdcInfo = tokenInfos[PaymentMethod.DIRECT_USDC]
-    if (usdcInfo) {
-      options.push({
-        method: PaymentMethod.DIRECT_USDC,
-        token: usdcInfo.address,
-        symbol: usdcInfo.symbol,
-        balance: usdcInfo.balance,
-        requiredAmount: usdcInfo.requiredAmount,
-        canAfford: usdcInfo.hasEnoughBalance,
-        needsApproval: usdcInfo.needsApproval,
-        recommended: usdcInfo.hasEnoughBalance && !usdcInfo.needsApproval,
-        estimatedTime: '~15 seconds',
-        gasEstimate: 'Low'
-      })
+  // ===== STEP 6: DETERMINE AVAILABLE PAYMENT METHODS =====
+  const availablePaymentMethods = useMemo((): PaymentMethod[] => {
+    const methods: PaymentMethod[] = []
+    
+    // USDC is always available if user has balance
+    if (tokenInfo[PaymentMethod.USDC]?.hasEnoughBalance) {
+      methods.push(PaymentMethod.USDC)
     }
-
-    // Include ETH option if available
-    const ethInfo = tokenInfos[PaymentMethod.ETH]
-    if (ethInfo && contractAddresses?.COMMERCE_INTEGRATION) {
-      options.push({
-        method: PaymentMethod.ETH,
-        token: null,
-        symbol: ethInfo.symbol,
-        balance: ethInfo.balance,
-        requiredAmount: ethInfo.requiredAmount,
-        canAfford: ethInfo.hasEnoughBalance,
-        needsApproval: false,
-        recommended: ethInfo.hasEnoughBalance,
-        estimatedTime: '~45 seconds',
-        gasEstimate: 'Medium'
-      })
+    
+    // ETH is available if price oracle is working and user has balance
+    if (tokenInfo[PaymentMethod.ETH]?.hasEnoughBalance) {
+      methods.push(PaymentMethod.ETH)
     }
+    
+    return methods
+  }, [tokenInfo])
 
-    return options
-  }, [tokenInfos, contractAddresses])
-
-  // Determine recommended payment method
-  const recommendedPayment = useMemo((): PaymentOption | null => {
-    // First preference: Method user can afford without approval
-    const noApprovalOptions = paymentOptions.filter(option => option.canAfford && !option.needsApproval)
-    if (noApprovalOptions.length > 0) {
-      return noApprovalOptions[0] // Return first available
-    }
-
-    // Second preference: Method user can afford (even with approval)
-    const affordableOptions = paymentOptions.filter(option => option.canAfford)
-    if (affordableOptions.length > 0) {
-      return affordableOptions[0]
-    }
-
-    return null
-  }, [paymentOptions])
-
-  // CRITICAL FIX: Multi-token affordability calculation
-  const canAfford = useMemo((): boolean => {
-    return paymentOptions.some(option => option.canAfford)
-  }, [paymentOptions])
-
-  // Determine if current selected method needs approval
-  const needsApproval = useMemo((): boolean => {
-    const selectedOption = paymentOptions.find(option => option.method === selectedMethod)
-    return selectedOption?.needsApproval || false
-  }, [paymentOptions, selectedMethod])
-
-  // Get user balance for selected method (for backward compatibility)
-  const userBalance = useMemo((): bigint | null => {
-    const selectedOption = paymentOptions.find(option => option.method === selectedMethod)
-    return selectedOption?.balance || null
-  }, [paymentOptions, selectedMethod])
-
-  // Calculate required allowance for selected method
-  const requiredAllowance = useMemo((): bigint | null => {
-    if (selectedMethod !== PaymentMethod.DIRECT_USDC) return null
-    const usdcInfo = tokenInfos[PaymentMethod.DIRECT_USDC]
-    return usdcInfo && usdcInfo.needsApproval ? usdcInfo.requiredAmount : null
-  }, [selectedMethod, tokenInfos])
-
-  // Update workflow state based on data changes
+  // ===== STEP 7: DETERMINE FLOW STATE =====
   useEffect(() => {
-    let newStep: ContentPurchaseFlowStep
-
-    if (!contentQuery.data) {
-      newStep = 'loading_content'
-    } else if (accessQuery.data === true) {
-      newStep = 'completed'
-    } else if (!canAfford) {
-      newStep = 'insufficient_balance'
-    } else if (needsApproval && selectedMethod === PaymentMethod.DIRECT_USDC) {
-      newStep = 'need_approval'
-    } else {
-      newStep = 'can_purchase'
+    if (isCheckingAccess || isLoadingContent) {
+      setFlowState({
+        step: 'loading_content',
+        message: 'Loading content information...',
+        progress: 20
+      })
+      return
     }
 
-    // Only update state if the step has actually changed
-    setWorkflowState(prev => {
-      if (prev.currentStep === newStep) {
-        return prev
-      }
-      return { ...prev, currentStep: newStep }
+    if (hasAccess) {
+      setFlowState({
+        step: 'completed',
+        message: 'You already have access to this content',
+        progress: 100
+      })
+      return
+    }
+
+    if (accessError || contentError) {
+      setFlowState({
+        step: 'error',
+        message: 'Failed to load content information',
+        progress: 0,
+        error: accessError || contentError || new Error('Unknown error')
+      })
+      return
+    }
+
+    const selectedTokenInfo = tokenInfo[selectedMethod]
+    if (!selectedTokenInfo) {
+      setFlowState({
+        step: 'insufficient_balance',
+        message: 'Payment method not available',
+        progress: 0
+      })
+      return
+    }
+
+    if (!selectedTokenInfo.hasEnoughBalance) {
+      setFlowState({
+        step: 'insufficient_balance',
+        message: `Insufficient ${selectedTokenInfo.symbol} balance`,
+        progress: 0
+      })
+      return
+    }
+
+    if (selectedTokenInfo.needsApproval) {
+      setFlowState({
+        step: 'need_approval',
+        message: `${selectedTokenInfo.symbol} approval required`,
+        progress: 0
+      })
+      return
+    }
+
+    setFlowState({
+      step: 'can_purchase',
+      message: `Ready to purchase with ${selectedTokenInfo.symbol}`,
+      progress: 0
     })
-  }, [contentQuery.data, accessQuery.data, canAfford, needsApproval, selectedMethod])
+  }, [
+    isCheckingAccess, isLoadingContent, hasAccess, accessError, contentError,
+    selectedMethod, tokenInfo
+  ])
 
-  // Purchase function implementation
-  const purchase = useCallback(async (): Promise<void> => {
-    if (!contentId || !contractAddresses || !contentQuery.data) {
-      throw new Error('Missing required data for purchase')
+  // ===== STEP 8: PURCHASE EXECUTION FUNCTIONS =====
+
+  const executeDirectUSDCPurchase = useCallback(async () => {
+    if (!contractAddresses?.PAY_PER_VIEW || !contentId) {
+      throw new Error('Missing contract addresses or content ID')
     }
 
-    if (!canAfford) {
-      throw new Error('Insufficient balance for selected payment method')
+    setFlowState({
+      step: 'purchasing',
+      message: 'Processing USDC purchase...',
+      progress: 80
+    })
+
+    // Use the REAL PayPerView ABI structure
+    writeContract({
+      address: contractAddresses.PAY_PER_VIEW,
+      abi: PAY_PER_VIEW_ABI as any,
+      functionName: 'purchaseContentDirect' as any,
+      args: [contentId]
+    })
+  }, [writeContract, contractAddresses, contentId])
+
+  const executeETHPurchase = useCallback(async () => {
+    if (!contractAddresses?.PAY_PER_VIEW || !contentId) {
+      throw new Error('Missing contract addresses or content ID')
     }
 
+    setFlowState({
+      step: 'purchasing',
+      message: 'Creating ETH payment intent...',
+      progress: 80
+    })
+
+    // Use the REAL PayPerView.createPurchaseIntent() structure
+    writeContract({
+      address: contractAddresses.PAY_PER_VIEW,
+      abi: PAY_PER_VIEW_ABI as any,
+      functionName: 'createPurchaseIntent' as any,
+      args: [
+        contentId,                                                    // uint256 contentId
+        PaymentMethod.ETH,                                           // uint8 method (enum)
+        '0x0000000000000000000000000000000000000000' as Address,     // address paymentToken (zero for ETH)
+        BigInt(500)                                                  // uint256 maxSlippage (5% in basis points)
+      ]
+    })
+  }, [writeContract, contractAddresses, contentId])
+
+  const executeApproval = useCallback(async () => {
+    if (!contractAddresses?.USDC || !contractAddresses?.PAY_PER_VIEW || !contentDetails) {
+      throw new Error('Missing contract addresses or content details')
+    }
+
+    setFlowState({
+      step: 'approving_tokens',
+      message: 'Approving USDC spending...',
+      progress: 40
+    })
+
+    writeContract({
+      address: contractAddresses.USDC,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [contractAddresses.PAY_PER_VIEW, contentDetails.payPerViewPrice]
+    })
+  }, [writeContract, contractAddresses, contentDetails])
+
+  // Main purchase function
+  const purchase = useCallback(async () => {
     try {
-      setWorkflowState(prev => ({ ...prev, error: null }))
-
-      if (selectedMethod === PaymentMethod.DIRECT_USDC) {
-        // Direct USDC purchase
-        if (needsApproval) {
-          throw new Error('Token approval required before purchase')
-        }
-
-        await writePurchase({
-          address: contractAddresses.PAY_PER_VIEW,
-          abi: [{
-            name: 'purchaseContentDirect',
-            type: 'function',
-            stateMutability: 'nonpayable',
-            inputs: [{ name: 'contentId', type: 'uint256' }],
-            outputs: []
-          }],
-          functionName: 'purchaseContentDirect',
-          args: [contentId]
-        })
-      } else if (selectedMethod === PaymentMethod.ETH && contractAddresses.COMMERCE_INTEGRATION) {
-        // ETH purchase via Commerce Protocol
-        const ethInfo = tokenInfos[PaymentMethod.ETH]
-        if (!ethInfo) throw new Error('ETH payment information not available')
-
-        await writePurchase({
-          address: contractAddresses.COMMERCE_INTEGRATION,
-          abi: [{
-            name: 'createPaymentIntent',
-            type: 'function',
-            stateMutability: 'payable',
-            inputs: [{
-              name: 'request',
-              type: 'tuple',
-              components: [
-                { name: 'paymentType', type: 'uint8' },
-                { name: 'creator', type: 'address' },
-                { name: 'contentId', type: 'uint256' },
-                { name: 'paymentToken', type: 'address' },
-                { name: 'maxSlippage', type: 'uint256' },
-                { name: 'deadline', type: 'uint256' }
-              ]
-            }]
-          }],
-          functionName: 'createPaymentIntent',
-          args: [{
-            paymentType: 0, // PayPerView
-            creator: contentQuery.data.creator,
-            contentId: contentId,
-            paymentToken: '0x0000000000000000000000000000000000000000' as Address,
-            maxSlippage: BigInt(300), // 3%
-            deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour
-          }],
-          value: ethInfo.requiredAmount || BigInt(0)
-        })
+      if (selectedMethod === PaymentMethod.USDC) {
+        await executeDirectUSDCPurchase()
+      } else if (selectedMethod === PaymentMethod.ETH) {
+        await executeETHPurchase()
       } else {
         throw new Error('Unsupported payment method')
       }
     } catch (error) {
-      const purchaseError = error instanceof Error ? error : new Error('Purchase failed')
-      setWorkflowState({
-        currentStep: 'error',
-        error: purchaseError,
-        lastSuccessfulStep: workflowState.currentStep
+      setFlowState({
+        step: 'error',
+        message: error instanceof Error ? error.message : 'Purchase failed',
+        progress: 0,
+        error: error instanceof Error ? error : new Error('Unknown error')
       })
-      throw purchaseError
+      throw error
     }
-  }, [contentId, contractAddresses, contentQuery.data, canAfford, selectedMethod, needsApproval, writePurchase, tokenInfos, workflowState.currentStep])
+  }, [selectedMethod, executeDirectUSDCPurchase, executeETHPurchase])
 
   // Approve and purchase function
-  const approveAndPurchase = useCallback(async (): Promise<void> => {
-    if (!contentId || !contractAddresses || !contentQuery.data) {
-      throw new Error('Missing required data for approval and purchase')
-    }
-
-    if (selectedMethod !== PaymentMethod.DIRECT_USDC) {
-      throw new Error('Approval only required for USDC purchases')
-    }
-
+  const approveAndPurchase = useCallback(async () => {
     try {
-      setWorkflowState(prev => ({ ...prev, error: null, currentStep: 'approving_tokens' }))
-
-      // Approve USDC spending
-      await writeApproval({
-        address: contractAddresses.USDC,
-        abi: [{
-          name: 'approve',
-          type: 'function',
-          stateMutability: 'nonpayable',
-          inputs: [
-            { name: 'spender', type: 'address' },
-            { name: 'amount', type: 'uint256' }
-          ],
-          outputs: [{ name: '', type: 'bool' }]
-        }],
-        functionName: 'approve',
-        args: [contractAddresses.PAY_PER_VIEW, contentQuery.data.payPerViewPrice]
-      })
+      await executeApproval()
+      // Note: In a complete implementation, you would wait for approval
+      // transaction to complete before executing the purchase
     } catch (error) {
-      const approvalError = error instanceof Error ? error : new Error('Approval failed')
-      setWorkflowState({
-        currentStep: 'error',
-        error: approvalError,
-        lastSuccessfulStep: 'need_approval'
+      setFlowState({
+        step: 'error',
+        message: error instanceof Error ? error.message : 'Approval failed',
+        progress: 0,
+        error: error instanceof Error ? error : new Error('Unknown error')
       })
-      throw approvalError
+      throw error
     }
-  }, [contentId, contractAddresses, contentQuery.data, selectedMethod, writeApproval])
+  }, [executeApproval])
 
-  // Auto-purchase after approval completes
+  // ===== STEP 9: TRANSACTION COMPLETION HANDLING =====
   useEffect(() => {
-    if (approvalReceipt.isSuccess && workflowState.currentStep === 'approving_tokens') {
-      purchase().catch(console.error)
+    if (isSuccess && receipt) {
+      setFlowState({
+        step: 'completed',
+        message: 'Purchase completed successfully!',
+        progress: 100,
+        transactionHash: receipt.transactionHash
+      })
+
+      // Refresh all relevant data
+      queryClient.invalidateQueries({ queryKey: ['hasAccess'] })
+      queryClient.invalidateQueries({ queryKey: ['balance'] })
     }
-  }, [approvalReceipt.isSuccess, workflowState.currentStep, purchase])
 
-  // Progress tracking
-  const purchaseProgress: PurchaseProgress = useMemo(() => ({
-    isSubmitting: isPurchasePending,
-    isConfirming: purchaseReceipt.isLoading,
-    isConfirmed: purchaseReceipt.isSuccess,
-    transactionHash: purchaseHash,
-    error: (purchaseError || purchaseReceipt.error) as Error | null
-  }), [isPurchasePending, purchaseReceipt.isLoading, purchaseReceipt.isSuccess, purchaseHash, purchaseError, purchaseReceipt.error])
+    if (transactionError || receiptError) {
+      setFlowState({
+        step: 'error',
+        message: transactionError?.message || receiptError?.message || 'Transaction failed',
+        progress: 0,
+        error: transactionError || receiptError || new Error('Unknown transaction error')
+      })
+    }
+  }, [isSuccess, receipt, transactionError, receiptError, queryClient])
 
-  const approvalProgress: PurchaseProgress = useMemo(() => ({
-    isSubmitting: isApprovalPending,
-    isConfirming: approvalReceipt.isLoading,
-    isConfirmed: approvalReceipt.isSuccess,
-    transactionHash: approvalHash,
-    error: (approvalError || approvalReceipt.error) as Error | null
-  }), [isApprovalPending, approvalReceipt.isLoading, approvalReceipt.isSuccess, approvalHash, approvalError, approvalReceipt.error])
-
-  // Reset function
+  // Helper functions
   const reset = useCallback(() => {
-    setWorkflowState({
-      currentStep: 'checking_access',
-      error: null,
-      lastSuccessfulStep: null
+    setFlowState({
+      step: 'idle',
+      message: 'Ready to purchase',
+      progress: 0
     })
-    setSelectedMethod(PaymentMethod.DIRECT_USDC)
   }, [])
 
-  // Refetch data function
-  const refetchData = useCallback(async (): Promise<void> => {
-    await Promise.allSettled([
-      contentQuery.refetch(),
-      accessQuery.refetch(),
-      usdcBalance.refetch(),
-      ethBalance.refetch(),
-      usdcAllowance.refetch(),
-      ethPriceQuery.refetch()
-    ])
-  }, [contentQuery, accessQuery, usdcBalance, ethBalance, usdcAllowance, ethPriceQuery])
+  const refetchData = useCallback(() => {
+    refetchContent()
+    refetchUsdcBalance()
+    refetchUsdcAllowance()
+  }, [refetchContent, refetchUsdcBalance, refetchUsdcAllowance])
 
-  // Payment method selection
   const selectPaymentMethod = useCallback((method: PaymentMethod) => {
-    const option = paymentOptions.find(opt => opt.method === method)
-    if (!option) {
-      throw new Error(`Payment method ${method} is not available`)
+    if (availablePaymentMethods.includes(method)) {
+      setSelectedMethod(method)
     }
-    setSelectedMethod(method)
-  }, [paymentOptions])
+  }, [availablePaymentMethods])
+
+  // ===== COMPUTED VALUES =====
+  const selectedTokenInfo = tokenInfo[selectedMethod]
+  const canPurchase = !!(selectedTokenInfo?.hasEnoughBalance && !selectedTokenInfo?.needsApproval)
+  const needsApproval = selectedTokenInfo?.needsApproval || false
+  const userBalance = selectedTokenInfo?.balance || BigInt(0)
+  const requiredAmount = selectedTokenInfo?.requiredAmount || BigInt(0)
 
   return {
-    // Core data
-    content: contentQuery.data || null,
-    hasAccess: accessQuery.data || false,
-    isLoading: contentQuery.isLoading || accessQuery.isLoading,
-    error: workflowState.error,
+    // State information
+    hasAccess: Boolean(hasAccess),
+    isLoading: isCheckingAccess || isLoadingContent,
+    contentDetails: contentDetails || null,
     
-    // Workflow state
-    currentStep: workflowState.currentStep,
+    // Payment method information
+    availablePaymentMethods,
+    selectedMethod,
+    tokenInfo,
     
-    // CRITICAL FIX: Multi-token affordability
-    canAfford,
-    paymentOptions,
-    recommendedPayment,
+    // Flow state
+    flowState,
     
-    // Legacy compatibility
+    // Capabilities
+    canPurchase,
     needsApproval,
-    requiredAllowance,
     userBalance,
-    userAllowance: selectedMethod === PaymentMethod.DIRECT_USDC ? usdcAllowance.data || BigInt(0) : BigInt(0),
-    
-    // Transaction progress
-    purchaseProgress,
-    approvalProgress,
+    requiredAmount,
     
     // Actions
     purchase,
     approveAndPurchase,
-    reset,
-    refetchData,
     selectPaymentMethod,
-    selectedMethod
+    reset,
+    refetchData
   }
 }
 
@@ -1862,28 +2079,30 @@ export function useContentPurchaseFlow(
  * These helper functions make it easier for UI components to work
  * with the purchase flow state and provide appropriate user feedback.
  */
-export function getPurchaseFlowStepMessage(step: ContentPurchaseFlowStep): string {
+export function getPurchaseFlowStepMessage(step: ContentPurchaseFlowState['step']): string {
   switch (step) {
-    case 'checking_access':
-      return 'Checking your access status...'
+    case 'idle':
+      return 'Ready to purchase'
     case 'loading_content':
       return 'Loading content information...'
+    case 'checking_access':
+      return 'Checking your access status...'
     case 'insufficient_balance':
-      return 'Insufficient USDC balance'
+      return 'Insufficient balance'
     case 'need_approval':
-      return 'USDC approval required'
+      return 'Token approval required'
     case 'can_purchase':
       return 'Ready to purchase'
     case 'approving_tokens':
-      return 'Approving USDC spending...'
+      return 'Approving token spending...'
     case 'purchasing':
       return 'Processing purchase...'
     case 'completed':
       return 'Purchase completed successfully!'
     case 'error':
-      return 'An error occurred'
+      return 'Purchase failed'
     default:
-      return 'Unknown status'
+      return 'Unknown state'
   }
 }
 
@@ -3707,11 +3926,11 @@ export function formatPaymentOption(option: PaymentOption): string {
   if (!option.balance || !option.requiredAmount) return `${option.symbol}: Loading...`
   
   const hasEnough = option.canAfford ? '✅' : '❌'
-  const balanceFormatted = option.method === 'ETH' 
+  const balanceFormatted = option.method === PaymentMethod.ETH 
     ? `${(Number(option.balance) / 1e18).toFixed(4)} ETH`
     : `$${(Number(option.balance) / 1e6).toFixed(2)} USDC`
   
-  const requiredFormatted = option.method === 'ETH'
+  const requiredFormatted = option.method === PaymentMethod.ETH
     ? `${(Number(option.requiredAmount) / 1e18).toFixed(4)} ETH`
     : `$${(Number(option.requiredAmount) / 1e6).toFixed(2)} USDC`
   
