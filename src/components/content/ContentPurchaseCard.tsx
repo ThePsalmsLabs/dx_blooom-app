@@ -73,6 +73,7 @@ import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance
 import { useUnifiedContentPurchaseFlow, UnifiedPurchaseFlowResult, PaymentMethod } from '@/hooks/business/workflows'
 import { formatCurrency, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
+import { EnhancedPaymentOptions } from './EnhancedPaymentOptions'
 
 
 
@@ -1262,7 +1263,7 @@ export function ContentPurchaseCard({
 
             {/* Multi-Payment Options Display */}
             {(enableMultiPayment && paymentState.multiPaymentSupported && primaryPurchaseFlow.availableMethods.length > 1) ? (
-              <PaymentOptionsDisplay
+              <EnhancedPaymentOptions
                 purchaseFlow={primaryPurchaseFlow}
                 onPaymentMethodSelect={handlePaymentMethodChange}
               />

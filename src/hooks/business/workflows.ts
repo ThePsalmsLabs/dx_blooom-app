@@ -572,16 +572,20 @@ export function useUnifiedContentPurchaseFlow(
     const tokenConfig = SUPPORTED_TOKENS[paymentMethod]
     const isEth = tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH
     const isUsdc = tokenAddress === contractAddresses.USDC || paymentMethod === PaymentMethod.USDC
+    
+    console.log(`🔍 Token info fetch - Method: ${paymentMethod}, Address: ${tokenAddress}, isEth: ${isEth}, isUsdc: ${isUsdc}`)
 
     // Calculate required amount for current content
     const contentPrice = contentQuery.data?.payPerViewPrice || BigInt(0)
     const priceCalculation = await calculateTokenPrice(tokenAddress, contentPrice, paymentMethod)
 
     // Create public client for direct contract reads
+    console.log(`🔗 Creating public client for chain ID: ${chainId}`)
     const publicClient = createPublicClient({
       chain: chainId === 8453 ? base : baseSepolia,
       transport: http()
     })
+    console.log(`🔗 Public client created for chain: ${chainId === 8453 ? 'Base Mainnet' : 'Base Sepolia'}`)
 
     // Determine token metadata
     const symbol = tokenConfig?.symbol || (isEth ? 'ETH' : isUsdc ? 'USDC' : 'TOKEN')
@@ -596,10 +600,17 @@ export function useUnifiedContentPurchaseFlow(
     if (isEth) {
       // For ETH, fetch actual balance
       try {
+        console.log(`🔍 Fetching ETH balance for address: ${userAddress} on chain: ${chainId}`)
         balance = await publicClient.getBalance({ address: userAddress })
         formattedBalance = (Number(balance) / 1e18).toFixed(6)
+        console.log(`✅ ETH balance fetched: ${formattedBalance} ETH (${balance} wei)`)
       } catch (error) {
-        console.error('ETH balance fetch failed:', error)
+        console.error('❌ ETH balance fetch failed:', error)
+        console.error('Error details:', {
+          userAddress,
+          chainId,
+          error: error instanceof Error ? error.message : String(error)
+        })
       }
     } else {
       // ERC-20 token balance
@@ -664,10 +675,12 @@ export function useUnifiedContentPurchaseFlow(
   const refreshPrices = useCallback(async (): Promise<void> => {
     if (!contractAddresses || !contentQuery.data) return
 
+    console.log(`🔄 Starting price refresh for ${userAddress} on chain ${chainId}`)
     const updatedPrices = new Map<Address, TokenInfo>()
 
     // Get all payment methods to check
     const methodsToCheck = Object.keys(SUPPORTED_TOKENS).map(key => parseInt(key) as PaymentMethod)
+    console.log(`📋 Methods to check: ${methodsToCheck.join(', ')}`)
     
     for (const method of methodsToCheck) {
       if (method === PaymentMethod.OTHER_TOKEN) {
@@ -687,16 +700,23 @@ export function useUnifiedContentPurchaseFlow(
       if (!tokenConfig) continue
 
       try {
+        console.log(`🔄 Fetching ${tokenConfig.symbol} info for method ${method}...`)
         const tokenInfo = await fetchTokenInfo(tokenConfig.address, method)
         updatedPrices.set(tokenConfig.address, tokenInfo)
         console.log(`✅ Updated ${tokenConfig.symbol} info:`, {
           symbol: tokenInfo.symbol,
           balance: tokenInfo.formattedBalance,
           hasEnoughBalance: tokenInfo.hasEnoughBalance,
-          needsApproval: tokenInfo.needsApproval
+          needsApproval: tokenInfo.needsApproval,
+          address: tokenInfo.address
         })
       } catch (error) {
         console.error(`❌ Failed to fetch ${tokenConfig.symbol} info:`, error)
+        console.error('Error details:', {
+          method,
+          address: tokenConfig.address,
+          error: error instanceof Error ? error.message : String(error)
+        })
         // Keep existing data if fetch fails
         const existing = tokenPrices.get(tokenConfig.address)
         if (existing) {

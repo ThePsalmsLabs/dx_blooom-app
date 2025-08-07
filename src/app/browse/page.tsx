@@ -360,7 +360,7 @@ export default function BrowsePage() {
                 Discover Premium Content
               </h1>
               <p className="text-gray-600">
-                Explore and purchase high-quality content from verified creators using USDC.
+                Explore and purchase high-quality content from verified creators using USDC, ETH, WETH, cbETH, DAI, or other supported tokens.
               </p>
             </div>
 
