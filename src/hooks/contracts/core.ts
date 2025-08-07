@@ -43,7 +43,7 @@ import {
   getPriceOracleContract,
   getContractAddresses
 } from '@/lib/contracts/config'
-import { 
+import {
   CREATOR_REGISTRY_ABI,
   CONTENT_REGISTRY_ABI,
   PAY_PER_VIEW_ABI,
@@ -51,7 +51,7 @@ import {
   COMMERCE_PROTOCOL_INTEGRATION_ABI,
   PRICE_ORACLE_ABI,
   ERC20_ABI
-} from '@/lib/contracts/abi'
+} from '@/lib/contracts/abis'
 import type { 
   Creator,
   Content,

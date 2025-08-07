@@ -26,39 +26,8 @@ import { useReadContract, useChainId } from 'wagmi'
 import { useMemo } from 'react'
 import { type Address } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
+import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abis'
 
-// ===== CONTENT REGISTRY ABI SUBSET =====
-// We only include the functions we need for content data retrieval
-// This keeps the component lightweight while ensuring type safety
-
-const CONTENT_REGISTRY_ABI = [
-  {
-    name: 'getContent',
-    type: 'function',
-    inputs: [{ name: 'contentId', type: 'uint256' }],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        components: [
-          { name: 'creator', type: 'address' },
-          { name: 'ipfsHash', type: 'string' },
-          { name: 'title', type: 'string' },
-          { name: 'description', type: 'string' },
-          { name: 'category', type: 'uint8' },
-          { name: 'payPerViewPrice', type: 'uint256' },
-          { name: 'isActive', type: 'bool' },
-          { name: 'createdAt', type: 'uint256' },
-          { name: 'purchaseCount', type: 'uint256' },
-          { name: 'tags', type: 'string[]' },
-          { name: 'isReported', type: 'bool' },
-          { name: 'reportCount', type: 'uint256' }
-        ]
-      }
-    ],
-    stateMutability: 'view'
-  }
-] as const
 
 // ===== CONTENT DATA INTERFACES =====
 // These types match your ContentRegistry contract structure

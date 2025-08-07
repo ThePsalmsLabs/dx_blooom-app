@@ -17,7 +17,7 @@ import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 
 // Import contract configuration and ABIs
 import { getCommerceIntegrationContract } from '@/lib/contracts/config'
-import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abi'
+import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 
 /**
  * Revenue Attribution Interface

@@ -11,7 +11,7 @@ import {
   SUBSCRIPTION_MANAGER_ABI,
   COMMERCE_PROTOCOL_INTEGRATION_ABI,
   PRICE_ORACLE_ABI
-} from './abi'
+} from './abis'
 
 // ===== NETWORK CONTRACT ADDRESSES =====
 // These are the actual deployed contract addresses for each supported network

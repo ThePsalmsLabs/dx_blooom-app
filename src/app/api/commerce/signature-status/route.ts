@@ -22,7 +22,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 
 // Import contract configuration and ABI
 import { getContractAddresses } from '@/lib/contracts/config'
-import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abi'
+import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 
 /**
  * Signature Request Interface

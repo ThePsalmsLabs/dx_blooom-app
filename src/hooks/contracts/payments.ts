@@ -11,7 +11,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 
 import { getContractAddresses } from '@/lib/contracts/config'
-import { PAY_PER_VIEW_ABI, ERC20_ABI } from '@/lib/contracts/abi'
+import { PAY_PER_VIEW_ABI, ERC20_ABI } from '@/lib/contracts/abis'
 
 /* -------------------------------------------------------------------------- */
 /*                                ENUMERATIONS                                */

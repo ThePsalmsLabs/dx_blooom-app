@@ -213,7 +213,7 @@ function useContractAddresses() {
 function useContractABIs() {
   return useMemo(() => {
     try {
-      const contractModule = require('@/lib/contracts/abi')
+      const contractModule = require('@/lib/contracts/abis')
       return {
         COMMERCE_PROTOCOL_INTEGRATION_ABI: contractModule.COMMERCE_PROTOCOL_INTEGRATION_ABI || [],
         PRICE_ORACLE_ABI: contractModule.PRICE_ORACLE_ABI || [],

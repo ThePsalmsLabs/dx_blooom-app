@@ -26,7 +26,7 @@ import {
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
-import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI, ERC20_ABI } from '@/lib/contracts/abi'
+import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI, ERC20_ABI } from '@/lib/contracts/abis'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import type { Creator, ContentCategory, Content } from '@/types/contracts'
 
