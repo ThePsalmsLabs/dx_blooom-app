@@ -71,7 +71,7 @@ import { cn } from '@/lib/utils'
 // Import your existing business logic hooks and utilities
 import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance } from '@/hooks/contracts/core'
 import { useUnifiedContentPurchaseFlow, UnifiedPurchaseFlowResult, PaymentMethod } from '@/hooks/business/workflows'
-import { formatCurrency, formatAddress } from '@/lib/utils'
+import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
 import { EnhancedPaymentOptions } from './EnhancedPaymentOptions'
 
@@ -643,7 +643,14 @@ export function ContentPurchaseCard({
 
       console.log('✅ Token balance check completed successfully', {
         tokenInfos,
-        multiPaymentSupported
+        multiPaymentSupported,
+        availableMethodsCount: primaryPurchaseFlow.availableMethods?.length,
+        supportedTokensCount: primaryPurchaseFlow.supportedTokens?.length,
+        supportedTokens: primaryPurchaseFlow.supportedTokens?.map(token => ({
+          symbol: token.symbol,
+          balance: token.balance?.toString(),
+          address: token.address
+        }))
       })
 
       setPaymentState(prev => ({
@@ -1432,18 +1439,28 @@ function PaymentOptionsDisplay({
 
               <div className="text-right">
                 <div className={`text-sm font-medium ${canAfford ? 'text-gray-900' : 'text-red-600'}`}>
-                  {tokenInfo?.balance !== null 
-                    ? formatCurrency(
-                        tokenInfo?.balance || BigInt(0), 
-                        tokenInfo?.decimals || 18, 
-                        tokenInfo?.symbol || 'Token'
-                      )
-                    : '---'
-                  }
+                  {(() => {
+                    console.log(`🖥️ UI: Displaying balance for ${tokenInfo?.symbol}:`, {
+                      tokenInfo,
+                      balance: tokenInfo?.balance?.toString(),
+                      decimals: tokenInfo?.decimals,
+                      symbol: tokenInfo?.symbol,
+                      balanceIsNull: tokenInfo?.balance === null,
+                      balanceIsUndefined: tokenInfo?.balance === undefined
+                    })
+                    
+                    return tokenInfo?.balance !== null 
+                      ? formatTokenBalance(
+                          tokenInfo?.balance || BigInt(0), 
+                          tokenInfo?.decimals || 18, 
+                          tokenInfo?.symbol || 'Token'
+                        )
+                      : '---'
+                  })()}
                 </div>
                 <div className="text-xs text-gray-500">
                   Need: {tokenInfo?.requiredAmount 
-                    ? formatCurrency(
+                    ? formatTokenBalance(
                         tokenInfo.requiredAmount, 
                         tokenInfo?.decimals || 18, 
                         tokenInfo?.symbol || 'Token'

@@ -9,7 +9,7 @@ import React from 'react'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { formatCurrency } from '@/lib/utils'
+import { formatTokenBalance } from '@/lib/utils'
 import { UnifiedPurchaseFlowResult, PaymentMethod } from '@/hooks/business/workflows'
 
 interface EnhancedPaymentOptionsProps {
@@ -186,14 +186,14 @@ export function EnhancedPaymentOptions({
                 {/* Right: Balance Info */}
                 <div className="text-right">
                   <div className="text-sm font-bold text-gray-900">
-                    {formatCurrency(balance, decimals, symbol)}
+                    {formatTokenBalance(balance, decimals, symbol)}
                   </div>
                   <div className="text-xs text-gray-500">Your balance</div>
                   
                   {required > BigInt(0) && (
                     <div className="mt-1 pt-1 border-t border-gray-100">
                       <div className="text-xs text-gray-600">
-                        Need: {formatCurrency(required, decimals, symbol)}
+                        Need: {formatTokenBalance(required, decimals, symbol)}
                       </div>
                       {canAfford ? (
                         <div className="text-xs text-green-600 font-medium">

@@ -134,6 +134,64 @@ export function formatCurrency(
 }
 
 /**
+ * Formats token balances with appropriate symbols and formatting
+ * 
+ * @param amount - BigInt amount in smallest unit  
+ * @param decimals - Number of decimal places
+ * @param symbol - Token symbol (ETH, USDC, etc.)
+ * @returns Formatted balance string
+ * 
+ * @example
+ * formatTokenBalance(1500000000000000000n, 18, 'ETH')
+ * // Result: "1.50 ETH"
+ * 
+ * formatTokenBalance(1500000n, 6, 'USDC')  
+ * // Result: "$1.50 USDC"
+ */
+export function formatTokenBalance(
+  amount: bigint,
+  decimals: number = 18,
+  symbol: string = 'TOKEN',
+  locale: string = 'en-US'
+): string {
+  if (amount === BigInt(0)) {
+    // For stablecoins, show dollar sign
+    if (['USDC', 'USDT', 'DAI'].includes(symbol.toUpperCase())) {
+      return `$0.00 ${symbol}`
+    }
+    return `0.00 ${symbol}`
+  }
+  
+  // Convert BigInt to decimal number
+  const divisor = BigInt(10) ** BigInt(decimals)
+  const wholePart = amount / divisor
+  const fractionalPart = amount % divisor
+  
+  // Create decimal number
+  const decimalValue = Number(wholePart) + Number(fractionalPart) / Number(divisor)
+  
+  // For stablecoins, use currency formatting
+  if (['USDC', 'USDT', 'DAI'].includes(symbol.toUpperCase())) {
+    const formatter = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6
+    })
+    const formattedAmount = formatter.format(decimalValue)
+    return `${formattedAmount} ${symbol}`
+  }
+  
+  // For other tokens, use simple decimal formatting
+  const formatter = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: decimals > 6 ? 6 : decimals
+  })
+  
+  return `${formatter.format(decimalValue)} ${symbol}`
+}
+
+/**
  * Formats a BigInt amount as a simple decimal string without currency symbols
  * 
  * Sometimes you need just the numeric value without dollar signs or currency

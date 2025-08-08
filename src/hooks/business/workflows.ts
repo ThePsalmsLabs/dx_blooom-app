@@ -51,15 +51,39 @@ export enum PaymentTier {
 }
 
 /**
+ * Base Mainnet Token Addresses
+ * These are official token addresses on Base Mainnet
+ */
+export const BASE_MAINNET_TOKENS = {
+  USDC: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' as Address,
+  WETH: '0x4200000000000000000000000000000000000006' as Address,
+  DAI: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb' as Address,
+  CBETH: '0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22' as Address,
+  WBTC: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c' as Address,
+  USDT: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2' as Address,
+  OP: '0xA960dE9F7A8FAe3a6BD37DdF77E0Ba87A652d9e9' as Address,
+  UNI: '0xa33c0F82dc3bD8fF66A38d6D6d5C14C19d0E8b63' as Address,
+} as const
+
+/**
  * Base Sepolia Testnet Token Addresses
  * These are popular tokens available on Base Sepolia for testing
+ * Note: Some tokens may not exist on testnet, so we'll handle missing contracts gracefully
  */
 export const BASE_SEPOLIA_TOKENS = {
   USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as Address,
   WETH: '0x4200000000000000000000000000000000000006' as Address, // Wrapped ETH on Base
-  DAI: '0xf175520c52418dfe19c8098071a252da48cd1c19' as Address,  // DAI on Base Sepolia
-  CBETH: '0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2' as Address, // cbETH on Base Sepolia
+  // DAI and CBETH may not exist on Base Sepolia, so we'll disable them for now
+  // DAI: '0xf175520c52418dfe19c8098071a252da48cd1c19' as Address,
+  // CBETH: '0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2' as Address,
 } as const
+
+/**
+ * Get token addresses based on current chain
+ */
+export function getTokenAddresses(chainId: number) {
+  return chainId === 8453 ? BASE_MAINNET_TOKENS : BASE_SEPOLIA_TOKENS
+}
 
 /**
  * Token Configuration for Multi-Payment Support
@@ -75,58 +99,47 @@ export interface TokenConfig {
   readonly poolFee: number // Uniswap V3 pool fee (in basis points)
 }
 
-export const SUPPORTED_TOKENS: Record<PaymentMethod, TokenConfig | null> = {
-  [PaymentMethod.USDC]: {
-    address: BASE_SEPOLIA_TOKENS.USDC,
-    symbol: 'USDC',
-    name: 'USD Coin',
-    decimals: 6,
-    isNative: false,
-    isStablecoin: true,
-    estimatedGas: 'Low',
-    poolFee: 100 // 0.01%
-  },
-  [PaymentMethod.ETH]: {
-    address: '0x0000000000000000000000000000000000000000' as Address,
-    symbol: 'ETH',
-    name: 'Ethereum',
-    decimals: 18,
-    isNative: true,
-    isStablecoin: false,
-    estimatedGas: 'Medium',
-    poolFee: 500 // 0.05%
-  },
-  [PaymentMethod.WETH]: {
-    address: BASE_SEPOLIA_TOKENS.WETH,
-    symbol: 'WETH',
-    name: 'Wrapped Ethereum',
-    decimals: 18,
-    isNative: false,
-    isStablecoin: false,
-    estimatedGas: 'Medium',
-    poolFee: 500 // 0.05%
-  },
-  [PaymentMethod.CBETH]: {
-    address: BASE_SEPOLIA_TOKENS.CBETH,
-    symbol: 'cbETH',
-    name: 'Coinbase Wrapped Staked ETH',
-    decimals: 18,
-    isNative: false,
-    isStablecoin: false,
-    estimatedGas: 'Medium',
-    poolFee: 500 // 0.05%
-  },
-  [PaymentMethod.DAI]: {
-    address: BASE_SEPOLIA_TOKENS.DAI,
-    symbol: 'DAI',
-    name: 'Dai Stablecoin',
-    decimals: 18,
-    isNative: false,
-    isStablecoin: true,
-    estimatedGas: 'Low',
-    poolFee: 100 // 0.01%
-  },
-  [PaymentMethod.OTHER_TOKEN]: null // Will be dynamically configured
+/**
+ * Get supported tokens configuration based on chain ID
+ */
+export function getSupportedTokens(chainId: number): Record<PaymentMethod, TokenConfig | null> {
+  const tokenAddresses = getTokenAddresses(chainId)
+  
+  return {
+    [PaymentMethod.USDC]: {
+      address: tokenAddresses.USDC,
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6,
+      isNative: false,
+      isStablecoin: true,
+      estimatedGas: 'Low',
+      poolFee: 100 // 0.01%
+    },
+    [PaymentMethod.ETH]: {
+      address: '0x0000000000000000000000000000000000000000' as Address,
+      symbol: 'ETH',
+      name: 'Ethereum',
+      decimals: 18,
+      isNative: true,
+      isStablecoin: false,
+      estimatedGas: 'Medium',
+      poolFee: 500 // 0.05%
+    },
+    [PaymentMethod.WETH]: {
+      address: tokenAddresses.WETH,
+      symbol: 'WETH',
+      name: 'Wrapped Ethereum',
+      decimals: 18,
+      isNative: false,
+      isStablecoin: false,
+      estimatedGas: 'Medium',
+      poolFee: 500 // 0.05%
+    },
+    [PaymentMethod.CBETH]: null, // Disabled for now - not available on testnet
+    [PaymentMethod.DAI]: null,   // Disabled for now - not available on testnet
+    [PaymentMethod.OTHER_TOKEN]: null // Will be dynamically configured
+  }
 }
 
 interface ContentDetails {
@@ -444,7 +457,8 @@ export function useUnifiedContentPurchaseFlow(
     if (!contractAddresses) return null
 
     // Get token configuration for selected method
-    const tokenConfig = SUPPORTED_TOKENS[selectedMethod]
+    const supportedTokens = getSupportedTokens(chainId)
+    const tokenConfig = supportedTokens[selectedMethod]
     if (!tokenConfig && selectedMethod !== PaymentMethod.OTHER_TOKEN) return null
 
     // Determine token address
@@ -520,36 +534,57 @@ export function useUnifiedContentPurchaseFlow(
         transport: http()
       })
 
-      // Get token configuration
-      const tokenConfig = SUPPORTED_TOKENS[paymentMethod]
+          // Get token configuration
+    const supportedTokens = getSupportedTokens(chainId)
+    const tokenConfig = supportedTokens[paymentMethod]
       const poolFee = tokenConfig?.poolFee || 3000
 
       // For ETH, use PriceOracle.getETHPrice
       if (tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH) {
-        const ethAmount = await publicClient.readContract({
-          address: contractAddresses.PRICE_ORACLE,
-          abi: PRICE_ORACLE_ABI as any,
-          functionName: 'getETHPrice' as any,
-          args: [usdcAmount]
-        }) as bigint
+        try {
+          const ethAmount = await publicClient.readContract({
+            address: contractAddresses.PRICE_ORACLE,
+            abi: PRICE_ORACLE_ABI as any,
+            functionName: 'getETHPrice' as any,
+            args: [usdcAmount]
+          }) as bigint
 
-        return {
-          requiredAmount: ethAmount,
-          priceInUSDC: usdcAmount
+          console.log(`✅ ETH price calculated: ${ethAmount.toString()} wei for ${usdcAmount.toString()} USDC`)
+
+          return {
+            requiredAmount: ethAmount,
+            priceInUSDC: usdcAmount
+          }
+        } catch (error) {
+          console.error(`❌ ETH price calculation failed:`, error)
+          // Fallback: use a simple conversion (1 ETH = $3000 USDC for demo)
+          const fallbackEthAmount = (usdcAmount * BigInt(1e18)) / BigInt(3000 * 1e6)
+          console.log(`🔄 Using fallback ETH price: ${fallbackEthAmount.toString()} wei`)
+          return {
+            requiredAmount: fallbackEthAmount,
+            priceInUSDC: usdcAmount
+          }
         }
       }
 
-      // For all other tokens, use PriceOracle.getTokenAmountForUSDC
-      const tokenAmount = await publicClient.readContract({
-        address: contractAddresses.PRICE_ORACLE,
-        abi: PRICE_ORACLE_ABI as any,
-        functionName: 'getTokenAmountForUSDC' as any,
-        args: [tokenAddress, usdcAmount, poolFee]
-      }) as bigint
+      // For other tokens, use PriceOracle.getTokenAmountForUSDC
+      try {
+        const tokenAmount = await publicClient.readContract({
+          address: contractAddresses.PRICE_ORACLE,
+          abi: PRICE_ORACLE_ABI as any,
+          functionName: 'getTokenAmountForUSDC' as any,
+          args: [tokenAddress, usdcAmount, poolFee]
+        }) as bigint
 
-      return {
-        requiredAmount: tokenAmount,
-        priceInUSDC: usdcAmount
+        console.log(`✅ Token price calculated: ${tokenAmount.toString()} for ${usdcAmount.toString()} USDC`)
+
+        return {
+          requiredAmount: tokenAmount,
+          priceInUSDC: usdcAmount
+        }
+      } catch (error) {
+        console.error(`❌ Token price calculation failed for ${tokenAddress}:`, error)
+        return null
       }
     } catch (error) {
       console.error(`Price calculation failed for ${paymentMethod}:`, error)
@@ -569,7 +604,8 @@ export function useUnifiedContentPurchaseFlow(
     }
 
     // Get token configuration
-    const tokenConfig = SUPPORTED_TOKENS[paymentMethod]
+    const supportedTokens = getSupportedTokens(chainId)
+    const tokenConfig = supportedTokens[paymentMethod]
     const isEth = tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH
     const isUsdc = tokenAddress === contractAddresses.USDC || paymentMethod === PaymentMethod.USDC
     
@@ -597,13 +633,28 @@ export function useUnifiedContentPurchaseFlow(
     let balance: bigint | null = null
     let formattedBalance = '0.00'
     
+    console.log(`🔍 Starting balance fetch for ${symbol}:`, {
+      userAddress,
+      tokenAddress,
+      isEth,
+      isUsdc,
+      chainId,
+      paymentMethod,
+      decimals
+    })
+    
     if (isEth) {
       // For ETH, fetch actual balance
       try {
         console.log(`🔍 Fetching ETH balance for address: ${userAddress} on chain: ${chainId}`)
         balance = await publicClient.getBalance({ address: userAddress })
         formattedBalance = (Number(balance) / 1e18).toFixed(6)
-        console.log(`✅ ETH balance fetched: ${formattedBalance} ETH (${balance} wei)`)
+        console.log(`✅ ETH balance fetched successfully:`, {
+          raw: balance.toString(),
+          wei: balance,
+          formatted: formattedBalance,
+          symbol
+        })
       } catch (error) {
         console.error('❌ ETH balance fetch failed:', error)
         console.error('Error details:', {
@@ -615,6 +666,11 @@ export function useUnifiedContentPurchaseFlow(
     } else {
       // ERC-20 token balance
       try {
+        console.log(`🔍 Fetching ${symbol} balance:`, {
+          tokenAddress,
+          userAddress,
+          decimals
+        })
         balance = await publicClient.readContract({
           address: tokenAddress,
           abi: ERC20_ABI,
@@ -622,8 +678,25 @@ export function useUnifiedContentPurchaseFlow(
           args: [userAddress]
         }) as bigint
         formattedBalance = (Number(balance) / Math.pow(10, decimals)).toFixed(6)
+        console.log(`✅ ${symbol} balance fetched successfully:`, {
+          raw: balance.toString(),
+          bigint: balance,
+          formatted: formattedBalance,
+          decimals,
+          symbol
+        })
       } catch (error) {
-        console.error(`${symbol} balance fetch failed:`, error)
+        console.error(`❌ ${symbol} balance fetch failed:`, error)
+        console.error('Token fetch error details:', {
+          tokenAddress,
+          userAddress,
+          symbol,
+          decimals,
+          error: error instanceof Error ? error.message : String(error)
+        })
+        // Set balance to 0 for failed fetches
+        balance = BigInt(0)
+        formattedBalance = '0.00'
       }
     }
 
@@ -633,15 +706,29 @@ export function useUnifiedContentPurchaseFlow(
       try {
         const spender = isUsdc ? contractAddresses.PAY_PER_VIEW : contractAddresses.COMMERCE_INTEGRATION
         if (spender) {
+          console.log(`🔍 Fetching ${symbol} allowance:`, {
+            tokenAddress,
+            userAddress,
+            spender
+          })
           allowance = await publicClient.readContract({
             address: tokenAddress,
             abi: ERC20_ABI,
             functionName: 'allowance',
             args: [userAddress, spender]
           }) as bigint
+          console.log(`✅ ${symbol} allowance fetched: ${allowance.toString()}`)
         }
       } catch (error) {
-        console.error(`${symbol} allowance fetch failed:`, error)
+        console.error(`❌ ${symbol} allowance fetch failed:`, error)
+        console.error('Allowance fetch error details:', {
+          tokenAddress,
+          userAddress,
+          symbol,
+          error: error instanceof Error ? error.message : String(error)
+        })
+        // Set allowance to 0 for failed fetches
+        allowance = BigInt(0)
       }
     }
 
@@ -649,7 +736,7 @@ export function useUnifiedContentPurchaseFlow(
     const hasEnoughBalance = balance !== null && requiredAmount !== null ? balance >= requiredAmount : false
     const needsApproval = !isEth && allowance !== null && requiredAmount !== null ? allowance < requiredAmount : false
 
-    return {
+    const tokenInfo = {
       address: tokenAddress,
       symbol,
       name,
@@ -667,6 +754,19 @@ export function useUnifiedContentPurchaseFlow(
       isLoading: false,
       error: undefined
     }
+
+    console.log(`🎯 Final token info for ${symbol}:`, {
+      symbol,
+      balance: balance?.toString(),
+      formattedBalance,
+      hasBalance: balance !== null,
+      balanceGreaterThanZero: balance !== null && balance > BigInt(0),
+      requiredAmount: requiredAmount?.toString(),
+      hasEnoughBalance,
+      needsApproval
+    })
+
+    return tokenInfo
   }, [contractAddresses, userAddress, contentQuery.data, calculateTokenPrice, chainId])
 
   /**
@@ -679,7 +779,8 @@ export function useUnifiedContentPurchaseFlow(
     const updatedPrices = new Map<Address, TokenInfo>()
 
     // Get all payment methods to check
-    const methodsToCheck = Object.keys(SUPPORTED_TOKENS).map(key => parseInt(key) as PaymentMethod)
+    const supportedTokens = getSupportedTokens(chainId)
+    const methodsToCheck = Object.keys(supportedTokens).map(key => parseInt(key) as PaymentMethod)
     console.log(`📋 Methods to check: ${methodsToCheck.join(', ')}`)
     
     for (const method of methodsToCheck) {
@@ -696,7 +797,7 @@ export function useUnifiedContentPurchaseFlow(
         continue
       }
 
-      const tokenConfig = SUPPORTED_TOKENS[method]
+      const tokenConfig = supportedTokens[method]
       if (!tokenConfig) continue
 
       try {
@@ -735,6 +836,22 @@ export function useUnifiedContentPurchaseFlow(
   }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo])
 
   /**
+   * Auto-refresh prices when hook initializes or key dependencies change
+   */
+  useEffect(() => {
+    console.log('🔄 useEffect: Auto-refreshing prices...', {
+      hasContractAddresses: !!contractAddresses,
+      hasContent: !!contentQuery.data,
+      hasUserAddress: !!userAddress,
+      isContentLoading: contentQuery.isLoading
+    })
+    
+    if (contractAddresses && contentQuery.data && userAddress && !contentQuery.isLoading) {
+      refreshPrices()
+    }
+  }, [contractAddresses, contentQuery.data, userAddress, contentQuery.isLoading, refreshPrices])
+
+  /**
    * Payment Method Selection Handler
    */
   const setPaymentMethod = useCallback((method: PaymentMethod) => {
@@ -750,7 +867,7 @@ export function useUnifiedContentPurchaseFlow(
     
     // Refresh prices when method changes
     refreshPrices()
-  }, [])
+  }, [refreshPrices])
 
   /**
    * Custom Token Address Handler
@@ -764,7 +881,7 @@ export function useUnifiedContentPurchaseFlow(
     if (selectedMethod === PaymentMethod.OTHER_TOKEN) {
       refreshPrices()
     }
-  }, [customTokenAddress, selectedMethod])
+  }, [customTokenAddress, selectedMethod, refreshPrices])
 
   /**
    * Payment Execution Logic
@@ -832,7 +949,8 @@ export function useUnifiedContentPurchaseFlow(
         }))
 
         // Get token configuration
-        const tokenConfig = SUPPORTED_TOKENS[selectedMethod]
+        const supportedTokens = getSupportedTokens(chainId)
+        const tokenConfig = supportedTokens[selectedMethod]
         let paymentToken: Address
 
         if (selectedMethod === PaymentMethod.ETH) {
