@@ -118,8 +118,21 @@ export function useIsCreatorRegistered(creatorAddress: Address | undefined): Con
       staleTime: 1000 * 60 * 10, // Creator registration rarely changes, cache for 10 minutes
       gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes
       retry: 3, // Retry failed requests up to 3 times
+      retryDelay: 1000, // Wait 1 second between retries
     }
   })
+
+  // Add better error handling and logging
+  useEffect(() => {
+    if (result.isError && result.error) {
+      console.error('❌ Creator registration check failed:', {
+        address: creatorAddress,
+        contractAddress: contractConfig.address,
+        chainId,
+        error: result.error
+      })
+    }
+  }, [result.isError, result.error, creatorAddress, contractConfig.address, chainId])
 
   return {
     data: typeof result.data === 'boolean' ? result.data : undefined,

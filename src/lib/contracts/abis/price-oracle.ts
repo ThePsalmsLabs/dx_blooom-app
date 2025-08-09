@@ -94,7 +94,7 @@ export const PRICE_ORACLE_ABI = [
     outputs: [
       { name: 'ethAmount', type: 'uint256', internalType: 'uint256' }
     ],
-    stateMutability: 'nonpayable'
+    stateMutability: 'view'
   },
   {
     type: 'function',
@@ -107,7 +107,7 @@ export const PRICE_ORACLE_ABI = [
     outputs: [
       { name: 'quotes', type: 'uint256[3]', internalType: 'uint256[3]' }
     ],
-    stateMutability: 'nonpayable'
+    stateMutability: 'view'
   },
   {
     type: 'function',
@@ -120,7 +120,7 @@ export const PRICE_ORACLE_ABI = [
     outputs: [
       { name: 'tokenAmount', type: 'uint256', internalType: 'uint256' }
     ],
-    stateMutability: 'nonpayable'
+    stateMutability: 'view'
   },
   {
     type: 'function',
@@ -134,7 +134,7 @@ export const PRICE_ORACLE_ABI = [
     outputs: [
       { name: 'amountOut', type: 'uint256', internalType: 'uint256' }
     ],
-    stateMutability: 'nonpayable'
+    stateMutability: 'view'
   },
 
   // ===== POOL FEE MANAGEMENT =====

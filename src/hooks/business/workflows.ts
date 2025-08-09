@@ -3989,6 +3989,20 @@ export function useCreatorOnboarding(
         }))
       }
     }
+    
+    // Add a timeout to prevent infinite loading if the contract call takes too long
+    if (workflowState.currentStep === 'checking' && !registrationCheck.isLoading && !registrationCheck.isSuccess && !registrationCheck.error) {
+      const timeout = setTimeout(() => {
+        console.warn('⏰ Registration check timeout - treating as not registered')
+        setWorkflowState(prev => ({ 
+          ...prev, 
+          currentStep: 'not_registered',
+          error: null
+        }))
+      }, 10000) // 10 second timeout
+      
+      return () => clearTimeout(timeout)
+    }
   }, [
     registrationCheck.isLoading, 
     registrationCheck.error, 
