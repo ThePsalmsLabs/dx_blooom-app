@@ -45,6 +45,7 @@ import {
   useContentById,
   useCreatorProfile,
   useCreatorPendingEarnings,
+  useWithdrawEarnings,
   useTokenBalance
 } from '@/hooks/contracts/core'
 
@@ -714,16 +715,22 @@ export function useContentPurchaseUI(
   userAddress: Address | undefined
 ): ContentPurchaseUI {
   const purchaseFlow = useContentPurchaseFlow(contentId, userAddress)
-  
-  // Format current step for display
+
+  // Map step to human-readable text
   const currentStepText = useMemo(() => {
-    switch (purchaseFlow.currentStep) {
+    switch (purchaseFlow.flowState.step) {
       case 'checking_access':
         return 'Checking access status...'
-      case 'can_purchase':
-        return 'Ready to purchase'
+      case 'loading_content':
+        return 'Loading content information...'
+      case 'insufficient_balance':
+        return 'Insufficient balance'
       case 'need_approval':
         return 'Token approval required'
+      case 'can_purchase':
+        return 'Ready to purchase'
+      case 'approving_tokens':
+        return 'Approving token spending...'
       case 'purchasing':
         return 'Processing purchase...'
       case 'completed':
@@ -733,141 +740,124 @@ export function useContentPurchaseUI(
       default:
         return 'Unknown status'
     }
-  }, [purchaseFlow.currentStep])
-  
-  // Format content data for display
+  }, [purchaseFlow.flowState.step])
+
+  // Content display
   const contentDisplay = useMemo(() => {
-    if (!purchaseFlow.content) return null
-    
+    const c = purchaseFlow.contentDetails
+    if (!c) return null
     return {
-      title: purchaseFlow.content.title,
-      description: purchaseFlow.content.description,
-      formattedPrice: formatCurrency(purchaseFlow.content.payPerViewPrice),
-      category: formatContentCategory(purchaseFlow.content.category),
-      creatorName: formatAddress(purchaseFlow.content.creator),
-      publishDate: '-', // Placeholder since creationTime is not available
+      title: c.title,
+      description: c.description,
+      formattedPrice: formatCurrency(c.payPerViewPrice),
+      category: formatContentCategory(c.category),
+      creatorName: formatAddress(c.creator),
+      publishDate: '-',
     }
-  }, [purchaseFlow.content])
-  
-  // Format user balance for display
+  }, [purchaseFlow.contentDetails])
+
+  // Balance text
   const balanceText = useMemo(() => {
-    if (!purchaseFlow.userBalance) return 'Balance: Unknown'
-    return `Balance: ${formatCurrency(purchaseFlow.userBalance)}`
+    const bal = purchaseFlow.userBalance
+    if (!bal) return 'Balance: Unknown'
+    return `Balance: ${formatCurrency(bal)}`
   }, [purchaseFlow.userBalance])
-  
-  // Create transaction status UIs
+
+  // Transaction status from flow state
   const transactionStatus: TransactionStatusUI = useMemo(() => {
-    const progress = purchaseFlow.purchaseProgress
-    
-    let status: TransactionStatusUI['status'] = 'idle'
-    let formattedStatus = 'Ready to purchase'
-    let progressText = ''
-    
-    if (progress.isSubmitting) {
-      status = 'submitting'
-      formattedStatus = 'Processing purchase...'
-      progressText = 'Please confirm the transaction'
-    } else if (progress.isConfirming) {
-      status = 'confirming'
-      formattedStatus = 'Confirming purchase...'
-      progressText = 'Waiting for blockchain confirmation'
-    } else if (progress.isConfirmed) {
-      status = 'confirmed'
-      formattedStatus = 'Purchase confirmed!'
-      progressText = 'Content access granted'
-    } else if (purchaseFlow.error) {
-      status = 'failed'
-      formattedStatus = 'Purchase failed'
-      progressText = formatWeb3Error(purchaseFlow.error)
-    }
-    
+    const step = purchaseFlow.flowState.step
+    const hash = purchaseFlow.flowState.transactionHash || null
+    const status: TransactionStatusUI['status'] =
+      step === 'purchasing' ? 'submitting' : step === 'completed' ? 'confirmed' : step === 'error' ? 'failed' : 'idle'
+    const formattedStatus =
+      status === 'submitting'
+        ? 'Processing purchase...'
+        : status === 'confirmed'
+          ? 'Purchase confirmed!'
+          : status === 'failed'
+            ? 'Purchase failed'
+            : 'Ready to purchase'
+    const progressText =
+      status === 'submitting'
+        ? 'Please confirm the transaction'
+        : status === 'confirmed'
+          ? 'Content access granted'
+          : status === 'failed'
+            ? (purchaseFlow.flowState.error ? formatWeb3Error(purchaseFlow.flowState.error) : 'Transaction failed')
+            : ''
     return {
       status,
-      transactionHash: progress.transactionHash || null,
+      transactionHash: hash,
       formattedStatus,
       canRetry: status === 'failed',
       progress: {
-        submitted: progress.isSubmitting || progress.isConfirming || progress.isConfirmed,
-        confirming: progress.isConfirming,
-        confirmed: progress.isConfirmed,
-        progressText
+        submitted: Boolean(hash) || status === 'submitting' || status === 'confirmed',
+        confirming: false,
+        confirmed: status === 'confirmed',
+        progressText,
       },
       retry: purchaseFlow.reset,
       reset: purchaseFlow.reset,
       viewTransaction: () => {
-        if (progress.transactionHash) {
+        if (hash) {
           const baseUrl = 'https://basescan.org/tx/'
-          window.open(`${baseUrl}${progress.transactionHash}`, '_blank')
+          window.open(`${baseUrl}${hash}`, '_blank')
         }
-      }
+      },
     }
-  }, [purchaseFlow])
-  
+  }, [purchaseFlow.flowState, purchaseFlow.reset])
+
+  // Approval status approximated from step
   const approvalStatus: TransactionStatusUI = useMemo(() => {
-    const progress = purchaseFlow.approvalProgress
-    
-    let status: TransactionStatusUI['status'] = 'idle'
-    let formattedStatus = 'Approval required'
-    let progressText = ''
-    
-    if (progress.isSubmitting) {
-      status = 'submitting'
-      formattedStatus = 'Processing approval...'
-      progressText = 'Please confirm the approval transaction'
-    } else if (progress.isConfirming) {
-      status = 'confirming'
-      formattedStatus = 'Confirming approval...'
-      progressText = 'Waiting for approval confirmation'
-    } else if (progress.isConfirmed) {
-      status = 'confirmed'
-      formattedStatus = 'Approval confirmed!'
-      progressText = 'Ready to purchase content'
-    }
-    
+    const step = purchaseFlow.flowState.step
+    const status: TransactionStatusUI['status'] = step === 'approving_tokens' ? 'submitting' : step === 'can_purchase' ? 'confirmed' : 'idle'
+    const formattedStatus =
+      status === 'submitting' ? 'Processing approval...' : status === 'confirmed' ? 'Approval confirmed!' : 'Approval required'
+    const progressText = status === 'submitting' ? 'Please confirm the approval transaction' : ''
     return {
       status,
-      transactionHash: progress.transactionHash || null,
+      transactionHash: null,
       formattedStatus,
       canRetry: false,
       progress: {
-        submitted: progress.isSubmitting || progress.isConfirming || progress.isConfirmed,
-        confirming: progress.isConfirming,
-        confirmed: progress.isConfirmed,
-        progressText
+        submitted: status !== 'idle',
+        confirming: false,
+        confirmed: status === 'confirmed',
+        progressText,
       },
       retry: () => {},
       reset: () => {},
-      viewTransaction: () => {
-        if (progress.transactionHash) {
-          const baseUrl = 'https://basescan.org/tx/'
-          window.open(`${baseUrl}${progress.transactionHash}`, '_blank')
-        }
-      }
+      viewTransaction: () => {},
     }
-  }, [purchaseFlow])
-  
-  // Format success/error messages
+  }, [purchaseFlow.flowState.step])
+
   const successMessage = purchaseFlow.hasAccess ? 'You now have access to this content!' : null
-  const errorMessage = purchaseFlow.error ? formatWeb3Error(purchaseFlow.error) : null
-  
+  const errorMessage = purchaseFlow.flowState.step === 'error' && purchaseFlow.flowState.error ? formatWeb3Error(purchaseFlow.flowState.error) : null
+
+  const canAfford = useMemo(() => {
+    const bal = purchaseFlow.userBalance || BigInt(0)
+    const req = purchaseFlow.requiredAmount || BigInt(0)
+    return bal >= req
+  }, [purchaseFlow.userBalance, purchaseFlow.requiredAmount])
+
   return {
-    hasAccess: purchaseFlow.hasAccess ?? false,
-    canPurchase: purchaseFlow.currentStep === 'can_purchase',
+    hasAccess: purchaseFlow.hasAccess,
+    canPurchase: purchaseFlow.flowState.step === 'can_purchase',
     isLoading: purchaseFlow.isLoading,
     currentStepText,
     content: contentDisplay,
     purchaseActions: {
-      canAfford: purchaseFlow.canAfford,
+      canAfford,
       needsApproval: purchaseFlow.needsApproval,
       balanceText,
       purchaseAction: purchaseFlow.purchase,
       approveAndPurchaseAction: purchaseFlow.approveAndPurchase,
-      isProcessing: purchaseFlow.isLoading
+      isProcessing: purchaseFlow.isLoading || ['approving_tokens', 'purchasing'].includes(purchaseFlow.flowState.step),
     },
     transactionStatus,
     approvalStatus,
     errorMessage,
-    successMessage
+    successMessage,
   }
 }
 
@@ -1028,6 +1018,7 @@ export function useCreatorDashboardUI(userAddress: Address | undefined): Creator
   const creatorProfile = useCreatorProfile(userAddress)
   const pendingEarnings = useCreatorPendingEarnings(userAddress)
   const userBalance = useTokenBalance(contractAddresses.USDC, userAddress)
+  const withdraw = useWithdrawEarnings()
   
   // State for withdrawal action
   const [isWithdrawing, setIsWithdrawing] = useState(false)
@@ -1064,14 +1055,15 @@ export function useCreatorDashboardUI(userAddress: Address | undefined): Creator
     return {
       canWithdraw: withdrawableAmount > BigInt(0),
       withdrawableAmount: formatCurrency(withdrawableAmount),
-      withdrawAction: (amount: string) => {
-        setIsWithdrawing(true)
-        // Withdrawal logic would go here
-        console.log(`Withdrawing ${amount}`)
+      withdrawAction: (_amount: string) => {
+        if (withdrawableAmount > BigInt(0) && !withdraw.isLoading && !withdraw.isConfirming) {
+          setIsWithdrawing(true)
+          withdraw.write()
+        }
       },
-      isWithdrawing
+      isWithdrawing: isWithdrawing || withdraw.isLoading || withdraw.isConfirming
     }
-  }, [pendingEarnings.data, isWithdrawing])
+  }, [pendingEarnings.data, isWithdrawing, withdraw.isLoading, withdraw.isConfirming, withdraw.write])
   
   // Quick actions
   const quickActions = useMemo(() => ({
@@ -1088,20 +1080,44 @@ export function useCreatorDashboardUI(userAddress: Address | undefined): Creator
   
   // Transaction status (for withdrawal)
   const transactionStatus: TransactionStatusUI = useMemo(() => ({
-    status: 'idle' as const,
-    transactionHash: null,
-    formattedStatus: 'No pending transactions',
-    canRetry: false,
+    status: withdraw.isLoading ? 'submitting' : withdraw.isConfirming ? 'confirming' : withdraw.isConfirmed ? 'confirmed' : 'idle',
+    transactionHash: withdraw.hash || null,
+    formattedStatus: withdraw.isLoading
+      ? 'Submitting withdrawal...'
+      : withdraw.isConfirming
+        ? 'Confirming withdrawal...'
+        : withdraw.isConfirmed
+          ? 'Withdrawal confirmed'
+          : 'No pending transactions',
+    canRetry: Boolean(withdraw.error),
     progress: {
-      submitted: false,
-      confirming: false,
-      confirmed: false,
-      progressText: ''
+      submitted: Boolean(withdraw.hash),
+      confirming: withdraw.isConfirming,
+      confirmed: withdraw.isConfirmed,
+      progressText: withdraw.isLoading
+        ? 'Please confirm in your wallet'
+        : withdraw.isConfirming
+          ? 'Waiting for confirmation'
+          : withdraw.isConfirmed
+            ? 'Funds withdrawn'
+            : ''
     },
-    retry: () => {},
-    reset: () => {},
-    viewTransaction: () => {}
-  }), [])
+    retry: () => withdraw.reset(),
+    reset: () => withdraw.reset(),
+    viewTransaction: () => {
+      if (withdraw.hash) {
+        const baseUrl = 'https://basescan.org/tx/'
+        window.open(`${baseUrl}${withdraw.hash}`, '_blank')
+      }
+    }
+  }), [withdraw.hash, withdraw.isLoading, withdraw.isConfirming, withdraw.isConfirmed, withdraw.error, withdraw.reset])
+
+  // Track withdraw lifecycle to clear local flag when done
+  useEffect(() => {
+    if (!withdraw.isLoading && !withdraw.isConfirming) {
+      setIsWithdrawing(false)
+    }
+  }, [withdraw.isLoading, withdraw.isConfirming])
   
   return {
     isRegistered: creatorRegistration.data ?? false,

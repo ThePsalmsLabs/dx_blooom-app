@@ -547,7 +547,7 @@ function AppNavigation({
   // Mobile navigation (sheet)
   const mobileNav = (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-72 z-[9998]">
+      <SheetContent side="left" className="w-72 z-[2147483647]">
         <nav className="flex flex-col gap-2 pt-6">
           {visibleItems.map((item) => (
             <NavigationItem key={item.href} item={item} onSelect={onClose} />

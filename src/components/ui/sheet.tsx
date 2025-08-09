@@ -38,15 +38,16 @@ const SheetContent = React.forwardRef<
   }
 >(({ side = 'right', className, children, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay className="z-[2147483646]" />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed z-50 flex flex-col bg-white p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out',
-        side === 'top' && 'inset-x-0 top-0 border-b animate-slide-in-from-top',
-        side === 'bottom' && 'inset-x-0 bottom-0 border-t animate-slide-in-from-bottom',
-        side === 'left' && 'inset-y-0 left-0 h-full w-3/4 border-r animate-slide-in-from-left',
-        side === 'right' && 'inset-y-0 right-0 h-full w-3/4 border-l animate-slide-in-from-right',
+        'fixed z-[2147483647] flex flex-col bg-white p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out',
+        side === 'top' && 'inset-x-0 top-0 border-b animate-slide-in-from-top w-full max-h-[90vh] overflow-y-auto',
+        side === 'bottom' && 'inset-x-0 bottom-0 border-t animate-slide-in-from-bottom w-full max-h-[90vh] overflow-y-auto',
+        // Mobile-first width with sensible max widths on larger screens
+        side === 'left' && 'inset-y-0 left-0 h-full w-[92vw] sm:w-[80vw] md:w-[420px] border-r animate-slide-in-from-left overflow-y-auto',
+        side === 'right' && 'inset-y-0 right-0 h-full w-[92vw] sm:w-[80vw] md:w-[420px] border-l animate-slide-in-from-right overflow-y-auto',
         className
       )}
       {...props}

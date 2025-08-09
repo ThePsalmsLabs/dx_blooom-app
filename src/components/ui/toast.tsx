@@ -91,7 +91,7 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
 
   return (
     <ToastContext.Provider value={{ toast, dismiss, toasts }}>
-      <div className="relative z-[100]">
+      <div className="relative z-[9990]">
         {children}
         <ToastViewport>
           {toasts.map((t) => (
@@ -117,7 +117,7 @@ export const ToastViewport = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'fixed top-4 right-4 z-[100] flex flex-col space-y-2',
+      'fixed top-4 right-4 z-[9990] flex flex-col space-y-2',
       className
     )}
     {...props}

@@ -26,7 +26,7 @@ export const TooltipProvider = ({ children }: { children: React.ReactNode }) => 
 }
 
 export const Tooltip = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>
+  return <div className="relative inline-block">{children}</div>
 }
 
 export const TooltipTrigger = ({ children, asChild }: TooltipTriggerProps) => {
@@ -49,19 +49,25 @@ export const TooltipTrigger = ({ children, asChild }: TooltipTriggerProps) => {
 export const TooltipContent = ({
   children,
   className = '',
+  align = 'center',
 }: {
   children: React.ReactNode
   className?: string
+  align?: 'start' | 'center' | 'end'
 }) => {
   const ctx = React.useContext(TooltipContext)
   if (!ctx) throw new Error('TooltipContent must be used within a TooltipProvider')
 
-  return ctx.open ? (
+  if (!ctx.open) return null
+
+  const alignment = align === 'start' ? 'left-0' : align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2'
+
+  return (
     <div
       role="tooltip"
-      className={`absolute z-50 mt-2 rounded bg-black px-2 py-1 text-xs text-white shadow-md ${className}`}
+      className={`absolute top-full ${alignment} z-50 mt-2 rounded bg-black px-2 py-1 text-xs text-white shadow-md max-w-xs break-words ${className}`}
     >
       {children}
     </div>
-  ) : null
+  )
 }

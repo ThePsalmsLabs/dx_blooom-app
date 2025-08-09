@@ -33,11 +33,11 @@
 
 /* Custom wallet modal z-index fix */
 [data-slot="dialog-overlay"] {
-  z-index: 999998 !important;
+  z-index: 2147483646 !important;
 }
 
 [data-slot="dialog-content"] {
-  z-index: 999999 !important;
+  z-index: 2147483647 !important;
 }
 
 /* Fix for Select dropdown z-index issues */
@@ -164,6 +164,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Improve tap targets and scrolling on mobile */
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
   }
 }
 
@@ -201,5 +204,13 @@
   }
   .btn-glow:hover::after {
     transform: translateY(30%);
+  }
+
+  /* Utility: horizontal scroll snapping for tab lists and carousels */
+  .scroll-x-snap {
+    scroll-snap-type: x mandatory;
+  }
+  .scroll-x-snap > * {
+    scroll-snap-align: start;
   }
 }
