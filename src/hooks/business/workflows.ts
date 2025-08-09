@@ -435,9 +435,10 @@ export function useUnifiedContentPurchaseFlow(
   const [tokenPrices, setTokenPrices] = useState<Map<Address, TokenInfo>>(new Map())
   const [priceUpdateCounter, setPriceUpdateCounter] = useState(0)
   const priceUpdateTimerRef = useRef<NodeJS.Timeout | null>(null)
-  // Cache price oracle results to avoid RPC rate limits
+  // Cache price oracle results and contract reads to avoid RPC rate limits
   const priceResultCacheRef = useRef<Map<string, { value: { requiredAmount: bigint; priceInUSDC: bigint } | null; ts: number }>>(new Map())
-  const PRICE_CACHE_TTL_MS = 30_000
+  const contractReadCacheRef = useRef<Map<string, { value: any; ts: number }>>(new Map())
+  const CACHE_TTL_MS = 30_000
 
   const getConfiguredTransport = useCallback(() => {
     const transports = (wagmiConfig as any)?.transports
@@ -531,7 +532,7 @@ export function useUnifiedContentPurchaseFlow(
     try {
       const cacheKey = `${tokenAddress}-${usdcAmount.toString()}-${paymentMethod}`
       const cached = priceResultCacheRef.current.get(cacheKey)
-      if (cached && Date.now() - cached.ts < PRICE_CACHE_TTL_MS) {
+      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
         return cached.value
       }
       // For direct USDC, return 1:1 pricing
@@ -638,7 +639,15 @@ export function useUnifiedContentPurchaseFlow(
     const contentPrice = contentQuery.data?.payPerViewPrice || BigInt(0)
     const priceCalculation = await calculateTokenPrice(tokenAddress, contentPrice, paymentMethod)
 
-    // Create public client for direct contract reads
+    // Use cached reads to reduce API calls
+    const cacheKey = `${tokenAddress}-${userAddress}-${paymentMethod}`
+    const cached = contractReadCacheRef.current.get(cacheKey)
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+      console.log(`📦 Using cached token info for ${tokenAddress}`)
+      return cached.value
+    }
+
+    // Create public client for direct contract reads using wagmi transport
     console.log(`🔗 Creating public client for chain ID: ${chainId}`)
     const publicClient = createPublicClient({
       chain: chainId === 8453 ? base : baseSepolia,

@@ -92,10 +92,16 @@ if (!OPERATOR_PRIVATE_KEY.startsWith('0x') || OPERATOR_PRIVATE_KEY.length !== 66
  * CommerceProtocolIntegration contract for signature operations and validation.
  */
 const currentChain = NODE_ENV === 'production' ? base : baseSepolia
+const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+const ALCHEMY_URL = ALCHEMY_API_KEY
+  ? (currentChain.id === base.id
+      ? `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`
+      : `https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`)
+  : undefined
 
 const publicClient = createPublicClient({
   chain: currentChain,
-  transport: http()
+  transport: http(ALCHEMY_URL)
 })
 
 const operatorAccount = privateKeyToAccount(OPERATOR_PRIVATE_KEY as `0x${string}`)
@@ -103,7 +109,7 @@ const operatorAccount = privateKeyToAccount(OPERATOR_PRIVATE_KEY as `0x${string}
 const walletClient = createWalletClient({
   account: operatorAccount,
   chain: currentChain,
-  transport: http()
+  transport: http(ALCHEMY_URL)
 })
 
 /**

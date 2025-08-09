@@ -60,22 +60,25 @@ const getTransports = () => {
 
   return {
     [base.id]: http(baseRpcs[0], {
-      // Batch multiple calls into single request for efficiency
+      // Aggressive batching to reduce API calls
       batch: {
-        batchSize: 10,
-        wait: 16, // 16ms batching window for optimal performance
+        batchSize: 50,
+        wait: 100, // Longer batching window to collect more calls
       },
       // Retry configuration for network resilience
-      retryCount: 3,
-      retryDelay: 1000,
+      retryCount: 2,
+      retryDelay: 1500,
+      // Cache responses to reduce repeat calls
+      timeout: 30_000,
     }),
     [baseSepolia.id]: http(baseSepoliaRpcs[0], {
       batch: {
-        batchSize: 10, 
-        wait: 16,
+        batchSize: 50, 
+        wait: 100,
       },
-      retryCount: 3,
-      retryDelay: 1000,
+      retryCount: 2,
+      retryDelay: 1500,
+      timeout: 30_000,
     }),
   }
 }
@@ -160,13 +163,17 @@ export const wagmiConfig = getDefaultConfig({
   storage,
   ssr: true, // Enable server-side rendering compatibility
   
-  // Batch configuration for efficient RPC usage
+  // Aggressive batch configuration for maximum RPC efficiency
   batch: {
     multicall: {
-      batchSize: 1024 * 200, // 200KB batch size
-      wait: 16, // 16ms batching window
+      batchSize: 1024 * 500, // 500KB batch size for fewer requests
+      wait: 200, // Longer batching window to collect more calls
     },
   },
+  
+  // Add caching configuration to reduce redundant calls
+  cacheTime: 30_000, // Cache results for 30 seconds
+  pollingInterval: undefined, // Disable auto-polling
 })
 
 /**

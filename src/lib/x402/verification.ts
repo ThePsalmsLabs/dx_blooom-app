@@ -1,5 +1,6 @@
 // src/lib/x402/verification.ts
-import { createPublicClient, http, type Address, type Hash, type PublicClient, type Log } from 'viem'
+import { getSharedPublicClient } from '@/lib/web3/client'
+import { type Address, type Hash, type PublicClient, type Log } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { getContractAddresses } from '../contracts/config'
 
@@ -231,20 +232,8 @@ function getPaymentVerificationConfig(): PaymentVerificationConfig {
  * as your existing contract interactions to ensure consistency.
  */
 function createBlockchainClient(): PublicClient {
-  const network = process.env.NETWORK as 'base' | 'base-sepolia'
-  const chain = network === 'base' ? base : baseSepolia
-  
-  // Use Alchemy if available, fallback to default RPC
-  const rpcUrl = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY 
-    ? `https://${network}.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
-    : chain.rpcUrls.default.http[0]
-
-  const client = createPublicClient({
-    chain,
-    transport: http(rpcUrl)
-  })
-  
-  return client as PublicClient
+  // Use the shared client that routes through Alchemy
+  return getSharedPublicClient()
 }
 
 /**

@@ -1,6 +1,6 @@
 // src/app/api/protected/content/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient, http } from 'viem'
+import { getSharedPublicClient } from '@/lib/web3/client'
 import { base, baseSepolia } from 'viem/chains'
 import { getContractAddresses, getContractConfig } from '../../../../../lib/contracts/config'
 
@@ -162,14 +162,8 @@ export async function POST(
     const chainId = network === 'base' ? base.id : baseSepolia.id
     const chain = network === 'base' ? base : baseSepolia
 
-    const rpcUrl = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY 
-      ? `https://${network}.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
-      : chain.rpcUrls.default.http[0]
-
-    const publicClient = createPublicClient({
-      chain,
-      transport: http(rpcUrl)
-    })
+    // Use the shared public client that routes through Alchemy
+    const publicClient = getSharedPublicClient()
 
     // Get contract configuration using your existing setup
     const contractConfig = getContractConfig(chainId, 'CONTENT_REGISTRY')
