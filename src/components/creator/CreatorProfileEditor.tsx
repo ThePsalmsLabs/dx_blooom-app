@@ -130,6 +130,20 @@ interface ValidationErrors {
 }
 
 /**
+ * Profile metadata stored on IPFS (JSON)
+ */
+interface CreatorProfileMetadata {
+  readonly bio?: string
+  readonly website?: string
+  readonly twitter?: string
+  readonly categories?: ContentCategory[]
+  readonly showEmail?: boolean
+  readonly showSocialLinks?: boolean
+  readonly profileImage?: string
+  readonly updatedAt?: string
+}
+
+/**
  * IPFS Upload Progress Interface
  * 
  * This tracks IPFS upload progress for profile image uploads,
@@ -208,37 +222,11 @@ export function CreatorProfileEditor({
    */
   useEffect(() => {
     if (creatorProfile.data && !isFormDirty) {
-      try {
-        // Parse profile data (assuming it's IPFS JSON or similar)
-        const profileData = creatorProfile.data.profileData
-        let parsedData = {}
-        
-        if (profileData && profileData.startsWith('Qm')) {
-          // This is an IPFS hash, we would normally fetch the JSON
-          // For now, we'll use default values and show current subscription price
-          parsedData = {}
-        } else if (profileData) {
-          // Try to parse as JSON
-          try {
-            parsedData = JSON.parse(profileData)
-          } catch {
-            parsedData = {}
-          }
-        }
-
-        setFormData(prev => ({
-          ...prev,
-          subscriptionPrice: (Number(creatorProfile.data.subscriptionPrice) / 1_000_000).toString(),
-          bio: (parsedData as any)?.bio || '',
-          website: (parsedData as any)?.website || '',
-          twitter: (parsedData as any)?.twitter || '',
-          categories: (parsedData as any)?.categories || [],
-          showEmail: (parsedData as any)?.showEmail || false,
-          showSocialLinks: (parsedData as any)?.showSocialLinks !== false
-        }))
-      } catch (error) {
-        console.error('Error parsing profile data:', error)
-      }
+      const currentPrice = Number(creatorProfile.data.subscriptionPrice) / 1_000_000
+      setFormData(prev => ({
+        ...prev,
+        subscriptionPrice: currentPrice.toString(),
+      }))
     }
   }, [creatorProfile.data, isFormDirty])
 
@@ -288,7 +276,7 @@ export function CreatorProfileEditor({
    * This function manages form state updates while tracking dirty state
    * and clearing validation errors as users correct them.
    */
-  const handleInputChange = useCallback((field: keyof ProfileFormData, value: any) => {
+  const handleInputChange = useCallback((field: keyof ProfileFormData, value: ProfileFormData[typeof field]) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     setIsFormDirty(true)
     
@@ -318,25 +306,15 @@ export function CreatorProfileEditor({
     setIpfsUpload({ isUploading: true, progress: 0 })
 
     try {
-      // Simulate IPFS upload (replace with actual IPFS upload logic)
-      const uploadProgress = setInterval(() => {
-        setIpfsUpload(prev => ({
-          ...prev,
-          progress: Math.min(prev.progress + 10, 90)
-        }))
-      }, 200)
-
-      // Simulate upload completion
-      setTimeout(() => {
-        clearInterval(uploadProgress)
-        const fakeHash = `Qm${Math.random().toString(36).substring(2)}`
-        setIpfsUpload({
-          isUploading: false,
-          progress: 100,
-          hash: fakeHash
-        })
-        setFormData(prev => ({ ...prev, profileImageFile: file }))
-      }, 2000)
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/ipfs/upload', { method: 'POST', body: form })
+      const json = await res.json() as { success?: boolean; hash?: string; error?: string }
+      if (!res.ok || !json?.hash) {
+        throw new Error(json?.error || 'IPFS upload failed')
+      }
+      setIpfsUpload({ isUploading: false, progress: 100, hash: json.hash })
+      setFormData(prev => ({ ...prev, profileImageFile: file }))
 
     } catch (error) {
       setIpfsUpload({
@@ -364,7 +342,7 @@ export function CreatorProfileEditor({
 
     try {
       // Prepare profile metadata
-      const profileMetadata = {
+      const profileMetadata: CreatorProfileMetadata = {
         bio: formData.bio,
         website: formData.website,
         twitter: formData.twitter.replace('@', ''),
@@ -375,11 +353,21 @@ export function CreatorProfileEditor({
         updatedAt: new Date().toISOString()
       }
 
-      // Upload profile metadata to IPFS (or prepare for contract)
+      // Upload profile metadata JSON to IPFS
       const profileDataString = JSON.stringify(profileMetadata)
+      const blob = new Blob([profileDataString], { type: 'application/json' })
+      const jsonFile = new File([blob], 'profile.json', { type: 'application/json' })
+      const form = new FormData()
+      form.append('file', jsonFile)
+      const metaRes = await fetch('/api/ipfs/upload', { method: 'POST', body: form })
+      const metaJson = await metaRes.json() as { success?: boolean; hash?: string; error?: string }
+      if (!metaRes.ok || !metaJson?.hash) {
+        throw new Error(metaJson?.error || 'Failed to upload profile metadata to IPFS')
+      }
+      const profileDataCid = metaJson.hash
 
       // Update subscription price if changed
-      const currentPrice = Number(creatorProfile.data?.subscriptionPrice || 0) / 1_000_000
+      const currentPrice = Number(creatorProfile.data?.subscriptionPrice ?? 0) / 1_000_000
       if (parseFloat(formData.subscriptionPrice) !== currentPrice) {
         await profileManagement.updateSubscriptionPrice({
           newPriceUSDC: formData.subscriptionPrice
@@ -387,9 +375,7 @@ export function CreatorProfileEditor({
       }
 
       // Update profile data
-      await profileManagement.updateProfileData({
-        profileData: profileDataString
-      })
+      await profileManagement.updateProfileData({ profileData: profileDataCid })
 
       // Success handling
       setIsFormDirty(false)
@@ -711,7 +697,7 @@ export function CreatorProfileEditor({
                     bio: '',
                     website: '',
                     twitter: '',
-                    subscriptionPrice: (Number(creatorProfile.data.subscriptionPrice) / 1_000_000).toString(),
+                    subscriptionPrice: (Number(creatorProfile.data?.subscriptionPrice ?? 0) / 1_000_000).toString(),
                     categories: [],
                     showEmail: false,
                     showSocialLinks: true
