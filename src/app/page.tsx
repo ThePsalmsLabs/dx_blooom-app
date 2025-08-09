@@ -209,7 +209,7 @@ export default function HomePage() {
         <div className="container mx-auto space-y-16">
           
           {/* Hero Section - Adapts based on user connection status */}
-          <section className="relative py-20 text-center">
+          <section className="relative py-20 text-center bg-white rounded-2xl overflow-hidden bg-amber-glow">
             <div className="mx-auto max-w-4xl space-y-8">
               <div className="space-y-4">
                 <Badge variant="secondary" className="text-sm">
@@ -235,10 +235,10 @@ export default function HomePage() {
                   <>
                     <WalletConnectButton 
                       size="lg"
-                      className="text-lg px-8 py-4"
+                      className="text-lg px-8 py-4 btn-glow"
                     />
                     <Button 
-                      variant="outline" 
+                      variant="glow" 
                       size="lg"
                       onClick={handleBrowseContent}
                       className="text-lg px-8 py-4"
@@ -250,6 +250,7 @@ export default function HomePage() {
                 ) : isCreator ? (
                   <>
                     <Button 
+                      variant="glow"
                       size="lg" 
                       onClick={() => router.push('/dashboard')}
                       className="text-lg px-8 py-4"
@@ -258,7 +259,7 @@ export default function HomePage() {
                       <TrendingUp className="ml-2 h-5 w-5" />
                     </Button>
                     <Button 
-                      variant="outline" 
+                      variant="glow" 
                       size="lg"
                       onClick={() => router.push('/upload')}
                       className="text-lg px-8 py-4"
@@ -270,6 +271,7 @@ export default function HomePage() {
                 ) : (
                   <>
                     <Button 
+                      variant="glow"
                       size="lg" 
                       onClick={handleStartCreating}
                       className="text-lg px-8 py-4"
@@ -278,7 +280,7 @@ export default function HomePage() {
                       <Sparkles className="ml-2 h-5 w-5" />
                     </Button>
                     <Button 
-                      variant="outline" 
+                      variant="glow" 
                       size="lg"
                       onClick={handleBrowseContent}
                       className="text-lg px-8 py-4"

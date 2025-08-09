@@ -114,7 +114,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-screen bg-background font-sans antialiased bg-white bg-amber-glow">
         {/* 
           🔧 KEY FIX: This AllProviders wrapper ensures that every component
           in your app has access to all the context providers, including AuthProvider.
