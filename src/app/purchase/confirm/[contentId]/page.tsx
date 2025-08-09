@@ -156,13 +156,13 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
    * ensuring the interface reflects the current workflow status accurately.
    */
   useEffect(() => {
-    if (purchaseFlow.currentStep === 'purchasing' && intentState.userHasConfirmed) {
+    if (purchaseFlow.flowState.step === 'purchasing' && intentState.userHasConfirmed) {
       setIntentState(prev => ({
         ...prev,
         confirmationStep: 'processing',
         showTransactionModal: true
       }))
-    } else if (purchaseFlow.currentStep === 'completed') {
+    } else if (purchaseFlow.flowState.step === 'completed') {
       setIntentState(prev => ({
         ...prev,
         confirmationStep: 'completed'
@@ -174,15 +174,15 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
           router.push(`/content/${contentId}`)
         }, 2000)
       }
-    } else if (purchaseFlow.currentStep === 'error' && purchaseFlow.error) {
+    } else if (purchaseFlow.flowState.step === 'error' && purchaseFlow.flowState.error) {
       setIntentState(prev => ({
         ...prev,
         confirmationStep: 'error',
-        lastError: purchaseFlow.error,
+        lastError: purchaseFlow.flowState.error ?? null,
         showTransactionModal: false
       }))
     }
-  }, [purchaseFlow.currentStep, purchaseFlow.error, intentState.userHasConfirmed, contentId, router])
+  }, [purchaseFlow.flowState.step, purchaseFlow.flowState.error, intentState.userHasConfirmed, contentId, router])
 
   /**
    * Purchase Confirmation Handler
@@ -200,7 +200,7 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
       return
     }
 
-    if (purchaseFlow.currentStep !== 'can_purchase' && purchaseFlow.currentStep !== 'need_approval') {
+    if (purchaseFlow.flowState.step !== 'can_purchase' && purchaseFlow.flowState.step !== 'need_approval') {
       setIntentState(prev => ({
         ...prev,
         lastError: new Error('Content is not available for purchase'),
@@ -324,20 +324,20 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
           <TransactionStatusModal
             transactionStatus={{
               status: intentState.confirmationStep === 'processing' ? 'submitting' : 'idle',
-              transactionHash: purchaseFlow.purchaseProgress.transactionHash || null,
+              transactionHash: purchaseFlow.flowState.transactionHash || null,
               formattedStatus: getTransactionStatusMessage(intentState.confirmationStep, purchaseFlow),
               canRetry: intentState.confirmationStep === 'error',
               progress: {
-                submitted: purchaseFlow.purchaseProgress.isSubmitting,
-                confirming: purchaseFlow.purchaseProgress.isConfirming,
-                confirmed: purchaseFlow.purchaseProgress.isConfirmed,
+                submitted: purchaseFlow.flowState.step === 'purchasing' || purchaseFlow.flowState.step === 'completed' || Boolean(purchaseFlow.flowState.transactionHash),
+                confirming: false,
+                confirmed: purchaseFlow.flowState.step === 'completed',
                 progressText: getProgressText(purchaseFlow)
               },
               retry: handleRetryPurchase,
               reset: purchaseFlow.reset,
               viewTransaction: () => {
-                if (purchaseFlow.purchaseProgress.transactionHash) {
-                  window.open(`https://basescan.org/tx/${purchaseFlow.purchaseProgress.transactionHash}`, '_blank')
+                if (purchaseFlow.flowState.transactionHash) {
+                  window.open(`https://basescan.org/tx/${purchaseFlow.flowState.transactionHash}`, '_blank')
                 }
               }
             }}
@@ -513,8 +513,9 @@ function PurchaseSummaryCard({
   onRetry 
 }: PurchaseSummaryCardProps) {
   const isProcessing = intentState.confirmationStep === 'confirming' || intentState.confirmationStep === 'processing'
-  const canPurchase = purchaseFlow.currentStep === 'can_purchase' || purchaseFlow.currentStep === 'need_approval'
+  const canPurchase = purchaseFlow.flowState.step === 'can_purchase' || purchaseFlow.flowState.step === 'need_approval'
   const showError = intentState.confirmationStep === 'error'
+  const canAfford = (purchaseFlow.userBalance ?? BigInt(0)) >= (purchaseFlow.requiredAmount ?? BigInt(0))
 
   return (
     <Card>
@@ -548,7 +549,7 @@ function PurchaseSummaryCard({
             <div className="flex justify-between">
               <span>Your USDC Balance</span>
               <span className={cn(
-                purchaseFlow.canAfford ? 'text-green-600' : 'text-red-600'
+                canAfford ? 'text-green-600' : 'text-red-600'
               )}>
                 {formatCurrency(purchaseFlow.userBalance ?? BigInt(0), 6, 'USDC')}
               </span>
@@ -585,7 +586,7 @@ function PurchaseSummaryCard({
           ) : (
             <Button
               onClick={onConfirmPurchase}
-              disabled={!canPurchase || isProcessing || !purchaseFlow.canAfford}
+              disabled={isProcessing || !canAfford || !canPurchase}
               className="w-full"
               size="lg"
             >
@@ -742,14 +743,18 @@ function getTransactionStatusMessage(
 }
 
 function getProgressText(purchaseFlow: ReturnType<typeof useContentPurchaseFlow>): string {
-  if (purchaseFlow.purchaseProgress.isSubmitting) {
+  const step = purchaseFlow.flowState.step
+  if (step === 'approving_tokens') {
+    return 'Processing token approval...'
+  }
+  if (step === 'purchasing') {
     return 'Submitting transaction to blockchain...'
   }
-  if (purchaseFlow.purchaseProgress.isConfirming) {
-    return 'Waiting for blockchain confirmation...'
-  }
-  if (purchaseFlow.purchaseProgress.isConfirmed) {
+  if (step === 'completed') {
     return 'Transaction confirmed - access granted!'
+  }
+  if (step === 'error') {
+    return 'Transaction failed'
   }
   return 'Preparing transaction...'
 }
