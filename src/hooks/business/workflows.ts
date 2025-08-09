@@ -440,6 +440,12 @@ export function useUnifiedContentPurchaseFlow(
   const contractReadCacheRef = useRef<Map<string, { value: any; ts: number }>>(new Map())
   const CACHE_TTL_MS = 30_000
 
+  // Concurrency + debounce guards
+  const isRefreshingRef = useRef<boolean>(false)
+  const lastRefreshAtRef = useRef<number | null>(null)
+  const methodChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const customTokenDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const getConfiguredTransport = useCallback(() => {
     const transports = (wagmiConfig as any)?.transports
     const transport = transports?.[chainId]
@@ -566,7 +572,7 @@ export function useUnifiedContentPurchaseFlow(
             args: [usdcAmount]
           }) as bigint
 
-          console.log(`✅ ETH price calculated: ${ethAmount.toString()} wei for ${usdcAmount.toString()} USDC`)
+          // Minimal log to avoid noise
 
           const result = {
             requiredAmount: ethAmount,
@@ -597,7 +603,7 @@ export function useUnifiedContentPurchaseFlow(
           args: [tokenAddress, usdcAmount, poolFee]
         }) as bigint
 
-        console.log(`✅ Token price calculated: ${tokenAmount.toString()} for ${usdcAmount.toString()} USDC`)
+          // Minimal log to avoid noise
 
         const result = {
           requiredAmount: tokenAmount,
@@ -647,13 +653,11 @@ export function useUnifiedContentPurchaseFlow(
       return cached.value
     }
 
-    // Create public client for direct contract reads using wagmi transport
-    console.log(`🔗 Creating public client for chain ID: ${chainId}`)
+    // Create public client for direct contract reads using wagmi transport (batched via Alchemy)
     const publicClient = createPublicClient({
       chain: chainId === 8453 ? base : baseSepolia,
       transport: getConfiguredTransport()
     })
-    console.log(`🔗 Public client created for chain: ${chainId === 8453 ? 'Base Mainnet' : 'Base Sepolia'}`)
 
     // Determine token metadata
     const symbol = tokenConfig?.symbol || (isEth ? 'ETH' : isUsdc ? 'USDC' : 'TOKEN')
@@ -661,76 +665,31 @@ export function useUnifiedContentPurchaseFlow(
     const decimals = tokenConfig?.decimals || (isEth ? 18 : isUsdc ? 6 : 18)
     const isNative = tokenConfig?.isNative || isEth
 
-    // Fetch balance
+    // Fetch balance with cache and minimal logging
     let balance: bigint | null = null
     let formattedBalance = '0.00'
-    
-    console.log(`🔍 Starting balance fetch for ${symbol}:`, {
-      userAddress,
-      tokenAddress,
-      isEth,
-      isUsdc,
-      chainId,
-      paymentMethod,
-      decimals
-    })
-    
-    if (isEth) {
-      // For ETH, fetch actual balance
-      try {
-        console.log(`🔍 Fetching ETH balance for address: ${userAddress} on chain: ${chainId}`)
-        balance = await publicClient.getBalance({ address: userAddress })
-        formattedBalance = (Number(balance) / 1e18).toFixed(6)
-        console.log(`✅ ETH balance fetched successfully:`, {
-          raw: balance.toString(),
-          wei: balance,
-          formatted: formattedBalance,
-          symbol
-        })
-      } catch (error) {
-        console.error('❌ ETH balance fetch failed:', error)
-        console.error('Error details:', {
-          userAddress,
-          chainId,
-          error: error instanceof Error ? error.message : String(error)
-        })
-      }
+    const balanceCacheKey = `${tokenAddress}-balance-${userAddress}`
+    const cachedBalance = contractReadCacheRef.current.get(balanceCacheKey)
+    if (cachedBalance && Date.now() - cachedBalance.ts < CACHE_TTL_MS) {
+      balance = cachedBalance.value as bigint
     } else {
-      // ERC-20 token balance
       try {
-        console.log(`🔍 Fetching ${symbol} balance:`, {
-          tokenAddress,
-          userAddress,
-          decimals
-        })
-        balance = await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20_ABI,
-          functionName: 'balanceOf',
-          args: [userAddress]
-        }) as bigint
-        formattedBalance = (Number(balance) / Math.pow(10, decimals)).toFixed(6)
-        console.log(`✅ ${symbol} balance fetched successfully:`, {
-          raw: balance.toString(),
-          bigint: balance,
-          formatted: formattedBalance,
-          decimals,
-          symbol
-        })
-      } catch (error) {
-        console.error(`❌ ${symbol} balance fetch failed:`, error)
-        console.error('Token fetch error details:', {
-          tokenAddress,
-          userAddress,
-          symbol,
-          decimals,
-          error: error instanceof Error ? error.message : String(error)
-        })
-        // Set balance to 0 for failed fetches
+        balance = isEth
+          ? await publicClient.getBalance({ address: userAddress })
+          : await publicClient.readContract({
+              address: tokenAddress,
+              abi: ERC20_ABI,
+              functionName: 'balanceOf',
+              args: [userAddress]
+            }) as bigint
+        contractReadCacheRef.current.set(balanceCacheKey, { value: balance, ts: Date.now() })
+      } catch {
         balance = BigInt(0)
-        formattedBalance = '0.00'
       }
     }
+    formattedBalance = isEth
+      ? (Number(balance) / 1e18).toFixed(6)
+      : (Number(balance) / Math.pow(10, decimals)).toFixed(6)
 
     // Fetch allowance (not applicable for ETH)
     let allowance: bigint | null = null
@@ -739,15 +698,9 @@ export function useUnifiedContentPurchaseFlow(
         // Choose spender based on payment path
         const spender = isUsdc ? contractAddresses.PAY_PER_VIEW : contractAddresses.COMMERCE_INTEGRATION
         if (spender) {
-          console.log(`🔍 Fetching ${symbol} allowance:`, {
-            tokenAddress,
-            userAddress,
-            spender
-          })
-          // Use a small cache key to avoid spamming allowance reads
           const allowanceCacheKey = `${tokenAddress}-allowance-${userAddress}-${spender}`
-          const cachedAllowance = (priceResultCacheRef.current as any).get?.(allowanceCacheKey)
-          if (cachedAllowance && Date.now() - cachedAllowance.ts < 30_000) {
+          const cachedAllowance = contractReadCacheRef.current.get(allowanceCacheKey)
+          if (cachedAllowance && Date.now() - cachedAllowance.ts < CACHE_TTL_MS) {
             allowance = cachedAllowance.value as bigint
           } else {
             allowance = await publicClient.readContract({
@@ -756,19 +709,10 @@ export function useUnifiedContentPurchaseFlow(
               functionName: 'allowance',
               args: [userAddress, spender]
             }) as bigint
-            ;(priceResultCacheRef.current as any).set?.(allowanceCacheKey, { value: allowance, ts: Date.now() })
+            contractReadCacheRef.current.set(allowanceCacheKey, { value: allowance, ts: Date.now() })
           }
-          console.log(`✅ ${symbol} allowance fetched: ${allowance.toString()}`)
         }
-      } catch (error) {
-        console.error(`❌ ${symbol} allowance fetch failed:`, error)
-        console.error('Allowance fetch error details:', {
-          tokenAddress,
-          userAddress,
-          symbol,
-          error: error instanceof Error ? error.message : String(error)
-        })
-        // Set allowance to 0 for failed fetches
+      } catch {
         allowance = BigInt(0)
       }
     }
@@ -815,6 +759,19 @@ export function useUnifiedContentPurchaseFlow(
    */
   const refreshPrices = useCallback(async (): Promise<void> => {
     if (!contractAddresses || !contentQuery.data) return
+
+    // Prevent overlapping refresh cycles and throttle rapid calls
+    if (isRefreshingRef.current) {
+      console.log('⏳ Skipping refresh: already running')
+      return
+    }
+    const now = Date.now()
+    if (lastRefreshAtRef.current && now - lastRefreshAtRef.current < 2000) {
+      console.log('⏳ Skipping refresh: throttled')
+      return
+    }
+    isRefreshingRef.current = true
+    lastRefreshAtRef.current = now
 
     console.log(`🔄 Starting price refresh for ${userAddress} on chain ${chainId}`)
     const updatedPrices = new Map<Address, TokenInfo>()
@@ -879,6 +836,14 @@ export function useUnifiedContentPurchaseFlow(
     setTokenPrices(updatedPrices)
     setPriceUpdateCounter(prev => prev + 1)
     console.log(`💰 Price refresh completed for ${updatedPrices.size} tokens`)
+    isRefreshingRef.current = false
+  }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo])
+
+  // Ensure the refreshing flag is cleared on unmount/errors
+  useEffect(() => {
+    return () => {
+      isRefreshingRef.current = false
+    }
   }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo])
 
   /**
@@ -912,10 +877,11 @@ export function useUnifiedContentPurchaseFlow(
       transactionHash: null,
       error: null
     })
-    
-    // Refresh prices when method changes (debounced)
-    const timer = setTimeout(() => refreshPrices(), 250)
-    return () => clearTimeout(timer)
+    // Debounce refresh and avoid returning cleanup from callback (which is ignored)
+    if (methodChangeDebounceRef.current) clearTimeout(methodChangeDebounceRef.current)
+    methodChangeDebounceRef.current = setTimeout(() => {
+      refreshPrices()
+    }, 300)
   }, [refreshPrices])
 
   /**
@@ -923,13 +889,12 @@ export function useUnifiedContentPurchaseFlow(
    */
   const setCustomToken = useCallback((address: Address) => {
     if (address === customTokenAddress) return
-    
     setCustomTokenAddress(address)
-    
-    // If currently on custom token method, refresh prices (debounced)
     if (selectedMethod === PaymentMethod.OTHER_TOKEN) {
-      const timer = setTimeout(() => refreshPrices(), 250)
-      return () => clearTimeout(timer)
+      if (customTokenDebounceRef.current) clearTimeout(customTokenDebounceRef.current)
+      customTokenDebounceRef.current = setTimeout(() => {
+        refreshPrices()
+      }, 300)
     }
   }, [customTokenAddress, selectedMethod, refreshPrices])
 
@@ -1072,24 +1037,27 @@ export function useUnifiedContentPurchaseFlow(
    */
   useEffect(() => {
     if (finalConfig.priceUpdateInterval > 0) {
+      if (priceUpdateTimerRef.current) clearInterval(priceUpdateTimerRef.current)
       priceUpdateTimerRef.current = setInterval(() => {
         refreshPrices()
       }, finalConfig.priceUpdateInterval)
-
-      return () => {
-        if (priceUpdateTimerRef.current) {
-          clearInterval(priceUpdateTimerRef.current)
-        }
+    }
+    return () => {
+      if (priceUpdateTimerRef.current) {
+        clearInterval(priceUpdateTimerRef.current)
+        priceUpdateTimerRef.current = null
       }
     }
-  }, [finalConfig.priceUpdateInterval])
+  }, [finalConfig.priceUpdateInterval, refreshPrices])
 
   /**
    * Effect: Initial Price Loading
    */
   useEffect(() => {
-    refreshPrices()
-  }, [])
+    // Initial load, debounced slightly
+    const t = setTimeout(() => refreshPrices(), 200)
+    return () => clearTimeout(t)
+  }, [refreshPrices])
 
   /**
    * Effect: Handle Commerce Protocol Transaction Confirmations
