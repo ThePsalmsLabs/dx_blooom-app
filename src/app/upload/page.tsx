@@ -89,7 +89,7 @@ function UploadTips() {
           Creator Success Tips
         </CardTitle>
         <CardDescription>
-          Maximize your content's impact with these proven strategies
+          Maximize your content\'s impact with these proven strategies
         </CardDescription>
       </CardHeader>
       <CardContent>

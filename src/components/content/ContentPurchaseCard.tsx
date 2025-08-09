@@ -192,8 +192,6 @@ function useContractAddresses() {
   
   return useMemo(() => {
     try {
-      // Dynamically import your contract addresses to avoid build-time errors
-      const { getContractAddresses } = require('@/lib/contracts/config')
       return getContractAddresses(chainId)
     } catch (error) {
       console.warn('Contract addresses not available:', error)
@@ -208,20 +206,10 @@ function useContractAddresses() {
  */
 function useContractABIs() {
   return useMemo(() => {
-    try {
-      const contractModule = require('@/lib/contracts/abis')
-      return {
-        COMMERCE_PROTOCOL_INTEGRATION_ABI: contractModule.COMMERCE_PROTOCOL_INTEGRATION_ABI || [],
-        PRICE_ORACLE_ABI: contractModule.PRICE_ORACLE_ABI || [],
-        ERC20_ABI: contractModule.ERC20_ABI || []
-      }
-    } catch (error) {
-      console.warn('Contract ABIs not available:', error)
-      return {
-        COMMERCE_PROTOCOL_INTEGRATION_ABI: [],
-        PRICE_ORACLE_ABI: [],
-        ERC20_ABI: []
-      }
+    return {
+      COMMERCE_PROTOCOL_INTEGRATION_ABI,
+      PRICE_ORACLE_ABI,
+      ERC20_ABI
     }
   }, [])
 }

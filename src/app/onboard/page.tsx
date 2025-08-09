@@ -490,7 +490,7 @@ function OnboardingContent() {
               Registration Successful!
             </DialogTitle>
             <DialogDescription>
-              Welcome to the creator economy! You're now registered as a creator and can start 
+              Welcome to the creator economy! You\'re now registered as a creator and can start 
               monetizing your content. {isNavigating ? "Redirecting to your dashboard..." : ""}
             </DialogDescription>
           </DialogHeader>

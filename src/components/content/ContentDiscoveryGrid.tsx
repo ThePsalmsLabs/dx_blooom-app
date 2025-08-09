@@ -396,7 +396,7 @@ function FiltersSection({
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                 {Object.values(ContentCategory)
                   .filter(value => typeof value === 'number')
                   .map((category) => (
@@ -475,9 +475,9 @@ function FiltersSection({
         {hasActiveFilters && (
           <div className="mt-4 pt-4 border-t">
             <div className="flex flex-wrap gap-2">
-              {filters.search && (
+                  {filters.search && (
                 <Badge variant="secondary">
-                  Search: "{filters.search}"
+                  Search: &quot;{filters.search}&quot;
                 </Badge>
               )}
               {filters.category !== 'all' && (

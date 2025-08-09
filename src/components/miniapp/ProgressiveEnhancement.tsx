@@ -43,7 +43,7 @@ import { useMiniAppErrorHandling, type MiniAppError } from '@/utils/error-handli
 
 // Import existing configuration and capability detection
 import { getX402MiddlewareConfig, isX402Supported } from '@/lib/web3/x402-config'
-import { useFarcasterContext } from '@/hooks/business/workflows'
+import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
 /**
  * Mini App Capabilities Interface

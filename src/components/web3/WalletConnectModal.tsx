@@ -137,7 +137,7 @@ export function WalletConnectModal({
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                You're connected to {wallet.chainName}. Please switch to Base network.
+                You\'re connected to {wallet.chainName}. Please switch to Base network.
               </AlertDescription>
             </Alert>
           )}

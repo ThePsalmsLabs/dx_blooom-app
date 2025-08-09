@@ -701,7 +701,7 @@ function ContentNotFoundError({ contentId }: ContentNotFoundErrorProps) {
         <AlertTriangle className="h-16 w-16 text-red-500 mx-auto" />
         <h1 className="text-2xl font-bold">Content Not Found</h1>
         <p className="text-muted-foreground">
-          The content with ID "{contentId}" could not be found or may have been removed.
+          The content with ID &quot;{contentId}&quot; could not be found or may have been removed.
         </p>
       </div>
 

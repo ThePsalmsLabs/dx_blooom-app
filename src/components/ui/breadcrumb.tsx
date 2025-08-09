@@ -4,7 +4,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-export interface BreadcrumbProps extends React.HTMLAttributes<HTMLElement> {}
+export type BreadcrumbProps = React.HTMLAttributes<HTMLElement>
 export const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
   ({ className, children, ...props }, ref) => (
     <nav
@@ -19,7 +19,7 @@ export const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
 )
 Breadcrumb.displayName = 'Breadcrumb'
 
-export interface BreadcrumbListProps extends React.HTMLAttributes<HTMLOListElement> {}
+export type BreadcrumbListProps = React.HTMLAttributes<HTMLOListElement>
 export const BreadcrumbList = React.forwardRef<HTMLOListElement, BreadcrumbListProps>(
   ({ className, children, ...props }, ref) => (
     <ol
@@ -33,7 +33,7 @@ export const BreadcrumbList = React.forwardRef<HTMLOListElement, BreadcrumbListP
 )
 BreadcrumbList.displayName = 'BreadcrumbList'
 
-export interface BreadcrumbItemProps extends React.HTMLAttributes<HTMLLIElement> {}
+export type BreadcrumbItemProps = React.HTMLAttributes<HTMLLIElement>
 export const BreadcrumbItem = React.forwardRef<HTMLLIElement, BreadcrumbItemProps>(
   ({ className, children, ...props }, ref) => (
     <li ref={ref} className={cn('flex items-center', className)} {...props}>
@@ -43,7 +43,7 @@ export const BreadcrumbItem = React.forwardRef<HTMLLIElement, BreadcrumbItemProp
 )
 BreadcrumbItem.displayName = 'BreadcrumbItem'
 
-export interface BreadcrumbLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
+export type BreadcrumbLinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement>
 export const BreadcrumbLink = React.forwardRef<
   HTMLAnchorElement,
   BreadcrumbLinkProps
@@ -61,7 +61,7 @@ export const BreadcrumbLink = React.forwardRef<
 )
 BreadcrumbLink.displayName = 'BreadcrumbLink'
 
-export interface BreadcrumbSeparatorProps extends React.HTMLAttributes<HTMLSpanElement> {}
+export type BreadcrumbSeparatorProps = React.HTMLAttributes<HTMLSpanElement>
 export const BreadcrumbSeparator = React.forwardRef<
   HTMLSpanElement,
   BreadcrumbSeparatorProps
@@ -79,7 +79,7 @@ export const BreadcrumbSeparator = React.forwardRef<
 )
 BreadcrumbSeparator.displayName = 'BreadcrumbSeparator'
 
-export interface BreadcrumbPageProps extends React.HTMLAttributes<HTMLSpanElement> {}
+export type BreadcrumbPageProps = React.HTMLAttributes<HTMLSpanElement>
 export const BreadcrumbPage = React.forwardRef<HTMLSpanElement, BreadcrumbPageProps>(
   ({ className, children, ...props }, ref) => (
     <span

@@ -34,7 +34,9 @@ import { VERIFICATION_REQUIREMENTS } from './CreatorVerificationStatus'
 /**
  * Verified Creator Card - Shows benefits and status for verified creators
  */
-export function VerifiedCreatorCard({ creatorProfile }: { creatorProfile: any }) {
+import type { Creator } from '@/types/contracts'
+
+export function VerifiedCreatorCard({ creatorProfile }: { creatorProfile: Creator }) {
   return (
     <Card className="border-green-200 bg-green-50">
       <CardHeader>
@@ -59,7 +61,7 @@ export function VerifiedCreatorCard({ creatorProfile }: { creatorProfile: any })
         <Separator />
         
         <div className="text-sm text-green-700">
-          <p><strong>Verification Date:</strong> {new Date(creatorProfile.registrationTime * 1000).toLocaleDateString()}</p>
+          <p><strong>Verification Date:</strong> {new Date(Number(creatorProfile.registrationTime) * 1000).toLocaleDateString()}</p>
           <p className="mt-1">Your verified status helps build trust with your audience and improves content discoverability.</p>
         </div>
       </CardContent>

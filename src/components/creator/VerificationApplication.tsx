@@ -94,7 +94,7 @@ export function VerificationApplicationCard({ creatorAddress }: { creatorAddress
         </CardHeader>
         <CardContent>
           <p className="text-sm text-blue-700">
-            We'll review your application within 3-5 business days. You'll receive an email notification 
+            We\'ll review your application within 3-5 business days. You\'ll receive an email notification 
             when your verification status is updated.
           </p>
         </CardContent>

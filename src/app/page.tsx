@@ -217,7 +217,7 @@ export default function HomePage() {
                   Web3 Content Economy
                 </Badge>
                 <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-                  Create, Share, and{' '}
+                   Create, Share, and 
                   <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
                     Earn
                   </span>
@@ -440,7 +440,7 @@ export default function HomePage() {
               <div className="space-y-4">
                 <h2 className="text-3xl font-bold">Why Creators Choose Our Platform</h2>
                 <p className="text-lg text-muted-foreground">
-                  Join thousands of creators who've discovered the power of 
+                  Join thousands of creators who\'ve discovered the power of 
                   Web3 content monetization and true ownership.
                 </p>
               </div>
@@ -504,7 +504,7 @@ export default function HomePage() {
             <div className="space-y-4">
               <h2 className="text-4xl font-bold">Ready to Join the Creator Economy?</h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Whether you're here to discover amazing content or share your own creations,
+                Whether you\'re here to discover amazing content or share your own creations,
                 our Web3 platform gives you the tools to participate in the new digital economy.
               </p>
             </div>

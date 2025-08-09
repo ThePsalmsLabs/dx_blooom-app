@@ -22,8 +22,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { AllProviders } from '@/components/providers/AllProviders'
-import { useAuth } from '@/components/providers/AuthProvider'
-import { useAccount } from 'wagmi'
+// Root layout is a Server Component; avoid client hooks here
 
 // Import global styles - the order here matters!
 import './globals.css'
@@ -127,9 +126,7 @@ export default function RootLayout({
             Development Debug Info - Remove this in production
             This helps you verify that providers are working correctly
           */}
-          {process.env.NODE_ENV === 'development' && (
-            <ProviderDebugInfo />
-          )}
+          {/* Debug UI removed to keep layout a pure Server Component */}
           
           {children}
         </AllProviders>
@@ -144,52 +141,7 @@ export default function RootLayout({
  * This component helps you verify that your providers are working correctly
  * during development. It will show you the current state of your contexts.
  */
-function ProviderDebugInfo() {
-  return (
-    <div className="fixed bottom-0 left-0 z-50 bg-black text-white p-2 text-xs opacity-75">
-      <ProviderStatusChecker />
-    </div>
-  )
-}
-
-function ProviderStatusChecker() {
-  // This component safely checks if providers are available
-  return (
-    <div className="space-y-1">
-      <AuthProviderChecker />
-      <Web3ProviderChecker />
-    </div>
-  )
-}
-
-function AuthProviderChecker() {
-  try {
-    // Try to use the auth context
-    const { user, isLoading } = useAuth()
-    return (
-      <div>
-        ✅ AuthProvider: {user ? `Connected (${user.address?.slice(0, 6)}...)` : 'Not authenticated'} 
-        {isLoading && ' (Loading...)'}
-      </div>
-    )
-  } catch (error) {
-    return <div>❌ AuthProvider: Not available</div>
-  }
-}
-
-function Web3ProviderChecker() {
-  try {
-    // Try to use the web3 context
-    const { isConnected, address } = useAccount()
-    return (
-      <div>
-        ✅ Web3Provider: {isConnected ? `Connected (${address?.slice(0, 6)}...)` : 'Not connected'}
-      </div>
-    )
-  } catch (error) {
-    return <div>❌ Web3Provider: Not available</div>
-  }
-}
+// Removed client-only debug helpers from Server Component
 
 /**
  * Environment Variables Checklist
