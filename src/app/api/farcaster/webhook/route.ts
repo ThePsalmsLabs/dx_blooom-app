@@ -1,5 +1,6 @@
 // src/app/api/farcaster/webhook/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+export const runtime = 'nodejs'
 import { validateFramesMessage } from '@airstack/frames'
 import type { FrameActionMessage } from '@farcaster/core'
 
@@ -108,6 +109,14 @@ interface FrameButton {
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    // Ensure NEXT_PUBLIC_URL is present; fall back to Vercel URL if missing
+    if (!process.env.NEXT_PUBLIC_URL) {
+      const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
+      if (vercelUrl) {
+        process.env.NEXT_PUBLIC_URL = vercelUrl
+      }
+    }
+
     // Parse the incoming Frame message from Farcaster
     const body = await request.json()
     
