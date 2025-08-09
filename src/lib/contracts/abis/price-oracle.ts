@@ -76,6 +76,18 @@ export const PRICE_ORACLE_ABI = [
   },
   {
     type: 'function',
+    name: 'customPoolFees',
+    inputs: [
+      { name: '', type: 'address', internalType: 'address' },
+      { name: '', type: 'address', internalType: 'address' }
+    ],
+    outputs: [
+      { name: '', type: 'uint24', internalType: 'uint24' }
+    ],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
     name: 'defaultSlippage',
     inputs: [],
     outputs: [
@@ -107,7 +119,7 @@ export const PRICE_ORACLE_ABI = [
     outputs: [
       { name: 'quotes', type: 'uint256[3]', internalType: 'uint256[3]' }
     ],
-    stateMutability: 'view'
+    stateMutability: 'nonpayable'
   },
   {
     type: 'function',
@@ -140,15 +152,28 @@ export const PRICE_ORACLE_ABI = [
   // ===== POOL FEE MANAGEMENT =====
   {
     type: 'function',
-    name: 'customPoolFees',
-    inputs: [
-      { name: '', type: 'address', internalType: 'address' },
+    name: 'owner',
+    inputs: [],
+    outputs: [
       { name: '', type: 'address', internalType: 'address' }
     ],
+    stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'quoterV2',
+    inputs: [],
     outputs: [
-      { name: '', type: 'uint24', internalType: 'uint24' }
+      { name: '', type: 'address', internalType: 'contract IQuoterV2' }
     ],
     stateMutability: 'view'
+  },
+  {
+    type: 'function',
+    name: 'renounceOwnership',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable'
   },
   {
     type: 'function',
@@ -162,23 +187,7 @@ export const PRICE_ORACLE_ABI = [
     stateMutability: 'nonpayable'
   },
 
-  // ===== OWNERSHIP & ACCESS CONTROL =====
-  {
-    type: 'function',
-    name: 'owner',
-    inputs: [],
-    outputs: [
-      { name: '', type: 'address', internalType: 'address' }
-    ],
-    stateMutability: 'view'
-  },
-  {
-    type: 'function',
-    name: 'renounceOwnership',
-    inputs: [],
-    outputs: [],
-    stateMutability: 'nonpayable'
-  },
+  // ===== SYSTEM CONFIGURATION =====
   {
     type: 'function',
     name: 'transferOwnership',
@@ -187,17 +196,6 @@ export const PRICE_ORACLE_ABI = [
     ],
     outputs: [],
     stateMutability: 'nonpayable'
-  },
-
-  // ===== SYSTEM CONFIGURATION =====
-  {
-    type: 'function',
-    name: 'quoterV2',
-    inputs: [],
-    outputs: [
-      { name: '', type: 'address', internalType: 'contract IQuoterV2' }
-    ],
-    stateMutability: 'view'
   },
   {
     type: 'function',

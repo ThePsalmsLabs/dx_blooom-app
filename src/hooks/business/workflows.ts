@@ -435,6 +435,15 @@ export function useUnifiedContentPurchaseFlow(
   const [tokenPrices, setTokenPrices] = useState<Map<Address, TokenInfo>>(new Map())
   const [priceUpdateCounter, setPriceUpdateCounter] = useState(0)
   const priceUpdateTimerRef = useRef<NodeJS.Timeout | null>(null)
+  // Cache price oracle results to avoid RPC rate limits
+  const priceResultCacheRef = useRef<Map<string, { value: { requiredAmount: bigint; priceInUSDC: bigint } | null; ts: number }>>(new Map())
+  const PRICE_CACHE_TTL_MS = 30_000
+
+  const getConfiguredTransport = useCallback(() => {
+    const transports = (wagmiConfig as any)?.transports
+    const transport = transports?.[chainId]
+    return transport || http()
+  }, [chainId])
 
   /**
    * Available Payment Methods Computation
@@ -520,18 +529,25 @@ export function useUnifiedContentPurchaseFlow(
     if (!contractAddresses) return null
 
     try {
+      const cacheKey = `${tokenAddress}-${usdcAmount.toString()}-${paymentMethod}`
+      const cached = priceResultCacheRef.current.get(cacheKey)
+      if (cached && Date.now() - cached.ts < PRICE_CACHE_TTL_MS) {
+        return cached.value
+      }
       // For direct USDC, return 1:1 pricing
       if (tokenAddress === contractAddresses.USDC || paymentMethod === PaymentMethod.USDC) {
-        return {
+        const result = {
           requiredAmount: usdcAmount,
           priceInUSDC: usdcAmount
         }
+        priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
+        return result
       }
 
       // Create public client for direct contract reads
       const publicClient = createPublicClient({
         chain: chainId === 8453 ? base : baseSepolia,
-        transport: http()
+        transport: getConfiguredTransport()
       })
 
           // Get token configuration
@@ -551,19 +567,23 @@ export function useUnifiedContentPurchaseFlow(
 
           console.log(`✅ ETH price calculated: ${ethAmount.toString()} wei for ${usdcAmount.toString()} USDC`)
 
-          return {
+          const result = {
             requiredAmount: ethAmount,
             priceInUSDC: usdcAmount
           }
+          priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
+          return result
         } catch (error) {
           console.error(`❌ ETH price calculation failed:`, error)
           // Fallback: use a simple conversion (1 ETH = $3000 USDC for demo)
           const fallbackEthAmount = (usdcAmount * BigInt(1e18)) / BigInt(3000 * 1e6)
           console.log(`🔄 Using fallback ETH price: ${fallbackEthAmount.toString()} wei`)
-          return {
+          const result = {
             requiredAmount: fallbackEthAmount,
             priceInUSDC: usdcAmount
           }
+          priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
+          return result
         }
       }
 
@@ -578,19 +598,22 @@ export function useUnifiedContentPurchaseFlow(
 
         console.log(`✅ Token price calculated: ${tokenAmount.toString()} for ${usdcAmount.toString()} USDC`)
 
-        return {
+        const result = {
           requiredAmount: tokenAmount,
           priceInUSDC: usdcAmount
         }
+        priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
+        return result
       } catch (error) {
         console.error(`❌ Token price calculation failed for ${tokenAddress}:`, error)
+        priceResultCacheRef.current.set(cacheKey, { value: null, ts: Date.now() })
         return null
       }
     } catch (error) {
       console.error(`Price calculation failed for ${paymentMethod}:`, error)
       return null
     }
-  }, [contractAddresses, chainId])
+  }, [contractAddresses, chainId, getConfiguredTransport])
 
   /**
    * Enhanced Token Balance and Allowance Fetching with Multi-Token Support
@@ -619,7 +642,7 @@ export function useUnifiedContentPurchaseFlow(
     console.log(`🔗 Creating public client for chain ID: ${chainId}`)
     const publicClient = createPublicClient({
       chain: chainId === 8453 ? base : baseSepolia,
-      transport: http()
+      transport: getConfiguredTransport()
     })
     console.log(`🔗 Public client created for chain: ${chainId === 8453 ? 'Base Mainnet' : 'Base Sepolia'}`)
 
@@ -702,8 +725,9 @@ export function useUnifiedContentPurchaseFlow(
 
     // Fetch allowance (not applicable for ETH)
     let allowance: bigint | null = null
-    if (!isEth && contractAddresses.PAY_PER_VIEW && contractAddresses.COMMERCE_INTEGRATION) {
+    if (!isEth && (contractAddresses.PAY_PER_VIEW || contractAddresses.COMMERCE_INTEGRATION)) {
       try {
+        // Choose spender based on payment path
         const spender = isUsdc ? contractAddresses.PAY_PER_VIEW : contractAddresses.COMMERCE_INTEGRATION
         if (spender) {
           console.log(`🔍 Fetching ${symbol} allowance:`, {
@@ -711,12 +735,20 @@ export function useUnifiedContentPurchaseFlow(
             userAddress,
             spender
           })
-          allowance = await publicClient.readContract({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: 'allowance',
-            args: [userAddress, spender]
-          }) as bigint
+          // Use a small cache key to avoid spamming allowance reads
+          const allowanceCacheKey = `${tokenAddress}-allowance-${userAddress}-${spender}`
+          const cachedAllowance = (priceResultCacheRef.current as any).get?.(allowanceCacheKey)
+          if (cachedAllowance && Date.now() - cachedAllowance.ts < 30_000) {
+            allowance = cachedAllowance.value as bigint
+          } else {
+            allowance = await publicClient.readContract({
+              address: tokenAddress,
+              abi: ERC20_ABI,
+              functionName: 'allowance',
+              args: [userAddress, spender]
+            }) as bigint
+            ;(priceResultCacheRef.current as any).set?.(allowanceCacheKey, { value: allowance, ts: Date.now() })
+          }
           console.log(`✅ ${symbol} allowance fetched: ${allowance.toString()}`)
         }
       } catch (error) {
@@ -783,7 +815,11 @@ export function useUnifiedContentPurchaseFlow(
     const methodsToCheck = Object.keys(supportedTokens).map(key => parseInt(key) as PaymentMethod)
     console.log(`📋 Methods to check: ${methodsToCheck.join(', ')}`)
     
+    // Limit how many tokens we refresh per cycle to avoid RPC flooding
+    const MAX_TOKENS_PER_CYCLE = 2
+    let processed = 0
     for (const method of methodsToCheck) {
+      if (processed >= MAX_TOKENS_PER_CYCLE) break
       if (method === PaymentMethod.OTHER_TOKEN) {
         // Handle custom token if set
         if (customTokenAddress) {
@@ -804,6 +840,7 @@ export function useUnifiedContentPurchaseFlow(
         console.log(`🔄 Fetching ${tokenConfig.symbol} info for method ${method}...`)
         const tokenInfo = await fetchTokenInfo(tokenConfig.address, method)
         updatedPrices.set(tokenConfig.address, tokenInfo)
+        processed += 1
         console.log(`✅ Updated ${tokenConfig.symbol} info:`, {
           symbol: tokenInfo.symbol,
           balance: tokenInfo.formattedBalance,
@@ -847,7 +884,9 @@ export function useUnifiedContentPurchaseFlow(
     })
     
     if (contractAddresses && contentQuery.data && userAddress && !contentQuery.isLoading) {
-      refreshPrices()
+      // Debounce the initial refresh slightly to let other queries settle
+      const timer = setTimeout(() => refreshPrices(), 300)
+      return () => clearTimeout(timer)
     }
   }, [contractAddresses, contentQuery.data, userAddress, contentQuery.isLoading, refreshPrices])
 
@@ -865,8 +904,9 @@ export function useUnifiedContentPurchaseFlow(
       error: null
     })
     
-    // Refresh prices when method changes
-    refreshPrices()
+    // Refresh prices when method changes (debounced)
+    const timer = setTimeout(() => refreshPrices(), 250)
+    return () => clearTimeout(timer)
   }, [refreshPrices])
 
   /**
@@ -877,9 +917,10 @@ export function useUnifiedContentPurchaseFlow(
     
     setCustomTokenAddress(address)
     
-    // If currently on custom token method, refresh prices
+    // If currently on custom token method, refresh prices (debounced)
     if (selectedMethod === PaymentMethod.OTHER_TOKEN) {
-      refreshPrices()
+      const timer = setTimeout(() => refreshPrices(), 250)
+      return () => clearTimeout(timer)
     }
   }, [customTokenAddress, selectedMethod, refreshPrices])
 
@@ -3731,6 +3772,13 @@ export function useCreatorOnboarding(
   const creatorProfile = useCreatorProfile(userAddress)
   const registerCreator = useRegisterCreator()
   
+  // Guard against indefinite "checking" by tracking how long we've been in that state
+  // and forcing a deterministic transition if remote reads remain stuck.
+  const checkingSinceRef = useRef<number | null>(null)
+  const checkingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Standard timeout that defines how long we allow a registration check to run.
+  const REGISTRATION_CHECK_TIMEOUT_MS = 15000
+  
   const [workflowState, setWorkflowState] = useState<{
     currentStep: CreatorOnboardingFlowStep
     error: Error | null
@@ -3929,11 +3977,38 @@ export function useCreatorOnboarding(
     
     // Handle loading state - keep showing loading while the contract call is in progress
     if (registrationCheck.isLoading) {
-      // Only log this once to avoid spam
+      // Only log this once to avoid spam and start/refresh a timeout watchdog
       if (workflowState.currentStep === 'checking') {
         console.log('⏳ Registration check still loading...')
+        // Initialize the start timestamp if not already set
+        if (checkingSinceRef.current === null) {
+          checkingSinceRef.current = Date.now()
+        }
+        // Reset any existing timeout and schedule a new guard
+        if (checkingTimeoutRef.current) {
+          clearTimeout(checkingTimeoutRef.current)
+        }
+        checkingTimeoutRef.current = setTimeout(() => {
+          // If we are still checking and the read still reports loading, move on safely
+          if (
+            workflowState.currentStep === 'checking' &&
+            registrationCheck.isLoading
+          ) {
+            console.warn('⏰ Registration check stuck in loading. Proceeding as not registered to avoid spinner lock.')
+            setWorkflowState(prev => ({
+              ...prev,
+              currentStep: 'not_registered',
+              error: null,
+            }))
+          }
+        }, REGISTRATION_CHECK_TIMEOUT_MS)
       }
-      return
+      return () => {
+        if (checkingTimeoutRef.current) {
+          clearTimeout(checkingTimeoutRef.current)
+          checkingTimeoutRef.current = null
+        }
+      }
     }
     
     // Handle error state - this is critical for debugging
@@ -3988,6 +4063,12 @@ export function useCreatorOnboarding(
           error: null
         }))
       }
+      // Clear watchdog state on any definitive result
+      if (checkingTimeoutRef.current) {
+        clearTimeout(checkingTimeoutRef.current)
+        checkingTimeoutRef.current = null
+      }
+      checkingSinceRef.current = null
     }
     
     // Add a timeout to prevent infinite loading if the contract call takes too long
@@ -4002,6 +4083,13 @@ export function useCreatorOnboarding(
       }, 10000) // 10 second timeout
       
       return () => clearTimeout(timeout)
+    }
+    // Cleanup any lingering watchdog when effect dependencies change
+    return () => {
+      if (checkingTimeoutRef.current) {
+        clearTimeout(checkingTimeoutRef.current)
+        checkingTimeoutRef.current = null
+      }
     }
   }, [
     registrationCheck.isLoading, 

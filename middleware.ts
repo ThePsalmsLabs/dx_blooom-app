@@ -233,39 +233,47 @@ async function fetchContractPricing(
     }
 
     if (routeType === 'subscription' && parameters.creatorAddress) {
-      // Fetch subscription pricing from CreatorRegistry
-      const creatorData = await Promise.race([
-        client.readContract({
-          address: contractAddresses.CREATOR_REGISTRY,
-          abi: [
-            {
-              name: 'getCreator',
-              type: 'function',
-              stateMutability: 'view',
-              inputs: [{ name: 'creator', type: 'address' }],
-              outputs: [
-                {
-                  type: 'tuple',
-                  components: [
-                    { name: 'isRegistered', type: 'bool' },
-                    { name: 'subscriptionPrice', type: 'uint256' }
-                  ]
-                }
-              ]
-            }
-          ] as const,
-          functionName: 'getCreator',
-          args: [parameters.creatorAddress]
-        }),
+      // Fetch subscription pricing from CreatorRegistry using getSubscriptionPrice + isRegisteredCreator
+      const [subscriptionPrice, isRegistered] = await Promise.race([
+        Promise.all([
+          client.readContract({
+            address: contractAddresses.CREATOR_REGISTRY,
+            abi: [
+              {
+                name: 'getSubscriptionPrice',
+                type: 'function',
+                stateMutability: 'view',
+                inputs: [{ name: 'creator', type: 'address' }],
+                outputs: [{ name: '', type: 'uint256' }]
+              }
+            ] as const,
+            functionName: 'getSubscriptionPrice',
+            args: [parameters.creatorAddress]
+          }),
+          client.readContract({
+            address: contractAddresses.CREATOR_REGISTRY,
+            abi: [
+              {
+                name: 'isRegisteredCreator',
+                type: 'function',
+                stateMutability: 'view',
+                inputs: [{ name: 'creator', type: 'address' }],
+                outputs: [{ name: '', type: 'bool' }]
+              }
+            ] as const,
+            functionName: 'isRegisteredCreator',
+            args: [parameters.creatorAddress]
+          })
+        ]),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Contract call timeout')), 5000)
         )
-      ]) as { isRegistered: boolean; subscriptionPrice: bigint }
+      ]) as [bigint, boolean]
 
       return {
-        amount: creatorData.subscriptionPrice,
+        amount: subscriptionPrice,
         recipient: parameters.creatorAddress,
-        contentActive: creatorData.isRegistered
+        contentActive: isRegistered
       }
     }
 

@@ -124,16 +124,23 @@ export function ContentPurchaseCard({
 
   const handlePurchase = useCallback(async () => {
     try {
-      const result = await unifiedPurchase.executePurchase(selectedMethod)
-      if (result.success) onPurchaseSuccess?.(contentId)
+      await unifiedPurchase.executePurchase(selectedMethod)
+      // Success callback will be triggered by effect when transaction confirms
     } catch (err) {
       console.error('Purchase failed:', err)
     }
-  }, [unifiedPurchase, selectedMethod, contentId, onPurchaseSuccess])
+  }, [unifiedPurchase, selectedMethod])
 
   const handleViewContent = useCallback(() => {
     onViewContent?.(contentId)
   }, [onViewContent, contentId])
+
+  // Fire success callback only after on-chain confirmation to avoid premature navigation
+  React.useEffect(() => {
+    if (unifiedPurchase.purchaseState.step === 'completed') {
+      onPurchaseSuccess?.(contentId)
+    }
+  }, [unifiedPurchase.purchaseState.step, onPurchaseSuccess, contentId])
 
   /* ----------------------------- RENDERING -------------------------------- */
 

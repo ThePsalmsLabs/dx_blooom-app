@@ -294,8 +294,6 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
                     onPurchaseSuccess={handlePurchaseSuccess}
                     onViewContent={handleViewContent}
                     variant="full"
-                    showPurchaseDetails={true}
-                    autoRedirectAfterPurchase={false}
                     className="w-full"
                   />
                 )}

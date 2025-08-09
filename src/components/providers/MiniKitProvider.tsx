@@ -288,7 +288,7 @@ export function createOnchainKitConfig(schemaId?: HexString): OnchainKitConfig {
     throw new Error('NEXT_PUBLIC_ONCHAINKIT_API_KEY is required for OnchainKit integration')
   }
 
-  const network = (process.env.NEXT_PUBLIC_NETWORK || 'base-sepolia') as 'base' | 'base-sepolia'
+  const network = (process.env.NEXT_PUBLIC_NETWORK || 'base') as 'base' | 'base-sepolia'
   const chain = network === 'base' ? base : baseSepolia
 
   const envSchemaId = process.env.NEXT_PUBLIC_ONCHAINKIT_SCHEMA_ID

@@ -358,7 +358,9 @@ export function useUnifiedContentPurchase(
         progress: 100,
         transactionHash: receipt.transactionHash
       })
-      queryClient.invalidateQueries({ queryKey: ['hasAccess'] })
+      // Invalidate all readContract caches so access checks and content details refresh
+      // Wagmi read hooks use the ['readContract', ...] query key shape.
+      queryClient.invalidateQueries({ queryKey: ['readContract'] })
     }
 
     if (txError || receiptError) {

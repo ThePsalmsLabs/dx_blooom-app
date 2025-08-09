@@ -350,7 +350,7 @@ function AppHeader({
   headerContent
 }: AppHeaderProps) {
   return (
-    <header className="border-b bg-background">
+    <header className="border-b bg-background relative z-40">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Left side - Logo and navigation toggle */}
@@ -359,7 +359,7 @@ function AppHeader({
               variant="ghost"
               size="sm"
               onClick={onNavigationToggle}
-              className="md:hidden"
+              className="md:hidden relative z-50"
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -547,7 +547,7 @@ function AppNavigation({
   // Mobile navigation (sheet)
   const mobileNav = (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-72">
+      <SheetContent side="left" className="w-72 z-[9998]">
         <nav className="flex flex-col gap-2 pt-6">
           {visibleItems.map((item) => (
             <NavigationItem key={item.href} item={item} onSelect={onClose} />
