@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createPublicClient, createWalletClient, http, type Address } from 'viem'
+import { createPublicClient, createWalletClient, http } from 'viem'
 import { baseSepolia, base } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 

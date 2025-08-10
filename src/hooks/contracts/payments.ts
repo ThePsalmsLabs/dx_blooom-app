@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Address, parseUnits } from 'viem'
 import {
-  useAccount,
   useBalance,
   useChainId,
   useReadContract,

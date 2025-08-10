@@ -1,7 +1,7 @@
 // src/lib/contracts/subscription.ts
 import { createPublicClient, http, type Address, type PublicClient } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
-import { getContractAddresses, getContractConfig } from './config'
+import { getContractConfig } from './config'
 
 /**
  * Subscription Status Enumeration

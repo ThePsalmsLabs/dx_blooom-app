@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { type Address } from 'viem'
 

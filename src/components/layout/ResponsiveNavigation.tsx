@@ -23,53 +23,38 @@
 
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import {
   ChevronRight,
   Home,
   ArrowLeft,
-  MoreHorizontal,
   Compass,
   Upload,
   BarChart3,
   User,
-  Settings,
-  Search,
-  Bell,
   Wallet,
   CheckCircle,
   Clock,
-  AlertCircle,
-  Loader2
+  AlertCircle
 } from 'lucide-react'
 import {
   Button,
   Card,
-  Badge,
-  ScrollArea,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Progress
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
 // Import our architectural layers for navigation logic
 import {
-  useIsCreatorRegistered,
-  useCreatorProfile
+  useIsCreatorRegistered
 } from '@/hooks/contracts/core'
 import { type UserRole, type NavigationItem } from '@/components/layout/AppLayout'
 

@@ -24,7 +24,6 @@ import {
   CardTitle,
   Alert,
   AlertDescription,
-  Badge,
   Progress,
   Separator
 } from '@/components/ui/index'

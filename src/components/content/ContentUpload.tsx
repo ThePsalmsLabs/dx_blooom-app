@@ -38,7 +38,6 @@ import {
   Loader2,
   DollarSign,
   Tag,
-  Lock,
   Globe,
   X,
   Plus,

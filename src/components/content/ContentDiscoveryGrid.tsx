@@ -25,26 +25,17 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import {
   Search,
-  Filter,
   Grid3x3,
   List,
-  SlidersHorizontal,
-  ChevronDown,
   Loader2,
   AlertCircle,
-  TrendingUp,
-  Clock,
-  DollarSign,
   Eye,
   Lock,
   Unlock,
-  Star,
   Users,
-  Calendar,
-  Tag,
   X,
   RefreshCw
 } from 'lucide-react'
@@ -68,22 +59,10 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+
+
+
+
 import { Slider } from '@/components/ui/slider'
 import { cn, debounce, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 

@@ -28,8 +28,6 @@ import { useAccount, useChainId, useDisconnect } from 'wagmi'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Menu,
-  X,
-  Wallet,
   User,
   Settings,
   LogOut,
@@ -42,26 +40,21 @@ import {
   Shield,
   AlertCircle,
   CheckCircle,
-  WifiOff,
-  Loader2
+  WifiOff
 } from 'lucide-react'
 import {
     Button,
-    Card,
-    CardContent,
     Avatar,
     AvatarFallback,
     Badge,
     Sheet,
     SheetContent,
-    SheetTrigger,
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-    Toast,
     ToastProvider,
     ToastViewport
   } from '@/components/ui/index'
@@ -70,8 +63,7 @@ import { cn, formatAddress } from '@/lib/utils'
 // Import our architectural layers for layout functionality
 import {
   useIsCreatorRegistered,
-  useCreatorProfile,
-  useTokenBalance
+  useCreatorProfile
 } from '@/hooks/contracts/core'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { WalletConnectButton, WalletStatus } from '@/components/web3/WalletConnectModal'

@@ -29,7 +29,6 @@ import {
   Shield,
   Lock,
   Unlock,
-  User,
   Calendar,
   Tag,
   Download,
@@ -39,8 +38,6 @@ import {
   Eye,
   Clock,
   FileText,
-  Film,
-  Image as ImageIcon,
   File,
   ExternalLink,
   Loader2,
@@ -50,10 +47,7 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -78,7 +72,7 @@ import {
 
 import { useAccount } from 'wagmi'
 import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
-import { categoryToString, type ContentCategory } from '@/types/contracts'
+import { categoryToString } from '@/types/contracts'
 
 /**
  * Content Access Status Types

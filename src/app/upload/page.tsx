@@ -49,7 +49,6 @@ import { RouteGuards } from '@/components/layout/RouteGuards'
 import { ContentUploadForm } from '@/components/content/ContentUpload'
 
 // Import utility functions
-import { cn } from '@/lib/utils'
 
 /**
  * Upload Tips Component

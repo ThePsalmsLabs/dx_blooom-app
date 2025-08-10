@@ -39,8 +39,6 @@ import {
   getContentRegistryContract,
   getPayPerViewContract,
   getSubscriptionManagerContract,
-  getCommerceIntegrationContract,
-  getPriceOracleContract,
   getContractAddresses
 } from '@/lib/contracts/config'
 import {
@@ -48,18 +46,12 @@ import {
   CONTENT_REGISTRY_ABI,
   PAY_PER_VIEW_ABI,
   SUBSCRIPTION_MANAGER_ABI,
-  COMMERCE_PROTOCOL_INTEGRATION_ABI,
-  PRICE_ORACLE_ABI,
   ERC20_ABI
 } from '@/lib/contracts/abis'
 import type { 
   Creator,
   Content,
-  ContentCategory,
-  CreatorRegistrationParams,
-  ContentUploadParams,
-  DirectPurchaseParams,
-  AccessControlResult
+  ContentUploadParams
 } from '@/types/contracts'
 
 /**

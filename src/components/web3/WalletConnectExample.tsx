@@ -7,16 +7,13 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/seperator'
 import { 
-  Wallet, 
   CheckCircle, 
   AlertTriangle, 
   Sparkles, 
-  Copy, 
-  ExternalLink,
+  Copy,
   ChevronRight,
   Loader2
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 // Import our plug-and-play components
 import { 

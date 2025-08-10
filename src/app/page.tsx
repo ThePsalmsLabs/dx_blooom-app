@@ -20,7 +20,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import {
@@ -30,7 +30,6 @@ import {
   Play,
   FileText,
   Headphones,
-  Image as ImageIcon,
   BookOpen,
   Code,
   Sparkles,
@@ -64,8 +63,7 @@ import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
 
 // Import utilities and types
-import { cn, formatCurrency, formatNumber } from '@/lib/utils'
-import { ContentCategory, categoryToString } from '@/types/contracts'
+import { ContentCategory } from '@/types/contracts'
 
 /**
  * Home Page State Interface

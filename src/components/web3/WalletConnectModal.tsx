@@ -5,24 +5,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/seperator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Wallet, 
   CheckCircle, 
   AlertTriangle, 
   Loader2, 
-  ExternalLink, 
   Sparkles,
   Shield,
   Zap,
-  X,
   Copy,
   ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { formatAddress } from '@/lib/utils'
 import { type Connector } from 'wagmi'
 
 interface WalletConnectModalProps {

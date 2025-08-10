@@ -34,7 +34,7 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
 import {
   FileText,
@@ -49,24 +49,13 @@ import {
   List,
   MoreHorizontal,
   CheckCircle,
-  AlertCircle,
-  Clock,
   TrendingUp,
   TrendingDown,
   BarChart3,
-  Tag,
   Plus,
   RefreshCw,
-  Settings,
-  Download,
-  Upload,
   Loader2,
-  AlertTriangle,
-  Star,
-  Users,
-  Calendar,
-  ChevronDown,
-  X
+  AlertTriangle
 } from 'lucide-react'
 
 import {
@@ -87,8 +76,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/seperator'
 import {
   Table,
   TableBody,
@@ -97,15 +84,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,11 +102,11 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { cn, formatCurrency, formatRelativeTime, formatNumber } from '@/lib/utils'
+import { cn, formatCurrency, formatNumber } from '@/lib/utils'
 
 // Import our architectural layers
 import { useAdvancedContentManagement } from '@/hooks/contracts/content/useAdvancedContentManagement'
-import { useCreatorContent, useContentById } from '@/hooks/contracts/core'
+import { useCreatorContent } from '@/hooks/contracts/core'
 import { ContentCategory, categoryToString, type Content } from '@/types/contracts'
 
 /**

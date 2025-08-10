@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSharedPublicClient } from '@/lib/web3/client'
 import { base, baseSepolia } from 'viem/chains'
-import { getContractAddresses, getContractConfig } from '../../../../../lib/contracts/config'
+import { getContractConfig } from '../../../../../lib/contracts/config'
 
 // Import verification functions (these will be implemented in subsequent components)
 // Using placeholder implementations for now that can be replaced with actual logic

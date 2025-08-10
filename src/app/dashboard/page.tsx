@@ -29,26 +29,15 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import {
-  TrendingUp,
   Users,
   DollarSign,
   BarChart3,
   PlusCircle,
-  Settings,
   Download,
   RefreshCw,
-  Eye,
-  ArrowUpRight,
-  Calendar,
-  Target,
   Wallet,
-  Star,
-  AlertTriangle,
   CheckCircle,
-  ExternalLink,
-  Filter,
-  Search,
-  MoreHorizontal
+  Filter
 } from 'lucide-react'
 
 import {
@@ -58,8 +47,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Alert,
-  AlertDescription,
   Badge,
   Tabs,
   TabsContent,
@@ -70,9 +57,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Input,
-  Progress,
-  Separator
+  Input
 } from '@/components/ui/index'
 
 // Import our architectural layers - demonstrating complete integration
@@ -85,7 +70,7 @@ import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 import { useCreatorProfile, useCreatorContent, useCreatorPendingEarnings } from '@/hooks/contracts/core'
 
 // Import utility functions and types
-import { cn, formatCurrency, formatRelativeTime, formatNumber } from '@/lib/utils'
+import { formatCurrency, formatNumber } from '@/lib/utils'
 
 /**
  * Dashboard Tab Types

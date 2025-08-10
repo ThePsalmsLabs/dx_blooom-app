@@ -22,8 +22,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance } from 'wagmi'
 import { type Address } from 'viem'
-import { createPublicClient, http } from 'viem'
-import { base, baseSepolia } from 'viem/chains'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, ERC20_ABI } from '@/lib/contracts/abis'
 import {
@@ -31,18 +29,13 @@ import {
   Lock,
   Eye,
   CheckCircle,
-  Clock,
   AlertCircle,
   CreditCard,
   Loader2,
-  Shield,
   DollarSign,
   Zap,
   Coins,
   RefreshCw,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
   Wallet,
   AlertTriangle
 } from 'lucide-react'
@@ -59,13 +52,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/seperator'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks and utilities

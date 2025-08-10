@@ -30,10 +30,8 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
-  Clock,
   CreditCard,
   DollarSign,
-  Eye,
   User,
   Calendar,
   Tag,
@@ -53,11 +51,6 @@ import {
   AlertDescription,
   Badge,
   Separator,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   Skeleton
 } from '@/components/ui/index'
 

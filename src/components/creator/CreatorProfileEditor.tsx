@@ -37,25 +37,12 @@ import { useAccount } from 'wagmi'
 import {
   User,
   DollarSign,
-  Globe,
-  Twitter,
-  Shield,
   CheckCircle,
   AlertTriangle,
   Loader2,
   Upload,
   Save,
-  Settings,
-  ExternalLink,
-  Info,
-  AlertCircle,
-  X,
-  Plus,
-  Trash2,
-  Star,
-  Award,
-  Eye,
-  EyeOff
+  AlertCircle
 } from 'lucide-react'
 
 import {
@@ -69,13 +56,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+
+
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/seperator'
@@ -95,7 +77,7 @@ import { cn } from '@/lib/utils'
 import { useCreatorProfileManagement } from '@/hooks/contracts/creator/useCreatorProfileManagement'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 import { ContentCategory, categoryToString } from '@/types/contracts'
-import { formatCurrency, formatAddress } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 
 /**
  * Profile Form Data Interface

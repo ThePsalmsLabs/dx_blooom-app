@@ -4,7 +4,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { isAddress } from 'viem'
-import { getContractAddresses } from '@/lib/contracts/config'
 
 /**
  * Access Verification Response Interface

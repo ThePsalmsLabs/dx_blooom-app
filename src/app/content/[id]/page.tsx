@@ -17,10 +17,9 @@
 
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
-import { type Address } from 'viem'
 import {
   ArrowLeft,
   Share2,

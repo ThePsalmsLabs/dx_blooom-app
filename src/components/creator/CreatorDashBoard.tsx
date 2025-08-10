@@ -34,28 +34,17 @@ import {
   Users,
   FileText,
   Eye,
-  Calendar,
   Download,
   Settings,
   PlusCircle,
   BarChart3,
   PieChart,
-  Activity,
   Target,
-  Star,
   CheckCircle,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
   RefreshCw,
   Wallet,
-  Share2,
   MoreHorizontal,
-  Filter,
-  Search,
-  ExternalLink,
   Frame,
-  Users2,
   Zap,
   MessageSquare,
   Heart
@@ -64,15 +53,11 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/seperator'
 import {
   Tabs,
   TabsContent,
@@ -86,7 +71,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,14 +91,12 @@ import { cn, formatCurrency, formatNumber } from '@/lib/utils'
 import {
   useCreatorProfile,
   useCreatorContent,
-  useCreatorPendingEarnings,
-  useTokenBalance
+  useCreatorPendingEarnings
 } from '@/hooks/contracts/core'
 
 import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 import { useAccount } from 'wagmi'
 import { ContentUploadForm } from '@/components/content/ContentUpload'
-import { categoryToString, type ContentCategory } from '@/types/contracts'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 
 /**

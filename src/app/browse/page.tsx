@@ -31,35 +31,24 @@ import { useAccount } from 'wagmi'
 import type { Address } from 'viem'
 import {
   Search,
-  Filter,
-  TrendingUp,
-  Clock,
-  Star,
   Grid3x3,
   List,
   SlidersHorizontal,
   AlertCircle,
-  RefreshCw,
-  ArrowLeft,
-  ExternalLink,
   X,
   Users,
-  CheckCircle,
-  Loader2
+  CheckCircle
 } from 'lucide-react'
 
 import {
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
   Alert,
   AlertDescription,
   Badge,
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
   Dialog,
@@ -79,18 +68,14 @@ import {
 // Import our architectural layers - demonstrating clean separation
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
-import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
 import { ContentPurchaseCard } from '@/components/content/ContentPurchaseCard'
 
 // Import utility functions and types that ensure type safety
-import { cn } from '@/lib/utils'
 import type { ContentCategory } from '@/types/contracts'
 import { isValidContentCategory } from '@/types/contracts'
 
 // Import business logic hooks
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
-import { useUnifiedContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
-import { formatCurrency, formatAddress } from '@/lib/utils'
 
 /**
  * Content Filter Interface

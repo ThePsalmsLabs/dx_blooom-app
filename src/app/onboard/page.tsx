@@ -48,7 +48,6 @@ import {
   Label,
   Alert,
   AlertDescription,
-  Badge,
   Progress,
   Separator,
   Dialog,

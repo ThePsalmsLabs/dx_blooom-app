@@ -40,19 +40,15 @@ import {
   Clock,
   Star,
   Award,
-  Upload,
   FileText,
   User,
-  Globe,
   Twitter,
   Instagram,
   Youtube,
   Linkedin,
   MessageSquare,
-  ExternalLink,
   Info,
   ArrowRight,
-  ArrowLeft,
   Loader2,
   TrendingUp,
   DollarSign,
@@ -61,8 +57,6 @@ import {
   Zap,
   Crown,
   BadgeCheck,
-  Plus,
-  X,
   AlertTriangle,
   RefreshCw
 } from 'lucide-react'
@@ -88,7 +82,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/seperator'
 import {
   Dialog,
   DialogContent,
@@ -96,7 +89,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
@@ -109,7 +101,7 @@ import {
 } from '@/hooks/contracts/creator/useCreatorVerification'
 
 // Import utility functions
-import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
+import { formatCurrency, formatRelativeTime } from '@/lib/utils'
 
 // ===== VERIFICATION PANEL INTERFACES =====
 
@@ -671,7 +663,7 @@ function RequirementsCard({
 }) {
   const progressPercentage = useMemo(() => {
     let completed = 0
-    let total = 4
+    const total = 4
 
     if (eligibility.meetsContentRequirement) completed++
     if (eligibility.meetsEarningsRequirement) completed++

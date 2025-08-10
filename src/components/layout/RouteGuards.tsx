@@ -32,20 +32,13 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAccount, useChainId, useSwitchChain } from 'wagmi'
 import {
   Shield,
-  Wallet,
   AlertCircle,
   CheckCircle,
   ArrowRight,
   Lock,
-  Unlock,
-  Network,
-  User,
-  Clock,
   RefreshCw,
   ExternalLink,
-  Info,
   Users,
-  Zap,
   Frame,
   X
 } from 'lucide-react'
@@ -58,9 +51,6 @@ import {
   CardTitle,
   Button,
   Badge,
-  Alert,
-  AlertDescription,
-  Progress,
   Separator
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
@@ -68,12 +58,10 @@ import { cn } from '@/lib/utils'
 // Import our architectural layers for permission checking
 import {
   useIsCreatorRegistered,
-  useCreatorProfile,
-  useTokenBalance
+  useCreatorProfile
 } from '@/hooks/contracts/core'
-import { useCreatorOnboardingUI, useContentPurchaseUI } from '@/hooks/ui/integration'
+import { useCreatorOnboardingUI } from '@/hooks/ui/integration'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
-import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/wagmi'
 
 /**

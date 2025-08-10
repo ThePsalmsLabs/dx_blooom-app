@@ -29,16 +29,10 @@ import { usePathname } from 'next/navigation'
 import {
   Settings,
   RotateCcw,
-  Save,
-  Upload,
   Download,
   AlertCircle,
   CheckCircle,
-  Info,
-  Lock,
-  Unlock,
-  User,
-  Shield
+  User
 } from 'lucide-react'
 import {
   Card,
@@ -58,10 +52,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Toast,
   useToast
 } from '@/components/ui'
-import { cn } from '@/lib/utils'
 
 // Import our architectural layers for permission and state management
 import {
@@ -69,8 +61,7 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 import { 
-  type PermissionLevel,
-  type PermissionResult 
+  type PermissionLevel 
 } from '@/components/layout/RouteGuards'
 import { type UserRole } from '@/components/layout/AppLayout'
 

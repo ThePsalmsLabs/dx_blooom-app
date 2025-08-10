@@ -12,13 +12,13 @@ import React, {
 } from 'react'
 import { WagmiProvider, useAccount, useChainId, useWalletClient } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RainbowKitProvider, getDefaultWallets } from '@rainbow-me/rainbowkit'
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { base, baseSepolia } from 'viem/chains'
-import { type Address, type Hash, parseUnits } from 'viem'
+import { type Address, parseUnits } from 'viem'
 import { BiconomySmartAccountV2 } from '@biconomy/account'
 import { wagmiConfig, getCurrentChain, isSupportedChain } from '@/lib/web3/wagmi'
-import { createSmartAccount, getBiconomyChainConfig } from '@/lib/biconomy/config'
+import { createSmartAccount } from '@/lib/biconomy/config'
 
 
 import '@rainbow-me/rainbowkit/styles.css'

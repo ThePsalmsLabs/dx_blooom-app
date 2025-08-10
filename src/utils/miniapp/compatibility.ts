@@ -12,13 +12,11 @@ import { useMiniAppErrorHandling, type MiniAppError } from '@/utils/error-handli
 
 // Import Component 5.2's capability detection logic for reuse
 import { 
-  ClientCapabilityDetector, 
-  type MiniAppCapabilities 
+  ClientCapabilityDetector 
 } from '@/components/miniapp/ProgressiveEnhancement'
 
 // Import existing configuration systems
 import { getX402MiddlewareConfig, isX402Supported } from '@/lib/web3/x402-config'
-import { useFarcasterContext } from '@/hooks/business/workflows'
 
 /**
  * Compatibility Test Interface

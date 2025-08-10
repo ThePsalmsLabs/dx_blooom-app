@@ -42,7 +42,6 @@ import {
 // Import core hooks for direct UI needs
 import {
   useIsCreatorRegistered,
-  useContentById,
   useCreatorProfile,
   useCreatorPendingEarnings,
   useWithdrawEarnings,
@@ -55,22 +54,15 @@ import { getContractAddresses } from '@/lib/contracts/config'
 // Import utility functions for data formatting
 import {
   formatCurrency,
-  formatRelativeTime,
   formatAbsoluteTime,
   formatContentCategory,
-  formatWeb3Error,
-  cn
+  formatWeb3Error
 } from '@/lib/utils'
 
 // Import types
-import type { 
-  Content,
-  Creator,
-  ContentCategory 
-} from '@/types/contracts'
 
-import { AccountType } from '@/components/providers/Web3Provider'
-import { useState as useReactState } from 'react'
+
+
 import type { Connector } from 'wagmi'
 
 /**

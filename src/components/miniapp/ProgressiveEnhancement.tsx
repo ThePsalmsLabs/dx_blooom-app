@@ -10,11 +10,8 @@ import { useAccount, useChainId } from 'wagmi'
 import {
   Globe,
   Smartphone,
-  Wifi,
   WifiOff,
-  AlertTriangle,
   CheckCircle,
-  XCircle,
   Loader2,
   ArrowRight,
   Shield,
