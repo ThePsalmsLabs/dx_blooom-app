@@ -437,7 +437,7 @@ export function useUnifiedContentPurchaseFlow(
   const priceUpdateTimerRef = useRef<NodeJS.Timeout | null>(null)
   // Cache price oracle results and contract reads to avoid RPC rate limits
   const priceResultCacheRef = useRef<Map<string, { value: { requiredAmount: bigint; priceInUSDC: bigint } | null; ts: number }>>(new Map())
-  const contractReadCacheRef = useRef<Map<string, { value: any; ts: number }>>(new Map())
+  const contractReadCacheRef = useRef<Map<string, { value: unknown; ts: number }>>(new Map())
   const CACHE_TTL_MS = 30_000
 
   // Concurrency + debounce guards
@@ -502,7 +502,7 @@ export function useUnifiedContentPurchaseFlow(
 
     // Check if we have cached token info
     const cached = tokenPrices.get(tokenAddress)
-    if (cached) return cached
+    if (cached) return cached as TokenInfo
 
     // Return basic info for uncached tokens
     return {
@@ -566,9 +566,9 @@ export function useUnifiedContentPurchaseFlow(
       if (tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH) {
         try {
           const ethAmount = await publicClient.readContract({
-            address: contractAddresses.PRICE_ORACLE,
-            abi: PRICE_ORACLE_ABI as any,
-            functionName: 'getETHPrice' as any,
+          address: contractAddresses.PRICE_ORACLE,
+          abi: PRICE_ORACLE_ABI,
+          functionName: 'getETHPrice',
             args: [usdcAmount]
           }) as bigint
 
@@ -598,8 +598,8 @@ export function useUnifiedContentPurchaseFlow(
       try {
         const tokenAmount = await publicClient.readContract({
           address: contractAddresses.PRICE_ORACLE,
-          abi: PRICE_ORACLE_ABI as any,
-          functionName: 'getTokenAmountForUSDC' as any,
+          abi: PRICE_ORACLE_ABI,
+          functionName: 'getTokenAmountForUSDC',
           args: [tokenAddress, usdcAmount, poolFee]
         }) as bigint
 
@@ -650,7 +650,7 @@ export function useUnifiedContentPurchaseFlow(
     const cached = contractReadCacheRef.current.get(cacheKey)
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
       console.log(`📦 Using cached token info for ${tokenAddress}`)
-      return cached.value
+      return cached.value as TokenInfo
     }
 
     // Create public client for direct contract reads using wagmi transport (batched via Alchemy)
@@ -751,6 +751,8 @@ export function useUnifiedContentPurchaseFlow(
       needsApproval
     })
 
+    // Cache the assembled token info for quick reuse
+    contractReadCacheRef.current.set(cacheKey, { value: tokenInfo, ts: Date.now() })
     return tokenInfo
   }, [contractAddresses, userAddress, contentQuery.data, calculateTokenPrice, chainId])
 

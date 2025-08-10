@@ -42,6 +42,26 @@ export default function ContentViewPage({ params }: ViewPageProps) {
     }
   }, [unwrapped.id])
 
+  // Always call hooks unconditionally
+  const contentQuery = useContentById(contentId || (BigInt(0) as unknown as bigint))
+  const accessQuery = useHasContentAccess(userAddress, contentId || (BigInt(0) as unknown as bigint))
+
+  // Light polling to mitigate RPC/indexing latency after purchase
+  React.useEffect(() => {
+    if (!userAddress || !contentId) return
+    let attempts = 0
+    const timer = setInterval(() => {
+      attempts += 1
+      accessQuery.refetch()
+      if (attempts >= 5 || accessQuery.data === true) {
+        clearInterval(timer)
+      }
+    }, 2000)
+    return () => {
+      clearInterval(timer)
+    }
+  }, [userAddress, contentId, accessQuery])
+
   if (!contentId) {
     return (
       <AppLayout>
@@ -54,29 +74,6 @@ export default function ContentViewPage({ params }: ViewPageProps) {
       </AppLayout>
     )
   }
-
-  const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(userAddress, contentId)
-
-  // Light polling to mitigate RPC/indexing latency after purchase
-  React.useEffect(() => {
-    if (!userAddress || !contentId) return
-    let attempts = 0
-    let timer: ReturnType<typeof setInterval> | null = null
-    // If we don't have access yet, retry a few times
-    if (accessQuery.data !== true) {
-      timer = setInterval(() => {
-        attempts += 1
-        accessQuery.refetch()
-        if (attempts >= 5 || accessQuery.data === true) {
-          if (timer) clearInterval(timer)
-        }
-      }, 2000)
-    }
-    return () => {
-      if (timer) clearInterval(timer)
-    }
-  }, [userAddress, contentId])
 
   const gatewayUrl = contentQuery.data?.ipfsHash
     ? `https://ipfs.io/ipfs/${contentQuery.data.ipfsHash}`

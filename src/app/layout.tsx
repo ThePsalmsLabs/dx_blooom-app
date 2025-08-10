@@ -20,7 +20,6 @@
  */
 
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { AllProviders } from '@/components/providers/AllProviders'
 // Root layout is a Server Component; avoid client hooks here
 
@@ -29,15 +28,11 @@ import './globals.css'
 import '@rainbow-me/rainbowkit/styles.css'
 import '../styles/rainbowkit-fixes.css'
 
-// Configure the Inter font for optimal performance and accessibility
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap', // Prevents layout shift while font loads
-  variable: '--font-inter' // CSS custom property for the font
-})
+// Removed Google Fonts to avoid network fetch warnings in dev
 
 // Comprehensive metadata configuration for SEO and social sharing
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
   title: {
     template: '%s | OnChain Content Platform',
     default: 'OnChain Content Platform - Create, Share, and Earn'
@@ -112,8 +107,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-background font-sans antialiased bg-white bg-amber-glow">
+    <html lang="en">
+      <body className="min-h-screen bg-background font-sans antialiased bg-amber-glow">
         {/* 
           🔧 KEY FIX: This AllProviders wrapper ensures that every component
           in your app has access to all the context providers, including AuthProvider.

@@ -461,27 +461,33 @@ function extractContentId(pathParts: readonly string[]): bigint {
   throw new Error('Content ID not found in path')
 }
 
-function generateContentPreviewFrame(content: any): string {
+type FrameContent = {
+  readonly title: string
+  readonly description: string
+  readonly payPerViewPrice: bigint
+}
+
+function generateContentPreviewFrame(content: FrameContent): string {
   const baseUrl = process.env.NEXT_PUBLIC_URL
   return `${baseUrl}/api/frames/images/preview?title=${encodeURIComponent(content.title)}&price=${formatCurrency(content.payPerViewPrice)}`
 }
 
-function generateContentDetailsFrame(content: any): string {
+function generateContentDetailsFrame(content: FrameContent): string {
   const baseUrl = process.env.NEXT_PUBLIC_URL
   return `${baseUrl}/api/frames/images/details?title=${encodeURIComponent(content.title)}&description=${encodeURIComponent(content.description)}`
 }
 
-function generatePaymentConfirmationFrame(content: any): string {
+function generatePaymentConfirmationFrame(content: FrameContent): string {
   const baseUrl = process.env.NEXT_PUBLIC_URL
   return `${baseUrl}/api/frames/images/payment-confirm?title=${encodeURIComponent(content.title)}&price=${formatCurrency(content.payPerViewPrice)}`
 }
 
-function generateConnectWalletFrame(content: any): string {
+function generateConnectWalletFrame(content: Pick<FrameContent, 'title'>): string {
   const baseUrl = process.env.NEXT_PUBLIC_URL
   return `${baseUrl}/api/frames/images/connect-wallet?title=${encodeURIComponent(content.title)}`
 }
 
-function generateContentAccessGrantedFrame(content: any): string {
+function generateContentAccessGrantedFrame(content: Pick<FrameContent, 'title'>): string {
   const baseUrl = process.env.NEXT_PUBLIC_URL
   return `${baseUrl}/api/frames/images/access-granted?title=${encodeURIComponent(content.title)}`
 }

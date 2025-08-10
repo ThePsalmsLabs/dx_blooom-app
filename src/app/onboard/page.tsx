@@ -143,10 +143,10 @@ function OnboardingContent() {
     // Price validation
     const price = parseFloat(data.subscriptionPrice)
     if (isNaN(price) || price < 0.01) {
-      errors.subscriptionPrice = 'Minimum subscription price is $0.01'
+       errors.subscriptionPrice = 'Minimum subscription price is $0.01'
     }
     if (price > 100) {
-      errors.subscriptionPrice = 'Maximum subscription price is $100.00'
+       errors.subscriptionPrice = 'Maximum subscription price is $100.00'
     }
     
     // Profile content validation - ensure at least one field has content
@@ -157,16 +157,16 @@ function OnboardingContent() {
     ].some(field => field && field.length > 0)
     
     if (!hasProfileContent) {
-      errors.bio = 'Please provide at least a bio, website, or social handle'
+       errors.bio = 'Please provide at least a bio, website, or social handle'
     }
     
     // Individual field validation
     if (data.bio && data.bio.length > 500) {
-      errors.bio = 'Bio must be less than 500 characters'
+       errors.bio = 'Bio must be less than 500 characters'
     }
     
     if (data.websiteUrl && !isValidUrl(data.websiteUrl)) {
-      errors.websiteUrl = 'Please enter a valid website URL'
+       errors.websiteUrl = 'Please enter a valid website URL'
     }
     
     return errors
@@ -207,7 +207,7 @@ function OnboardingContent() {
       const profileData = constructProfileData(formData)
       
       if (!profileData || profileData.trim().length === 0) {
-        throw new Error('Profile data cannot be empty')
+         throw new Error('Profile data cannot be empty')
       }
       
       console.group('🚀 Enhanced Page: Submitting Registration')
@@ -490,7 +490,7 @@ function OnboardingContent() {
               Registration Successful!
             </DialogTitle>
             <DialogDescription>
-              Welcome to the creator economy! You\'re now registered as a creator and can start 
+              Welcome to the creator economy! You&apos;re now registered as a creator and can start 
               monetizing your content. {isNavigating ? "Redirecting to your dashboard..." : ""}
             </DialogDescription>
           </DialogHeader>
@@ -577,7 +577,7 @@ function WalletConnectionCard({ walletUI }: WalletConnectionCardProps) {
           Connect Your Wallet
         </CardTitle>
         <CardDescription>
-          Connect your wallet to get started. We'll help you set up a Smart Account for the best experience.
+          Connect your wallet to get started. We&apos;ll help you set up a Smart Account for the best experience.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -612,10 +612,10 @@ function AlreadyRegisteredCard({ profile }: AlreadyRegisteredCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Check className="h-5 w-5 text-green-500" />
-          You're Already a Creator!
-        </CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Check className="h-5 w-5 text-green-500" />
+            You&apos;re Already a Creator!
+          </CardTitle>
         <CardDescription>
           Your creator profile is set up and ready to go.
         </CardDescription>

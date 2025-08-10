@@ -400,7 +400,7 @@ async function testCoinbaseWalletIntegration(): Promise<boolean> {
   try {
     if (typeof window === 'undefined') return false
     
-    const ethereum = (window as any).ethereum
+  const ethereum = (window as unknown as { ethereum?: { isCoinbaseWallet?: boolean; selectedProvider?: { isCoinbaseWallet?: boolean }; request?: unknown; on?: unknown; removeListener?: unknown } }).ethereum
     
     if (!ethereum) {
       return false
@@ -434,7 +434,7 @@ async function testMetaMaskCompatibility(): Promise<boolean> {
   try {
     if (typeof window === 'undefined') return false
     
-    const ethereum = (window as any).ethereum
+  const ethereum = (window as unknown as { ethereum?: { isMetaMask?: boolean; request?: unknown; on?: unknown; removeListener?: unknown } }).ethereum
     
     if (!ethereum?.isMetaMask) {
       return false
@@ -464,7 +464,7 @@ async function testWalletConnectSupport(): Promise<boolean> {
     if (typeof window === 'undefined') return false
     
     // Check for WalletConnect session persistence capability
-    const hasLocalStorage = typeof localStorage !== 'undefined'
+  const hasLocalStorage = (() => { try { return typeof localStorage !== 'undefined' } catch { return false } })()
     
     if (!hasLocalStorage) {
       return false
@@ -496,7 +496,7 @@ async function testWeb3ProviderFunctionality(): Promise<boolean> {
   try {
     if (typeof window === 'undefined') return false
     
-    const ethereum = (window as any).ethereum
+  const ethereum = (window as unknown as { ethereum?: { request?: unknown; on?: unknown; removeListener?: unknown } }).ethereum
     
     if (!ethereum) {
       return false

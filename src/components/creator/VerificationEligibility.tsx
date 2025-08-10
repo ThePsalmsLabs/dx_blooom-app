@@ -45,7 +45,7 @@ export function VerifiedCreatorCard({ creatorProfile }: { creatorProfile: Creato
           Verified Creator
         </CardTitle>
         <CardDescription className="text-green-700">
-          You're a verified creator with full access to all platform benefits
+          You&apos;re a verified creator with full access to all platform benefits
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -111,7 +111,7 @@ export function VerificationEligibilityCard({
           <Alert>
             <TrendingUp className="h-4 w-4" />
             <AlertDescription>
-              You're making good progress! Complete the remaining requirements to apply for verification.
+              You&apos;re making good progress! Complete the remaining requirements to apply for verification.
             </AlertDescription>
           </Alert>
         )}

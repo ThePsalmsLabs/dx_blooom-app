@@ -312,11 +312,11 @@ function parseLog(log: Log): PaymentEvent {
 }
 
 function subscribeToPaymentEvents(
+  publicClient: ReturnType<typeof usePublicClient> | null,
   contractAddress: Address,
   callback: (events: PaymentEvent[]) => void
 ): () => void {
-  // Use wagmi's publicClient for historical logs and watchContractEvent for real-time
-  const publicClient = usePublicClient()
+  // Use provided publicClient for historical logs and watchContractEvent for real-time
   let unwatch: (() => void) | undefined
   let cancelled = false
 
@@ -414,6 +414,8 @@ export function useSocialRevenueTracking(
   
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  // Public client must be called at hook top-level, not inside callbacks
+  const publicClient = usePublicClient()
   
   /**
    * Process Payment Events for Revenue Attribution
@@ -501,7 +503,7 @@ export function useSocialRevenueTracking(
     
     try {
       // Subscribe to payment events using existing infrastructure
-      const unsubscribe = subscribeToPaymentEvents(contractConfig.address, processPaymentEvents)
+      const unsubscribe = subscribeToPaymentEvents(publicClient, contractConfig.address, processPaymentEvents)
       
       return () => {
         unsubscribe()

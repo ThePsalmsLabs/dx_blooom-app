@@ -561,7 +561,9 @@ function EnhancedWeb3ProviderInner({ children }: EnhancedWeb3ProviderProps): JSX
           value: txData.value || BigInt(0),
           data: txData.data || '0x',
         })
-        return (receipt as any).transactionHash || (receipt as any).userOpHash || ''
+        const maybeHash = (receipt as unknown) as { transactionHash?: string; userOpHash?: string } | string
+        if (typeof maybeHash === 'string') return maybeHash
+        return maybeHash.transactionHash || maybeHash.userOpHash || ''
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Smart Account transaction failed')
         // Fallback to EOA below
@@ -578,15 +580,16 @@ function EnhancedWeb3ProviderInner({ children }: EnhancedWeb3ProviderProps): JSX
     setError(null)
     try {
       // If sendBatchTransaction does not exist, fallback to sequential sendTransaction
-      if (typeof (smartAccountConfig.smartAccount as any).sendBatchTransaction === 'function') {
+      if (typeof (smartAccountConfig.smartAccount as unknown as { sendBatchTransaction?: (txs: readonly { to: string; value: bigint; data: string }[]) => Promise<unknown> }).sendBatchTransaction === 'function') {
         const transactions = txDataArray.map(tx => ({
           to: tx.to,
           value: tx.value || BigInt(0),
           data: tx.data || '0x',
         }))
-        const receipt = await (smartAccountConfig.smartAccount as any).sendBatchTransaction(transactions)
-        // Prefer userOpHash if transactionHash does not exist
-        return (receipt as any).transactionHash || (receipt as any).userOpHash || ''
+        const receipt = await (smartAccountConfig.smartAccount as unknown as { sendBatchTransaction: (txs: readonly { to: string; value: bigint; data: string }[]) => Promise<unknown> }).sendBatchTransaction(transactions)
+        const maybeHash = receipt as { transactionHash?: string; userOpHash?: string } | string
+        if (typeof maybeHash === 'string') return maybeHash
+        return maybeHash.transactionHash || maybeHash.userOpHash || ''
       } else {
         // Fallback: send transactions sequentially, return last hash
         let lastHash = ''
@@ -596,7 +599,8 @@ function EnhancedWeb3ProviderInner({ children }: EnhancedWeb3ProviderProps): JSX
             value: tx.value || BigInt(0),
             data: tx.data || '0x',
           })
-          lastHash = (receipt as any).transactionHash || (receipt as any).userOpHash || ''
+          const maybeHash = (receipt as unknown) as { transactionHash?: string; userOpHash?: string } | string
+          lastHash = typeof maybeHash === 'string' ? maybeHash : (maybeHash.transactionHash || maybeHash.userOpHash || '')
         }
         return lastHash
       }

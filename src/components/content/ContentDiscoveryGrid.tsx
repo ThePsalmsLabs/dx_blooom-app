@@ -889,7 +889,7 @@ function EmptyState() {
       <Eye className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
       <h3 className="text-xl font-semibold mb-2">No Content Found</h3>
       <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-        We couldn't find any content matching your current filters. 
+        We couldn&apos;t find any content matching your current filters. 
         Try adjusting your search criteria or check back later for new content.
       </p>
       <div className="space-y-2 text-sm text-muted-foreground">

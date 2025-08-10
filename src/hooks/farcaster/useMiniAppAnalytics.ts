@@ -496,22 +496,22 @@ export function useMiniAppAnalytics(
   /**
    * Placeholder calculation functions - implement these based on your needs
    */
-  function calculateFrameViews(context: any): number {
+  function calculateFrameViews(context: unknown): number {
     // Your implementation here
     return 0
   }
 
-  function calculateCastEngagement(context: any): number {
+  function calculateCastEngagement(context: unknown): number {
     // Your implementation here  
     return 0
   }
 
-  function calculateSocialConversions(context: any): number {
+  function calculateSocialConversions(context: unknown): number {
     // Your implementation here
     return 0
   }
 
-  function calculateViralCoefficient(context: any): number {
+  function calculateViralCoefficient(context: unknown): number {
     // Your implementation here
     return 0
   }

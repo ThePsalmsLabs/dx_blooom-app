@@ -145,7 +145,7 @@ export default function HomePage() {
     {
       address: '0x1234...',
       displayName: 'TechGuruAlex',
-      avatar: '/avatars/alex.jpg',
+      avatar: '/vercel.svg',
       category: 'Software Development',
       earnings: '$15.2K',
       subscriberCount: '1.2K',
@@ -154,7 +154,7 @@ export default function HomePage() {
     {
       address: '0x5678...',
       displayName: 'CryptoAnalystSara',
-      avatar: '/avatars/sara.jpg',
+      avatar: '/next.svg',
       category: 'Market Analysis',
       earnings: '$23.8K',
       subscriberCount: '2.1K',
@@ -163,7 +163,7 @@ export default function HomePage() {
     {
       address: '0x9abc...',
       displayName: 'NFTArtistMike',
-      avatar: '/avatars/mike.jpg',
+      avatar: '/globe.svg',
       category: 'Digital Art',
       earnings: '$31.5K',
       subscriberCount: '3.4K',
@@ -440,7 +440,7 @@ export default function HomePage() {
               <div className="space-y-4">
                 <h2 className="text-3xl font-bold">Why Creators Choose Our Platform</h2>
                 <p className="text-lg text-muted-foreground">
-                  Join thousands of creators who\'ve discovered the power of 
+                  Join thousands of creators who&apos;ve discovered the power of 
                   Web3 content monetization and true ownership.
                 </p>
               </div>
@@ -504,7 +504,7 @@ export default function HomePage() {
             <div className="space-y-4">
               <h2 className="text-4xl font-bold">Ready to Join the Creator Economy?</h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Whether you\'re here to discover amazing content or share your own creations,
+                Whether you&apos;re here to discover amazing content or share your own creations,
                 our Web3 platform gives you the tools to participate in the new digital economy.
               </p>
             </div>

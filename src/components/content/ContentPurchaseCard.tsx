@@ -489,7 +489,7 @@ export function ContentPurchaseCard({
   // Price oracle for token conversions (with error handling)
   const ethPriceQuery = useReadContract({
     address: contractAddresses?.PRICE_ORACLE || undefined,
-    abi: PRICE_ORACLE_ABI as any,
+    abi: PRICE_ORACLE_ABI as unknown as import('viem').Abi,
     functionName: 'getTokenPrice',
     args: contractAddresses ? ['0x0000000000000000000000000000000000000000', contractAddresses.USDC] : undefined,
     query: { 
@@ -563,7 +563,8 @@ export function ContentPurchaseCard({
       
       // Always create USDC token info (fallback mode)
       // Force isLoading to false if we've been waiting too long or if allowance is stuck
-      const forceNotLoading = Date.now() > (window as any).__balanceCheckStart + 8000 || allowanceStuck
+      const start = (window as unknown as { __balanceCheckStart?: number }).__balanceCheckStart || 0
+      const forceNotLoading = Date.now() > start + 8000 || allowanceStuck
       
       const usdcTokenInfo: TokenInfo = {
         address: contractAddresses?.USDC || '0x0000000000000000000000000000000000000000' as Address,
@@ -704,7 +705,7 @@ export function ContentPurchaseCard({
   useEffect(() => {
     if (contentQuery.data && effectiveUserAddress && !paymentState.isInitialized) {
       // Set timer for forcing loading state to false
-      (window as any).__balanceCheckStart = Date.now()
+      ;(window as unknown as { __balanceCheckStart?: number }).__balanceCheckStart = Date.now()
       checkTokenBalances(contentQuery.data)
     } else if (contentQuery.data && !effectiveUserAddress && !paymentState.isInitialized) {
       // Initialize with no wallet connected state
@@ -970,7 +971,7 @@ export function ContentPurchaseCard({
 
       await writeContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
-        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as any,
+        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as unknown as import('viem').Abi,
         functionName: 'createPaymentIntent',
         args: [paymentRequest],
         value: selectedToken.requiredAmount
@@ -1057,7 +1058,7 @@ export function ContentPurchaseCard({
 
         await writeContract({
           address: tokenAddress,
-          abi: ERC20_ABI as any,
+          abi: ERC20_ABI as unknown as import('viem').Abi,
           functionName: 'approve',
           args: [contractAddresses.COMMERCE_INTEGRATION, requiredAmount],
         })
@@ -1083,7 +1084,7 @@ export function ContentPurchaseCard({
 
       await writeContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
-        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as any,
+        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as unknown as import('viem').Abi,
         functionName: 'createPaymentIntent',
         args: [paymentRequest]
       })

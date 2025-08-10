@@ -584,12 +584,15 @@ export class NotificationService extends EventEmitter {
         
         // Restore notifications with date object reconstruction
         for (const [id, notificationData] of Object.entries(parsed)) {
-          const notification = notificationData as any
+          const notification = notificationData as {
+            createdAt: string | Date
+            expiresAt?: string | Date
+          } & Partial<PlatformNotification>
           notification.createdAt = new Date(notification.createdAt)
           if (notification.expiresAt) {
             notification.expiresAt = new Date(notification.expiresAt)
           }
-          this.notifications.set(id, notification as PlatformNotification)
+          this.notifications.set(id, notification as unknown as PlatformNotification)
         }
       }
 

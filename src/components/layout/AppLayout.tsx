@@ -625,7 +625,7 @@ function NetworkWarningBanner() {
       <div className="flex items-center gap-2 text-amber-800 text-sm">
         <AlertCircle className="h-4 w-4" />
         <span>
-              You\'re connected to an unsupported network. Please switch to {currentChain.name} to use the platform.
+              You&apos;re connected to an unsupported network. Please switch to {currentChain.name} to use the platform.
         </span>
       </div>
     </div>
@@ -638,7 +638,7 @@ function OfflineWarningBanner() {
       <div className="flex items-center gap-2 text-red-800 text-sm">
         <WifiOff className="h-4 w-4" />
         <span>
-          You're currently offline. Some features may not work properly.
+          You&apos;re currently offline. Some features may not work properly.
         </span>
       </div>
     </div>

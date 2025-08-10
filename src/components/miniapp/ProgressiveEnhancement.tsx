@@ -202,7 +202,7 @@ class ClientCapabilityDetector {
     }
 
     // Check for MiniKit global object
-    const hasMiniKit = typeof (window as any).MiniKit !== 'undefined'
+    const hasMiniKit = typeof (window as unknown as { MiniKit?: unknown }).MiniKit !== 'undefined'
     if (hasMiniKit) {
       return {
         isFarcaster: true,
@@ -270,7 +270,7 @@ class ClientCapabilityDetector {
 
     try {
       const providers: string[] = []
-      const ethereum = (window as any).ethereum
+      const ethereum = (window as unknown as { ethereum?: { isMetaMask?: boolean; isCoinbaseWallet?: boolean } }).ethereum
 
       // Check for MetaMask
       const hasMetaMask = Boolean(ethereum?.isMetaMask)
@@ -404,7 +404,7 @@ class ClientCapabilityDetector {
 
     // Network detection
     const isOnline = navigator.onLine
-    const connection = (navigator as any).connection
+    const connection = (navigator as unknown as { connection?: { effectiveType?: string; downlink?: number } }).connection
     const connectionType = connection 
       ? (connection.effectiveType === '4g' || connection.effectiveType === 'wifi' ? 'fast' : 'slow')
       : 'fast'
@@ -550,7 +550,7 @@ function WebInterfaceFallback({ children }: { children: React.ReactNode }) {
       <Alert className="mb-6">
         <Globe className="h-4 w-4" />
         <AlertDescription>
-          You're using the web interface. For the full experience with social features, 
+          You&apos;re using the web interface. For the full experience with social features, 
           try accessing this content through a Farcaster client.
         </AlertDescription>
       </Alert>

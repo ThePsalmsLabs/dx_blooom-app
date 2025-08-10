@@ -402,7 +402,7 @@ function generateFrameMetadata(
   const buttons = generateFrameButtons(content, contentId, workflowStep, baseUrl)
   
   // Generate state for maintaining workflow context
-  const state = generateFrameState(contentId, workflowStep as any, {
+  const state = generateFrameState(contentId, workflowStep as 'preview' | 'purchase' | 'confirmation', {
     userAddress: userAddress || '',
     pricingModel: content.pricingModel
   })

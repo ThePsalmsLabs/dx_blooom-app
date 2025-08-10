@@ -77,12 +77,13 @@ async function getMiniKit(): Promise<MiniKitAPI | null> {
       if (typeof window === 'undefined') return null;
   
       const mod = await import('@farcaster/miniapp-sdk').catch(() => null);
-      if (mod && mod.sdk) {
+      if (mod && 'sdk' in mod && mod.sdk) {
         return (mod.sdk as unknown) as MiniKitAPI;
       }
-  
-      if ((window as any).miniapp?.sdk) {
-        return (window as any).miniapp.sdk as unknown as MiniKitAPI;
+
+      const win = window as unknown as { miniapp?: { sdk?: unknown } }
+      if (win.miniapp?.sdk) {
+        return win.miniapp.sdk as unknown as MiniKitAPI;
       }
   
       return null;

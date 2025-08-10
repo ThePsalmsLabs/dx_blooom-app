@@ -761,7 +761,18 @@ export class SubgraphQueryService {
     
     const queryHash = this.generateQueryHash('content-search', { searchQuery, filters, pagination })
     
-    const cachedResult = this.getCachedResult<readonly any[]>(queryHash)
+    const cachedResult = this.getCachedResult<readonly {
+      readonly content: {
+        readonly id: string
+        readonly title: string
+        readonly description: string
+        readonly category: string
+        readonly price: bigint
+        readonly creator: Address
+        readonly createdAt: Date
+      }
+      readonly relevanceScore: number
+    }[]>(queryHash)
     if (cachedResult) {
       return cachedResult
     }

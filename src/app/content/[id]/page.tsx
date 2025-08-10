@@ -67,7 +67,7 @@ import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
 
 // Import utility functions
-import { cn, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
+import { cn, formatCurrency, formatRelativeTime, formatAddress, formatContentCategory } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
 
 /**
@@ -328,7 +328,10 @@ function ContentHeaderSection({
   contentQuery,
   accessState
 }: {
-  contentQuery: any
+  contentQuery: {
+    readonly isLoading: boolean
+    readonly data?: Content
+  }
   accessState: ContentAccessState
 }) {
   if (contentQuery.isLoading) {
@@ -402,7 +405,7 @@ function ContentPreviewSection({
   accessState,
   isLoading
 }: {
-  content: any
+  content: Content | undefined
   accessState: ContentAccessState
   isLoading: boolean
 }) {
@@ -491,7 +494,7 @@ function ContentMetadataSection({
   content,
   isLoading
 }: {
-  content: any
+  content: Content | undefined
   isLoading: boolean
 }) {
   if (isLoading) {
@@ -525,29 +528,16 @@ function ContentMetadataSection({
           <div>
             <span className="text-sm font-medium text-gray-600">Category:</span>
             <Badge variant="secondary" className="ml-2">
-              {content.category || 'General'}
+              {formatContentCategory(content.category)}
             </Badge>
           </div>
-          
-          {content.tags && content.tags.length > 0 && (
-            <div>
-              <span className="text-sm font-medium text-gray-600 block mb-2">Tags:</span>
-              <div className="flex flex-wrap gap-2">
-                {content.tags.map((tag: string, index: number) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
           
           <Separator />
           
           <div className="text-xs text-gray-500 space-y-1">
             <div className="flex items-center gap-2">
               <Calendar className="h-3 w-3" />
-              <span>Content ID: {content.id?.toString()}</span>
+              <span>Published: {formatRelativeTime(content.creationTime)}</span>
             </div>
             <div className="flex items-center gap-2">
               <User className="h-3 w-3" />

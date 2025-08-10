@@ -11,7 +11,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 
 import { getContractAddresses } from '@/lib/contracts/config'
-import { PAY_PER_VIEW_ABI, ERC20_ABI } from '@/lib/contracts/abis'
+import { PAY_PER_VIEW_ABI, ERC20_ABI, CONTENT_REGISTRY_ABI, PRICE_ORACLE_ABI } from '@/lib/contracts/abis'
 
 /* -------------------------------------------------------------------------- */
 /*                                ENUMERATIONS                                */
@@ -105,7 +105,7 @@ export function useUnifiedContentPurchase(
 
   const { data: contentDetails, isLoading: isLoadingContent } = useReadContract({
     address: contractAddresses?.CONTENT_REGISTRY,
-    abi: [], // TODO: replace with ContentRegistry ABI subset
+    abi: CONTENT_REGISTRY_ABI,
     functionName: 'getContent',
     args: contentId ? [contentId] : undefined,
     query: {
@@ -143,19 +143,23 @@ export function useUnifiedContentPurchase(
 
   const { data: ethPriceInUSDC } = useReadContract({
     address: contractAddresses?.PRICE_ORACLE,
-    abi: [], // TODO: replace with PriceOracle ABI subset
-    functionName: 'getPrice',
-    args: ['0x0000000000000000000000000000000000000000', contractAddresses?.USDC],
+    abi: PRICE_ORACLE_ABI,
+    functionName: 'getETHPrice',
+    args: (contentDetails as { payPerViewPrice: bigint } | undefined)?.payPerViewPrice
+      ? [(contentDetails as { payPerViewPrice: bigint }).payPerViewPrice]
+      : undefined,
     query: {
-      enabled: Boolean(contractAddresses?.PRICE_ORACLE && contractAddresses?.USDC)
+      enabled: Boolean(
+        contractAddresses?.PRICE_ORACLE &&
+        (contentDetails as { payPerViewPrice?: bigint } | undefined)?.payPerViewPrice
+      )
     }
   })
 
   /* ------------------------- TOKEN INFO DERIVATION ------------------------- */
 
   const paymentTokensInfo = useMemo((): Record<PaymentMethod, PaymentTokenInfo | null> => {
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    const contentPrice: bigint = (contentDetails as any)?.payPerViewPrice || BigInt(0)
+    const contentPrice: bigint = (contentDetails && (contentDetails as { payPerViewPrice?: bigint }).payPerViewPrice) || BigInt(0)
 
     if (!userAddress || contentPrice === BigInt(0)) {
       return {

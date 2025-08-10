@@ -176,7 +176,7 @@ export interface FrameState {
    * workflow step, providing type safety and preventing invalid
    * state transitions that could break Frame functionality.
    */
-  function isValidWorkflowStep(step: any): step is FrameWorkflowStep {
+  function isValidWorkflowStep(step: unknown): step is FrameWorkflowStep {
     return typeof step === 'string' && 
            ['preview', 'purchase', 'confirmation', 'access', 'error'].includes(step)
   }
