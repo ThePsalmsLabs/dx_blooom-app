@@ -91,13 +91,19 @@ import { cn, formatCurrency, formatNumber } from '@/lib/utils'
 import {
   useCreatorProfile,
   useCreatorContent,
-  useCreatorPendingEarnings
+  useCreatorPendingEarnings,
+  useIsCreatorRegistered
 } from '@/hooks/contracts/core'
 
 import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 import { useAccount } from 'wagmi'
 import { ContentUploadForm } from '@/components/content/ContentUpload'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
+import { CreatorProfileEditor } from '@/components/creator/CreatorProfileEditor'
+import { ContentManagementDashboard } from '@/components/creator/ContentManagementDashboard'
+import { CreatorVerificationPanel } from '@/components/creator/CreatorVerificationPanel'
+import { Separator } from '@/components/ui/seperator'
+import { Shield, User, AlertTriangle } from 'lucide-react'
 
 /**
  * Mini App Metrics Interface
@@ -184,7 +190,7 @@ type TimePeriod = '7d' | '30d' | '90d' | '1y' | 'all'
  * Different views optimize the dashboard for different creator needs
  * and device sizes, now including Mini App specific analytics.
  */
-type DashboardView = 'overview' | 'analytics' | 'content' | 'earnings' | 'settings' | 'social'
+type DashboardView = 'overview' | 'analytics' | 'content' | 'earnings' | 'settings' | 'social' | 'verification'
 
 /**
  * Props interface for the Enhanced CreatorDashboard component
@@ -244,6 +250,7 @@ export function EnhancedCreatorDashboard({
   const creatorProfile = useCreatorProfile(effectiveCreatorAddress)
   const creatorContent = useCreatorContent(effectiveCreatorAddress)
   const pendingEarnings = useCreatorPendingEarnings(effectiveCreatorAddress)
+  const creatorRegistration = useIsCreatorRegistered(effectiveCreatorAddress)
   
   // Existing dashboard UI integration
   const dashboardUI = useCreatorDashboardUI(effectiveCreatorAddress)
@@ -285,6 +292,20 @@ export function EnhancedCreatorDashboard({
 
   // Loading state management
   const isLoading = dashboardUI.isLoading || miniAppAnalytics.isLoading
+
+  // Gate: If not a registered creator, show onboarding prompt
+  if (!creatorRegistration.isLoading && creatorRegistration.data === false) {
+    return (
+      <div className={cn('container mx-auto py-16 text-center', className)}>
+        <AlertTriangle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Creator Registration Required</h1>
+        <p className="text-muted-foreground mb-6">
+          You need to register as a creator to access this dashboard.
+        </p>
+        <Button onClick={() => (window.location.href = '/onboard')}>Become a Creator</Button>
+      </div>
+    )
+  }
 
   // Show a helpful message if analytics are limited
   if (miniAppAnalytics.data?.isLimited) {
@@ -381,13 +402,14 @@ export function EnhancedCreatorDashboard({
 
       {/* Enhanced Dashboard Navigation with Social Tab */}
       <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as DashboardView)}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="verification">Verification</TabsTrigger>
         </TabsList>
 
         {/* Enhanced Overview Tab with Social Metrics */}
@@ -434,16 +456,17 @@ export function EnhancedCreatorDashboard({
           />
         </TabsContent>
 
-        {/* Enhanced Content Tab with Social Metrics */}
+        {/* Enhanced Content Tab with integrated ContentManagementDashboard */}
         <TabsContent value="content" className="space-y-6">
-          <ContentManagement
-            contentData={dashboardUI.metrics}
-            socialMetrics={miniAppAnalytics.data?.contentSocialMetrics || []}
-            contentList={creatorContent.data || []}
-            isLoading={isLoading}
-            onContentAction={(action, contentId) => {
-              console.log(`Content action: ${action} for content ${contentId}`)
+          <ContentManagementDashboard
+            creatorAddress={effectiveCreatorAddress}
+            onContentUpdated={() => {
+              creatorContent.refetch()
+              creatorProfile.refetch()
+              pendingEarnings.refetch()
+              miniAppAnalytics.refetch()
             }}
+            className="w-full"
           />
         </TabsContent>
 
@@ -460,13 +483,71 @@ export function EnhancedCreatorDashboard({
           />
         </TabsContent>
 
-        {/* Existing Settings Tab (Preserved) */}
+        {/* Enhanced Settings Tab with profile editor and verification */}
         <TabsContent value="settings" className="space-y-6">
-          <CreatorSettings
-            profile={dashboardUI.profile}
-            quickActions={dashboardUI.quickActions}
-            isLoading={isLoading}
-          />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Profile Management */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="h-5 w-5" />
+                <h3 className="text-lg font-semibold">Profile Management</h3>
+              </div>
+              <CreatorProfileEditor
+                creatorAddress={effectiveCreatorAddress}
+                onProfileUpdated={() => {
+                  creatorProfile.refetch()
+                }}
+                className="w-full"
+              />
+            </div>
+
+            {/* Verification Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="h-5 w-5" />
+                <h3 className="text-lg font-semibold">Verification Status</h3>
+              </div>
+              <CreatorVerificationPanel
+                creatorAddress={effectiveCreatorAddress}
+                onVerificationChange={(isVerified: boolean) => {
+                  if (isVerified) {
+                    creatorProfile.refetch()
+                  }
+                }}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <Separator className="my-6" />
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Platform Settings</h3>
+            <CreatorSettings
+              profile={dashboardUI.profile}
+              quickActions={dashboardUI.quickActions}
+              isLoading={isLoading}
+            />
+          </div>
+        </TabsContent>
+
+        {/* New Verification Tab for dedicated workflow */}
+        <TabsContent value="verification" className="space-y-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold mb-2">Creator Verification</h2>
+              <p className="text-muted-foreground">Manage your verification status and build trust with your audience</p>
+            </div>
+            <CreatorVerificationPanel
+              creatorAddress={effectiveCreatorAddress}
+              onVerificationChange={(isVerified: boolean) => {
+                if (isVerified) {
+                  creatorProfile.refetch()
+                }
+              }}
+              className="w-full"
+            />
+          </div>
         </TabsContent>
       </Tabs>
 

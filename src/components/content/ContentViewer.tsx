@@ -464,6 +464,7 @@ function ContentDisplay({
     case 'image':
       return (
         <div className="text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
             src={content} 
             alt={title}

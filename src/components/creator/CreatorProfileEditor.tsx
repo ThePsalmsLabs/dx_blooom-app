@@ -480,6 +480,7 @@ export function CreatorProfileEditor({
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
                 {formData.profileImageFile ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img 
                     src={URL.createObjectURL(formData.profileImageFile)}
                     alt="Profile preview"

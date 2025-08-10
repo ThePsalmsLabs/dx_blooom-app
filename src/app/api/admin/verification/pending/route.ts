@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
  * 
  * Get all pending verification applications
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // TODO: In a real implementation, you would:
     // 1. Verify admin authentication/authorization

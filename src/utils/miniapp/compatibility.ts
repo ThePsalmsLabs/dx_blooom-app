@@ -494,7 +494,7 @@ async function testWeb3ProviderFunctionality(): Promise<boolean> {
   try {
     if (typeof window === 'undefined') return false
     
-  const ethereum = (window as unknown as { ethereum?: { request?: unknown; on?: unknown; removeListener?: unknown } }).ethereum
+  const ethereum = (window as unknown as { ethereum?: Record<string, unknown> & { request?: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
     
     if (!ethereum) {
       return false
@@ -505,7 +505,7 @@ async function testWeb3ProviderFunctionality(): Promise<boolean> {
       'request',
       'on',
       'removeListener'
-    ].every(method => typeof ethereum[method] === 'function')
+    ].every(method => typeof (ethereum as Record<string, unknown>)[method] === 'function')
     
     if (!hasEssentialMethods) {
       return false
@@ -513,7 +513,7 @@ async function testWeb3ProviderFunctionality(): Promise<boolean> {
     
     // Test basic network detection (shouldn't trigger user interaction)
     try {
-      const chainId = await ethereum.request({ method: 'eth_chainId' })
+      const chainId = await ethereum.request?.({ method: 'eth_chainId' })
       return typeof chainId === 'string' && chainId.startsWith('0x')
     } catch {
       // Chain ID request might fail in some environments, but that's okay

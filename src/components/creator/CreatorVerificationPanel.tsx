@@ -97,7 +97,8 @@ import { cn } from '@/lib/utils'
 import { 
   useCreatorVerification, 
   type VerificationData,
-  type VerificationEligibility 
+  type VerificationEligibility,
+  type VerificationApplicationStatus,
 } from '@/hooks/contracts/creator/useCreatorVerification'
 
 // Import utility functions
@@ -820,8 +821,8 @@ function ApplicationCard({
   isSubmitting,
   error
 }: {
-  applicationData: any
-  updateApplicationData: (updates: any) => void
+  applicationData: Partial<VerificationData> | null
+  updateApplicationData: (updates: Partial<VerificationData>) => void
   submitApplication: () => Promise<string | null>
   isSubmitting: boolean
   error: string | null
@@ -831,7 +832,7 @@ function ApplicationCard({
   const handleSubmit = useCallback(async () => {
     try {
       await submitApplication()
-    } catch (err) {
+    } catch (_err) {
       // Error is handled by the hook
     }
   }, [submitApplication])
@@ -936,8 +937,9 @@ function ApplicationCard({
                   value={applicationData.identityVerification?.type || 'social_media'}
                   onValueChange={(value) => updateApplicationData({
                     identityVerification: {
-                      ...applicationData.identityVerification,
-                      type: value
+                      type: value as VerificationData['identityVerification']['type'],
+                      proof: applicationData.identityVerification?.proof ?? '',
+                      description: applicationData.identityVerification?.description ?? ''
                     }
                   })}
                 >
@@ -960,7 +962,8 @@ function ApplicationCard({
                   value={applicationData.identityVerification?.proof || ''}
                   onChange={(e) => updateApplicationData({
                     identityVerification: {
-                      ...applicationData.identityVerification,
+                      type: applicationData.identityVerification?.type ?? 'social_media',
+                      description: applicationData.identityVerification?.description ?? '',
                       proof: e.target.value
                     }
                   })}
@@ -975,7 +978,8 @@ function ApplicationCard({
                   value={applicationData.identityVerification?.description || ''}
                   onChange={(e) => updateApplicationData({
                     identityVerification: {
-                      ...applicationData.identityVerification,
+                      type: applicationData.identityVerification?.type ?? 'social_media',
+                      proof: applicationData.identityVerification?.proof ?? '',
                       description: e.target.value
                     }
                   })}
@@ -1034,7 +1038,7 @@ function ApplicationCard({
 /**
  * Pending Application Card Component
  */
-function PendingApplicationCard({ applicationStatus }: { applicationStatus: any }) {
+function PendingApplicationCard({ applicationStatus }: { applicationStatus: VerificationApplicationStatus }) {
   return (
     <Card>
       <CardContent className="pt-6">
@@ -1045,20 +1049,20 @@ function PendingApplicationCard({ applicationStatus }: { applicationStatus: any 
           <div>
             <h3 className="text-lg font-semibold">Application Under Review</h3>
             <p className="text-muted-foreground">
-              We're reviewing your verification application. This typically takes 3-5 business days.
+              We&apos;re reviewing your verification application. This typically takes 3-5 business days.
             </p>
           </div>
           
-          {applicationStatus.submittedAt && (
+            {applicationStatus.submittedAt && (
             <div className="text-sm text-muted-foreground">
-              Submitted {formatRelativeTime(applicationStatus.submittedAt)}
+              Submitted {formatRelativeTime(BigInt(Math.floor(new Date(applicationStatus.submittedAt).getTime() / 1000)))}
             </div>
           )}
 
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              You'll receive an email notification once your application has been reviewed.
+              You&apos;ll receive an email notification once your application has been reviewed.
               In the meantime, keep creating great content!
             </AlertDescription>
           </Alert>
@@ -1082,7 +1086,7 @@ function VerifiedCreatorCard() {
           <div>
             <h3 className="text-lg font-semibold">Congratulations!</h3>
             <p className="text-muted-foreground">
-              You're now a verified creator with access to all premium benefits and features.
+              You&apos;re now a verified creator with access to all premium benefits and features.
             </p>
           </div>
 

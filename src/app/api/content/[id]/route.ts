@@ -32,7 +32,7 @@ interface ErrorResponse {
  * for frontend consumption. Payment verification happens in the protected route.
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ContentMetadata | ErrorResponse>> {
   try {

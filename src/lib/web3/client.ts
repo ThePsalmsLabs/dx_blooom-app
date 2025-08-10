@@ -33,19 +33,7 @@ export function getSharedPublicClient(): PublicClient {
     : undefined
   
   // Create client with Alchemy transport or fallback
-  cachedClient = createPublicClient({
-    chain,
-    transport: http(alchemyUrl || chain.rpcUrls.default.http[0], {
-      // Match wagmi batching configuration
-      batch: {
-        batchSize: 50,
-        wait: 100,
-      },
-      retryCount: 2,
-      retryDelay: 1500,
-      timeout: 30_000,
-    })
-  })
+  cachedClient = createPublicClient({ chain, transport: http(alchemyUrl || chain.rpcUrls.default.http[0]) }) as unknown as PublicClient
   
   cachedChainId = chain.id
   return cachedClient
@@ -67,14 +55,6 @@ export function getPublicClientForChain(chainId: number): PublicClient {
   
   return createPublicClient({
     chain,
-    transport: http(alchemyUrl || chain.rpcUrls.default.http[0], {
-      batch: {
-        batchSize: 50,
-        wait: 100,
-      },
-      retryCount: 2,
-      retryDelay: 1500,
-      timeout: 30_000,
-    })
-  })
+    transport: http(alchemyUrl || chain.rpcUrls.default.http[0])
+  }) as unknown as PublicClient
 }

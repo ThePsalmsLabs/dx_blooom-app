@@ -81,7 +81,7 @@ function buildFarcasterManifest(): FarcasterManifest {
   // This leverages your existing contract configuration system
   const network = process.env.NETWORK as 'base' | 'base-sepolia'
   const chainId = network === 'base' ? 8453 : 84532
-  const contractAddresses = getContractAddresses(chainId)
+  const _contractAddresses = getContractAddresses(chainId)
 
   // Determine the appropriate network identifiers for Farcaster
   const supportedNetworks = network === 'base' ? ['base', 'base-mainnet'] : ['base-sepolia', 'base-testnet']

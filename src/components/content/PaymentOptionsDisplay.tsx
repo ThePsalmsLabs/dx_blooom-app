@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Coins, Zap, CheckCircle, XCircle } from 'lucide-react'
 import type { PaymentOption } from '@/hooks/business/workflows'
+import { PaymentMethod } from '@/hooks/business/workflows'
 import { useContentPurchaseFlow } from '@/hooks/business/workflows'
 
 interface PaymentOptionsDisplayProps {
@@ -40,7 +41,7 @@ export function PaymentOptionsDisplay({
       </CardHeader>
       
       <CardContent className="space-y-3">
-        {paymentOptions.map((option, index) => (
+        {paymentOptions.map((option) => (
           <PaymentOptionCard 
             key={option.method}
             option={option}
@@ -66,20 +67,20 @@ function PaymentOptionCard({
   option: PaymentOption
   isRecommended: boolean 
 }) {
-  const formatBalance = (balance: bigint | null, method: string) => {
+  const formatBalance = (balance: bigint | null, method: PaymentMethod) => {
     if (!balance) return 'Loading...'
     
-    if (method === 'ETH') {
+    if (method === PaymentMethod.ETH) {
       return `${Number(formatEther(balance)).toFixed(4)} ETH`
     } else {
       return `$${Number(formatUnits(balance, 6)).toFixed(2)} USDC`
     }
   }
 
-  const formatRequired = (required: bigint | null, method: string) => {
+  const formatRequired = (required: bigint | null, method: PaymentMethod) => {
     if (!required) return 'Calculating...'
     
-    if (method === 'ETH') {
+    if (method === PaymentMethod.ETH) {
       return `${Number(formatEther(required)).toFixed(4)} ETH`
     } else {
       return `$${Number(formatUnits(required, 6)).toFixed(2)} USDC`
@@ -133,7 +134,7 @@ function PaymentOptionCard({
             {option.canAfford ? 'Sufficient' : 'Insufficient'}
           </div>
           
-          {option.method === 'ETH' && (
+          {option.method === PaymentMethod.ETH && (
             <div className="text-xs text-gray-500 mt-1">
               Via Commerce Protocol
             </div>
@@ -156,27 +157,21 @@ export function PurchaseFlowDebugger({
         <CardTitle className="text-sm">🔧 Purchase Flow Debug</CardTitle>
       </CardHeader>
       <CardContent className="text-xs space-y-2">
-        <div><strong>Can Afford:</strong> {purchaseFlow.canAfford ? '✅ YES' : '❌ NO'}</div>
-        <div><strong>Current Step:</strong> {purchaseFlow.currentStep}</div>
+        <div><strong>Loading:</strong> {purchaseFlow.isLoading ? 'Yes' : 'No'}</div>
+        <div><strong>Current Step:</strong> {purchaseFlow.flowState.step}</div>
         <div><strong>Has Access:</strong> {purchaseFlow.hasAccess ? 'Yes' : 'No'}</div>
-        <div><strong>Error:</strong> {purchaseFlow.error?.message || 'None'}</div>
+        <div><strong>Error:</strong> {purchaseFlow.flowState.error?.message || 'None'}</div>
         
         <div className="mt-3">
-          <strong>Payment Options:</strong>
+          <strong>Available Methods:</strong>
           <div className="ml-2 space-y-1">
-            {purchaseFlow.paymentOptions.map(option => (
-              <div key={option.method}>
-                {option.method}: {option.canAfford ? '✅' : '❌'} 
-                {option.balance ? ` (${option.method === 'ETH' 
-                  ? formatEther(option.balance) 
-                  : formatUnits(option.balance, 6)
-                } ${option.symbol})` : ' (Loading...)'}
-              </div>
+            {purchaseFlow.availablePaymentMethods.map(method => (
+              <div key={method}>{method}</div>
             ))}
           </div>
         </div>
         
-        <div><strong>Recommended:</strong> {purchaseFlow.recommendedPayment?.method || 'None'}</div>
+        <div><strong>Selected Method:</strong> {purchaseFlow.selectedMethod}</div>
       </CardContent>
     </Card>
   )

@@ -245,8 +245,8 @@ export function MiniAppPurchaseFlow({
       description: purchaseFlow.content.description,
       payPerViewPrice: purchaseFlow.content.payPerViewPrice,
       creator: purchaseFlow.content.creator,
-      category: purchaseFlow.content.category,
-      imageUrl: purchaseFlow.content.imageUrl
+      category: String(purchaseFlow.content.category),
+      imageUrl: undefined
     }
     
     return generateContentEmbed(contentData)
@@ -275,12 +275,11 @@ export function MiniAppPurchaseFlow({
   }, [onPurchaseComplete, socialContext, contentEmbed, purchaseFlow.content])
   
   // Enhanced props for ContentPurchaseCard with Mini App support
-  const enhancedProps: EnhancedContentPurchaseCardProps = {
+  const enhancedPropsForWeb3Card = {
     contentId,
-    userAddress: userAddress as string | undefined,
-    variant: 'miniapp' as const,
-    socialContext: socialContext.farcasterContext,
-    onPurchaseSuccess: handlePurchaseSuccess,
+    userAddress: userAddress,
+    variant: 'compact' as const,
+    onPurchaseSuccess: () => { void handlePurchaseSuccess() },
     className
   }
   
@@ -295,7 +294,7 @@ export function MiniAppPurchaseFlow({
       </div>
       
       {/* Enhanced Content Purchase Card */}
-      <ContentPurchaseCard {...enhancedProps} />
+      <ContentPurchaseCard {...enhancedPropsForWeb3Card} />
       
       {/* Social Context Information */}
       {socialContext.farcasterContext && (

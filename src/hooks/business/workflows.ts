@@ -446,10 +446,10 @@ export function useUnifiedContentPurchaseFlow(
   const methodChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const customTokenDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const getConfiguredTransport = useCallback(() => {
-    const transports = (wagmiConfig as any)?.transports
+  const getConfiguredTransport = useCallback((): ReturnType<typeof http> => {
+    const transports = (wagmiConfig as { transports?: Record<number, ReturnType<typeof http>> })?.transports
     const transport = transports?.[chainId]
-    return transport || http()
+    return transport ?? http()
   }, [chainId])
 
   /**
@@ -994,8 +994,8 @@ export function useUnifiedContentPurchaseFlow(
 
         const result = await writeCommerceContract({
           address: contractAddresses.COMMERCE_INTEGRATION,
-          abi: COMMERCE_PROTOCOL_INTEGRATION_ABI as any,
-          functionName: 'createPaymentIntent' as any,
+          abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+          functionName: 'createPaymentIntent',
           args: [paymentRequest]
         })
 
@@ -1827,8 +1827,8 @@ export function useContentPurchaseFlow(
   // ===== STEP 1: CHECK USER ACCESS (using real ABI) =====
   const { data: hasAccess, isLoading: isCheckingAccess, error: accessError } = useReadContract({
     address: contractAddresses?.PAY_PER_VIEW,
-    abi: PAY_PER_VIEW_ABI as any,
-    functionName: 'hasAccess' as any,
+    abi: PAY_PER_VIEW_ABI,
+    functionName: 'hasAccess',
     args: userAddress && contentId ? [contentId, userAddress] : undefined,
     query: { enabled: !!(userAddress && contentId && contractAddresses?.PAY_PER_VIEW) }
   })
@@ -1872,8 +1872,8 @@ export function useContentPurchaseFlow(
   // Get ETH price in USDC equivalent
   const { data: ethPriceInUSDC, error: ethPriceError } = useReadContract({
     address: contractAddresses?.PRICE_ORACLE,
-    abi: PRICE_ORACLE_ABI as any,
-    functionName: 'getETHPrice' as any,
+    abi: PRICE_ORACLE_ABI,
+    functionName: 'getETHPrice',
     args: contentDetails?.payPerViewPrice ? [contentDetails.payPerViewPrice] : undefined,
     query: { 
       enabled: !!(contractAddresses?.PRICE_ORACLE && contentDetails?.payPerViewPrice),
@@ -2061,8 +2061,8 @@ export function useContentPurchaseFlow(
     // Use the REAL PayPerView ABI structure
     writeContract({
       address: contractAddresses.PAY_PER_VIEW,
-      abi: PAY_PER_VIEW_ABI as any,
-      functionName: 'purchaseContentDirect' as any,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'purchaseContentDirect',
       args: [contentId]
     })
   }, [writeContract, contractAddresses, contentId])
@@ -2081,8 +2081,8 @@ export function useContentPurchaseFlow(
     // Use the REAL PayPerView.createPurchaseIntent() structure
     writeContract({
       address: contractAddresses.PAY_PER_VIEW,
-      abi: PAY_PER_VIEW_ABI as any,
-      functionName: 'createPurchaseIntent' as any,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'createPurchaseIntent',
       args: [
         contentId,                                                    // uint256 contentId
         PaymentMethod.ETH,                                           // uint8 method (enum)
