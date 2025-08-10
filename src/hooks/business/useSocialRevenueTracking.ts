@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAccount, useChainId, useWatchContractEvent, usePublicClient } from 'wagmi'
-import { type Address, type Log } from 'viem'
+import { type Address, type Log, parseEventLogs } from 'viem'
 
 // Import existing hooks from your core contracts system
 import { useCreatorPendingEarnings } from '@/hooks/contracts/core'
@@ -317,8 +317,9 @@ function subscribeToPaymentEvents(
   callback: (events: PaymentEvent[]) => void
 ): () => void {
   // Use provided publicClient for historical logs and watchContractEvent for real-time
-  let unwatch: (() => void) | undefined
   let cancelled = false
+  
+  // Guard: if publicClient is not available, return a no-op unsubscribe
 
   // Guard: if publicClient is not available, return a no-op unsubscribe
   if (!publicClient) {
@@ -330,12 +331,16 @@ function subscribeToPaymentEvents(
     try {
       const logs = await publicClient.getLogs({
         address: contractAddress,
-        event: COMMERCE_PROTOCOL_INTEGRATION_ABI.find(e => e.name === 'PaymentCompleted'),
         fromBlock: 'earliest',
         toBlock: 'latest',
       })
       if (!cancelled && logs.length > 0) {
-        const events = logs.map(parseLog).filter(PaymentSourceClassifier.isValidPaymentEvent)
+        const decoded = parseEventLogs({
+          abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+          eventName: 'PaymentCompleted',
+          logs
+        })
+        const events = decoded.map(parseLog).filter(PaymentSourceClassifier.isValidPaymentEvent)
         callback(events)
       }
     } catch (err) {
@@ -345,7 +350,7 @@ function subscribeToPaymentEvents(
   })()
 
   // Subscribe to new events using publicClient
-  unwatch = publicClient.watchContractEvent({
+  const unwatch = publicClient.watchContractEvent({
     address: contractAddress,
     abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
     eventName: 'PaymentCompleted',
@@ -358,7 +363,7 @@ function subscribeToPaymentEvents(
   // Cleanup function
   return () => {
     cancelled = true
-    if (unwatch) unwatch()
+    unwatch()
   }
 }
 

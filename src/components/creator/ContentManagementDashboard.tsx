@@ -367,7 +367,7 @@ export function ContentManagementDashboard({
    * This function manages filter state updates while providing smooth user experience
    * and maintaining filter state consistency across the interface.
    */
-  const handleFilterChange = useCallback((key: keyof ContentFilters, value: any) => {
+  const handleFilterChange = useCallback((key: keyof ContentFilters, value: unknown) => {
     setFilters(prev => ({ ...prev, [key]: value }))
   }, [])
 
@@ -430,7 +430,7 @@ export function ContentManagementDashboard({
    * This function processes bulk operations on selected content items,
    * providing efficient content management for creators with large catalogs.
    */
-  const handleBulkAction = useCallback(async (action: BulkAction, actionData?: any) => {
+  const handleBulkAction = useCallback(async (action: BulkAction, actionData?: { newPrice?: string }) => {
     const selectedIds = Array.from(selectedContent)
     if (selectedIds.length === 0) return
 

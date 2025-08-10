@@ -508,9 +508,9 @@ export function EnhancedCreatorDashboard({
 interface DashboardHeaderProps {
   readonly creatorProfile: ReturnType<typeof useCreatorProfile>['data']
   readonly enhancedAnalytics: {
-    readonly traditional: any
+    readonly traditional: ReturnType<typeof useCreatorDashboardUI>['metrics'] | null
     readonly social: MiniAppMetrics | null
-    readonly combined: any
+    readonly combined: Readonly<Record<string, unknown>>
   }
   readonly currentView: DashboardView
   readonly onViewChange: (view: DashboardView) => void
@@ -1300,7 +1300,7 @@ function CreatorSettings({
  * while being part of the enhanced dashboard structure.
  */
 interface AnalyticsDashboardProps {
-  readonly analytics: any
+  readonly analytics: ReturnType<typeof useCreatorDashboardUI>['metrics'] | null
   readonly contentList: readonly bigint[]
   readonly timePeriod: TimePeriod
   readonly onTimePeriodChange: (period: TimePeriod) => void

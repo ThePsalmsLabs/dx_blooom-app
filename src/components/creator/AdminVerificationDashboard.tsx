@@ -34,9 +34,20 @@ import {
  * Admin Verification Dashboard
  * This component allows platform moderators to review and approve verification requests
  */
+type VerificationApplication = {
+  readonly creatorAddress: string
+  readonly submittedAt: string | number | Date
+  readonly contentCount: number
+  readonly totalEarnings: number
+  readonly subscriberCount: number
+  readonly bio?: string
+  readonly websiteUrl?: string
+  readonly verificationReason?: string
+}
+
 export function AdminVerificationDashboard() {
-  const [applications, setApplications] = useState<any[]>([])
-  const [selectedApplication, setSelectedApplication] = useState<any>(null)
+  const [applications, setApplications] = useState<VerificationApplication[]>([])
+  const [selectedApplication, setSelectedApplication] = useState<VerificationApplication | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // Load pending verification applications
@@ -117,7 +128,7 @@ export function AdminVerificationDashboard() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {applications.map((app, index) => (
+          {applications.map((app) => (
                     <button
                       key={app.creatorAddress}
                       onClick={() => setSelectedApplication(app)}
@@ -178,7 +189,7 @@ function VerificationApplicationReview({
   application, 
   onDecision 
 }: { 
-  application: any; 
+  application: VerificationApplication; 
   onDecision: (address: string, approved: boolean, reason?: string) => void 
 }) {
   const [decision, setDecision] = useState<'approve' | 'reject' | null>(null)
