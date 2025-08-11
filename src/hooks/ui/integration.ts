@@ -23,6 +23,7 @@
  * abstractions. This enables us to provide exactly the right data in exactly
  * the right format for each type of UI component.
  */
+"use client";
 
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useAccount, useChainId, useDisconnect, useSwitchChain, useConnect } from 'wagmi'
