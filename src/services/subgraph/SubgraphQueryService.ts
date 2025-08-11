@@ -308,6 +308,7 @@ interface PlatformAnalytics {
     readonly address: Address
     readonly earnings: bigint
     readonly contentCount: number
+    readonly subscriberCount: number
   }[]
 }
 
@@ -1013,7 +1014,8 @@ private transformCreatorAnalyticsData(rawData: CreatorAnalyticsResponse): Creato
       topCreators: rawData.creators?.slice(0, 10).map((creator) => ({
         address: creator.id as Address,
         earnings: BigInt(creator.totalEarnings),
-        contentCount: creator.contentCount
+        contentCount: creator.contentCount,
+        subscriberCount: creator.subscriberCount
       })) || []
     }
   }

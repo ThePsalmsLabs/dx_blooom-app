@@ -43,4 +43,4 @@ yarn-error.log*
 next-env.d.ts
 
 # local smart contracts (do not commit)
-contracts/
+/contracts/
