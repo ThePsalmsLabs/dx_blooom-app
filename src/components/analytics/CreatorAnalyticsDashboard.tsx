@@ -42,40 +42,25 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
 import {
   TrendingUp,
-  TrendingDown,
   Target,
   Users,
   DollarSign,
   BarChart3,
-  PieChart,
-  Calendar,
   Award,
   Star,
-  ArrowUpRight,
-  ArrowDownRight,
   RefreshCw,
   Download,
-  Settings,
-  HelpCircle,
   AlertCircle,
   CheckCircle,
   Info,
   Lightbulb,
   Zap,
   Crown,
-  Activity,
-  Eye,
-  Heart,
-  MessageCircle,
-  Share2,
-  Filter,
-  MoreHorizontal,
-  ExternalLink
+  Activity
 } from 'lucide-react'
 
 // Import your established UI components following exact patterns
@@ -104,12 +89,7 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/seperator'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip'
+
 import { cn, formatCurrency, formatNumber, formatAddress } from '@/lib/utils'
 
 // Import our sophisticated data layer hooks
@@ -192,7 +172,7 @@ export function CreatorAnalyticsDashboard({
   className,
   compact = false
 }: CreatorAnalyticsDashboardProps) {
-  const router = useRouter()
+
   const { address: connectedAddress } = useAccount()
 
   // Determine effective creator address using your established patterns
@@ -202,7 +182,7 @@ export function CreatorAnalyticsDashboard({
   const {
     showTimePeriodSelector = true,
     showDownloadOptions = true,
-    showPlatformComparisons = true,
+
     enableRealTimeUpdates = true,
     defaultTimePeriod = '30d',
     defaultViewMode = 'overview',
@@ -215,7 +195,7 @@ export function CreatorAnalyticsDashboard({
   const [timePeriod, setTimePeriod] = useState<AnalyticsTimePeriod>(defaultTimePeriod)
   const [viewMode, setViewMode] = useState<AnalyticsViewMode>(defaultViewMode)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview']))
+
 
   // ===== DATA LAYER INTEGRATION =====
   // Demonstrating sophisticated analytics hook consumption
@@ -232,7 +212,6 @@ export function CreatorAnalyticsDashboard({
 
   // Get simplified performance metrics for quick overview
   const {
-    performance: basicPerformance,
     isLoading: performanceLoading
   } = useCreatorPerformance(effectiveCreatorAddress)
 
@@ -245,7 +224,6 @@ export function CreatorAnalyticsDashboard({
 
   // Get platform analytics for comparative insights
   const {
-    platformStats,
     isLoading: platformLoading
   } = usePlatformAnalytics()
 
@@ -295,17 +273,7 @@ export function CreatorAnalyticsDashboard({
     }
   }, [refetchAnalytics, refreshInsights, onAnalyticsRefresh])
 
-  const handleSectionToggle = useCallback((sectionId: string) => {
-    setExpandedSections(prev => {
-      const newSections = new Set(prev)
-      if (newSections.has(sectionId)) {
-        newSections.delete(sectionId)
-      } else {
-        newSections.add(sectionId)
-      }
-      return newSections
-    })
-  }, [])
+
 
   const handleDownloadReport = useCallback(() => {
     // Build a simple JSON report from currently loaded analytics
@@ -444,7 +412,7 @@ export function CreatorAnalyticsDashboard({
   const renderOverviewMetrics = () => {
     if (!analytics) return null
 
-    const { performanceMetrics, comparativeAnalytics, financialAnalytics } = analytics
+    const { performanceMetrics, comparativeAnalytics } = analytics
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -543,7 +511,7 @@ export function CreatorAnalyticsDashboard({
   const renderPerformanceAnalysis = () => {
     if (!analytics) return null
 
-    const { performanceMetrics, comparativeAnalytics, growthAnalytics } = analytics
+    const { performanceMetrics, comparativeAnalytics } = analytics
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -669,7 +637,7 @@ export function CreatorAnalyticsDashboard({
   const renderEarningsAnalysis = () => {
     if (!analytics || !earningsInsights) return null
 
-    const { financialAnalytics } = analytics
+
     const { currentEarnings, optimization, trends } = earningsInsights
 
     return (

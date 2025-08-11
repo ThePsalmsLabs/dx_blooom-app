@@ -46,27 +46,15 @@ import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import {
   Search,
-  Filter,
   SlidersHorizontal,
   Grid3X3,
   List,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
-  Clock,
-  DollarSign,
-  User,
-  Tag,
-  Eye,
-  Heart,
-  ExternalLink,
   RefreshCw,
   AlertCircle,
-  Loader2,
   X,
-  Star,
   Verified,
-  Play,
   FileText,
   Image as ImageIcon,
   Music,
@@ -79,7 +67,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
@@ -94,7 +81,6 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/seperator'
 import {
   Sheet,
   SheetContent,
@@ -103,21 +89,13 @@ import {
   SheetTitle,
   SheetTrigger
 } from '@/components/ui/sheet'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
-} from '@/components/ui/tabs'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Progress } from '@/components/ui/progress'
+
+
 import { cn } from '@/lib/utils'
 
 // Import our sophisticated data layer hooks
 import {
   useContentDiscovery,
-  useContentByCategory,
-  useContentByTag,
   ContentCategory,
   ContentSortBy,
   ContentDiscoveryParams,

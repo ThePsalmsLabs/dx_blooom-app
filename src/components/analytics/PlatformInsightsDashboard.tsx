@@ -42,13 +42,11 @@
 'use client'
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import {
   BarChart3,
   PieChart,
   TrendingUp,
-  TrendingDown,
   Users,
   FileText,
   DollarSign,
@@ -57,25 +55,16 @@ import {
   CheckCircle,
   RefreshCw,
   Download,
-  Calendar,
-  Filter,
   MoreHorizontal,
   Settings,
   Search,
   Eye,
   EyeOff,
   Target,
-  Zap,
-  Globe,
   Activity,
   Clock,
-  Star,
   Verified,
   AlertCircle,
-  Info,
-  ExternalLink,
-  ArrowUpRight,
-  ArrowDownRight,
   Minus
 } from 'lucide-react'
 
@@ -120,9 +109,10 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import {
   usePlatformAnalytics,
   usePlatformHealthMonitor,
-  PlatformAnalyticsHelpers
+  PlatformStats,
+  CreatorPlatformStats
 } from '@/hooks/contracts/analytics/usePlatformAnalytics'
-import { formatCurrency, formatNumber, formatPercentage, formatRelativeTime } from '@/lib/utils'
+import { formatNumber, formatPercentage } from '@/lib/utils'
 
 // ===== PLATFORM INSIGHTS INTERFACE DEFINITIONS =====
 
@@ -194,8 +184,7 @@ export function PlatformInsightsDashboard({
   refreshInterval = 60, // 60 seconds
   className
 }: PlatformInsightsDashboardProps) {
-  const router = useRouter()
-  const { address: adminAddress } = useAccount()
+  const { address } = useAccount()
 
   // ===== STATE MANAGEMENT =====
   // Sophisticated state management for administrative dashboard functionality
@@ -223,8 +212,7 @@ export function PlatformInsightsDashboard({
   } = usePlatformAnalytics()
 
   const {
-    healthStatus,
-    isLoading: healthLoading
+    healthStatus
   } = usePlatformHealthMonitor()
 
   // ===== AUTO-REFRESH FUNCTIONALITY =====
@@ -784,7 +772,7 @@ export function PlatformInsightsDashboard({
  * Provides administrative tools for creator oversight and management
  */
 interface CreatorManagementSectionProps {
-  creatorStats: any
+  creatorStats: CreatorPlatformStats | undefined
   timePeriod: DashboardTimePeriod
 }
 
@@ -876,7 +864,7 @@ function CreatorManagementSection({ creatorStats, timePeriod }: CreatorManagemen
  * Provides administrative tools for content oversight and moderation
  */
 interface ContentManagementSectionProps {
-  platformStats: any
+  platformStats: PlatformStats | undefined
   timePeriod: DashboardTimePeriod
 }
 
@@ -941,7 +929,7 @@ function ContentManagementSection({ platformStats, timePeriod }: ContentManageme
  * Provides financial performance analysis and revenue optimization insights
  */
 interface RevenueAnalyticsSectionProps {
-  platformStats: any
+  platformStats: PlatformStats | undefined
   timePeriod: DashboardTimePeriod
 }
 
