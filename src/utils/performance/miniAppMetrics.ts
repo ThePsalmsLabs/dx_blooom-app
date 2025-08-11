@@ -10,7 +10,7 @@ import { useAccount, useChainId } from 'wagmi'
 import { type Address } from 'viem'
 
 // Import existing performance monitoring system
-import { usePerformanceMetrics } from '@/utils/performance/index'
+// import { usePerformanceMetrics } from '@/utils/performance/index' // TODO: Create this when needed
 
 // Import Component 5.1's error handling integration
 import { useMiniAppErrorHandling, type MiniAppError } from '@/utils/error-handling'
@@ -139,8 +139,7 @@ class MiniAppPerformanceCollector {
     this.eventBuffer.push({
       ...event,
       context: {
-        ...event.context,
-        timestamp: Date.now()
+        ...event.context
       }
     })
 
