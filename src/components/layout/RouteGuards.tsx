@@ -77,6 +77,7 @@ type PermissionLevel =
   | 'creator_basic'    // Requires creator registration
   | 'creator_verified' // Requires verified creator status
   | 'transaction_safe' // Requires no pending critical transactions
+  | 'admin'            // Requires admin role (platform administrators)
 
 /**
  * Mini App Access Interface
