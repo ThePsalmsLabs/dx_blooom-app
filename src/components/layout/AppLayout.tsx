@@ -59,6 +59,7 @@ import {
     ToastViewport
   } from '@/components/ui/index'
 import { cn, formatAddress } from '@/lib/utils'
+import { ThemeToggle, ThemeSelector } from '@/components/ui/theme-toggle'
 
 // Import our architectural layers for layout functionality
 import {
@@ -371,6 +372,8 @@ function AppHeader({
 
           {/* Right side - User actions and wallet */}
           <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <ThemeToggle variant="dropdown" size="sm" className="mr-1" />
             {/* Search (for larger screens) */}
             <Button
               variant="ghost"
@@ -545,6 +548,12 @@ function AppNavigation({
             <NavigationItem key={item.href} item={item} onSelect={onClose} />
           ))}
         </nav>
+        <div className="border-t pt-4 mt-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium">Theme</span>
+            <ThemeSelector className="scale-90" />
+          </div>
+        </div>
       </SheetContent>
     </Sheet>
   )

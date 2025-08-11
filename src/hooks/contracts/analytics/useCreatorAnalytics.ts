@@ -508,9 +508,9 @@ function calculateCreatorPlatformRank(
 
   // Use simple deterministic percentiles based on available profile metrics
   // In production, this would be derived from ordered lists via subgraph
-  const earningsPercentile = Math.min(0.99, Math.max(0.01, Number(profile?.totalEarnings || BigInt(0)) / 1_000_000_000))
-  const subscriberPercentile = Math.min(0.99, Math.max(0.01, Number(profile?.subscriberCount || BigInt(0)) / 10_000))
-  const contentPercentile = Math.min(0.99, Math.max(0.01, Number(profile?.contentCount || BigInt(0)) / 1_000))
+  const earningsPercentile = Math.min(0.99, Math.max(0.01, Number(profile?.totalEarnings || BigInt(0)) / 1000000000))
+  const subscriberPercentile = Math.min(0.99, Math.max(0.01, Number(profile?.subscriberCount || BigInt(0)) / 10000))
+  const contentPercentile = Math.min(0.99, Math.max(0.01, Number(profile?.contentCount || BigInt(0)) / 1000))
 
   const byEarnings = Math.max(1, Math.round((1 - earningsPercentile) * totalCreators))
   const bySubscribers = Math.max(1, Math.round((1 - subscriberPercentile) * totalCreators))

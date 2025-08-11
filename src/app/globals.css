@@ -214,3 +214,110 @@
     scroll-snap-align: start;
   }
 }
+
+/* Theme Transition System */
+:root {
+  --theme-transition-duration: 0ms; /* Dynamically set by ThemeProvider */
+}
+
+* {
+  transition:
+    background-color var(--theme-transition-duration) ease-in-out,
+    border-color var(--theme-transition-duration) ease-in-out,
+    color var(--theme-transition-duration) ease-in-out,
+    box-shadow var(--theme-transition-duration) ease-in-out;
+}
+
+/* Enhanced Dark Mode Styling */
+.dark {
+  --background: oklch(0.09 0.02 264);
+  --background-elevated: oklch(0.12 0.02 264);
+  --background-subtle: oklch(0.06 0.02 264);
+  --foreground: oklch(0.95 0.01 264);
+  --foreground-subtle: oklch(0.75 0.02 264);
+  --card: oklch(0.11 0.02 264);
+  --card-elevated: oklch(0.14 0.02 264);
+  --border: oklch(0.2 0.02 264);
+  --border-subtle: oklch(0.15 0.02 264);
+  --accent: oklch(0.15 0.02 264);
+  --accent-hover: oklch(0.18 0.02 264);
+  --wallet-connected: oklch(0.6 0.15 142);
+  --transaction-pending: oklch(0.65 0.15 60);
+  --transaction-success: oklch(0.6 0.15 142);
+  --transaction-error: oklch(0.65 0.15 25);
+}
+
+.dark [data-rk="modal-content"] {
+  background: var(--card-elevated) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+}
+
+.dark .bg-amber-glow::before {
+  background-image: radial-gradient(125% 125% at 50% 90%,
+    oklch(0.12 0.02 264) 40%,
+    oklch(0.3 0.08 45) 100%);
+}
+
+.dark .btn-glow {
+  background: linear-gradient(90deg,
+    oklch(0.4 0.12 45),
+    oklch(0.5 0.15 35));
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+}
+
+.dark .content-card {
+  background: var(--card-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.dark .content-card:hover {
+  border-color: var(--border);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+
+.dark nav {
+  background: rgba(6, 12, 34, 0.8);
+  backdrop-filter: blur(12px);
+  border-color: var(--border-subtle);
+}
+
+.dark .sidebar {
+  background: var(--background-elevated);
+  border-color: var(--border-subtle);
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg,
+    var(--accent) 0%,
+    var(--accent-hover) 50%,
+    var(--accent) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.dark .status-connected {
+  color: var(--wallet-connected);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.dark .status-pending {
+  color: var(--transaction-pending);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
+}
+
+.dark pre {
+  background: oklch(0.08 0.02 264);
+  border: 1px solid var(--border);
+}
+
+.dark code {
+  background: oklch(0.1 0.02 264);
+  color: oklch(0.8 0.05 150);
+}

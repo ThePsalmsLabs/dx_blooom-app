@@ -16,6 +16,7 @@ import React from 'react'
 import { Toaster } from '@/components/ui/index'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { EnhancedWeb3Provider } from '@/components/providers/Web3Provider'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
 /**
  * AllProviders Component
@@ -38,11 +39,13 @@ interface AllProvidersProps {
 
 export function AllProviders({ children }: AllProvidersProps) {
   return (
-    <EnhancedWeb3Provider>
-      <AuthProvider>
-        <Toaster />
-        {children}
-      </AuthProvider>
-    </EnhancedWeb3Provider>
+    <ThemeProvider defaultTheme="system" enableTransitions={true}>
+      <EnhancedWeb3Provider>
+        <AuthProvider>
+          <Toaster />
+          {children}
+        </AuthProvider>
+      </EnhancedWeb3Provider>
+    </ThemeProvider>
   )
-} 
+}
