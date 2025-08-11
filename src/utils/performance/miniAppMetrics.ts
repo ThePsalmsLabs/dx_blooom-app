@@ -24,6 +24,31 @@ import { testMiniAppCompatibility } from '@/utils/miniapp/compatibility'
 // Import existing analytics infrastructure
 import { subgraphQueryService } from '@/services/subgraph/SubgraphQueryService'
 
+// Temporary shim for base performance metrics until integrated with existing system
+function usePerformanceMetrics(): Record<string, unknown> {
+  return useMemo(() => ({}), [])
+}
+
+// Augment Window type with optional gtag for analytics without using any
+declare global {
+  interface Window {
+    gtag?: (command: 'config' | 'event' | 'js', ...args: unknown[]) => void
+  }
+}
+
+// Type guard for optional subgraph performance tracking capability
+function hasTrackPerformanceMetrics(
+  service: unknown
+): service is {
+  trackPerformanceMetrics: (
+    contentId: bigint,
+    user: Address,
+    event: MiniAppPerformanceEvent
+  ) => Promise<void>
+} {
+  return typeof (service as { trackPerformanceMetrics?: unknown }).trackPerformanceMetrics === 'function'
+}
+
 /**
  * Mini App Performance Event Interface
  * 
@@ -421,9 +446,9 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
       }
 
       // Update subgraph analytics if available
-      if (contentId && address) {
+      if (contentId && address && hasTrackPerformanceMetrics(subgraphQueryService)) {
         try {
-          await subgraphQueryService.trackPerformanceMetrics(contentId, address, enhancedEvent)
+          await subgraphQueryService.trackPerformanceMetrics(contentId, address as Address, enhancedEvent)
         } catch (subgraphError) {
           console.warn('Subgraph performance tracking failed:', subgraphError)
           // Continue with local tracking - don't fail the entire operation
@@ -566,7 +591,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
     }
 
     // Add compatibility-based recommendations
-    compatibilityResults.forEach(test => {
+    compatibilityResults.results.forEach((test) => {
       if (!test.passed) {
         recommendations.push({
           type: 'compatibility',

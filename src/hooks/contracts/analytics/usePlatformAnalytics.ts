@@ -32,7 +32,7 @@ import { useMemo, useCallback } from 'react'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { CONTENT_REGISTRY_ABI, CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSubgraphQuery, subgraphQueryService, type QueryResult } from '@/services/subgraph/SubgraphQueryService'
+import { useSubgraphQuery, subgraphQueryService } from '@/services/subgraph/SubgraphQueryService'
 import type { PlatformAnalytics as SubgraphPlatformAnalytics } from '@/services/subgraph/SubgraphQueryService'
 
 // ===== PLATFORM ANALYTICS TYPE DEFINITIONS =====
