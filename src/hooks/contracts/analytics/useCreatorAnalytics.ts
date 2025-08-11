@@ -796,4 +796,4 @@ export const CreatorAnalyticsHelpers = {
   generateFinancialAnalytics,
   determineDataFreshness,
   calculateNextMilestone
-} as const
+} as const as unknown
