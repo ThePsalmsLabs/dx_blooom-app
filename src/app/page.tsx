@@ -350,19 +350,21 @@ export default function HomePage() {
             </div>
 
             {/* Content Grid - Leverages existing ContentDiscoveryGrid */}
-            <ContentDiscoveryGrid
-              initialFilters={
-                pageState.activeContentTab === 'featured' 
-                  ? {} 
-                  : { category: pageState.activeContentTab }
-              }
-              onContentSelect={(contentId) => {
-                router.push(`/content/${contentId}`)
-              }}
-              showCreatorInfo={true}
-              itemsPerPage={8}
-              className="min-h-[400px]"
-            />
+            <div className="min-h-[400px]">
+              <ContentDiscoveryGrid
+                initialFilters={
+                  pageState.activeContentTab === 'featured' 
+                    ? {} 
+                    : { category: pageState.activeContentTab }
+                }
+                onContentSelect={(contentId) => {
+                  router.push(`/content/${contentId}`)
+                }}
+                showCreatorInfo={true}
+                itemsPerPage={8}
+                className="min-h-[400px]"
+              />
+            </div>
 
             <div className="text-center">
               <Button 

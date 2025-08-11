@@ -25,7 +25,7 @@
  */
 
 import { useMemo, useCallback, useState, useEffect } from 'react'
-import { useAccount, useChainId, useDisconnect, useSwitchChain } from 'wagmi'
+import { useAccount, useChainId, useDisconnect, useSwitchChain, useConnect } from 'wagmi'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { type Address } from 'viem'
 
@@ -357,7 +357,7 @@ export interface EnhancedWalletConnectionUI {
   readonly showSmartAccountBenefits: boolean
   readonly showWalletModal: boolean
   readonly setShowWalletModal: (show: boolean) => void
-  readonly connectors: Connector[]
+  readonly connectors: readonly Connector[]
   readonly handleConnectorSelect: (connector: Connector) => void
 }
 
@@ -381,6 +381,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   const { disconnect } = useDisconnect()
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
+  const { connectAsync, connectors } = useConnect()
   
   // RainbowKit modal control - THIS IS THE MISSING PIECE!
   // This hook provides the openConnectModal function that actually
@@ -389,6 +390,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   
   // State for user feedback and error handling
   const [error, setError] = useState<string | null>(null)
+  const [showWalletModal, setShowWalletModal] = useState(false)
   
   /**
    * Network Detection and Validation
@@ -452,8 +454,8 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
         // This actually opens the wallet selection modal!
         openConnectModal()
       } else {
-        // If modal isn't available, it means RainbowKit isn't properly configured
-        throw new Error('Wallet connection modal not available. Check RainbowKit setup.')
+        // If modal isn't available, fall back to custom modal
+        setShowWalletModal(true)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet. Please try again.'
@@ -461,6 +463,21 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
       console.error('Wallet connection error:', err)
     }
   }, [openConnectModal])
+
+  /**
+   * Handle Connector Selection for Custom Modal
+   */
+  const handleConnectorSelect = useCallback(async (connector: any) => {
+    try {
+      setError(null)
+      await connectAsync({ connector })
+      setShowWalletModal(false)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet'
+      setError(errorMessage)
+      console.error('Connector selection error:', err)
+    }
+  }, [connectAsync])
   
   /**
    * Network Switching Action
@@ -524,7 +541,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     isCorrectNetwork,
     
     // Action functions - these now actually work!
-    connect: handleConnect,        // This opens the RainbowKit modal
+    connect: handleConnect,        // This opens the RainbowKit modal or custom modal
     disconnect: () => disconnect(), // This disconnects the wallet
     switchNetwork: handleSwitchNetwork, // This prompts network switching
     
@@ -534,19 +551,21 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     showNetworkWarning: isConnected && !isCorrectNetwork,
     
     // Smart Account features (simplified for now)
-    accountType: 'disconnected' as const,
+    accountType: isConnected ? 'eoa' as const : 'disconnected' as const,
     hasSmartAccount: false,
     canUseGaslessTransactions: false,
     smartAccountAddress: null,
     isSmartAccountDeployed: false,
-    canUpgradeToSmartAccount: false,
+    canUpgradeToSmartAccount: isConnected,
     upgradeToSmartAccount: async () => {},
     isUpgrading: false,
     showSmartAccountBenefits: false,
-    showWalletModal: false,
-    setShowWalletModal: () => {},
-    connectors: [],
-    handleConnectorSelect: () => {}
+    
+    // Custom modal state
+    showWalletModal,
+    setShowWalletModal,
+    connectors,
+    handleConnectorSelect
   }
 }
 

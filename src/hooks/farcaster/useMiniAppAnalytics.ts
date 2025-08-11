@@ -16,18 +16,21 @@ import { useCreatorContent, useCreatorPendingEarnings } from '@/hooks/contracts/
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
 /**
- * Farcaster Hub API Configuration
- * 
- * This configuration defines how we connect to Farcaster Hub endpoints to fetch
- * social engagement data. The Hub is Farcaster's decentralized infrastructure
- * that provides real-time access to social metrics, cast data, and user interactions.
+ * MiniApp Analytics Runtime Configuration
+ *
+ * We default to DISABLING any direct Hub calls. MiniApp SDK is the single
+ * integration surface. If a Hub URL is explicitly provided and analytics
+ * are enabled via env, we will use it; otherwise we fall back gracefully.
  */
+const ENABLE_MINIAPP_ANALYTICS: boolean =
+  (process.env.NEXT_PUBLIC_ENABLE_MINIAPP_ANALYTICS ?? '').toLowerCase() === 'true'
+
 const FARCASTER_HUB_CONFIG = {
-  baseUrl: 'https://hub.farcaster.standardcrypto.vc:2281',
+  baseUrl: process.env.NEXT_PUBLIC_FARCASTER_HUB_URL || '',
   apiVersion: 'v1',
-  timeout: 10000,
+  timeout: 10_000,
   retryAttempts: 3,
-  rateLimitDelay: 1000
+  rateLimitDelay: 1000,
 } as const
 
 /**
@@ -195,6 +198,10 @@ class FarcasterHubClient {
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+
+      if (!this.baseUrl) {
+        throw new Error('Hub baseUrl not configured')
+      }
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
@@ -530,6 +537,11 @@ export function useMiniAppAnalytics(
     frameInteractions: Map<string, FrameInteractionData[]>
   }> => {
     try {
+      // Respect MiniApp-only policy: skip Hub calls unless explicitly enabled
+      if (!ENABLE_MINIAPP_ANALYTICS || !FARCASTER_HUB_CONFIG.baseUrl) {
+        return { totalFrameViews: 0, frameInteractions: new Map() }
+      }
+
       // Fetch frame interaction data for all content pieces
       const frameInteractionPromises = contentIds.map(async contentId => {
         const interactions = await hubClient.getFrameInteractions(contentId.toString(), timeRange)
@@ -572,6 +584,11 @@ export function useMiniAppAnalytics(
     try {
       // Only fetch social data if we have Farcaster context
       if (!farcasterContext?.user?.fid) {
+        return { castEngagement: 0, socialConversions: 0, socialRevenue: BigInt(0) }
+      }
+
+      // Respect MiniApp-only policy: skip Hub calls unless explicitly enabled
+      if (!ENABLE_MINIAPP_ANALYTICS || !FARCASTER_HUB_CONFIG.baseUrl) {
         return { castEngagement: 0, socialConversions: 0, socialRevenue: BigInt(0) }
       }
 

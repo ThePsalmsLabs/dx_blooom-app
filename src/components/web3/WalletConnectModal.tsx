@@ -207,7 +207,7 @@ export function WalletConnectModal({
           )}
 
           {/* Wallet Selection */}
-          {!wallet.isConnected && (
+          {!wallet.isConnected && wallet.connectors && wallet.connectors.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">
                 Choose your wallet:
@@ -232,6 +232,15 @@ export function WalletConnectModal({
                   </div>
                 </Button>
               ))}
+            </div>
+          )}
+
+          {/* Fallback message when no connectors available */}
+          {!wallet.isConnected && (!wallet.connectors || wallet.connectors.length === 0) && (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">
+                No wallet connectors available. Please refresh the page.
+              </p>
             </div>
           )}
 
@@ -350,11 +359,17 @@ export function WalletConnectButton({
         )}
       </Button>
 
-      {/* Only render custom modal if showModal is explicitly true */}
-      {showModal && (
+      {/* Only render custom modal if showModal is explicitly true OR as fallback */}
+      {(showModal || wallet.showWalletModal) && (
         <WalletConnectModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          isOpen={showModal ? isModalOpen : wallet.showWalletModal}
+          onClose={() => {
+            if (showModal) {
+              setIsModalOpen(false)
+            } else {
+              wallet.setShowWalletModal(false)
+            }
+          }}
         />
       )}
     </>

@@ -1,3 +1,5 @@
+'use client'
+
 import { WalletConnectExample, WalletConnectUsageInstructions } from '@/components/web3/WalletConnectExample'
 
 export default function WalletDemoPage() {

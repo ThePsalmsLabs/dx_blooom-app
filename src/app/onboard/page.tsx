@@ -19,7 +19,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import {
@@ -388,14 +388,16 @@ function OnboardingContent() {
       </Card>
       
       {/* Responsive Navigation for Step Tracking */}
-      <ResponsiveNavigation 
-        userRole="disconnected"
-        showMobileNav={true}
-        showWorkflowProgress={true}
-        onContextChange={useCallback((context: 'home' | 'browse' | 'content_creation' | 'content_consumption' | 'creator_dashboard' | 'user_profile' | 'transaction_flow' | 'onboarding') => {
-          console.log(`Navigation context changed to: ${context}`)
-        }, [])}
-      />
+      <Suspense fallback={<div className="h-16 bg-muted animate-pulse rounded" />}>
+        <ResponsiveNavigation 
+          userRole="disconnected"
+          showMobileNav={true}
+          showWorkflowProgress={true}
+          onContextChange={useCallback((context: 'home' | 'browse' | 'content_creation' | 'content_consumption' | 'creator_dashboard' | 'user_profile' | 'transaction_flow' | 'onboarding') => {
+            console.log(`Navigation context changed to: ${context}`)
+          }, [])}
+        />
+      </Suspense>
       
       {/* Wallet Address Display */}
       {isConnected && address && (
