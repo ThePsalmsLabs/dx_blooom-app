@@ -25,7 +25,7 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import type { Address } from 'viem'
@@ -164,7 +164,7 @@ interface ContentDiscoveryParams {
  * This component orchestrates the entire content discovery and purchase experience,
  * demonstrating how all our architectural layers work together seamlessly.
  */
-export default function BrowsePage() {
+function BrowsePageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { address: userAddress, isConnected } = useAccount()
@@ -623,6 +623,14 @@ export default function BrowsePage() {
 
       </RouteGuards>
     </AppLayout>
+  )
+}
+
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={<div />}> 
+      <BrowsePageClient />
+    </Suspense>
   )
 }
 
