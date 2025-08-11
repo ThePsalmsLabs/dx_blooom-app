@@ -9,8 +9,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAccount, useChainId } from 'wagmi'
 import { type Address } from 'viem'
 
-// Import existing performance monitoring system
-// import { usePerformanceMetrics } from '@/utils/performance/index' // TODO: Create this when needed
+// Import existing performance monitoring system (placeholder export)
+import { usePerformanceMetrics } from '@/utils/performance/index'
 
 // Import Component 5.1's error handling integration
 import { useMiniAppErrorHandling, type MiniAppError } from '@/utils/error-handling'
@@ -23,11 +23,6 @@ import { testMiniAppCompatibility } from '@/utils/miniapp/compatibility'
 
 // Import existing analytics infrastructure
 import { subgraphQueryService } from '@/services/subgraph/SubgraphQueryService'
-
-// Temporary shim for base performance metrics until integrated with existing system
-function usePerformanceMetrics(): Record<string, unknown> {
-  return useMemo(() => ({}), [])
-}
 
 // Augment Window type with optional gtag for analytics without using any
 declare global {
