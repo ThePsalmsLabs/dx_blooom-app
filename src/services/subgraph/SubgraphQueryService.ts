@@ -185,6 +185,8 @@ interface PlatformAnalyticsResponse extends GraphQLResponseMeta {
   readonly dailyActiveUsers: readonly {
     readonly id: string
   }[]
+  readonly verifiedCreators: readonly { readonly id: string }[]
+  readonly activeCreators: readonly { readonly id: string }[]
 }
 
 interface UserHistoryResponse extends GraphQLResponseMeta {
@@ -310,6 +312,8 @@ interface PlatformAnalytics {
     readonly contentCount: number
     readonly subscriberCount: number
   }[]
+  readonly verifiedCreatorsCount: number
+  readonly activeCreatorsCount: number
 }
 
 /**
@@ -576,6 +580,16 @@ export class SubgraphQueryService {
             lastActivityAt_gte: ${Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000)}
           }
         ) {
+          id
+        }
+
+        # Verified creators
+        verifiedCreators: creators(where: { isVerified: true }) {
+          id
+        }
+
+        # Active creators (with at least one content in last 30 days)
+        activeCreators: creators(where: { contents_some: { createdAt_gte: ${Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000)} } }) {
           id
         }
       }
@@ -1016,7 +1030,9 @@ private transformCreatorAnalyticsData(rawData: CreatorAnalyticsResponse): Creato
         earnings: BigInt(creator.totalEarnings),
         contentCount: creator.contentCount,
         subscriberCount: creator.subscriberCount
-      })) || []
+      })) || [],
+      verifiedCreatorsCount: rawData.verifiedCreators?.length || 0,
+      activeCreatorsCount: rawData.activeCreators?.length || 0
     }
   }
 

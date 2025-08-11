@@ -32,6 +32,8 @@ import { useMemo, useCallback } from 'react'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { CONTENT_REGISTRY_ABI, CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSubgraphQuery, subgraphQueryService, type QueryResult } from '@/services/subgraph/SubgraphQueryService'
+import type { PlatformAnalytics as SubgraphPlatformAnalytics } from '@/services/subgraph/SubgraphQueryService'
 
 // ===== PLATFORM ANALYTICS TYPE DEFINITIONS =====
 
@@ -132,6 +134,12 @@ export function usePlatformAnalytics(): PlatformAnalyticsResult {
   
   // Track fetch timestamp for cache status calculation
   const lastFetched = useMemo(() => new Date(), [])
+
+  // Fetch enriched analytics from subgraph (used to augment creatorStats)
+  const { data: subgraphAnalytics, loading: isSubgraphLoading } = useSubgraphQuery<SubgraphPlatformAnalytics>(
+    () => subgraphQueryService.getPlatformAnalytics(),
+    [chainId]
+  )
   
   // Main platform statistics query
   const platformStatsQuery = useReadContract({
@@ -264,12 +272,12 @@ export function usePlatformAnalytics(): PlatformAnalyticsResult {
       lastUpdated: new Date()
     }
 
-    // Process creator statistics if available
+  // Process creator statistics if available
     const creatorStats: CreatorPlatformStats | undefined = creatorStatsQuery.data ? {
       totalCreators: creatorStatsQuery.data as bigint,
-      activeCreators: BigInt(0), // Calculate from active content creators
-      verifiedCreators: BigInt(0), // Calculate from verified creator count
-      averageContentPerCreator: Number(totalContent) / Number(creatorStatsQuery.data as bigint)
+      activeCreators: BigInt(subgraphAnalytics?.activeCreatorsCount ?? 0),
+      verifiedCreators: BigInt(subgraphAnalytics?.verifiedCreatorsCount ?? 0),
+      averageContentPerCreator: Number(totalContent) / Math.max(1, Number(creatorStatsQuery.data as bigint))
     } : undefined
 
     return {
@@ -281,7 +289,8 @@ export function usePlatformAnalytics(): PlatformAnalyticsResult {
     totalContentQuery.data,
     activeContentQuery.data,
     nextContentIdQuery.data,
-    creatorStatsQuery.data
+    creatorStatsQuery.data,
+    subgraphAnalytics
   ])
 
   // Calculate cache status based on query freshness
@@ -325,7 +334,7 @@ export function usePlatformAnalytics(): PlatformAnalyticsResult {
 
   // Aggregate loading and error states from all queries
   const isLoading = [platformStatsQuery, totalContentQuery, activeContentQuery, nextContentIdQuery]
-    .some(query => query.isLoading)
+    .some(query => query.isLoading) || isSubgraphLoading
 
   const isError = [platformStatsQuery, totalContentQuery, activeContentQuery, nextContentIdQuery]
     .some(query => query.isError)

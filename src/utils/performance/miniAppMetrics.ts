@@ -683,12 +683,12 @@ export function createPerformanceContext(contentId?: bigint) {
  */
 export { performanceCollector }
 
-/**
- * Type Exports
- * 
- * Export all interfaces for external use by other components and hooks.
- */
-export type {
-  MiniAppPerformanceEvent,
-  EnhancedPerformanceMetrics
-}
+// /**
+//  * Type Exports
+//  * 
+//  * Export all interfaces for external use by other components and hooks.
+//  */
+// export type {
+//   MiniAppPerformanceEvent,
+//   EnhancedPerformanceMetrics
+// }
