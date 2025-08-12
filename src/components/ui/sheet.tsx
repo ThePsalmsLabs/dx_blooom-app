@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { Root as VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -23,7 +24,11 @@ const SheetOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity',
+      // Keep z-index reasonable and rely on stacking above app chrome
+      'fixed inset-0 z-[9998] bg-black/40 backdrop-blur-sm',
+      // Smooth fade animations tied to Radix state
+      'data-[state=open]:animate-in data-[state=closed]:animate-out',
+      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
     )}
     {...props}
@@ -35,23 +40,42 @@ const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     side?: 'top' | 'bottom' | 'left' | 'right'
+    title?: React.ReactNode
+    description?: React.ReactNode
   }
->(({ side = 'right', className, children, ...props }, ref) => (
+>(({ side = 'right', title = 'Navigation Drawer', description = 'Application navigation panel', className, children, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay className="z-[2147483646]" />
+    <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed z-[2147483647] flex flex-col bg-white p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out',
-        side === 'top' && 'inset-x-0 top-0 border-b animate-slide-in-from-top w-full max-h-[90vh] overflow-y-auto',
-        side === 'bottom' && 'inset-x-0 bottom-0 border-t animate-slide-in-from-bottom w-full max-h-[90vh] overflow-y-auto',
-        // Mobile-first width with sensible max widths on larger screens
-        side === 'left' && 'inset-y-0 left-0 h-full w-[92vw] sm:w-[80vw] md:w-[420px] border-r animate-slide-in-from-left overflow-y-auto',
-        side === 'right' && 'inset-y-0 right-0 h-full w-[92vw] sm:w-[80vw] md:w-[420px] border-l animate-slide-in-from-right overflow-y-auto',
+        'fixed z-[9999] flex flex-col bg-background p-6 shadow-lg transition ease-in-out',
+        'data-[state=open]:animate-in data-[state=closed]:animate-out',
+        side === 'top' && [
+          'inset-x-0 top-0 w-full max-h-[90vh] overflow-y-auto border-b',
+          'data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top',
+        ],
+        side === 'bottom' && [
+          'inset-x-0 bottom-0 w-full max-h-[90vh] overflow-y-auto border-t',
+          'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+        ],
+        side === 'left' && [
+          'inset-y-0 left-0 h-full w-[92vw] sm:w-[80vw] md:w-[420px] overflow-y-auto border-r',
+          'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left',
+        ],
+        side === 'right' && [
+          'inset-y-0 right-0 h-full w-[92vw] sm:w-[80vw] md:w-[420px] overflow-y-auto border-l',
+          'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
+        ],
         className
       )}
       {...props}
     >
+      {/* Accessibility: ensure a Title is always present for screen readers */}
+      <VisuallyHidden>
+        <SheetTitle>{title}</SheetTitle>
+        <SheetDescription>{description}</SheetDescription>
+      </VisuallyHidden>
       {children}
       <SheetClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
         <X className="h-4 w-4" />

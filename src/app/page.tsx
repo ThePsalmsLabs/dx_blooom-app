@@ -215,7 +215,7 @@ export default function HomePage() {
                   Web3 Content Economy
                 </Badge>
                 <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-                   Create, Share, and 
+                   Create, Share, 
                   <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
                     Earn
                   </span>
