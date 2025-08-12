@@ -19,13 +19,17 @@ import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors'
  */
 
 // Environment variables with fallbacks for robust configuration
-const WALLETCONNECT_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || ''
+// WalletConnect has rebranded to Reown. Support both env var names.
+const WALLETCONNECT_PROJECT_ID =
+  process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ||
+  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ||
+  ''
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || ''
 const COINBASE_PROJECT_ID = process.env.NEXT_PUBLIC_COINBASE_PROJECT_ID || ''
 
 // Validate critical environment variables to prevent runtime failures
 if (!WALLETCONNECT_PROJECT_ID) {
-  console.warn('⚠️ Missing NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID - WalletConnect may not work properly')
+  console.warn('⚠️ Missing NEXT_PUBLIC_REOWN_PROJECT_ID (or legacy NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) - Reown (WalletConnect) may not work properly')
 }
 
 if (!ALCHEMY_API_KEY) {

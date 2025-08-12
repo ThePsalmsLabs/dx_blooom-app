@@ -5,30 +5,14 @@
 
 /* RainbowKit Modal Z-Index Fix */
 /* Ensure RainbowKit modals appear above all other content */
-[data-rk] {
-  z-index: 999999 !important;
-}
+/* Keep z-index overrides minimal to avoid hiding the modal unintentionally */
+/* Ensure just the connect modal sits above app content */
+[data-testid="rk-connect-modal"] { z-index: 9999 !important; }
+[data-testid="rk-connect-modal"]::before { z-index: 9998 !important; }
 
-[data-rk] [role="dialog"] {
-  z-index: 999999 !important;
-}
-
-[data-rk] [data-testid="rk-connect-modal"] {
-  z-index: 999999 !important;
-}
-
-/* Additional RainbowKit modal selectors */
-.rainbow-kit-connect-modal {
-  z-index: 999999 !important;
-}
-
-[data-testid="rk-connect-modal"] {
-  z-index: 999999 !important;
-}
-
-/* Ensure modal backdrop is also above everything */
-[data-rk] [data-testid="rk-connect-modal"]::before {
-  z-index: 999998 !important;
+/* Only lock scroll when RainbowKit connect modal is open */
+body:has([data-testid="rk-connect-modal"]) {
+  overflow: hidden !important;
 }
 
 /* Custom wallet modal z-index fix */

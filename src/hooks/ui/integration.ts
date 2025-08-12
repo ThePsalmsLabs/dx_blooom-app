@@ -388,6 +388,10 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   // This hook provides the openConnectModal function that actually
   // displays the wallet selection modal to users
   const { openConnectModal } = useConnectModal()
+  const hasWalletConnectProjectId = Boolean(
+    (process.env.NEXT_PUBLIC_REOWN_PROJECT_ID && process.env.NEXT_PUBLIC_REOWN_PROJECT_ID.length > 0) ||
+    (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID.length > 0)
+  )
   
   // State for user feedback and error handling
   const [error, setError] = useState<string | null>(null)
@@ -450,25 +454,53 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     try {
       setError(null)
       
+      // Prefer custom modal if WalletConnect project ID is missing to avoid RainbowKit runtime issues
+      if (process.env.NODE_ENV === 'development' && !hasWalletConnectProjectId) {
+        setShowWalletModal(true)
+        return
+      }
+
       // Check if RainbowKit modal is available
       if (openConnectModal) {
         // This actually opens the wallet selection modal!
         openConnectModal()
+        if (process.env.NODE_ENV === 'development') {
+          // Runtime safety: if modal doesn't render shortly in dev, fall back to custom modal
+          setTimeout(() => {
+            const rkModal = document.querySelector('[data-testid="rk-connect-modal"]') as HTMLElement | null
+            if (!rkModal) {
+              setShowWalletModal(true)
+              return
+            }
+            const rect = rkModal.getBoundingClientRect()
+            const styles = getComputedStyle(rkModal)
+            const isVisible = rect.width > 0 && rect.height > 0 && styles.visibility !== 'hidden' && styles.display !== 'none' && styles.opacity !== '0'
+            if (!isVisible) {
+              setShowWalletModal(true)
+            }
+          }, 250)
+        }
       } else {
         // If modal isn't available, fall back to custom modal
-        setShowWalletModal(true)
+        if (process.env.NODE_ENV === 'development') {
+          setShowWalletModal(true)
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet. Please try again.'
       setError(errorMessage)
       console.error('Wallet connection error:', err)
+      // Fallback to custom modal only in dev
+      if (process.env.NODE_ENV === 'development') {
+        setShowWalletModal(true)
+      }
     }
-  }, [openConnectModal])
+  }, [openConnectModal, hasWalletConnectProjectId])
 
   /**
    * Handle Connector Selection for Custom Modal
    */
-  const handleConnectorSelect = useCallback(async (connector: any) => {
+  const handleConnectorSelect = useCallback(async (connector: Connector) => {
     try {
       setError(null)
       await connectAsync({ connector })

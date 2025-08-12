@@ -23,12 +23,10 @@ import type { Metadata } from 'next'
 import { AllProviders } from '@/components/providers/AllProviders'
 // Root layout is a Server Component; avoid client hooks here
 
-// Import global styles - the order here matters!
-import './globals.css'
+// Import RainbowKit styles before app globals to ensure base modal styles load correctly
 import '@rainbow-me/rainbowkit/styles.css'
-import '../styles/rainbowkit-fixes.css'
+import './globals.css'
 
-// Removed Google Fonts to avoid network fetch warnings in dev
 
 // Comprehensive metadata configuration for SEO and social sharing
 export const metadata: Metadata = {
