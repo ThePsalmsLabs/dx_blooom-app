@@ -827,7 +827,7 @@ function ApplicationCard({
   isSubmitting: boolean
   error: string | null
 }) {
-  const [currentTab, setCurrentTab] = useState('basic')
+  const [currentTab, setCurrentTab] = useState<'basic' | 'social' | 'verification'>('basic')
 
   const handleSubmit = useCallback(async () => {
     try {
@@ -859,7 +859,7 @@ function ApplicationCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={currentTab} onValueChange={setCurrentTab}>
+        <Tabs value={currentTab} onValueChange={(val) => setCurrentTab(val as 'basic' | 'social' | 'verification')}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="social">Social Links</TabsTrigger>
@@ -1054,9 +1054,13 @@ function PendingApplicationCard({ applicationStatus }: { applicationStatus: Veri
           </div>
           
             {applicationStatus.submittedAt && (
-            <div className="text-sm text-muted-foreground">
-              Submitted {formatRelativeTime(BigInt(Math.floor(new Date(applicationStatus.submittedAt).getTime() / 1000)))}
-            </div>
+              <div className="text-sm text-muted-foreground">
+               Submitted {formatRelativeTime(
+                 typeof applicationStatus.submittedAt === 'bigint'
+                   ? applicationStatus.submittedAt
+                   : BigInt(Math.floor(new Date(applicationStatus.submittedAt).getTime() / 1000))
+               )}
+              </div>
           )}
 
           <Alert>

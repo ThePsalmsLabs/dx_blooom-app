@@ -1,18 +1,25 @@
 /**
- * Application Navigation Component
+ * Enhanced Application Navigation Component - Phase 3 Navigation Update
  * File: src/components/layout/Navigation.tsx
  * 
- * This enhancement integrates all Phase 2 components into your existing navigation
- * architecture while maintaining backward compatibility and user experience flow.
- * The navigation now exposes content discovery and analytics features through
- * intuitive menu organization that matches user mental models.
+ * This enhancement builds upon the existing Navigation.tsx to integrate the new
+ * UserSubscriptionDashboard component into the platform's navigation architecture.
+ * It maintains backward compatibility while adding comprehensive user subscription
+ * management capabilities through intuitive menu organization.
  * 
  * Integration Strategy:
  * - Preserves existing navigation patterns and user flows
- * - Adds Phase 2 features through logical menu groupings
- * - Provides role-based access to analytics features
+ * - Adds Phase 3 subscription management features through logical menu groupings
+ * - Provides role-based access to subscription features for consumers, creators, and admins
  * - Maintains responsive design across all device sizes
- * - Integrates breadcrumb navigation for complex feature discovery
+ * - Integrates subscription management into the natural user workflow
+ * 
+ * Key Enhancements:
+ * - Added "My Account" section for user-specific features including subscription management
+ * - Integrated UserSubscriptionDashboard under intuitive "Subscription Management" navigation
+ * - Enhanced role-based visibility to ensure subscription features are available to all user types
+ * - Added proper icons and descriptions for subscription-related navigation items
+ * - Maintained consistency with existing navigation patterns and styling
  */
 
 import React, { useMemo } from 'react'
@@ -31,7 +38,12 @@ import {
   Shield,
   Users,
   Target,
-  Zap
+  Zap,
+  CreditCard,
+  User,
+  RefreshCw,
+  Calendar,
+  Wallet
 } from 'lucide-react'
 
 // ===== NAVIGATION TYPES =====
@@ -50,7 +62,7 @@ export interface NavigationItem {
   readonly id: string
   readonly label: string
   readonly href: string
-  readonly icon: React.ComponentType<any>
+  readonly icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   readonly description?: string
   readonly roles: readonly UserRole[]
   readonly badge?: string
@@ -62,11 +74,14 @@ export interface NavigationItem {
 
 export type UserRole = 'disconnected' | 'consumer' | 'creator' | 'admin'
 
-// ===== NAVIGATION CONFIGURATION =====
+// ===== ENHANCED NAVIGATION CONFIGURATION =====
 
 /**
- * Navigation Configuration
- * Logical navigation sections that guide users through discovery → analytics → management flows.
+ * Enhanced Navigation Configuration
+ * 
+ * This configuration extends the existing navigation structure to include
+ * comprehensive subscription management capabilities while maintaining
+ * intuitive user flows and role-based access control.
  */
 export function useAppNavigation(userRole: UserRole): readonly NavigationSection[] {
   const pathname = usePathname()
@@ -104,7 +119,7 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
     })
 
     // ===== CONTENT DISCOVERY SECTION =====
-    // Advanced content discovery features for great user experience
+    // Advanced content discovery features for enhanced user experience
     sections.push({
       id: 'content-discovery',
       label: 'Discovery & Search',
@@ -143,6 +158,59 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
       isCollapsible: true,
       defaultExpanded: false
     })
+
+    // ===== NEW: MY ACCOUNT SECTION =====
+    // User-specific features including subscription management
+    // This section is available to all connected users (consumers, creators, and admins)
+    if (userRole !== 'disconnected') {
+      sections.push({
+        id: 'my-account',
+        label: 'My Account',
+        description: 'Personal account and subscription management',
+        items: [
+          {
+            id: 'user-profile',
+            label: 'Profile',
+            href: '/profile',
+            icon: User,
+            description: 'View and edit your profile information',
+            roles: ['consumer', 'creator', 'admin'],
+            isActive: pathname === '/profile'
+          },
+          {
+            id: 'subscription-management',
+            label: 'Subscription Management',
+            href: '/subscriptions',
+            icon: CreditCard,
+            description: 'Manage your content subscriptions and auto-renewal settings',
+            roles: ['consumer', 'creator', 'admin'],
+            isNew: true, // Highlight as new Phase 3 feature
+            isActive: pathname.startsWith('/subscriptions')
+          },
+          {
+            id: 'billing-history',
+            label: 'Billing History',
+            href: '/billing',
+            icon: Calendar,
+            description: 'View your transaction history and receipts',
+            roles: ['consumer', 'creator', 'admin'],
+            isActive: pathname.startsWith('/billing')
+          },
+          {
+            id: 'wallet-settings',
+            label: 'Wallet Settings',
+            href: '/wallet',
+            icon: Wallet,
+            description: 'Manage connected wallets and payment methods',
+            roles: ['consumer', 'creator', 'admin'],
+            isActive: pathname.startsWith('/wallet')
+          }
+        ],
+        roles: ['consumer', 'creator', 'admin'],
+        isCollapsible: true,
+        defaultExpanded: true // Expanded by default for easy access to subscription management
+      })
+    }
 
     // ===== CREATOR SECTION =====
     // Creator-specific features including analytics integration
@@ -188,6 +256,26 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
             description: 'Revenue tracking and withdrawal management',
             roles: ['creator'],
             isActive: pathname.startsWith('/dashboard/earnings')
+          },
+          {
+            id: 'subscriber-management',
+            label: 'Subscriber Management',
+            href: '/dashboard/subscribers',
+            icon: Users,
+            description: 'View and analyze your subscriber base',
+            roles: ['creator'],
+            isNew: true, // Phase 3 feature - creator side of subscription management
+            isActive: pathname.startsWith('/dashboard/subscribers')
+          },
+          {
+            id: 'auto-renewal-analytics',
+            label: 'Auto-Renewal Analytics',
+            href: '/dashboard/renewals',
+            icon: RefreshCw,
+            description: 'Monitor subscription retention and auto-renewal performance',
+            roles: ['creator'],
+            isNew: true, // Phase 3 feature
+            isActive: pathname.startsWith('/dashboard/renewals')
           }
         ],
         roles: ['creator'],
@@ -233,6 +321,16 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
             isActive: pathname.startsWith('/admin/creators')
           },
           {
+            id: 'subscription-oversight',
+            label: 'Subscription Oversight',
+            href: '/admin/subscriptions',
+            icon: CreditCard,
+            description: 'Platform-wide subscription analytics and management',
+            roles: ['admin'],
+            isNew: true, // Phase 3 feature
+            isActive: pathname.startsWith('/admin/subscriptions')
+          },
+          {
             id: 'platform-settings',
             label: 'Platform Settings',
             href: '/admin/settings',
@@ -264,7 +362,7 @@ interface NavigationProps {
   onNavigate?: () => void
 }
 
-export function Navigation({ 
+export function AppNavigation({ 
   userRole, 
   className = '', 
   onNavigate 
@@ -382,27 +480,52 @@ function NavigationItemComponent({ item, onNavigate }: NavigationItemComponentPr
         item.isActive
           ? 'bg-primary text-primary-foreground'
           : item.disabled
-          ? 'text-muted-foreground/50 cursor-not-allowed'
-          : 'text-foreground/80 hover:bg-muted/50 hover:text-foreground'
+          ? 'text-muted-foreground cursor-not-allowed opacity-50'
+          : 'text-foreground hover:bg-muted/50'
       }`}
     >
       <div className="flex items-center gap-3">
-        <item.icon className="w-4 h-4" />
-        <span className="font-medium">{item.label}</span>
+        <item.icon className="h-4 w-4 flex-shrink-0" />
+        <div className="flex flex-col items-start">
+          <span className="font-medium leading-none">
+            {item.label}
+          </span>
+          {item.description && (
+            <span className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              {item.description}
+            </span>
+          )}
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-1">
+        {item.badge && (
+          <span className="px-1.5 py-0.5 text-xs bg-muted rounded-md">
+            {item.badge}
+          </span>
+        )}
         {item.isNew && (
-          <span className="px-1.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded">
+          <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-md font-medium">
             New
           </span>
         )}
       </div>
-      
-      {item.badge && (
-        <span className="px-2 py-1 text-xs bg-muted text-muted-foreground rounded">
-          {item.badge}
-        </span>
-      )}
     </button>
   )
 }
 
-export default Navigation
+// ===== EXPORT COMPONENTS =====
+
+export default AppNavigation
+
+// Export all components and types for use throughout the application
+export {
+  AppNavigation as Navigation,
+  NavigationSection,
+  NavigationItemComponent
+}
+
+// Export types for external usage
+export type {
+  NavigationSection as NavigationSectionType
+}
