@@ -13,7 +13,6 @@ import React, {
 import { WagmiProvider, useAccount, useChainId, useWalletClient } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
-import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { base, baseSepolia } from 'viem/chains'
 import { type Address, parseUnits } from 'viem'
 import { BiconomySmartAccountV2 } from '@biconomy/account'
@@ -51,9 +50,7 @@ const queryClient = new QueryClient({
   },
 })
 
-// Environment variables with validation
-const COINBASE_PROJECT_ID = process.env.NEXT_PUBLIC_COINBASE_PROJECT_ID || ''
-const ONCHAINKIT_API_KEY = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || ''
+// Environment variables with validation (Coinbase OnchainKit removed)
 
 
 /**
@@ -685,20 +682,9 @@ export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): J
           // Cool mode adds subtle animations
           coolMode
         >
-          <OnchainKitProvider
-            apiKey={ONCHAINKIT_API_KEY}
-            chain={base}
-            config={{
-              appearance: {
-                mode: 'auto',
-                theme: 'default',
-              },
-            }}
-          >
-            <EnhancedWeb3ProviderInner>
-              {children}
-            </EnhancedWeb3ProviderInner>
-          </OnchainKitProvider>
+          <EnhancedWeb3ProviderInner>
+            {children}
+          </EnhancedWeb3ProviderInner>
         </RainbowKitProvider>
       </WagmiProvider>
       </QueryClientProvider>
@@ -793,8 +779,8 @@ export function Web3ProviderDebugInfo() {
 
   const config = {
     wagmiConfigured: !!wagmiConfig,
-    coinbaseProjectId: !!COINBASE_PROJECT_ID,
-    onchainKitApiKey: !!ONCHAINKIT_API_KEY,
+    coinbaseProjectId: false,
+    onchainKitApiKey: false,
   }
 
   return (

@@ -18,9 +18,8 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
-import { OnchainKitProvider } from '@coinbase/onchainkit'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { base, baseSepolia } from 'viem/chains'
+import { base } from 'viem/chains'
 import { Address } from 'viem'
 import { getX402MiddlewareConfig } from '@/lib/web3/x402-config'
 
@@ -174,11 +173,7 @@ export interface MiniKitConfig {
  * Based on the error we saw, OnchainKitProvider doesn't accept a projectName prop.
  * This interface reflects the actual API of the current OnchainKit version.
  */
-export interface OnchainKitConfig {
-  readonly apiKey: string
-  readonly chain: typeof base | typeof baseSepolia
-  readonly schemaId?: HexString
-}
+// Removed OnchainKit configuration to avoid bringing in deprecated frame-sdk transitively
 
 /**
  * Farcaster Context with Proper Typing
@@ -283,24 +278,7 @@ export function createMiniKitConfig(): MiniKitConfig {
  * This function creates OnchainKit configuration using only the props that
  * the actual OnchainKitProvider accepts, avoiding the 'projectName' error.
  */
-export function createOnchainKitConfig(schemaId?: HexString): OnchainKitConfig {
-  const apiKey = process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY
-  if (!apiKey) {
-    throw new Error('NEXT_PUBLIC_ONCHAINKIT_API_KEY is required for OnchainKit integration')
-  }
-
-  const network = (process.env.NEXT_PUBLIC_NETWORK || 'base') as 'base' | 'base-sepolia'
-  const chain = network === 'base' ? base : baseSepolia
-
-  const envSchemaId = process.env.NEXT_PUBLIC_ONCHAINKIT_SCHEMA_ID
-  const validatedSchemaId = schemaId || toHexStringOrUndefined(envSchemaId)
-
-  return {
-    apiKey,
-    chain,
-    schemaId: validatedSchemaId,
-  }
-}
+// Removed OnchainKit config factory
 
 /**
  * Safe MiniKit Initialization
@@ -503,19 +481,6 @@ export function EnhancedProviders({
   children: React.ReactNode
   schemaId?: HexString 
 }): React.JSX.Element {
-  const onchainKitConfig = useMemo(() => {
-    try {
-      return createOnchainKitConfig(schemaId)
-    } catch (error) {
-      console.error('Failed to create OnchainKit config:', error)
-      return {
-        apiKey: process.env.NEXT_PUBLIC_ONCHAINKIT_API_KEY || '',
-        chain: baseSepolia,
-        schemaId: undefined,
-      }
-    }
-  }, [schemaId])
-  
   const queryClient = useMemo(() => new QueryClient({
     defaultOptions: {
       queries: {
@@ -528,15 +493,9 @@ export function EnhancedProviders({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <OnchainKitProvider
-        apiKey={onchainKitConfig.apiKey}
-        chain={onchainKitConfig.chain}
-        schemaId={onchainKitConfig.schemaId}
-      >
-        <MiniKitProvider schemaId={schemaId}>
-          {children}
-        </MiniKitProvider>
-      </OnchainKitProvider>
+      <MiniKitProvider schemaId={schemaId}>
+        {children}
+      </MiniKitProvider>
     </QueryClientProvider>
   )
 }
