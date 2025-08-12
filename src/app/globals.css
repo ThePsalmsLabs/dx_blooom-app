@@ -154,6 +154,13 @@ body:has([data-testid="rk-connect-modal"]) {
   }
 }
 
+/* Ultra-small screens tweaks (<= 360px) */
+@media (max-width: 360px) {
+  /* Reduce container horizontal padding so the header breathes */
+  .container { padding-left: 0.5rem; padding-right: 0.5rem; }
+  header .container { padding-left: 0.5rem; padding-right: 0.5rem; }
+}
+
 /* ================================================
    BLOOM APP - Z-INDEX STACKING FIX
    ================================================
@@ -407,6 +414,8 @@ body:has([data-state="open"][data-radix-dialog-content].navigation-sidebar) {
   .scroll-x-snap > * {
     scroll-snap-align: start;
   }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 /* Theme Transition System */

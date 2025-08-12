@@ -16,7 +16,7 @@ import { THEME_CONFIG } from '@/lib/theme/constants'
 import { cn } from '@/lib/utils'
 
 interface ThemeToggleProps {
-  variant?: 'button' | 'dropdown' | 'inline'
+  variant?: 'button' | 'dropdown' | 'inline' | 'compact'
   size?: 'sm' | 'default' | 'lg'
   showLabel?: boolean
   className?: string
@@ -30,6 +30,7 @@ export function ThemeToggle({
 }: ThemeToggleProps) {
   const { theme, resolvedTheme, setTheme, isTransitioning } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
+  const [pressTimer, setPressTimer] = useState<number | null>(null)
 
   const getThemeIcon = (themeName: typeof theme) => {
     switch (themeName) {
@@ -100,6 +101,68 @@ export function ThemeToggle({
           <Monitor className="h-4 w-4" />
         </Button>
       </div>
+    )
+  }
+
+  // Compact: single-icon button that cycles themes on click;
+  // long-press or right-click opens the full dropdown for explicit selection.
+  if (variant === 'compact') {
+    return (
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size={size}
+            aria-label={`Theme: ${theme}`}
+            title={`Theme: ${theme}. Click to switch, press-and-hold for options`}
+            className={cn(
+              'h-8 w-8 p-0 rounded-full transition-all duration-200 hover:bg-accent/40 ring-1 ring-border/60 hover:ring-primary/60',
+              className
+            )}
+            onClick={() => {
+              const themes = ['light', 'dark', 'system'] as const
+              const currentIndex = themes.indexOf(theme)
+              const nextTheme = themes[(currentIndex + 1) % themes.length]
+              setTheme(nextTheme)
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setIsOpen(true)
+            }}
+            onPointerDown={() => {
+              // open menu on long-press
+              const id = window.setTimeout(() => setIsOpen(true), 450)
+              setPressTimer(id)
+            }}
+            onPointerUp={() => {
+              if (pressTimer) {
+                window.clearTimeout(pressTimer)
+                setPressTimer(null)
+              }
+            }}
+          >
+            {getCurrentIcon()}
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuLabel>Theme</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {Object.entries(THEME_CONFIG).map(([key, config]) => (
+            <DropdownMenuItem
+              key={key}
+              onClick={() => setTheme(key as typeof theme)}
+              className="flex items-center justify-between cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">{config.icon}</span>
+                <span className="text-sm">{config.name}</span>
+              </div>
+              {theme === key && <Check className="h-4 w-4 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     )
   }
 

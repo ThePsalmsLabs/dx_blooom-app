@@ -328,33 +328,33 @@ function OnboardingContent() {
   }, [progressPercentage, completedSteps, currentStepIndex, onboarding.registrationProgress])
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto py-6 px-3 sm:py-8 sm:px-4">
       {/* Enhanced Page Header */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Sparkles className="h-8 w-8 text-primary" />
-          <h1 className="text-4xl font-bold">Become a Creator</h1>
+      <div className="text-center mb-6 sm:mb-8">
+        <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
+          <Sparkles className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
+          <h1 className="text-2xl sm:text-4xl font-bold leading-tight">Become a Creator</h1>
         </div>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-1">
           Join the decentralized creator economy. Set up your profile, define your subscription pricing, 
           and start monetizing your content on the blockchain.
         </p>
       </div>
       
       {/* Enhanced Progress Indicator */}
-      <Card className="mb-8">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Setup Progress</h2>
-            <span className="text-sm text-muted-foreground">
+      <Card className="mb-6 sm:mb-8">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-base sm:text-lg font-semibold">Setup Progress</h2>
+            <span className="text-xs sm:text-sm text-muted-foreground">
               Step {Math.max(1, currentStepIndex + 1)} of {onboardingSteps.length}
               {showSuccessDialog && " - Complete!"}
             </span>
           </div>
           
-          <Progress value={progressPercentage} className="mb-6" />
+          <Progress value={progressPercentage} className="mb-4 sm:mb-6" />
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {onboardingSteps.map((step, index) => (
               <div
                 key={step.id}
@@ -366,20 +366,20 @@ function OnboardingContent() {
                 )}
               >
                 <div className={cn(
-                  "flex items-center justify-center w-8 h-8 rounded-full",
+                  "flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full",
                   step.completed && "bg-green-500 text-white",
                   step.active && "bg-blue-500 text-white",
                   !step.completed && !step.active && "bg-gray-300 text-gray-600"
                 )}>
                   {step.completed ? (
-                    <Check className="h-4 w-4" />
+                    <Check className="h-3 w-3 sm:h-4 sm:w-4" />
                   ) : (
-                    <step.icon className="h-4 w-4" />
+                    <step.icon className="h-3 w-3 sm:h-4 sm:w-4" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{step.title}</p>
-                  <p className="text-xs text-muted-foreground">{step.description}</p>
+                  <p className="font-medium text-xs sm:text-sm">{step.title}</p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">{step.description}</p>
                 </div>
               </div>
             ))}
@@ -432,7 +432,7 @@ function OnboardingContent() {
       )}
       
       {/* Back Navigation */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <Button
           variant="ghost"
           onClick={() => router.back()}
@@ -444,7 +444,7 @@ function OnboardingContent() {
       </div>
       
       {/* Enhanced Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-2">
           {(() => {
             if (!isConnected) {

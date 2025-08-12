@@ -37,7 +37,12 @@ import {
   AlertCircle,
   X,
   Users,
-  CheckCircle
+  CheckCircle,
+  FileText,
+  Video as VideoIcon,
+  Music,
+  Image as ImageIcon,
+  Folder
 } from 'lucide-react'
 
 import {
@@ -75,7 +80,9 @@ import type { ContentCategory } from '@/types/contracts'
 import { isValidContentCategory } from '@/types/contracts'
 
 // Import business logic hooks
-import { useActiveContentPaginated } from '@/hooks/contracts/core'
+// import { useActiveContentPaginated } from '@/hooks/contracts/core' // replaced with discovery hook
+import { useContentDiscovery } from '@/hooks/contracts/content/useContentDiscovery'
+import type { ContentSortBy as DiscoverySortBy, ContentCategory as DiscoveryCategory } from '@/hooks/contracts/content/useContentDiscovery'
 
 /**
  * Content Filter Interface
@@ -113,6 +120,7 @@ interface BrowsePageParams {
   readonly access?: ContentFilters['accessType']
   readonly minPrice?: string
   readonly maxPrice?: string
+  readonly tags?: string
 }
 
 /**
@@ -181,7 +189,8 @@ function BrowsePageClient() {
       sort: (searchParams.get('sort') as ContentFilters['sortBy']) || 'newest',
       access: (searchParams.get('access') as ContentFilters['accessType']) || 'all',
       minPrice: searchParams.get('minPrice') || undefined,
-      maxPrice: searchParams.get('maxPrice') || undefined
+      maxPrice: searchParams.get('maxPrice') || undefined,
+      tags: searchParams.get('tags') || undefined
     }
   }, [searchParams])
 
@@ -195,7 +204,8 @@ function BrowsePageClient() {
     priceRange: [
       urlParams.minPrice ? parseFloat(urlParams.minPrice) : 0,
       urlParams.maxPrice ? parseFloat(urlParams.maxPrice) : 100
-    ]
+    ],
+    tags: urlParams.tags ? urlParams.tags.split(',').filter(Boolean) : []
   })
 
   // View mode and interaction state
@@ -209,12 +219,33 @@ function BrowsePageClient() {
     lastPurchaseSuccess: false
   })
 
-  // Load content data with our improved pagination hook
+  // Items per page
   const itemsPerPage = 12
-  const contentQuery = useActiveContentPaginated(
-    currentPage * itemsPerPage,
-    itemsPerPage
-  )
+
+  // Map Browse sort to discovery sort
+  const toDiscoverySort = (s: ContentFilters['sortBy']): DiscoverySortBy => {
+    switch (s) {
+      case 'newest': return 'latest'
+      case 'oldest': return 'oldest'
+      case 'price_low': return 'price_low'
+      case 'price_high': return 'price_high'
+      case 'popular': return 'popularity'
+      default: return 'latest'
+    }
+  }
+
+  // Real discovery query with category + tag filters
+  const discovery = useContentDiscovery({
+    categories: filters.category === 'all' ? [] : [filters.category as unknown as DiscoveryCategory],
+    tags: filters.tags,
+    discoveryParams: {
+      page: currentPage + 1,
+      limit: itemsPerPage,
+      sortBy: toDiscoverySort(filters.sortBy),
+      searchQuery: filters.search || undefined,
+    },
+    mergeStrategy: 'union'
+  })
 
   /**
    * Filter Management Functions
@@ -277,6 +308,50 @@ function BrowsePageClient() {
     router.replace(`/browse?${newParams.toString()}`)
   }, [searchParams, router])
 
+  // TagChip component within file for UX
+  function TagChips({
+    selectedCategory,
+    selectedTags,
+    onToggle
+  }: {
+    selectedCategory: ContentFilters['category']
+    selectedTags: readonly string[]
+    onToggle: (tag: string) => void
+  }) {
+    // Basic suggestion set; in production, fetch from subgraph by category
+    const suggestions: Record<string, string[]> = {
+      all: ['popular', 'new', 'free', 'premium', 'short', 'long'],
+      '0': ['writing', 'guide', 'tech', 'opinion'],
+      '1': ['tutorial', 'review', 'shorts', 'stream'],
+      '2': ['podcast', 'music', 'interview'],
+      '3': ['art', 'photo', 'design'],
+      '4': ['doc', 'pdf'],
+      '5': ['course', 'lesson'],
+      '6': ['misc']
+    }
+    const key = selectedCategory === 'all' ? 'all' : String(selectedCategory)
+    const tags = suggestions[key] || suggestions.all
+
+    return (
+      <div className="-mx-4 px-4 mb-6">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+          {tags.map(tag => {
+            const active = selectedTags.includes(tag)
+            return (
+              <button
+                key={tag}
+                onClick={() => onToggle(tag)}
+                className={`px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap border transition-colors ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 border-border hover:bg-muted'}`}
+              >
+                #{tag}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   /**
    * Content Interaction Handlers
    * 
@@ -300,13 +375,13 @@ function BrowsePageClient() {
     }))
     
     // Refetch content data to update access status
-    contentQuery.refetch()
+    discovery.refetch()
     
     // Show success feedback
     setTimeout(() => {
       setInteractionState(prev => ({ ...prev, lastPurchaseSuccess: false }))
     }, 3000)
-  }, [contentQuery])
+  }, [discovery])
 
   const handleViewContent = useCallback((contentId: bigint) => {
     router.push(`/content/${contentId}`)
@@ -329,9 +404,7 @@ function BrowsePageClient() {
     )
   }, [filters])
 
-  const totalResults = contentQuery.data?.total || BigInt(0)
-  const contentIds = contentQuery.data?.contentIds || []
-  const hasMoreContent = contentIds.length === itemsPerPage
+  // derived state now from discovery hook
 
   return (
     <AppLayout>
@@ -350,11 +423,10 @@ function BrowsePageClient() {
             </div>
 
             {/* Search and Controls Header */}
-            <div className="bg-card border border-border rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                
+            <div className="bg-card border border-border rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+              <div className="flex flex-col gap-3">
                 {/* Search Input */}
-                <div className="flex-1 max-w-md">
+                <div className="flex-1 max-w-full sm:max-w-md">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
@@ -367,33 +439,48 @@ function BrowsePageClient() {
                 </div>
 
                 {/* Results and Controls */}
-                <div className="flex items-center gap-4">
-                  
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                   {/* Results Count */}
-                  <div className="text-sm text-muted-foreground">
-                    {totalResults.toString()} {totalResults === BigInt(1) ? 'result' : 'results'}
+                  <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground shrink-0">
+                    <span>{(discovery.data?.totalCount || BigInt(0)).toString()}</span>
+                    <span className="hidden sm:inline">results</span>
                   </div>
 
-                  {/* Clear Filters */}
+                  {/* Clear Filters (responsive) */}
                   {hasActiveFilters && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearFilters}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Clear filters
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearFilters}
+                        className="hidden sm:inline-flex text-muted-foreground hover:text-foreground shrink-0"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Clear filters
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleClearFilters}
+                        className="sm:hidden shrink-0"
+                        aria-label="Clear filters"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
 
+                  {/* Spacer pushes controls right on small screens */}
+                  <div className="flex-1" />
+
                   {/* View Mode Toggle */}
-                  <div className="flex items-center border border-border rounded-md bg-transparent">
+                  <div className="flex items-center border border-border rounded-md bg-transparent order-3 sm:order-none shrink-0">
                     <Button
                       variant={viewMode === 'grid' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => handleViewModeChange('grid')}
                       className="rounded-r-none"
+                      aria-label="Grid view"
                     >
                       <Grid3x3 className="h-4 w-4" />
                     </Button>
@@ -402,6 +489,7 @@ function BrowsePageClient() {
                       size="sm"
                       onClick={() => handleViewModeChange('list')}
                       className="rounded-none border-x"
+                      aria-label="List view"
                     >
                       <List className="h-4 w-4" />
                     </Button>
@@ -410,6 +498,7 @@ function BrowsePageClient() {
                       size="sm"
                       onClick={() => handleViewModeChange('compact')}
                       className="rounded-l-none"
+                      aria-label="Compact view"
                     >
                       <Users className="h-4 w-4" />
                     </Button>
@@ -419,11 +508,13 @@ function BrowsePageClient() {
                   <Button
                     variant="outline"
                     onClick={() => setInteractionState(prev => ({ ...prev, showFiltersModal: true }))}
+                    className="shrink-0"
+                    aria-label="Open filters"
                   >
-                    <SlidersHorizontal className="h-4 w-4 mr-2" />
-                    Filters
+                    <SlidersHorizontal className="h-4 w-4 mr-0 sm:mr-2" />
+                    <span className="hidden sm:inline">Filters</span>
                     {hasActiveFilters && (
-                      <Badge variant="secondary" className="ml-2">
+                      <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0.5">
                         Active
                       </Badge>
                     )}
@@ -432,24 +523,73 @@ function BrowsePageClient() {
               </div>
             </div>
 
-            {/* Quick Filter Tabs */}
-            <div className="mb-6">
+            {/* Quick Filter Tabs - responsive, scrollable with icons */}
+            <div className="mb-6 -mx-4 px-4">
               <Tabs 
                 value={filters.category === 'all' ? 'all' : filters.category.toString()} 
                 onValueChange={(value) => handleFilterChange({ 
                   category: value === 'all' ? 'all' : parseInt(value) as ContentCategory 
                 })}
               >
-                <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="all">All Content</TabsTrigger>
-                  <TabsTrigger value="0">Articles</TabsTrigger>
-                  <TabsTrigger value="1">Videos</TabsTrigger>
-                  <TabsTrigger value="2">Audio</TabsTrigger>
-                  <TabsTrigger value="3">Images</TabsTrigger>
-                  <TabsTrigger value="4">Other</TabsTrigger>
+                <TabsList className="flex gap-2 overflow-x-auto no-scrollbar md:grid md:w-full md:grid-cols-6">
+                  <TabsTrigger 
+                    value="all" 
+                    className="min-w-[92px] md:min-w-0 px-3 py-2 data-[state=active]:ring-1 data-[state=active]:ring-primary"
+                    title="All Content"
+                  >
+                    <span className="flex items-center gap-2 text-xs md:text-sm">
+                      <Grid3x3 className="h-4 w-4" />
+                      <span>All</span>
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="0" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Articles">
+                    <span className="flex items-center gap-2 text-xs md:text-sm">
+                      <FileText className="h-4 w-4" />
+                      <span>Articles</span>
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="1" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Videos">
+                    <span className="flex items-center gap-2 text-xs md:text-sm">
+                      <VideoIcon className="h-4 w-4" />
+                      <span>Videos</span>
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="2" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Audio">
+                    <span className="flex items-center gap-2 text-xs md:text-sm">
+                      <Music className="h-4 w-4" />
+                      <span>Audio</span>
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="3" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Images">
+                    <span className="flex items-center gap-2 text-xs md:text-sm">
+                      <ImageIcon className="h-4 w-4" />
+                      <span>Images</span>
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="4" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Other">
+                    <span className="flex items-center gap-2 text-xs md:text-sm">
+                      <Folder className="h-4 w-4" />
+                      <span>Other</span>
+                    </span>
+                  </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
+
+            {/* Tag Chips - responsive horizontal scroll, derived by selected category */}
+            <TagChips
+              selectedCategory={filters.category}
+              selectedTags={filters.tags}
+              onToggle={(tag) => {
+                const exists = filters.tags.includes(tag)
+                const next = exists ? filters.tags.filter(t => t !== tag) : [...filters.tags, tag]
+                handleFilterChange({ tags: next })
+                // sync URL
+                const newParams = new URLSearchParams(searchParams.toString())
+                if (next.length) newParams.set('tags', next.join(',')); else newParams.delete('tags')
+                router.replace(`/browse?${newParams.toString()}`)
+              }}
+            />
 
             {/* Success Message */}
             {interactionState.lastPurchaseSuccess && (
@@ -463,23 +603,23 @@ function BrowsePageClient() {
 
             {/* Content Grid */}
             <div className="mb-8">
-              {contentQuery.isLoading ? (
+              {discovery.isLoading ? (
                 <ContentGridSkeleton viewMode={viewMode} />
-              ) : contentQuery.error ? (
+              ) : discovery.error ? (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     Failed to load content. Please try again later.
                   </AlertDescription>
                 </Alert>
-              ) : contentIds.length === 0 ? (
+              ) : (discovery.data?.contentIds.length || 0) === 0 ? (
                 <EmptyState 
                   hasFilters={hasActiveFilters} 
                   onClearFilters={handleClearFilters} 
                 />
               ) : (
                 <ContentGrid
-                  contentIds={contentIds}
+                  contentIds={discovery.data?.contentIds || []}
                   viewMode={viewMode}
                   userAddress={userAddress}
                   onContentSelect={handleContentSelect}
@@ -490,7 +630,7 @@ function BrowsePageClient() {
             </div>
 
             {/* Pagination */}
-            {contentIds.length > 0 && (
+            {(discovery.data?.contentIds.length || 0) > 0 && (
               <div className="flex justify-center gap-4">
                 <Button
                   variant="outline"
@@ -500,12 +640,12 @@ function BrowsePageClient() {
                   Previous
                 </Button>
                 <span className="flex items-center px-4 py-2 text-sm text-gray-600">
-                  Page {currentPage + 1}
+                  Page {currentPage + 1} of {discovery.data?.totalPages || 1}
                 </span>
                 <Button
                   variant="outline"
                   onClick={() => setCurrentPage(p => p + 1)}
-                  disabled={!hasMoreContent}
+                  disabled={!discovery.data?.hasNextPage}
                 >
                   Next
                 </Button>

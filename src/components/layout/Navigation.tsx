@@ -380,7 +380,7 @@ export function AppNavigation({
   }
 
   return (
-    <nav className={`space-y-6 ${className}`}>
+    <nav className={`space-y-4 sm:space-y-6 ${className}`}>
       {sections.map((section) => (
         <NavigationSection
           key={section.id}
@@ -409,7 +409,7 @@ function NavigationSection({ section, onNavigate }: NavigationSectionProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5 sm:space-y-2">
       {/* Section Header */}
       <button
         onClick={toggleExpanded}
@@ -421,11 +421,11 @@ function NavigationSection({ section, onNavigate }: NavigationSectionProps) {
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h3 className="font-semibold text-sm text-foreground/90">
+            <h3 className="font-semibold text-xs sm:text-sm text-foreground/90">
               {section.label}
             </h3>
             {section.description && (
-              <p className="text-xs text-muted-foreground">
+              <p className="hidden sm:block text-xs text-muted-foreground">
                 {section.description}
               </p>
             )}
@@ -444,7 +444,7 @@ function NavigationSection({ section, onNavigate }: NavigationSectionProps) {
 
       {/* Section Items */}
       {isExpanded && (
-        <div className="ml-2 space-y-1 border-l border-border/30 pl-4">
+        <div className="ml-1.5 sm:ml-2 space-y-0.5 sm:space-y-1 border-l border-border/30 pl-3 sm:pl-4">
           {section.items.map((item) => (
             <NavigationItemComponent
               key={item.id}
@@ -476,7 +476,7 @@ function NavigationItemComponent({ item, onNavigate }: NavigationItemComponentPr
     <button
       onClick={handleClick}
       disabled={item.disabled}
-      className={`w-full flex items-center justify-between p-2 rounded-md text-sm transition-colors ${
+      className={`w-full flex items-center justify-between p-2 rounded-md text-xs sm:text-sm transition-colors ${
         item.isActive
           ? 'bg-primary text-primary-foreground'
           : item.disabled
@@ -484,14 +484,14 @@ function NavigationItemComponent({ item, onNavigate }: NavigationItemComponentPr
           : 'text-foreground hover:bg-muted/50'
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <item.icon className="h-4 w-4 flex-shrink-0" />
         <div className="flex flex-col items-start">
           <span className="font-medium leading-none">
             {item.label}
           </span>
           {item.description && (
-            <span className="text-xs text-muted-foreground mt-1 line-clamp-2">
+            <span className="hidden sm:inline text-xs text-muted-foreground mt-1 line-clamp-2">
               {item.description}
             </span>
           )}
@@ -505,7 +505,7 @@ function NavigationItemComponent({ item, onNavigate }: NavigationItemComponentPr
           </span>
         )}
         {item.isNew && (
-          <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-md font-medium">
+          <span className="hidden sm:inline px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-md font-medium">
             New
           </span>
         )}

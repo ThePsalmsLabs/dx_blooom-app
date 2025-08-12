@@ -346,12 +346,15 @@ function AppHeader({
   walletUI,
   headerContent
 }: AppHeaderProps) {
+  // Avoid hydration mismatches by rendering client-only bits after mount
+  const [isMounted, setIsMounted] = React.useState(false)
+  React.useEffect(() => { setIsMounted(true) }, [])
   return (
     <header className="border-b bg-background relative z-40">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+      <div className="container mx-auto px-2 sm:px-4">
+        <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Left side - Logo and navigation toggle */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button
               variant="ghost"
               size="sm"
@@ -374,7 +377,7 @@ function AppHeader({
             
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg">Bloom</span>
+              <span className="font-bold text-base sm:text-lg hidden sm:inline">Bloom</span>
             </div>
           </div>
 
@@ -386,9 +389,13 @@ function AppHeader({
           )}
 
           {/* Right side - User actions and wallet */}
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle - simple inline buttons */}
-            <ThemeToggle variant="inline" size="sm" className="mr-1" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Compact Theme Toggle */}
+            {isMounted ? (
+              <ThemeToggle variant="compact" size="sm" className="mr-1" />
+            ) : (
+              <div className="mr-1 h-8 w-8 rounded-full bg-muted animate-pulse" />
+            )}
             {/* Search (for larger screens) */}
             <Button
               variant="ghost"
@@ -399,11 +406,11 @@ function AppHeader({
             </Button>
 
             {/* Notifications */}
-            {isConnected && (
+            {isMounted && isConnected && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative"
+                className="relative hidden sm:inline-flex"
               >
                 <Bell className="h-4 w-4" />
                 <Badge 
@@ -416,7 +423,7 @@ function AppHeader({
             )}
 
             {/* Wallet Status Display */}
-            {isConnected && (
+            {isMounted && isConnected && (
               <WalletStatus 
                 showAddress={false} 
                 showNetwork={true}
@@ -425,17 +432,21 @@ function AppHeader({
             )}
 
             {/* Wallet Connection / User Profile */}
-            {isConnected && address ? (
-              <UserProfileDropdown
-                userRole={userRole}
-                address={address}
-                creatorProfile={creatorProfile}
-                isNetworkSupported={isNetworkSupported}
-                onProfileClick={onProfileClick}
-                onDisconnect={onDisconnect}
-              />
+            {isMounted ? (
+              isConnected && address ? (
+                <UserProfileDropdown
+                  userRole={userRole}
+                  address={address}
+                  creatorProfile={creatorProfile}
+                  isNetworkSupported={isNetworkSupported}
+                  onProfileClick={onProfileClick}
+                  onDisconnect={onDisconnect}
+                />
+              ) : (
+                <WalletConnectButton size="sm" />
+              )
             ) : (
-              <WalletConnectButton size="sm" />
+              <div className="h-9 w-24 rounded-md bg-muted animate-pulse" />
             )}
           </div>
         </div>
