@@ -205,7 +205,7 @@ export function useContentByCategory(
     // Use subgraph results when advanced filters are active
     if (advancedFiltersActive) {
       if (!subgraphQuery.data) return undefined
-      const ids = subgraphQuery.data.data.map(r => BigInt(r.content.id))
+      const ids = subgraphQuery.data.map(r => BigInt(r.content.id))
       const totalCount = BigInt(ids.length + (page - 1) * limit) // approximate when total unknown
       const totalPages = ids.length === limit ? page + 1 : page
       const processingTime = Date.now() - processingStartTime
