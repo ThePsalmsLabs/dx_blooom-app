@@ -262,6 +262,7 @@ export function AppLayout({
         "min-h-screen bg-background flex flex-col",
         className
       )}>
+        {/* Debug banner removed */}
         {/* Header */}
         {showHeader && (
           <AppHeader
@@ -270,6 +271,7 @@ export function AppLayout({
             address={address}
             creatorProfile={creatorProfile.data}
             isNetworkSupported={isNetworkSupported}
+            isNavigationOpen={layoutState.isNavigationOpen}
             onNavigationToggle={handleNavigationToggle}
             onDisconnect={handleDisconnect}
             onProfileClick={handleProfileClick}
@@ -323,6 +325,7 @@ interface AppHeaderProps {
   address?: string
   creatorProfile?: NonNullable<ReturnType<typeof useCreatorProfile>['data']>
   isNetworkSupported: boolean
+  isNavigationOpen: boolean
   onNavigationToggle: () => void
   onDisconnect: () => void
   onProfileClick: () => void
@@ -336,6 +339,7 @@ function AppHeader({
   address,
   creatorProfile,
   isNetworkSupported,
+  isNavigationOpen,
   onNavigationToggle,
   onDisconnect,
   onProfileClick,
@@ -351,8 +355,19 @@ function AppHeader({
             <Button
               variant="ghost"
               size="sm"
-              onClick={onNavigationToggle}
-              className="md:hidden relative z-50"
+              onClick={() => {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🍔 Hamburger clicked!', { isOpen: isNavigationOpen })
+                }
+                onNavigationToggle()
+              }}
+              onTouchStart={() => {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('👆 Touch started on hamburger')
+                }
+              }}
+              className="md:hidden relative z-50 hamburger-button"
+              aria-label="Toggle navigation menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -372,8 +387,8 @@ function AppHeader({
 
           {/* Right side - User actions and wallet */}
           <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
-            <ThemeToggle variant="dropdown" size="sm" className="mr-1" />
+            {/* Theme Toggle - simple inline buttons */}
+            <ThemeToggle variant="inline" size="sm" className="mr-1" />
             {/* Search (for larger screens) */}
             <Button
               variant="ghost"
@@ -541,8 +556,15 @@ function AppNavigation({
 
   // Mobile navigation (sheet)
   const mobileNav = (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" title="Main Navigation" description="Browse sections and actions" className="w-72">
+    <div className="navigation-sheet" data-component="navigation-sheet-wrapper">
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent
+          side="left"
+          title="Main Navigation"
+          description="Browse sections and actions"
+          isNavigation
+          className="w-72 navigation-sidebar"
+        >
         <nav className="flex flex-col gap-2 pt-6">
           {visibleItems.map((item) => (
             <NavigationItem key={item.href} item={item} onSelect={onClose} />
@@ -554,8 +576,14 @@ function AppNavigation({
             <ThemeSelector className="scale-90" />
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 p-2 bg-muted rounded text-xs text-muted-foreground">
+              Debug: Navigation sheet active
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 
   // Desktop navigation (sidebar)

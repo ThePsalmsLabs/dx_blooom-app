@@ -69,6 +69,40 @@ export function ThemeToggle({
     )
   }
 
+  if (variant === 'inline') {
+    return (
+      <div className={cn('flex items-center gap-1 p-1 rounded-md bg-muted', className)}>
+        <Button
+          variant={theme === 'light' ? 'default' : 'ghost'}
+          size={size}
+          className="h-8 w-8 p-0"
+          title="Light"
+          onClick={() => setTheme('light')}
+        >
+          <Sun className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={theme === 'dark' ? 'default' : 'ghost'}
+          size={size}
+          className="h-8 w-8 p-0"
+          title="Dark"
+          onClick={() => setTheme('dark')}
+        >
+          <Moon className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={theme === 'system' ? 'default' : 'ghost'}
+          size={size}
+          className="h-8 w-8 p-0"
+          title="System"
+          onClick={() => setTheme('system')}
+        >
+          <Monitor className="h-4 w-4" />
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>

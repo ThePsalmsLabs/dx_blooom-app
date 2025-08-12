@@ -216,7 +216,7 @@ export default function HomePage() {
                 </Badge>
                 <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
                    Create, Share, 
-                  <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent ml-2">
                     Earn
                   </span>
                 </h1>
