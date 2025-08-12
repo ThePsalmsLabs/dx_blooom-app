@@ -336,21 +336,21 @@ function BrowsePageClient() {
   return (
     <AppLayout>
       <RouteGuards requiredLevel="public">
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background">
           <div className="container mx-auto px-4 py-8">
             
             {/* Page Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-3xl font-bold text-foreground mb-2">
                 Discover Premium Content
               </h1>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Explore and purchase high-quality content from verified creators using USDC, ETH, WETH, cbETH, DAI, or other supported tokens.
               </p>
             </div>
 
             {/* Search and Controls Header */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="bg-card border border-border rounded-lg shadow-sm p-6 mb-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 
                 {/* Search Input */}
@@ -370,7 +370,7 @@ function BrowsePageClient() {
                 <div className="flex items-center gap-4">
                   
                   {/* Results Count */}
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {totalResults.toString()} {totalResults === BigInt(1) ? 'result' : 'results'}
                   </div>
 
@@ -380,7 +380,7 @@ function BrowsePageClient() {
                       variant="ghost"
                       size="sm"
                       onClick={handleClearFilters}
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       <X className="h-4 w-4 mr-1" />
                       Clear filters
@@ -388,7 +388,7 @@ function BrowsePageClient() {
                   )}
 
                   {/* View Mode Toggle */}
-                  <div className="flex items-center border rounded-md">
+                  <div className="flex items-center border border-border rounded-md bg-transparent">
                     <Button
                       variant={viewMode === 'grid' ? 'default' : 'ghost'}
                       size="sm"
@@ -453,9 +453,9 @@ function BrowsePageClient() {
 
             {/* Success Message */}
             {interactionState.lastPurchaseSuccess && (
-              <Alert className="mb-6 bg-green-50 border-green-200">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
+              <Alert className="mb-6">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
                   Content purchased successfully! You now have access to view it.
                 </AlertDescription>
               </Alert>
