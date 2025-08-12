@@ -60,15 +60,24 @@ export function ThemeProvider({
 
   useEffect(() => {
     if (!isLoaded) return
-    if (enableTransitions && typeof document !== 'undefined') {
-      setIsTransitioning(true)
-      document.documentElement.style.setProperty('--theme-transition-duration', '0.3s')
-      setTimeout(() => {
-        setIsTransitioning(false)
-        document.documentElement.style.removeProperty('--theme-transition-duration')
-      }, 300)
+    if (typeof document !== 'undefined') {
+      const doc = document.documentElement
+      if (enableTransitions) {
+        setIsTransitioning(true)
+        // Use a slightly longer, eased transition for smoother perception
+        doc.style.setProperty('--theme-transition-duration', '400ms')
+        doc.style.setProperty('--theme-transition-ease', 'cubic-bezier(0.22, 1, 0.36, 1)')
+      }
+      applyTheme(resolvedTheme)
+      if (enableTransitions) {
+        const timeout = window.setTimeout(() => {
+          setIsTransitioning(false)
+          doc.style.removeProperty('--theme-transition-duration')
+          doc.style.removeProperty('--theme-transition-ease')
+        }, 420)
+        return () => window.clearTimeout(timeout)
+      }
     }
-    applyTheme(resolvedTheme)
   }, [resolvedTheme, isLoaded, enableTransitions])
 
   const setTheme = useCallback((newTheme: Theme) => {

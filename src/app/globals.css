@@ -416,10 +416,10 @@ body:has([data-state="open"][data-radix-dialog-content].navigation-sidebar) {
 
 * {
   transition:
-    background-color var(--theme-transition-duration) ease-in-out,
-    border-color var(--theme-transition-duration) ease-in-out,
-    color var(--theme-transition-duration) ease-in-out,
-    box-shadow var(--theme-transition-duration) ease-in-out;
+    background-color var(--theme-transition-duration, 0ms) var(--theme-transition-ease, ease-in-out),
+    border-color var(--theme-transition-duration, 0ms) var(--theme-transition-ease, ease-in-out),
+    color var(--theme-transition-duration, 0ms) var(--theme-transition-ease, ease-in-out),
+    box-shadow var(--theme-transition-duration, 0ms) var(--theme-transition-ease, ease-in-out);
 }
 
 /* Enhanced Dark Mode Styling */
