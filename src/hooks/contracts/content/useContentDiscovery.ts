@@ -21,6 +21,7 @@ import { type Address } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abi'
 import { useQueryClient } from '@tanstack/react-query'
+import { subgraphQueryService, useSubgraphQuery } from '@/services/subgraph/SubgraphQueryService'
 
 // ===== ENHANCED TYPE DEFINITIONS =====
 
@@ -152,26 +153,26 @@ export function useContentByCategory(
     excludeIds = []
   } = params
 
+  // Determine if advanced filters require subgraph (metadata) search
+  const advancedFiltersActive = useMemo(() => {
+    return !!(minPrice !== undefined || maxPrice !== undefined || (searchQuery && searchQuery.length > 0))
+  }, [minPrice, maxPrice, searchQuery])
+
   // Performance tracking
   const queryStartTime = useMemo(() => Date.now(), [category, page, limit, sortBy])
 
-     // Select appropriate contract function based on active/inactive preference
-   const functionName = includeInactive ? 'getContentByCategory' : 'getActiveContentByCategory'
-  
-     // Main contract query with optimized caching strategy
-   const contractResult = useReadContract({
-     address: contractAddresses.CONTENT_REGISTRY,
-     abi: CONTENT_REGISTRY_ABI,
-     functionName,
-     args: category !== undefined ? [category] : undefined,
+  // Contract query for basic category listing
+  const functionName = includeInactive ? 'getContentByCategory' : 'getActiveContentByCategory'
+  const contractResult = useReadContract({
+    address: contractAddresses.CONTENT_REGISTRY,
+    abi: CONTENT_REGISTRY_ABI,
+    functionName,
+    args: category !== undefined ? [category] : undefined,
     query: {
-      enabled: category !== undefined,
-      // Optimized caching: Category content changes when new content is published
-      // or existing content is updated. We balance freshness with performance.
-      staleTime: 1000 * 60 * 5,   // 5 minutes - good balance for discovery
-      gcTime: 1000 * 60 * 30,     // 30 minutes - keep popular categories cached longer
+      enabled: category !== undefined && !advancedFiltersActive,
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
       retry: (failureCount, error) => {
-        // Smart retry logic: retry on network issues, not on contract errors
         if (error?.name === 'ContractFunctionExecutionError') return false
         return failureCount < 3
       },
@@ -179,10 +180,57 @@ export function useContentByCategory(
     }
   })
 
+  // Subgraph search for advanced filters (price/search)
+  const subgraphQuery = useSubgraphQuery(
+    async () => {
+      const results = await subgraphQueryService.searchContent(
+        searchQuery || '',
+        {
+          category: category !== undefined ? String(category) : undefined,
+          priceRange: (minPrice !== undefined || maxPrice !== undefined)
+            ? { min: minPrice ?? BigInt(0), max: maxPrice ?? BigInt(Number.MAX_SAFE_INTEGER) }
+            : undefined,
+        },
+        { first: limit, skip: (page - 1) * limit }
+      )
+      return results
+    },
+    [category, searchQuery, minPrice, maxPrice, page, limit]
+  )
+
   // Enhanced data processing with performance tracking
   const processedData = useMemo(() => {
     const processingStartTime = Date.now()
     
+    // Use subgraph results when advanced filters are active
+    if (advancedFiltersActive) {
+      if (!subgraphQuery.data) return undefined
+      const ids = subgraphQuery.data.data.map(r => BigInt(r.content.id))
+      const totalCount = BigInt(ids.length + (page - 1) * limit) // approximate when total unknown
+      const totalPages = ids.length === limit ? page + 1 : page
+      const processingTime = Date.now() - processingStartTime
+      const queryTime = Date.now() - queryStartTime
+      return {
+        contentIds: ids,
+        totalCount,
+        hasNextPage: ids.length === limit,
+        hasPreviousPage: page > 1,
+        currentPage: page,
+        totalPages,
+        appliedFilters: {
+          category,
+          priceRange: minPrice || maxPrice ? { min: minPrice, max: maxPrice } : undefined,
+          creator: creatorAddress,
+          searchQuery
+        },
+        performance: {
+          cacheHit: queryTime < 100,
+          queryTime,
+          filterTime: processingTime
+        }
+      } as ContentDiscoveryResult
+    }
+
     if (!contractResult.data || !Array.isArray(contractResult.data)) {
       return undefined
     }
@@ -242,7 +290,9 @@ export function useContentByCategory(
     searchQuery,
     excludeIds,
     category,
-    queryStartTime
+    queryStartTime,
+    advancedFiltersActive,
+    subgraphQuery.data
   ])
 
   // Enhanced prefetching for better UX
@@ -258,12 +308,16 @@ export function useContentByCategory(
 
   return {
     data: processedData,
-    isLoading: contractResult.isLoading,
-    isError: contractResult.isError,
-    error: contractResult.error,
-    isSuccess: contractResult.isSuccess,
+    isLoading: advancedFiltersActive ? subgraphQuery.loading : contractResult.isLoading,
+    isError: advancedFiltersActive ? !!subgraphQuery.error : contractResult.isError,
+    error: (advancedFiltersActive ? subgraphQuery.error : contractResult.error) as unknown as Error | null,
+    isSuccess: advancedFiltersActive ? !!subgraphQuery.data : contractResult.isSuccess,
     refetch: async () => {
-      await contractResult.refetch()
+      if (advancedFiltersActive) {
+        // trigger by updating dependency; useSubgraphQuery does not expose refetch, so noop
+      } else {
+        await contractResult.refetch()
+      }
     },
     prefetchNextPage,
     hasSearchResults: (processedData?.totalCount || BigInt(0)) > BigInt(0)

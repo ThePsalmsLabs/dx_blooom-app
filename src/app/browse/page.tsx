@@ -56,7 +56,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Dialog,
+  Dialog, // keep for purchase modal
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -67,7 +67,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Skeleton
+  Skeleton,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription
 } from '@/components/ui/index'
 
 // Import our architectural layers - demonstrating clean separation
@@ -682,19 +687,17 @@ function BrowsePageClient() {
           </DialogContent>
         </Dialog>
 
-        {/* Filters Modal - Placeholder for advanced filtering */}
-        <Dialog 
-          open={interactionState.showFiltersModal} 
+        {/* Filters Panel - use a responsive Sheet for proper placement */}
+        <Sheet
+          open={interactionState.showFiltersModal}
           onOpenChange={(open) => setInteractionState(prev => ({ ...prev, showFiltersModal: open }))}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Advanced Filters</DialogTitle>
-              <DialogDescription>
-                Refine your search with detailed filtering options.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
+          <SheetContent side="right" isNavigation className="w-[90vw] sm:w-[440px]">
+            <SheetHeader>
+              <SheetTitle>Advanced Filters</SheetTitle>
+              <SheetDescription>Refine your search with detailed filtering options.</SheetDescription>
+            </SheetHeader>
+            <div className="space-y-4 mt-4">
               {/* Price Range Filter */}
               <div>
                 <label className="text-sm font-medium">Price Range (USDC)</label>
@@ -758,8 +761,8 @@ function BrowsePageClient() {
                 </Select>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </SheetContent>
+        </Sheet>
 
       </RouteGuards>
     </AppLayout>
