@@ -121,7 +121,7 @@ function buildFarcasterManifest(): FarcasterManifest {
     // frames alone, allowing for complex interactions and full application functionality
     // within the social environment
     miniApp: {
-      url: `${normalizedBaseUrl}/miniapp`,
+      url: `${normalizedBaseUrl}/mini`,
       name: "Content Platform",
       description: "Discover and purchase premium content with instant USDC payments. Support creators through direct purchases and subscriptions.",
       iconUrl: `${normalizedBaseUrl}/icons/miniapp-icon.png`,

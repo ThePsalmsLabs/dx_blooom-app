@@ -6,17 +6,35 @@ import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowse
 export default function MiniAppHomeClient(): React.ReactElement {
 	React.useEffect(() => {
 		let cancelled = false
-		;(async () => {
+
+		const callReady = async (): Promise<boolean> => {
 			try {
-				const { sdk } = await import('@farcaster/miniapp-sdk')
+				const mod = await import('@farcaster/miniapp-sdk').catch(() => null)
+				const sdk = mod?.sdk ?? (typeof window !== 'undefined' ? (window as any)?.miniapp?.sdk : undefined)
+				if (!sdk) return false
 				if (!cancelled) {
 					await sdk.actions.ready()
+					return true
 				}
-			} catch (e) {
-				// No-op: allow app to continue even if SDK is unavailable
+			} catch {}
+			return false
+		}
+
+		let attempts = 0
+		const interval = setInterval(async () => {
+			attempts += 1
+			const ok = await callReady()
+			if (ok || attempts >= 5) {
+				clearInterval(interval)
 			}
-		})()
-		return () => { cancelled = true }
+		}, 300)
+
+		void callReady()
+
+		return () => {
+			cancelled = true
+			clearInterval(interval)
+		}
 	}, [])
 
 	return (
