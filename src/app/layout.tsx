@@ -105,7 +105,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-context="desktop">
       <body className="min-h-screen bg-background font-sans antialiased bg-amber-glow">
         {/* 
           🔧 KEY FIX: This AllProviders wrapper ensures that every component

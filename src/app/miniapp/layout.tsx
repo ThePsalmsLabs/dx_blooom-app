@@ -51,7 +51,7 @@ export default function MiniAppLayout({ children }: MiniAppLayoutProps): React.R
         showHeader={true}
         className="miniapp-container"
       >
-        <div className="miniapp-content-wrapper">
+        <div className="miniapp-content-wrapper" data-context="miniapp">
           {/* Mini App Content Area */}
           <div className="container mx-auto px-4 py-6 max-w-4xl">
             <div className="miniapp-content bg-background rounded-lg border shadow-sm overflow-hidden">

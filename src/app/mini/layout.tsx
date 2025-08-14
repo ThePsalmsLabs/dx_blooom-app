@@ -26,8 +26,10 @@ export default function MiniLayout({ children }: { children: React.ReactNode }):
 	return (
 		<AppProviders>
 			<EnhancedMiniAppProvider>
-				<EarlyReady />
-				{children}
+				<div data-context="miniapp">
+					<EarlyReady />
+					{children}
+				</div>
 			</EnhancedMiniAppProvider>
 		</AppProviders>
 	)

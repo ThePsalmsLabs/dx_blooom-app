@@ -1,0 +1,460 @@
+/* ================================================
+   UNIFIED DESIGN TOKENS - Phase 1 Foundation
+   File: src/styles/design-tokens.css
+   ================================================
+   
+   This CSS file establishes the unified design token system that enables
+   contextual adaptation between web and mini app experiences while maintaining
+   consistent brand identity and visual hierarchy.
+   
+   Architecture Integration:
+   - Extends existing CSS custom properties system from globals.css
+   - Maintains compatibility with shadcn/ui theming patterns
+   - Builds upon existing color and z-index hierarchies
+   - Integrates with Tailwind CSS utility classes
+   
+   Key Features:
+   - Context-aware spacing that adapts to web vs miniapp
+   - Responsive navigation sizing for different viewports
+   - Adaptive container systems for optimal content presentation
+   - Touch-optimized interaction targets for mobile contexts
+   - Performance-conscious animation and transition systems
+   ================================================ */
+
+/* ================================================
+   CONTEXT-AWARE SPACING SYSTEM
+   ================================================ */
+
+:root {
+  /* Base spacing multipliers for contextual adaptation */
+  --spacing-multiplier-compact: 0.75;    /* Mini app optimized */
+  --spacing-multiplier-comfortable: 1.0; /* Standard web */
+  --spacing-multiplier-generous: 1.25;   /* Desktop optimized */
+  
+  /* Foundational spacing scale (builds on existing Tailwind scale) */
+  --space-xs: calc(0.25rem * var(--spacing-multiplier-comfortable));  /* 4px */
+  --space-sm: calc(0.5rem * var(--spacing-multiplier-comfortable));   /* 8px */
+  --space-md: calc(0.75rem * var(--spacing-multiplier-comfortable));  /* 12px */
+  --space-lg: calc(1rem * var(--spacing-multiplier-comfortable));     /* 16px */
+  --space-xl: calc(1.5rem * var(--spacing-multiplier-comfortable));   /* 24px */
+  --space-2xl: calc(2rem * var(--spacing-multiplier-comfortable));    /* 32px */
+  --space-3xl: calc(3rem * var(--spacing-multiplier-comfortable));    /* 48px */
+  --space-4xl: calc(4rem * var(--spacing-multiplier-comfortable));    /* 64px */
+  
+  /* Context-specific spacing tokens */
+  --space-component-gap: var(--space-lg);        /* Gap between components */
+  --space-section-padding: var(--space-2xl);     /* Padding within sections */
+  --space-page-margin: var(--space-xl);          /* Page-level margins */
+  --space-content-padding: var(--space-lg);      /* Content area padding */
+  --space-interactive-padding: var(--space-md);  /* Button/input padding */
+}
+
+/* Context adaptations for mini app */
+[data-context="miniapp"] {
+  --spacing-multiplier-comfortable: var(--spacing-multiplier-compact);
+  --space-section-padding: var(--space-xl);  /* Reduced section padding */
+  --space-page-margin: var(--space-md);      /* Tighter page margins */
+}
+
+/* Context adaptations for desktop */
+[data-context="desktop"] {
+  --spacing-multiplier-comfortable: var(--spacing-multiplier-generous);
+  --space-section-padding: var(--space-3xl); /* Generous section padding */
+  --space-page-margin: var(--space-2xl);     /* Comfortable page margins */
+}
+
+/* ================================================
+   ADAPTIVE NAVIGATION SIZING SYSTEM
+   ================================================ */
+
+:root {
+  /* Navigation dimensions that adapt to context and viewport */
+  --nav-sidebar-width-expanded: 16rem;     /* 256px - Full desktop sidebar */
+  --nav-sidebar-width-collapsed: 4rem;     /* 64px - Icon-only sidebar */
+  --nav-header-height: 4rem;               /* 64px - Standard header height */
+  --nav-header-height-compact: 3rem;       /* 48px - Mini app header */
+  --nav-mobile-height: 3.5rem;             /* 56px - Mobile navigation */
+  
+  /* Navigation content sizing */
+  --nav-item-height: 2.5rem;               /* 40px - Navigation item height */
+  --nav-item-height-compact: 2rem;         /* 32px - Compact navigation item */
+  --nav-icon-size: 1.25rem;                /* 20px - Navigation icon size */
+  --nav-icon-size-compact: 1rem;           /* 16px - Compact icon size */
+  
+  /* Navigation transitions */
+  --nav-transition-duration: 200ms;
+  --nav-transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Current active navigation mode (set dynamically by JavaScript) */
+  --nav-current-width: var(--nav-sidebar-width-expanded);
+  --nav-current-height: var(--nav-header-height);
+  --nav-current-item-height: var(--nav-item-height);
+  --nav-current-icon-size: var(--nav-icon-size);
+}
+
+/* Mini app navigation adaptations */
+[data-context="miniapp"] {
+  --nav-current-height: var(--nav-header-height-compact);
+  --nav-current-item-height: var(--nav-item-height-compact);
+  --nav-current-icon-size: var(--nav-icon-size-compact);
+}
+
+/* Mobile viewport adaptations */
+@media (max-width: 768px) {
+  :root {
+    --nav-current-height: var(--nav-mobile-height);
+    --nav-current-item-height: var(--nav-item-height-compact);
+  }
+}
+
+/* ================================================
+   UNIFIED CONTAINER SYSTEM
+   ================================================ */
+
+:root {
+  /* Container max-widths for different contexts */
+  --container-mini: 100%;                  /* Mini app uses full width */
+  --container-mobile: 100%;                /* Mobile uses full width */
+  --container-tablet: 48rem;               /* 768px - Tablet container */
+  --container-desktop: 75rem;              /* 1200px - Desktop container */
+  --container-wide: 87.5rem;               /* 1400px - Wide desktop container */
+  
+  /* Container padding system */
+  --container-padding-mobile: var(--space-lg);    /* Mobile padding */
+  --container-padding-tablet: var(--space-xl);    /* Tablet padding */
+  --container-padding-desktop: var(--space-2xl);  /* Desktop padding */
+  
+  /* Content area constraints */
+  --content-max-width: 65ch;               /* Optimal reading width */
+  --content-sidebar-width: 20rem;          /* Content sidebar width */
+  --content-grid-gap: var(--space-xl);     /* Grid gap between content items */
+  
+  /* Current active container settings (set dynamically) */
+  --container-current-max-width: var(--container-desktop);
+  --container-current-padding: var(--container-padding-desktop);
+}
+
+/* Context-specific container adaptations */
+[data-context="miniapp"] {
+  --container-current-max-width: var(--container-mini);
+  --container-current-padding: var(--container-padding-mobile);
+}
+
+/* Responsive container adaptations */
+@media (max-width: 640px) {
+  :root {
+    --container-current-max-width: var(--container-mobile);
+    --container-current-padding: var(--container-padding-mobile);
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  :root {
+    --container-current-max-width: var(--container-tablet);
+    --container-current-padding: var(--container-padding-tablet);
+  }
+}
+
+@media (min-width: 1400px) {
+  :root {
+    --container-current-max-width: var(--container-wide);
+  }
+}
+
+/* ================================================
+   INTERACTION TARGET OPTIMIZATION
+   ================================================ */
+
+:root {
+  /* Touch target sizes following accessibility guidelines */
+  --touch-target-min: 44px;                /* WCAG minimum touch target */
+  --touch-target-comfortable: 48px;        /* Comfortable touch target */
+  --touch-target-generous: 56px;           /* Generous touch target */
+  
+  /* Interactive element sizing */
+  --button-height-sm: 2rem;                /* 32px - Small button */
+  --button-height-md: 2.5rem;              /* 40px - Medium button */
+  --button-height-lg: 3rem;                /* 48px - Large button */
+  --button-padding-x: var(--space-lg);     /* Horizontal button padding */
+  --button-padding-y: var(--space-md);     /* Vertical button padding */
+  
+  /* Input field sizing */
+  --input-height: 2.5rem;                  /* 40px - Standard input height */
+  --input-height-lg: 3rem;                 /* 48px - Large input height */
+  --input-padding-x: var(--space-md);      /* Input horizontal padding */
+  --input-padding-y: var(--space-sm);      /* Input vertical padding */
+  
+  /* Current active interaction sizes (context-aware) */
+  --interaction-current-min-size: var(--touch-target-comfortable);
+  --interaction-current-button-height: var(--button-height-md);
+  --interaction-current-input-height: var(--input-height);
+}
+
+/* Mini app optimizations for touch interfaces */
+[data-context="miniapp"] {
+  --interaction-current-min-size: var(--touch-target-generous);
+  --interaction-current-button-height: var(--button-height-lg);
+  --interaction-current-input-height: var(--input-height-lg);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  :root {
+    --interaction-current-min-size: var(--touch-target-generous);
+    --interaction-current-button-height: var(--button-height-lg);
+  }
+}
+
+/* ================================================
+   TYPOGRAPHY SCALE ADAPTATIONS
+   ================================================ */
+
+:root {
+  /* Base typography scale (extends existing system) */
+  --text-scale-ratio: 1.125;               /* Minor third scale */
+  --text-base-size: 1rem;                  /* 16px base size */
+  
+  /* Contextual typography sizing */
+  --text-xs: calc(var(--text-base-size) / (var(--text-scale-ratio) * var(--text-scale-ratio))); /* 12px */
+  --text-sm: calc(var(--text-base-size) / var(--text-scale-ratio));                             /* 14px */
+  --text-base: var(--text-base-size);                                                           /* 16px */
+  --text-lg: calc(var(--text-base-size) * var(--text-scale-ratio));                            /* 18px */
+  --text-xl: calc(var(--text-base-size) * var(--text-scale-ratio) * var(--text-scale-ratio));  /* 20px */
+  --text-2xl: calc(var(--text-xl) * var(--text-scale-ratio));                                  /* 24px */
+  --text-3xl: calc(var(--text-2xl) * var(--text-scale-ratio));                                 /* 28px */
+  --text-4xl: calc(var(--text-3xl) * var(--text-scale-ratio));                                 /* 32px */
+  
+  /* Reading-optimized line heights */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  
+  /* Context-specific typography adjustments */
+  --text-current-base: var(--text-base);
+  --leading-current: var(--leading-normal);
+}
+
+/* Mini app typography optimizations */
+[data-context="miniapp"] {
+  --text-current-base: var(--text-sm);     /* Slightly smaller base text */
+  --leading-current: var(--leading-tight); /* Tighter line height for mobile */
+}
+
+/* ================================================
+   ANIMATION AND TRANSITION SYSTEM
+   ================================================ */
+
+:root {
+  /* Duration tokens for consistent timing */
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+  
+  /* Easing curves for natural motion */
+  --ease-linear: linear;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* Context-aware animation preferences */
+  --animation-current-duration: var(--duration-normal);
+  --animation-current-ease: var(--ease-out);
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animation-current-duration: var(--duration-instant);
+    --animation-current-ease: var(--ease-linear);
+  }
+}
+
+/* Mini app animation optimizations */
+[data-context="miniapp"] {
+  --animation-current-duration: var(--duration-fast); /* Faster animations for responsive feel */
+}
+
+/* ================================================
+   LAYOUT GRID SYSTEM
+   ================================================ */
+
+:root {
+  /* CSS Grid system for consistent layouts */
+  --grid-columns-mobile: 1;
+  --grid-columns-tablet: 2;
+  --grid-columns-desktop: 3;
+  --grid-columns-wide: 4;
+  
+  --grid-gap-mobile: var(--space-lg);
+  --grid-gap-tablet: var(--space-xl);
+  --grid-gap-desktop: var(--space-2xl);
+  
+  /* Current active grid settings */
+  --grid-current-columns: var(--grid-columns-desktop);
+  --grid-current-gap: var(--grid-gap-desktop);
+}
+
+/* Context adaptations for grid system */
+[data-context="miniapp"] {
+  --grid-current-columns: var(--grid-columns-mobile);
+  --grid-current-gap: var(--grid-gap-mobile);
+}
+
+/* Responsive grid adaptations */
+@media (max-width: 640px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-mobile);
+    --grid-current-gap: var(--grid-gap-mobile);
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-tablet);
+    --grid-current-gap: var(--grid-gap-tablet);
+  }
+}
+
+@media (min-width: 1400px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-wide);
+  }
+}
+
+/* ================================================
+   UTILITY CLASSES FOR CONTEXT-AWARE STYLING
+   ================================================ */
+
+/* Container utilities that use the unified token system */
+.container-unified {
+  width: 100%;
+  max-width: var(--container-current-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-current-padding);
+  padding-right: var(--container-current-padding);
+}
+
+/* Navigation utilities */
+.nav-adaptive {
+  height: var(--nav-current-height);
+  transition: height var(--nav-transition-duration) var(--nav-transition-ease);
+}
+
+.nav-item-adaptive {
+  height: var(--nav-current-item-height);
+  transition: height var(--nav-transition-duration) var(--nav-transition-ease);
+}
+
+.nav-icon-adaptive {
+  width: var(--nav-current-icon-size);
+  height: var(--nav-current-icon-size);
+  transition: all var(--nav-transition-duration) var(--nav-transition-ease);
+}
+
+/* Spacing utilities that adapt to context */
+.space-component-gap {
+  gap: var(--space-component-gap);
+}
+
+.space-section-padding {
+  padding: var(--space-section-padding);
+}
+
+.space-content-padding {
+  padding: var(--space-content-padding);
+}
+
+.space-page-margin {
+  margin: var(--space-page-margin);
+}
+
+/* Interactive element utilities */
+.touch-target-optimized {
+  min-height: var(--interaction-current-min-size);
+  min-width: var(--interaction-current-min-size);
+}
+
+.button-adaptive {
+  height: var(--interaction-current-button-height);
+  padding-left: var(--button-padding-x);
+  padding-right: var(--button-padding-x);
+  transition: all var(--animation-current-duration) var(--animation-current-ease);
+}
+
+.input-adaptive {
+  height: var(--interaction-current-input-height);
+  padding-left: var(--input-padding-x);
+  padding-right: var(--input-padding-x);
+  transition: all var(--animation-current-duration) var(--animation-current-ease);
+}
+
+/* Grid utilities */
+.grid-adaptive {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-current-columns), 1fr);
+  gap: var(--grid-current-gap);
+}
+
+/* Typography utilities */
+.text-adaptive-base {
+  font-size: var(--text-current-base);
+  line-height: var(--leading-current);
+}
+
+/* Animation utilities */
+.transition-adaptive {
+  transition-duration: var(--animation-current-duration);
+  transition-timing-function: var(--animation-current-ease);
+}
+
+/* ================================================
+   CONTEXT SWITCHING UTILITIES
+   ================================================ */
+
+/* JavaScript can toggle these classes to switch contexts */
+.context-web {
+  --spacing-multiplier-comfortable: 1.0;
+  --container-current-max-width: var(--container-desktop);
+  --container-current-padding: var(--container-padding-desktop);
+  --nav-current-height: var(--nav-header-height);
+  --interaction-current-min-size: var(--touch-target-comfortable);
+  --text-current-base: var(--text-base);
+  --leading-current: var(--leading-normal);
+  --animation-current-duration: var(--duration-normal);
+}
+
+.context-miniapp {
+  --spacing-multiplier-comfortable: var(--spacing-multiplier-compact);
+  --container-current-max-width: var(--container-mini);
+  --container-current-padding: var(--container-padding-mobile);
+  --nav-current-height: var(--nav-header-height-compact);
+  --interaction-current-min-size: var(--touch-target-generous);
+  --text-current-base: var(--text-sm);
+  --leading-current: var(--leading-tight);
+  --animation-current-duration: var(--duration-fast);
+}
+
+/* ================================================
+   DEBUGGING UTILITIES (DEVELOPMENT ONLY)
+   ================================================ */
+
+/* Visual debugging for context switching (remove in production) */
+.debug-context::before {
+  content: attr(data-context);
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+
