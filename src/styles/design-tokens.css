@@ -1,460 +1,960 @@
 /* ================================================
-   UNIFIED DESIGN TOKENS - Phase 1 Foundation
+   ENHANCED UNIFIED DESIGN TOKENS - Phase 1 Foundation
    File: src/styles/design-tokens.css
    ================================================
    
-   This CSS file establishes the unified design token system that enables
-   contextual adaptation between web and mini app experiences while maintaining
-   consistent brand identity and visual hierarchy.
+   This enhanced CSS file builds upon your existing excellent design token
+   foundation to create a complete, production-ready system that enables
+   seamless contextual adaptation between web and mini app experiences.
    
    Architecture Integration:
-   - Extends existing CSS custom properties system from globals.css
-   - Maintains compatibility with shadcn/ui theming patterns
-   - Builds upon existing color and z-index hierarchies
-   - Integrates with Tailwind CSS utility classes
+   - Extends your existing CSS custom properties system
+   - Maintains full compatibility with shadcn/ui theming patterns
+   - Builds upon your established data-context attribute system
+   - Integrates seamlessly with your existing Tailwind CSS configuration
+   - Preserves your current responsive breakpoint strategy
    
-   Key Features:
-   - Context-aware spacing that adapts to web vs miniapp
-   - Responsive navigation sizing for different viewports
-   - Adaptive container systems for optimal content presentation
-   - Touch-optimized interaction targets for mobile contexts
-   - Performance-conscious animation and transition systems
+   Key Enhancements:
+   - Complete color system integration with shadcn/ui
+   - Enhanced interaction state tokens for better accessibility
+   - Comprehensive z-index hierarchy for complex layouts
+   - Advanced focus management for keyboard navigation
+   - Performance-optimized animation system with reduced motion support
+   - Complete touch target optimization for mobile contexts
+   
+   Progressive Foundation:
+   This token system establishes the foundation for the AdaptiveNavigation
+   component and all subsequent unified components, ensuring consistent
+   behavior and appearance across all contexts.
    ================================================ */
 
 /* ================================================
-   CONTEXT-AWARE SPACING SYSTEM
+   ENHANCED CONTEXT-AWARE SPACING SYSTEM
    ================================================ */
 
-:root {
-  /* Base spacing multipliers for contextual adaptation */
-  --spacing-multiplier-compact: 0.75;    /* Mini app optimized */
-  --spacing-multiplier-comfortable: 1.0; /* Standard web */
-  --spacing-multiplier-generous: 1.25;   /* Desktop optimized */
-  
-  /* Foundational spacing scale (builds on existing Tailwind scale) */
-  --space-xs: calc(0.25rem * var(--spacing-multiplier-comfortable));  /* 4px */
-  --space-sm: calc(0.5rem * var(--spacing-multiplier-comfortable));   /* 8px */
-  --space-md: calc(0.75rem * var(--spacing-multiplier-comfortable));  /* 12px */
-  --space-lg: calc(1rem * var(--spacing-multiplier-comfortable));     /* 16px */
-  --space-xl: calc(1.5rem * var(--spacing-multiplier-comfortable));   /* 24px */
-  --space-2xl: calc(2rem * var(--spacing-multiplier-comfortable));    /* 32px */
-  --space-3xl: calc(3rem * var(--spacing-multiplier-comfortable));    /* 48px */
-  --space-4xl: calc(4rem * var(--spacing-multiplier-comfortable));    /* 64px */
-  
-  /* Context-specific spacing tokens */
-  --space-component-gap: var(--space-lg);        /* Gap between components */
-  --space-section-padding: var(--space-2xl);     /* Padding within sections */
-  --space-page-margin: var(--space-xl);          /* Page-level margins */
-  --space-content-padding: var(--space-lg);      /* Content area padding */
-  --space-interactive-padding: var(--space-md);  /* Button/input padding */
-}
+  :root {
+  /* Enhanced spacing multipliers for precise contextual adaptation */
+  --spacing-multiplier-ultra-compact: 0.625;  /* 10px base - Very constrained contexts */
+  --spacing-multiplier-compact: 0.75;         /* 12px base - Mini app optimized */
+  --spacing-multiplier-comfortable: 1.0;      /* 16px base - Standard web */
+  --spacing-multiplier-generous: 1.25;        /* 20px base - Desktop optimized */
+  --spacing-multiplier-luxurious: 1.5;        /* 24px base - Large screen optimized */
 
-/* Context adaptations for mini app */
-[data-context="miniapp"] {
+  /* Foundational spacing scale with enhanced granularity */
+  --space-0: 0;                                                                    /* 0px */
+  --space-px: 1px;                                                                 /* 1px */
+  --space-0-5: calc(0.125rem * var(--spacing-multiplier-comfortable));            /* 2px */
+  --space-1: calc(0.25rem * var(--spacing-multiplier-comfortable));               /* 4px */
+  --space-1-5: calc(0.375rem * var(--spacing-multiplier-comfortable));            /* 6px */
+  --space-2: calc(0.5rem * var(--spacing-multiplier-comfortable));                /* 8px */
+  --space-2-5: calc(0.625rem * var(--spacing-multiplier-comfortable));            /* 10px */
+  --space-3: calc(0.75rem * var(--spacing-multiplier-comfortable));               /* 12px */
+  --space-3-5: calc(0.875rem * var(--spacing-multiplier-comfortable));            /* 14px */
+  --space-4: calc(1rem * var(--spacing-multiplier-comfortable));                  /* 16px */
+  --space-5: calc(1.25rem * var(--spacing-multiplier-comfortable));               /* 20px */
+  --space-6: calc(1.5rem * var(--spacing-multiplier-comfortable));                /* 24px */
+  --space-7: calc(1.75rem * var(--spacing-multiplier-comfortable));               /* 28px */
+  --space-8: calc(2rem * var(--spacing-multiplier-comfortable));                  /* 32px */
+  --space-9: calc(2.25rem * var(--spacing-multiplier-comfortable));               /* 36px */
+  --space-10: calc(2.5rem * var(--spacing-multiplier-comfortable));               /* 40px */
+  --space-11: calc(2.75rem * var(--spacing-multiplier-comfortable));              /* 44px */
+  --space-12: calc(3rem * var(--spacing-multiplier-comfortable));                 /* 48px */
+  --space-14: calc(3.5rem * var(--spacing-multiplier-comfortable));               /* 56px */
+  --space-16: calc(4rem * var(--spacing-multiplier-comfortable));                 /* 64px */
+  --space-20: calc(5rem * var(--spacing-multiplier-comfortable));                 /* 80px */
+  --space-24: calc(6rem * var(--spacing-multiplier-comfortable));                 /* 96px */
+  --space-28: calc(7rem * var(--spacing-multiplier-comfortable));                 /* 112px */
+  --space-32: calc(8rem * var(--spacing-multiplier-comfortable));                 /* 128px */
+
+  /* Semantic spacing tokens for consistent component spacing */
+  --space-component-gap-xs: var(--space-2);          /* 8px - Tight component spacing */
+  --space-component-gap-sm: var(--space-3);          /* 12px - Small component spacing */
+  --space-component-gap: var(--space-4);             /* 16px - Standard component spacing */
+  --space-component-gap-lg: var(--space-6);          /* 24px - Large component spacing */
+  --space-component-gap-xl: var(--space-8);          /* 32px - Extra large component spacing */
+
+  --space-section-padding-xs: var(--space-4);        /* 16px - Minimal section padding */
+  --space-section-padding-sm: var(--space-6);        /* 24px - Small section padding */
+  --space-section-padding: var(--space-8);           /* 32px - Standard section padding */
+  --space-section-padding-lg: var(--space-12);       /* 48px - Large section padding */
+  --space-section-padding-xl: var(--space-16);       /* 64px - Extra large section padding */
+
+  --space-page-margin-xs: var(--space-3);            /* 12px - Minimal page margins */
+  --space-page-margin-sm: var(--space-4);            /* 16px - Small page margins */
+  --space-page-margin: var(--space-6);               /* 24px - Standard page margins */
+  --space-page-margin-lg: var(--space-8);            /* 32px - Large page margins */
+  --space-page-margin-xl: var(--space-12);           /* 48px - Extra large page margins */
+
+  --space-content-padding-xs: var(--space-3);        /* 12px - Minimal content padding */
+  --space-content-padding-sm: var(--space-4);        /* 16px - Small content padding */
+  --space-content-padding: var(--space-6);           /* 24px - Standard content padding */
+  --space-content-padding-lg: var(--space-8);        /* 32px - Large content padding */
+  --space-content-padding-xl: var(--space-10);       /* 40px - Extra large content padding */
+
+  --space-interactive-padding-xs: var(--space-1-5);  /* 6px - Minimal interactive padding */
+  --space-interactive-padding-sm: var(--space-2);    /* 8px - Small interactive padding */
+  --space-interactive-padding: var(--space-3);       /* 12px - Standard interactive padding */
+  --space-interactive-padding-lg: var(--space-4);    /* 16px - Large interactive padding */
+  --space-interactive-padding-xl: var(--space-5);    /* 20px - Extra large interactive padding */
+  }
+
+  /* Enhanced context adaptations */
+  [data-context="miniapp"] {
   --spacing-multiplier-comfortable: var(--spacing-multiplier-compact);
-  --space-section-padding: var(--space-xl);  /* Reduced section padding */
-  --space-page-margin: var(--space-md);      /* Tighter page margins */
-}
+  --space-section-padding: var(--space-section-padding-sm);
+  --space-page-margin: var(--space-page-margin-sm);
+  --space-content-padding: var(--space-content-padding-sm);
+  --space-interactive-padding: var(--space-interactive-padding-sm);
+  }
 
-/* Context adaptations for desktop */
-[data-context="desktop"] {
+  [data-context="web"] {
+  --spacing-multiplier-comfortable: var(--spacing-multiplier-comfortable);
+  }
+
+  [data-context="desktop"] {
   --spacing-multiplier-comfortable: var(--spacing-multiplier-generous);
-  --space-section-padding: var(--space-3xl); /* Generous section padding */
-  --space-page-margin: var(--space-2xl);     /* Comfortable page margins */
-}
+  --space-section-padding: var(--space-section-padding-lg);
+  --space-page-margin: var(--space-page-margin-lg);
+  --space-content-padding: var(--space-content-padding-lg);
+  }
 
-/* ================================================
-   ADAPTIVE NAVIGATION SIZING SYSTEM
-   ================================================ */
+  /* ================================================
+    ENHANCED SHADCN/UI COLOR SYSTEM INTEGRATION
+    ================================================ */
 
-:root {
-  /* Navigation dimensions that adapt to context and viewport */
-  --nav-sidebar-width-expanded: 16rem;     /* 256px - Full desktop sidebar */
-  --nav-sidebar-width-collapsed: 4rem;     /* 64px - Icon-only sidebar */
-  --nav-header-height: 4rem;               /* 64px - Standard header height */
-  --nav-header-height-compact: 3rem;       /* 48px - Mini app header */
-  --nav-mobile-height: 3.5rem;             /* 56px - Mobile navigation */
-  
-  /* Navigation content sizing */
-  --nav-item-height: 2.5rem;               /* 40px - Navigation item height */
-  --nav-item-height-compact: 2rem;         /* 32px - Compact navigation item */
-  --nav-icon-size: 1.25rem;                /* 20px - Navigation icon size */
-  --nav-icon-size-compact: 1rem;           /* 16px - Compact icon size */
-  
-  /* Navigation transitions */
+  :root {
+  /* Enhanced color system that integrates with your existing shadcn/ui setup */
+  --color-background: 0 0% 100%;
+  --color-foreground: 222.2 84% 4.9%;
+  --color-card: 0 0% 100%;
+  --color-card-foreground: 222.2 84% 4.9%;
+  --color-popover: 0 0% 100%;
+  --color-popover-foreground: 222.2 84% 4.9%;
+  --color-primary: 221.2 83.2% 53.3%;
+  --color-primary-foreground: 210 40% 98%;
+  --color-secondary: 210 40% 96%;
+  --color-secondary-foreground: 222.2 84% 4.9%;
+  --color-muted: 210 40% 96%;
+  --color-muted-foreground: 215.4 16.3% 46.9%;
+  --color-accent: 210 40% 96%;
+  --color-accent-foreground: 222.2 84% 4.9%;
+  --color-destructive: 0 84.2% 60.2%;
+  --color-destructive-foreground: 210 40% 98%;
+  --color-border: 214.3 31.8% 91.4%;
+  --color-input: 214.3 31.8% 91.4%;
+  --color-ring: 221.2 83.2% 53.3%;
+
+  /* Context-aware color adaptations for mini app */
+  --color-background-current: var(--color-background);
+  --color-foreground-current: var(--color-foreground);
+  --color-border-current: var(--color-border);
+  --color-ring-current: var(--color-ring);
+  }
+
+  /* Mini app color optimizations for better contrast in embedded contexts */
+  [data-context="miniapp"] {
+  --color-border-current: 214.3 31.8% 87.1%;      /* Slightly stronger borders */
+  --color-ring-current: 221.2 83.2% 47.3%;        /* More prominent focus rings */
+  }
+
+  /* Dark mode color adaptations */
+  .dark {
+  --color-background: 222.2 84% 4.9%;
+  --color-foreground: 210 40% 98%;
+  --color-card: 222.2 84% 4.9%;
+  --color-card-foreground: 210 40% 98%;
+  --color-popover: 222.2 84% 4.9%;
+  --color-popover-foreground: 210 40% 98%;
+  --color-primary: 217.2 91.2% 59.8%;
+  --color-primary-foreground: 222.2 84% 4.9%;
+  --color-secondary: 217.2 32.6% 17.5%;
+  --color-secondary-foreground: 210 40% 98%;
+  --color-muted: 217.2 32.6% 17.5%;
+  --color-muted-foreground: 215 20.2% 65.1%;
+  --color-accent: 217.2 32.6% 17.5%;
+  --color-accent-foreground: 210 40% 98%;
+  --color-destructive: 0 62.8% 30.6%;
+  --color-destructive-foreground: 210 40% 98%;
+  --color-border: 217.2 32.6% 17.5%;
+  --color-input: 217.2 32.6% 17.5%;
+  --color-ring: 224.3 76.3% 94.1%;
+  }
+
+  /* ================================================
+    ENHANCED ADAPTIVE NAVIGATION SIZING SYSTEM
+    ================================================ */
+
+  :root {
+  /* Enhanced navigation dimensions with more granular control */
+  --nav-sidebar-width-full: 20rem;                /* 320px - Extra wide desktop sidebar */
+  --nav-sidebar-width-expanded: 16rem;            /* 256px - Standard desktop sidebar */
+  --nav-sidebar-width-comfortable: 14rem;         /* 224px - Comfortable sidebar */
+  --nav-sidebar-width-compact: 12rem;             /* 192px - Compact sidebar with text */
+  --nav-sidebar-width-collapsed: 4rem;            /* 64px - Icon-only sidebar */
+  --nav-sidebar-width-minimal: 3rem;              /* 48px - Ultra-compact sidebar */
+
+  --nav-header-height-luxurious: 5rem;            /* 80px - Extra tall header */
+  --nav-header-height-tall: 4.5rem;               /* 72px - Tall header */
+  --nav-header-height: 4rem;                      /* 64px - Standard header */
+  --nav-header-height-comfortable: 3.5rem;        /* 56px - Comfortable header */
+  --nav-header-height-compact: 3rem;              /* 48px - Compact header */
+  --nav-header-height-minimal: 2.5rem;            /* 40px - Ultra-compact header */
+
+  --nav-mobile-height-comfortable: 4rem;          /* 64px - Comfortable mobile nav */
+  --nav-mobile-height: 3.5rem;                    /* 56px - Standard mobile nav */
+  --nav-mobile-height-compact: 3rem;              /* 48px - Compact mobile nav */
+
+  /* Navigation content sizing with enhanced granularity */
+  --nav-item-height-tall: 3rem;                   /* 48px - Tall navigation items */
+  --nav-item-height-comfortable: 2.75rem;         /* 44px - Comfortable navigation items */
+  --nav-item-height: 2.5rem;                      /* 40px - Standard navigation items */
+  --nav-item-height-compact: 2.25rem;             /* 36px - Compact navigation items */
+  --nav-item-height-minimal: 2rem;                /* 32px - Minimal navigation items */
+
+  --nav-icon-size-large: 1.75rem;                 /* 28px - Large navigation icons */
+  --nav-icon-size-comfortable: 1.5rem;            /* 24px - Comfortable navigation icons */
+  --nav-icon-size: 1.25rem;                       /* 20px - Standard navigation icons */
+  --nav-icon-size-compact: 1.125rem;              /* 18px - Compact navigation icons */
+  --nav-icon-size-small: 1rem;                    /* 16px - Small navigation icons */
+  --nav-icon-size-minimal: 0.875rem;              /* 14px - Minimal navigation icons */
+
+  /* Enhanced navigation transitions with timing functions */
+  --nav-transition-duration-instant: 0ms;
+  --nav-transition-duration-fast: 150ms;
   --nav-transition-duration: 200ms;
+  --nav-transition-duration-slow: 300ms;
+  --nav-transition-duration-slower: 450ms;
+
+  --nav-transition-ease-sharp: cubic-bezier(0.4, 0, 0.6, 1);
   --nav-transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  
-  /* Current active navigation mode (set dynamically by JavaScript) */
+  --nav-transition-ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --nav-transition-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Current active navigation tokens (dynamically set by components) */
   --nav-current-width: var(--nav-sidebar-width-expanded);
   --nav-current-height: var(--nav-header-height);
   --nav-current-item-height: var(--nav-item-height);
   --nav-current-icon-size: var(--nav-icon-size);
-}
+  --nav-current-transition-duration: var(--nav-transition-duration);
+  --nav-current-transition-ease: var(--nav-transition-ease);
+  }
 
-/* Mini app navigation adaptations */
-[data-context="miniapp"] {
+  /* Enhanced context adaptations for navigation */
+  [data-context="miniapp"] {
   --nav-current-height: var(--nav-header-height-compact);
   --nav-current-item-height: var(--nav-item-height-compact);
   --nav-current-icon-size: var(--nav-icon-size-compact);
-}
+  --nav-current-transition-duration: var(--nav-transition-duration-fast);
+  }
 
-/* Mobile viewport adaptations */
-@media (max-width: 768px) {
+  [data-context="web"] {
+  --nav-current-width: var(--nav-sidebar-width-expanded);
+  --nav-current-height: var(--nav-header-height);
+  --nav-current-item-height: var(--nav-item-height);
+  --nav-current-icon-size: var(--nav-icon-size);
+  }
+
+  [data-context="desktop"] {
+  --nav-current-width: var(--nav-sidebar-width-full);
+  --nav-current-height: var(--nav-header-height-tall);
+  --nav-current-item-height: var(--nav-item-height-comfortable);
+  --nav-current-icon-size: var(--nav-icon-size-comfortable);
+  }
+
+  /* Enhanced responsive navigation adaptations */
+  @media (max-width: 640px) {
   :root {
     --nav-current-height: var(--nav-mobile-height);
     --nav-current-item-height: var(--nav-item-height-compact);
+    --nav-current-icon-size: var(--nav-icon-size-compact);
+    --nav-current-transition-duration: var(--nav-transition-duration-fast);
   }
-}
+  }
 
-/* ================================================
-   UNIFIED CONTAINER SYSTEM
-   ================================================ */
-
-:root {
-  /* Container max-widths for different contexts */
-  --container-mini: 100%;                  /* Mini app uses full width */
-  --container-mobile: 100%;                /* Mobile uses full width */
-  --container-tablet: 48rem;               /* 768px - Tablet container */
-  --container-desktop: 75rem;              /* 1200px - Desktop container */
-  --container-wide: 87.5rem;               /* 1400px - Wide desktop container */
-  
-  /* Container padding system */
-  --container-padding-mobile: var(--space-lg);    /* Mobile padding */
-  --container-padding-tablet: var(--space-xl);    /* Tablet padding */
-  --container-padding-desktop: var(--space-2xl);  /* Desktop padding */
-  
-  /* Content area constraints */
-  --content-max-width: 65ch;               /* Optimal reading width */
-  --content-sidebar-width: 20rem;          /* Content sidebar width */
-  --content-grid-gap: var(--space-xl);     /* Grid gap between content items */
-  
-  /* Current active container settings (set dynamically) */
-  --container-current-max-width: var(--container-desktop);
-  --container-current-padding: var(--container-padding-desktop);
-}
-
-/* Context-specific container adaptations */
-[data-context="miniapp"] {
-  --container-current-max-width: var(--container-mini);
-  --container-current-padding: var(--container-padding-mobile);
-}
-
-/* Responsive container adaptations */
-@media (max-width: 640px) {
+  @media (min-width: 641px) and (max-width: 768px) {
   :root {
-    --container-current-max-width: var(--container-mobile);
-    --container-current-padding: var(--container-padding-mobile);
+    --nav-current-width: var(--nav-sidebar-width-compact);
+    --nav-current-height: var(--nav-header-height-comfortable);
+    --nav-current-item-height: var(--nav-item-height-compact);
+    --nav-current-icon-size: var(--nav-icon-size-compact);
   }
-}
+  }
 
-@media (min-width: 641px) and (max-width: 1024px) {
+  @media (min-width: 1200px) {
   :root {
-    --container-current-max-width: var(--container-tablet);
-    --container-current-padding: var(--container-padding-tablet);
+    --nav-current-width: var(--nav-sidebar-width-expanded);
+    --nav-current-height: var(--nav-header-height);
+    --nav-current-item-height: var(--nav-item-height);
+    --nav-current-icon-size: var(--nav-icon-size);
   }
-}
+  }
 
-@media (min-width: 1400px) {
+  @media (min-width: 1440px) {
   :root {
-    --container-current-max-width: var(--container-wide);
+    --nav-current-width: var(--nav-sidebar-width-full);
+    --nav-current-height: var(--nav-header-height-tall);
+    --nav-current-item-height: var(--nav-item-height-comfortable);
+    --nav-current-icon-size: var(--nav-icon-size-comfortable);
   }
-}
+  }
 
-/* ================================================
-   INTERACTION TARGET OPTIMIZATION
-   ================================================ */
+  /* ================================================
+    ENHANCED TYPOGRAPHY SYSTEM
+    ================================================ */
 
-:root {
-  /* Touch target sizes following accessibility guidelines */
-  --touch-target-min: 44px;                /* WCAG minimum touch target */
-  --touch-target-comfortable: 48px;        /* Comfortable touch target */
-  --touch-target-generous: 56px;           /* Generous touch target */
-  
-  /* Interactive element sizing */
-  --button-height-sm: 2rem;                /* 32px - Small button */
-  --button-height-md: 2.5rem;              /* 40px - Medium button */
-  --button-height-lg: 3rem;                /* 48px - Large button */
-  --button-padding-x: var(--space-lg);     /* Horizontal button padding */
-  --button-padding-y: var(--space-md);     /* Vertical button padding */
-  
-  /* Input field sizing */
-  --input-height: 2.5rem;                  /* 40px - Standard input height */
-  --input-height-lg: 3rem;                 /* 48px - Large input height */
-  --input-padding-x: var(--space-md);      /* Input horizontal padding */
-  --input-padding-y: var(--space-sm);      /* Input vertical padding */
-  
-  /* Current active interaction sizes (context-aware) */
-  --interaction-current-min-size: var(--touch-target-comfortable);
-  --interaction-current-button-height: var(--button-height-md);
-  --interaction-current-input-height: var(--input-height);
-}
-
-/* Mini app optimizations for touch interfaces */
-[data-context="miniapp"] {
-  --interaction-current-min-size: var(--touch-target-generous);
-  --interaction-current-button-height: var(--button-height-lg);
-  --interaction-current-input-height: var(--input-height-lg);
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
   :root {
-    --interaction-current-min-size: var(--touch-target-generous);
-    --interaction-current-button-height: var(--button-height-lg);
-  }
-}
+  /* Enhanced typography scale with improved readability */
+  --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
 
-/* ================================================
-   TYPOGRAPHY SCALE ADAPTATIONS
-   ================================================ */
+  /* Enhanced font weight scale */
+  --font-weight-thin: 100;
+  --font-weight-extralight: 200;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
 
-:root {
-  /* Base typography scale (extends existing system) */
-  --text-scale-ratio: 1.125;               /* Minor third scale */
-  --text-base-size: 1rem;                  /* 16px base size */
-  
-  /* Contextual typography sizing */
-  --text-xs: calc(var(--text-base-size) / (var(--text-scale-ratio) * var(--text-scale-ratio))); /* 12px */
-  --text-sm: calc(var(--text-base-size) / var(--text-scale-ratio));                             /* 14px */
-  --text-base: var(--text-base-size);                                                           /* 16px */
-  --text-lg: calc(var(--text-base-size) * var(--text-scale-ratio));                            /* 18px */
-  --text-xl: calc(var(--text-base-size) * var(--text-scale-ratio) * var(--text-scale-ratio));  /* 20px */
-  --text-2xl: calc(var(--text-xl) * var(--text-scale-ratio));                                  /* 24px */
-  --text-3xl: calc(var(--text-2xl) * var(--text-scale-ratio));                                 /* 28px */
-  --text-4xl: calc(var(--text-3xl) * var(--text-scale-ratio));                                 /* 32px */
-  
-  /* Reading-optimized line heights */
+  /* Enhanced text size scale with precise scaling */
+  --text-scale-ratio: 1.125;                     /* 1.125 - Perfect fourth scale */
+
+  --text-xs: 0.75rem;                             /* 12px */
+  --text-sm: 0.875rem;                            /* 14px */
+  --text-base: 1rem;                              /* 16px */
+  --text-lg: calc(var(--text-base) * var(--text-scale-ratio));                     /* 18px */
+  --text-xl: calc(var(--text-lg) * var(--text-scale-ratio));                       /* 20px */
+  --text-2xl: calc(var(--text-xl) * var(--text-scale-ratio));                      /* 22px */
+  --text-3xl: calc(var(--text-2xl) * var(--text-scale-ratio));                     /* 25px */
+  --text-4xl: calc(var(--text-3xl) * var(--text-scale-ratio));                     /* 28px */
+  --text-5xl: calc(var(--text-4xl) * var(--text-scale-ratio));                     /* 32px */
+  --text-6xl: calc(var(--text-5xl) * var(--text-scale-ratio));                     /* 36px */
+  --text-7xl: calc(var(--text-6xl) * var(--text-scale-ratio));                     /* 40px */
+  --text-8xl: calc(var(--text-7xl) * var(--text-scale-ratio));                     /* 45px */
+  --text-9xl: calc(var(--text-8xl) * var(--text-scale-ratio));                     /* 51px */
+
+  /* Enhanced line height system for optimal readability */
+  --leading-none: 1;
   --leading-tight: 1.25;
+  --leading-snug: 1.375;
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
-  
-  /* Context-specific typography adjustments */
+  --leading-loose: 2;
+
+  /* Context-specific typography adaptations */
   --text-current-base: var(--text-base);
   --leading-current: var(--leading-normal);
-}
+  --font-weight-current-normal: var(--font-weight-normal);
+  --font-weight-current-medium: var(--font-weight-medium);
+  --font-weight-current-semibold: var(--font-weight-semibold);
+  }
 
-/* Mini app typography optimizations */
-[data-context="miniapp"] {
-  --text-current-base: var(--text-sm);     /* Slightly smaller base text */
-  --leading-current: var(--leading-tight); /* Tighter line height for mobile */
-}
+  /* Enhanced mini app typography optimizations */
+  [data-context="miniapp"] {
+  --text-current-base: var(--text-sm);
+  --leading-current: var(--leading-snug);
+  --font-weight-current-normal: var(--font-weight-medium);
+  --font-weight-current-medium: var(--font-weight-semibold);
+  --font-weight-current-semibold: var(--font-weight-bold);
+  }
 
-/* ================================================
-   ANIMATION AND TRANSITION SYSTEM
-   ================================================ */
+  /* Desktop typography optimizations for enhanced readability */
+  [data-context="desktop"] {
+  --text-current-base: var(--text-lg);
+  --leading-current: var(--leading-relaxed);
+  }
 
-:root {
-  /* Duration tokens for consistent timing */
+  /* ================================================
+    ENHANCED INTERACTION AND ACCESSIBILITY SYSTEM
+    ================================================ */
+
+  :root {
+  /* Enhanced touch target system for optimal accessibility */
+  --touch-target-minimal: 2rem;                   /* 32px - Absolute minimum for touch */
+  --touch-target-comfortable: 2.75rem;            /* 44px - Comfortable touch target */
+  --touch-target-generous: 3rem;                  /* 48px - Generous touch target */
+  --touch-target-luxurious: 3.5rem;               /* 56px - Large touch target */
+
+  /* Enhanced interaction sizing for different contexts */
+  --interaction-button-height-compact: 2rem;      /* 32px - Compact buttons */
+  --interaction-button-height-comfortable: 2.5rem; /* 40px - Comfortable buttons */
+  --interaction-button-height: 2.75rem;           /* 44px - Standard buttons */
+  --interaction-button-height-large: 3rem;        /* 48px - Large buttons */
+
+  --interaction-input-height-compact: 2.25rem;    /* 36px - Compact inputs */
+  --interaction-input-height-comfortable: 2.5rem; /* 40px - Comfortable inputs */
+  --interaction-input-height: 2.75rem;            /* 44px - Standard inputs */
+  --interaction-input-height-large: 3rem;         /* 48px - Large inputs */
+
+  /* Enhanced button padding system */
+  --button-padding-x-compact: var(--space-3);     /* 12px - Compact horizontal padding */
+  --button-padding-x-comfortable: var(--space-4); /* 16px - Comfortable horizontal padding */
+  --button-padding-x: var(--space-5);             /* 20px - Standard horizontal padding */
+  --button-padding-x-large: var(--space-6);       /* 24px - Large horizontal padding */
+
+  --button-padding-y-compact: var(--space-1-5);   /* 6px - Compact vertical padding */
+  --button-padding-y-comfortable: var(--space-2); /* 8px - Comfortable vertical padding */
+  --button-padding-y: var(--space-2-5);           /* 10px - Standard vertical padding */
+  --button-padding-y-large: var(--space-3);       /* 12px - Large vertical padding */
+
+  /* Enhanced input padding system */
+  --input-padding-x-compact: var(--space-2-5);    /* 10px - Compact horizontal padding */
+  --input-padding-x-comfortable: var(--space-3);  /* 12px - Comfortable horizontal padding */
+  --input-padding-x: var(--space-3-5);            /* 14px - Standard horizontal padding */
+  --input-padding-x-large: var(--space-4);        /* 16px - Large horizontal padding */
+
+  /* Current interaction tokens (dynamically set based on context) */
+  --interaction-current-min-size: var(--touch-target-comfortable);
+  --interaction-current-button-height: var(--interaction-button-height);
+  --interaction-current-input-height: var(--interaction-input-height);
+  --button-current-padding-x: var(--button-padding-x);
+  --button-current-padding-y: var(--button-padding-y);
+  --input-current-padding-x: var(--input-padding-x);
+  }
+
+  /* Enhanced mini app interaction optimizations */
+  [data-context="miniapp"] {
+  --interaction-current-min-size: var(--touch-target-generous);
+  --interaction-current-button-height: var(--interaction-button-height-comfortable);
+  --interaction-current-input-height: var(--interaction-input-height-comfortable);
+  --button-current-padding-x: var(--button-padding-x-comfortable);
+  --button-current-padding-y: var(--button-padding-y-comfortable);
+  --input-current-padding-x: var(--input-padding-x-comfortable);
+  }
+
+  /* Desktop interaction optimizations */
+  [data-context="desktop"] {
+  --interaction-current-min-size: var(--touch-target-comfortable);
+  --interaction-current-button-height: var(--interaction-button-height-large);
+  --interaction-current-input-height: var(--interaction-input-height-large);
+  --button-current-padding-x: var(--button-padding-x-large);
+  --button-current-padding-y: var(--button-padding-y-large);
+  --input-current-padding-x: var(--input-padding-x-large);
+  }
+
+  /* ================================================
+    ENHANCED ANIMATION AND MOTION SYSTEM
+    ================================================ */
+
+  :root {
+  /* Enhanced duration tokens for sophisticated animations */
   --duration-instant: 0ms;
+  --duration-immediate: 50ms;
   --duration-fast: 150ms;
-  --duration-normal: 250ms;
-  --duration-slow: 350ms;
-  --duration-slower: 500ms;
-  
-  /* Easing curves for natural motion */
+  --duration-normal: 200ms;
+  --duration-comfortable: 250ms;
+  --duration-slow: 300ms;
+  --duration-slower: 450ms;
+  --duration-slowest: 600ms;
+
+  /* Enhanced easing curves for natural motion */
   --ease-linear: linear;
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-ease: ease;
+  --ease-ease-in: ease-in;
+  --ease-ease-out: ease-out;
+  --ease-ease-in-out: ease-in-out;
+  --ease-sharp: cubic-bezier(0.4, 0, 0.6, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  
+  --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
   /* Context-aware animation preferences */
   --animation-current-duration: var(--duration-normal);
-  --animation-current-ease: var(--ease-out);
-}
+  --animation-current-ease: var(--ease-standard);
+  --animation-current-duration-fast: var(--duration-fast);
+  --animation-current-duration-slow: var(--duration-slow);
+  }
 
-/* Reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
+  /* Enhanced reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
   :root {
     --animation-current-duration: var(--duration-instant);
+    --animation-current-duration-fast: var(--duration-instant);
+    --animation-current-duration-slow: var(--duration-instant);
     --animation-current-ease: var(--ease-linear);
   }
-}
+  }
 
-/* Mini app animation optimizations */
-[data-context="miniapp"] {
-  --animation-current-duration: var(--duration-fast); /* Faster animations for responsive feel */
-}
+  /* Enhanced mini app animation optimizations */
+  [data-context="miniapp"] {
+  --animation-current-duration: var(--duration-fast);
+  --animation-current-duration-fast: var(--duration-immediate);
+  --animation-current-duration-slow: var(--duration-normal);
+  --animation-current-ease: var(--ease-sharp);
+  }
 
-/* ================================================
-   LAYOUT GRID SYSTEM
-   ================================================ */
+  /* ================================================
+    ENHANCED Z-INDEX HIERARCHY SYSTEM
+    ================================================ */
 
-:root {
-  /* CSS Grid system for consistent layouts */
-  --grid-columns-mobile: 1;
-  --grid-columns-tablet: 2;
-  --grid-columns-desktop: 3;
-  --grid-columns-wide: 4;
-  
-  --grid-gap-mobile: var(--space-lg);
-  --grid-gap-tablet: var(--space-xl);
-  --grid-gap-desktop: var(--space-2xl);
-  
-  /* Current active grid settings */
+  :root {
+  /* Enhanced z-index system for complex layout management */
+  --z-hide: -1;
+  --z-auto: auto;
+  --z-base: 0;
+  --z-docked: 10;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-banner: 1030;
+  --z-overlay: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-skip-link: 1070;
+  --z-toast: 1080;
+  --z-tooltip: 1090;
+  --z-maximum: 2147483647;
+
+  /* Navigation-specific z-index tokens */
+  --z-nav-base: var(--z-docked);
+  --z-nav-dropdown: var(--z-dropdown);
+  --z-nav-mobile-overlay: var(--z-overlay);
+  --z-nav-mega-menu: var(--z-dropdown);
+  }
+
+  /* ================================================
+    ENHANCED CONTAINER AND LAYOUT SYSTEM
+    ================================================ */
+
+  :root {
+  /* Enhanced container system with more size options */
+  --container-xs: 20rem;                          /* 320px - Extra small container */
+  --container-sm: 24rem;                          /* 384px - Small container */
+  --container-md: 28rem;                          /* 448px - Medium container */
+  --container-lg: 32rem;                          /* 512px - Large container */
+  --container-xl: 36rem;                          /* 576px - Extra large container */
+  --container-2xl: 42rem;                         /* 672px - 2X large container */
+  --container-3xl: 48rem;                         /* 768px - 3X large container */
+  --container-4xl: 56rem;                         /* 896px - 4X large container */
+  --container-5xl: 64rem;                         /* 1024px - 5X large container */
+  --container-6xl: 72rem;                         /* 1152px - 6X large container */
+  --container-7xl: 80rem;                         /* 1280px - 7X large container */
+  --container-full: 100%;                         /* Full width container */
+
+  /* Legacy container naming for backward compatibility */
+  --container-mini: var(--container-full);
+  --container-mobile: var(--container-sm);
+  --container-tablet: var(--container-4xl);
+  --container-desktop: var(--container-6xl);
+  --container-wide: var(--container-7xl);
+
+  /* Enhanced container padding system */
+  --container-padding-xs: var(--space-2);         /* 8px - Extra small padding */
+  --container-padding-sm: var(--space-3);         /* 12px - Small padding */
+  --container-padding-md: var(--space-4);         /* 16px - Medium padding */
+  --container-padding-lg: var(--space-6);         /* 24px - Large padding */
+  --container-padding-xl: var(--space-8);         /* 32px - Extra large padding */
+
+  /* Legacy container padding for backward compatibility */
+  --container-padding-mobile: var(--container-padding-sm);
+  --container-padding-tablet: var(--container-padding-md);
+  --container-padding-desktop: var(--container-padding-lg);
+
+  /* Current container tokens (dynamically set based on context) */
+  --container-current-max-width: var(--container-desktop);
+  --container-current-padding: var(--container-padding-md);
+  }
+
+  /* Enhanced context adaptations for containers */
+  [data-context="miniapp"] {
+  --container-current-max-width: var(--container-mini);
+  --container-current-padding: var(--container-padding-sm);
+  }
+
+  [data-context="web"] {
+  --container-current-max-width: var(--container-desktop);
+  --container-current-padding: var(--container-padding-md);
+  }
+
+  [data-context="desktop"] {
+  --container-current-max-width: var(--container-wide);
+  --container-current-padding: var(--container-padding-lg);
+  }
+
+  /* Enhanced responsive container adaptations */
+  @media (max-width: 640px) {
+  :root {
+    --container-current-max-width: var(--container-full);
+    --container-current-padding: var(--container-padding-xs);
+  }
+  }
+
+  @media (min-width: 641px) and (max-width: 768px) {
+  :root {
+    --container-current-max-width: var(--container-3xl);
+    --container-current-padding: var(--container-padding-sm);
+  }
+  }
+
+  @media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --container-current-max-width: var(--container-4xl);
+    --container-current-padding: var(--container-padding-md);
+  }
+  }
+
+  @media (min-width: 1025px) and (max-width: 1280px) {
+  :root {
+    --container-current-max-width: var(--container-5xl);
+    --container-current-padding: var(--container-padding-md);
+  }
+  }
+
+  @media (min-width: 1281px) {
+  :root {
+    --container-current-max-width: var(--container-6xl);
+    --container-current-padding: var(--container-padding-lg);
+  }
+  }
+
+  /* ================================================
+    ENHANCED GRID AND LAYOUT SYSTEM
+    ================================================ */
+
+  :root {
+  /* Enhanced grid system with more column options */
+  --grid-columns-1: 1;
+  --grid-columns-2: 2;
+  --grid-columns-3: 3;
+  --grid-columns-4: 4;
+  --grid-columns-5: 5;
+  --grid-columns-6: 6;
+  --grid-columns-auto: auto;
+
+  /* Legacy grid naming for backward compatibility */
+  --grid-columns-mobile: var(--grid-columns-1);
+  --grid-columns-tablet: var(--grid-columns-2);
+  --grid-columns-desktop: var(--grid-columns-3);
+  --grid-columns-wide: var(--grid-columns-4);
+
+  /* Enhanced grid gap system */
+  --grid-gap-xs: var(--space-2);                  /* 8px - Extra small gap */
+  --grid-gap-sm: var(--space-3);                  /* 12px - Small gap */
+  --grid-gap-md: var(--space-4);                  /* 16px - Medium gap */
+  --grid-gap-lg: var(--space-6);                  /* 24px - Large gap */
+  --grid-gap-xl: var(--space-8);                  /* 32px - Extra large gap */
+
+  /* Legacy grid gap naming for backward compatibility */
+  --grid-gap-mobile: var(--grid-gap-sm);
+  --grid-gap-tablet: var(--grid-gap-md);
+  --grid-gap-desktop: var(--grid-gap-lg);
+
+  /* Current grid tokens (dynamically set based on context and viewport) */
   --grid-current-columns: var(--grid-columns-desktop);
   --grid-current-gap: var(--grid-gap-desktop);
-}
+  }
 
-/* Context adaptations for grid system */
-[data-context="miniapp"] {
+  /* Enhanced context adaptations for grid system */
+  [data-context="miniapp"] {
   --grid-current-columns: var(--grid-columns-mobile);
   --grid-current-gap: var(--grid-gap-mobile);
-}
-
-/* Responsive grid adaptations */
-@media (max-width: 640px) {
-  :root {
-    --grid-current-columns: var(--grid-columns-mobile);
-    --grid-current-gap: var(--grid-gap-mobile);
   }
-}
 
-@media (min-width: 641px) and (max-width: 1024px) {
-  :root {
-    --grid-current-columns: var(--grid-columns-tablet);
-    --grid-current-gap: var(--grid-gap-tablet);
+  [data-context="web"] {
+  --grid-current-columns: var(--grid-columns-desktop);
+  --grid-current-gap: var(--grid-gap-desktop);
   }
-}
 
-@media (min-width: 1400px) {
-  :root {
-    --grid-current-columns: var(--grid-columns-wide);
+  [data-context="desktop"] {
+  --grid-current-columns: var(--grid-columns-wide);
+  --grid-current-gap: var(--grid-gap-xl);
   }
-}
 
-/* ================================================
-   UTILITY CLASSES FOR CONTEXT-AWARE STYLING
-   ================================================ */
+  /* Enhanced responsive grid adaptations */
+  @media (max-width: 640px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-1);
+    --grid-current-gap: var(--grid-gap-xs);
+  }
+  }
 
-/* Container utilities that use the unified token system */
-.container-unified {
+  @media (min-width: 641px) and (max-width: 768px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-2);
+    --grid-current-gap: var(--grid-gap-sm);
+  }
+  }
+
+  @media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-2);
+    --grid-current-gap: var(--grid-gap-md);
+  }
+  }
+
+  @media (min-width: 1025px) and (max-width: 1280px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-3);
+    --grid-current-gap: var(--grid-gap-md);
+  }
+  }
+
+  @media (min-width: 1281px) {
+  :root {
+    --grid-current-columns: var(--grid-columns-4);
+    --grid-current-gap: var(--grid-gap-lg);
+  }
+  }
+
+  /* ================================================
+    ENHANCED UTILITY CLASSES FOR CONTEXT-AWARE STYLING
+    ================================================ */
+
+  /* Enhanced container utilities */
+  .container-unified {
   width: 100%;
   max-width: var(--container-current-max-width);
   margin-left: auto;
   margin-right: auto;
   padding-left: var(--container-current-padding);
   padding-right: var(--container-current-padding);
-}
+  }
 
-/* Navigation utilities */
-.nav-adaptive {
+  .container-fluid {
+  width: 100%;
+  padding-left: var(--container-current-padding);
+  padding-right: var(--container-current-padding);
+  }
+
+  /* Enhanced navigation utilities */
+  .nav-adaptive {
   height: var(--nav-current-height);
-  transition: height var(--nav-transition-duration) var(--nav-transition-ease);
-}
+  transition: height var(--nav-current-transition-duration) var(--nav-current-transition-ease);
+  }
 
-.nav-item-adaptive {
+  .nav-sidebar-adaptive {
+  width: var(--nav-current-width);
+  transition: width var(--nav-current-transition-duration) var(--nav-current-transition-ease);
+  }
+
+  .nav-item-adaptive {
   height: var(--nav-current-item-height);
-  transition: height var(--nav-transition-duration) var(--nav-transition-ease);
-}
+  transition: height var(--nav-current-transition-duration) var(--nav-current-transition-ease);
+  }
 
-.nav-icon-adaptive {
+  .nav-icon-adaptive {
   width: var(--nav-current-icon-size);
   height: var(--nav-current-icon-size);
-  transition: all var(--nav-transition-duration) var(--nav-transition-ease);
-}
+  transition: all var(--nav-current-transition-duration) var(--nav-current-transition-ease);
+  }
 
-/* Spacing utilities that adapt to context */
-.space-component-gap {
-  gap: var(--space-component-gap);
-}
+  /* Enhanced spacing utilities */
+  .space-component-gap { gap: var(--space-component-gap); }
+  .space-component-gap-xs { gap: var(--space-component-gap-xs); }
+  .space-component-gap-sm { gap: var(--space-component-gap-sm); }
+  .space-component-gap-lg { gap: var(--space-component-gap-lg); }
+  .space-component-gap-xl { gap: var(--space-component-gap-xl); }
 
-.space-section-padding {
-  padding: var(--space-section-padding);
-}
+  .space-section-padding { padding: var(--space-section-padding); }
+  .space-section-padding-xs { padding: var(--space-section-padding-xs); }
+  .space-section-padding-sm { padding: var(--space-section-padding-sm); }
+  .space-section-padding-lg { padding: var(--space-section-padding-lg); }
+  .space-section-padding-xl { padding: var(--space-section-padding-xl); }
 
-.space-content-padding {
-  padding: var(--space-content-padding);
-}
+  .space-content-padding { padding: var(--space-content-padding); }
+  .space-page-margin { margin: var(--space-page-margin); }
 
-.space-page-margin {
-  margin: var(--space-page-margin);
-}
-
-/* Interactive element utilities */
-.touch-target-optimized {
+  /* Enhanced interaction utilities */
+  .touch-target-optimized {
   min-height: var(--interaction-current-min-size);
   min-width: var(--interaction-current-min-size);
-}
+  }
 
-.button-adaptive {
+  .button-adaptive {
   height: var(--interaction-current-button-height);
-  padding-left: var(--button-padding-x);
-  padding-right: var(--button-padding-x);
+  padding-left: var(--button-current-padding-x);
+  padding-right: var(--button-current-padding-x);
+  padding-top: var(--button-current-padding-y);
+  padding-bottom: var(--button-current-padding-y);
   transition: all var(--animation-current-duration) var(--animation-current-ease);
-}
+  }
 
-.input-adaptive {
+  .input-adaptive {
   height: var(--interaction-current-input-height);
-  padding-left: var(--input-padding-x);
-  padding-right: var(--input-padding-x);
+  padding-left: var(--input-current-padding-x);
+  padding-right: var(--input-current-padding-x);
   transition: all var(--animation-current-duration) var(--animation-current-ease);
-}
+  }
 
-/* Grid utilities */
-.grid-adaptive {
+  /* Enhanced grid utilities */
+  .grid-adaptive {
   display: grid;
   grid-template-columns: repeat(var(--grid-current-columns), 1fr);
   gap: var(--grid-current-gap);
-}
+  }
 
-/* Typography utilities */
-.text-adaptive-base {
+  .grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--grid-current-gap);
+  }
+
+  .grid-auto-fill {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--grid-current-gap);
+  }
+
+  /* Enhanced typography utilities */
+  .text-adaptive-base {
   font-size: var(--text-current-base);
   line-height: var(--leading-current);
-}
+  }
 
-/* Animation utilities */
-.transition-adaptive {
+  .font-weight-adaptive-normal { font-weight: var(--font-weight-current-normal); }
+  .font-weight-adaptive-medium { font-weight: var(--font-weight-current-medium); }
+  .font-weight-adaptive-semibold { font-weight: var(--font-weight-current-semibold); }
+
+  /* Enhanced animation utilities */
+  .transition-adaptive {
   transition-duration: var(--animation-current-duration);
   transition-timing-function: var(--animation-current-ease);
-}
+  }
 
-/* ================================================
-   CONTEXT SWITCHING UTILITIES
-   ================================================ */
+  .transition-adaptive-fast {
+  transition-duration: var(--animation-current-duration-fast);
+  transition-timing-function: var(--animation-current-ease);
+  }
 
-/* JavaScript can toggle these classes to switch contexts */
-.context-web {
+  .transition-adaptive-slow {
+  transition-duration: var(--animation-current-duration-slow);
+  transition-timing-function: var(--animation-current-ease);
+  }
+
+  /* ================================================
+    ENHANCED FOCUS AND ACCESSIBILITY SYSTEM
+    ================================================ */
+
+  :root {
+  /* Enhanced focus ring system for better accessibility */
+  --focus-ring-width: 2px;
+  --focus-ring-width-thick: 3px;
+  --focus-ring-offset: 2px;
+  --focus-ring-offset-thick: 3px;
+  --focus-ring-color: var(--color-ring-current);
+  --focus-ring-style: solid;
+  }
+
+  /* Enhanced focus utilities */
+  .focus-ring {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  }
+
+  .focus-ring-thick {
+  outline: var(--focus-ring-width-thick) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset-thick);
+  }
+
+  .focus-visible:focus-visible {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  }
+
+  /* ================================================
+    CONTEXT SWITCHING UTILITIES
+    ================================================ */
+
+  /* Enhanced context switching classes for programmatic control */
+  .context-web {
   --spacing-multiplier-comfortable: 1.0;
   --container-current-max-width: var(--container-desktop);
   --container-current-padding: var(--container-padding-desktop);
+  --nav-current-width: var(--nav-sidebar-width-expanded);
   --nav-current-height: var(--nav-header-height);
+  --nav-current-item-height: var(--nav-item-height);
+  --nav-current-icon-size: var(--nav-icon-size);
   --interaction-current-min-size: var(--touch-target-comfortable);
+  --interaction-current-button-height: var(--interaction-button-height);
+  --interaction-current-input-height: var(--interaction-input-height);
   --text-current-base: var(--text-base);
   --leading-current: var(--leading-normal);
   --animation-current-duration: var(--duration-normal);
-}
+  --grid-current-columns: var(--grid-columns-desktop);
+  --grid-current-gap: var(--grid-gap-desktop);
+  }
 
-.context-miniapp {
+  .context-miniapp {
   --spacing-multiplier-comfortable: var(--spacing-multiplier-compact);
   --container-current-max-width: var(--container-mini);
   --container-current-padding: var(--container-padding-mobile);
   --nav-current-height: var(--nav-header-height-compact);
+  --nav-current-item-height: var(--nav-item-height-compact);
+  --nav-current-icon-size: var(--nav-icon-size-compact);
   --interaction-current-min-size: var(--touch-target-generous);
+  --interaction-current-button-height: var(--interaction-button-height-comfortable);
+  --interaction-current-input-height: var(--interaction-input-height-comfortable);
   --text-current-base: var(--text-sm);
-  --leading-current: var(--leading-tight);
+  --leading-current: var(--leading-snug);
   --animation-current-duration: var(--duration-fast);
-}
+  --grid-current-columns: var(--grid-columns-mobile);
+  --grid-current-gap: var(--grid-gap-mobile);
+  }
 
-/* ================================================
-   DEBUGGING UTILITIES (DEVELOPMENT ONLY)
-   ================================================ */
+  .context-desktop {
+  --spacing-multiplier-comfortable: var(--spacing-multiplier-generous);
+  --container-current-max-width: var(--container-wide);
+  --container-current-padding: var(--container-padding-desktop);
+  --nav-current-width: var(--nav-sidebar-width-full);
+  --nav-current-height: var(--nav-header-height-tall);
+  --nav-current-item-height: var(--nav-item-height-comfortable);
+  --nav-current-icon-size: var(--nav-icon-size-comfortable);
+  --interaction-current-min-size: var(--touch-target-comfortable);
+  --interaction-current-button-height: var(--interaction-button-height-large);
+  --interaction-current-input-height: var(--interaction-input-height-large);
+  --text-current-base: var(--text-lg);
+  --leading-current: var(--leading-relaxed);
+  --animation-current-duration: var(--duration-comfortable);
+  --grid-current-columns: var(--grid-columns-wide);
+  --grid-current-gap: var(--grid-gap-xl);
+  }
 
-/* Visual debugging for context switching (remove in production) */
-.debug-context::before {
-  content: attr(data-context);
+  /* ================================================
+    DEBUGGING AND DEVELOPMENT UTILITIES
+    ================================================ */
+
+  /* Enhanced visual debugging for context switching (remove in production) */
+  .debug-context::before {
+  content: attr(data-context) " context";
   position: fixed;
-  top: 1rem;
-  right: 1rem;
-  background: var(--color-primary);
-  color: var(--color-primary-foreground);
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  z-index: 9999;
+  top: var(--space-4);
+  right: var(--space-4);
+  background: hsl(var(--color-primary));
+  color: hsl(var(--color-primary-foreground));
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-medium);
+  z-index: var(--z-maximum);
   pointer-events: none;
-}
+  font-family: var(--font-family-mono);
+  border: 1px solid hsl(var(--color-border-current));
+  backdrop-filter: blur(8px);
+  }
 
+  .debug-spacing * {
+  outline: 1px solid rgba(255, 0, 0, 0.3) !important;
+  }
 
+  .debug-grid .grid-adaptive {
+  background-image: 
+    linear-gradient(rgba(255, 0, 0, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: var(--grid-current-gap) var(--grid-current-gap);
+  }
+
+  /* Performance optimization utilities */
+  .will-change-transform { will-change: transform; }
+  .will-change-opacity { will-change: opacity; }
+  .will-change-scroll { will-change: scroll-position; }
+
+  /* Hardware acceleration utilities */
+  .gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000;
+  }
