@@ -1082,7 +1082,20 @@ function determineUserRole(address?: Address, isRegisteredCreator?: boolean): Us
   return 'consumer'
 }
 
-
+/**
+ * High-Order Component for providing unified app context
+ */
+export function withUnifiedApp<P extends object>(
+  Component: React.ComponentType<P>
+): React.ComponentType<P & { unifiedAppProps?: Partial<UnifiedAppProviderProps> }> {
+  return function WithUnifiedAppComponent({ unifiedAppProps, ...props }) {
+    return (
+      <UnifiedAppProvider {...unifiedAppProps}>
+        <Component {...(props as P)} />
+      </UnifiedAppProvider>
+    )
+  }
+}
 
 // ================================================
 // EXPORTS
