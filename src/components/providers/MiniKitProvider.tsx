@@ -474,7 +474,7 @@ export function MiniKitProvider({
  * This component shows the corrected OnchainKitProvider usage without
  * the unsupported projectName prop.
  */
-export function EnhancedProviders({ 
+export function AppProviders({ 
   children,
   schemaId 
 }: { 
@@ -512,7 +512,7 @@ export function useMiniKit(): MiniKitContextType {
   if (context === undefined) {
     throw new Error(
       'useMiniKit must be used within a MiniKitProvider. ' +
-      'Make sure your component is wrapped with <MiniKitProvider> or <EnhancedProviders>.'
+      'Make sure your component is wrapped with <MiniKitProvider> or <AppProviders>.'
     )
   }
   

@@ -28,6 +28,7 @@ import {
   useMiniAppSocial,
   type MiniAppSocialResult 
 } from '@/hooks/business/miniapp-social'
+import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
 
 /**
  * Purchase Button Variant Types
@@ -214,6 +215,18 @@ export function MiniAppPurchaseButton({
     }))
 
     try {
+      const formatUsdc = (amount: bigint | undefined): string => {
+        if (!amount || amount === BigInt(0)) return '0'
+        const s = amount.toString()
+        const pad = s.padStart(7, '0')
+        const int = pad.slice(0, -6)
+        const dec = pad.slice(-6).replace(/0+$/, '')
+        return dec ? `${int}.${dec}` : int
+      }
+
+      // Track purchase start
+      trackMiniAppEvent.purchaseStarted(contentId.toString(), formatUsdc(purchaseFlow.requiredAmount))
+
       console.group('🚀 MiniApp Purchase Button: Initiating Purchase')
       console.log('Content ID:', contentId.toString())
       console.log('Batch Transaction Available:', purchaseFlow.canUseBatchTransaction)
@@ -240,11 +253,18 @@ export function MiniAppPurchaseButton({
       onPurchaseSuccess?.(contentId)
       onAccessGranted?.(contentId)
 
+      // Track purchase completion
+      const txHash = purchaseFlow.batchTransactionStatus.transactionHash || 'unknown'
+      trackMiniAppEvent.purchaseCompleted(contentId.toString(), formatUsdc(purchaseFlow.requiredAmount), txHash)
+
       console.log('✅ Purchase completed successfully')
 
     } catch (error) {
       const purchaseError = error instanceof Error ? error : new Error('Purchase failed')
       console.error('❌ Purchase failed:', purchaseError)
+
+      // Track purchase failure
+      trackMiniAppEvent.purchaseFailed(contentId.toString(), purchaseError.message)
 
       setButtonState(prev => ({
         ...prev,
@@ -309,6 +329,8 @@ export function MiniAppPurchaseButton({
         }))
 
         onShareSuccess?.(contentId)
+        // Track content shared
+        trackMiniAppEvent.contentShared(contentId.toString(), 'farcaster')
         console.log('✅ Content shared successfully')
       } else {
         throw shareResult.error || new Error('Share failed')

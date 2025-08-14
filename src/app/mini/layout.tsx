@@ -1,6 +1,7 @@
 // src/app/mini/layout.tsx
 import React from 'react'
-import { EnhancedProviders } from '@/components/providers/MiniKitProvider'
+import { AppProviders } from '@/components/providers/MiniKitProvider'
+import { EnhancedMiniAppProvider } from '@/components/providers/EnhancedMiniAppProvider'
 
 function EarlyReady(): React.ReactElement | null {
 	React.useEffect(() => {
@@ -23,10 +24,12 @@ function EarlyReady(): React.ReactElement | null {
 
 export default function MiniLayout({ children }: { children: React.ReactNode }): React.ReactElement {
 	return (
-		<EnhancedProviders>
-			<EarlyReady />
-			{children}
-		</EnhancedProviders>
+		<AppProviders>
+			<EnhancedMiniAppProvider>
+				<EarlyReady />
+				{children}
+			</EnhancedMiniAppProvider>
+		</AppProviders>
 	)
 }
 
