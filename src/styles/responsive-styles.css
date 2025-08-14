@@ -1,0 +1,1041 @@
+/* ================================================
+   RESPONSIVE STYLES - Phase 3 Interaction Optimization
+   File: src/styles/responsive-styles.css
+   ================================================
+   
+   This CSS file harmonizes responsive behavior and interaction patterns across
+   contexts, building progressively on the enhanced design tokens foundation.
+   It provides sophisticated interaction states, touch optimizations, and
+   context-aware responsive enhancements for the AdaptiveNavigation,
+   UnifiedContentBrowser, and UnifiedPurchaseFlow components.
+   
+   Architecture Integration:
+   - Builds progressively on design-tokens.css foundation
+   - Enhances existing .nav-adaptive, .grid-adaptive, .button-adaptive utilities
+   - Provides advanced interaction states for unified components
+   - Integrates with data-context attribute system for intelligent adaptation
+   - Maintains compatibility with shadcn/ui theming patterns
+   - Follows established responsive breakpoint strategy
+   
+   Key Enhancements:
+   - Advanced hover, focus, active states with context awareness
+   - Sophisticated touch target optimizations for mobile/tablet contexts
+   - Error state and user feedback styling with accessibility features
+   - Performance-optimized animations with hardware acceleration
+   - Component-specific responsive enhancements
+   - Enhanced accessibility features including screen reader support
+   
+   Progressive Foundation:
+   This interaction layer completes the unified component system, ensuring
+   consistent, accessible, and performant user experiences across all contexts.
+   ================================================ */
+
+/* ================================================
+   RESPONSIVE BREAKPOINT ENHANCEMENTS
+   ================================================ */
+
+/* Enhanced responsive variables that build on design-tokens.css */
+:root {
+    /* Advanced viewport detection with enhanced granularity */
+    --viewport-xs-max: 479px;      /* Extra small devices */
+    --viewport-sm-min: 480px;      /* Small devices start */
+    --viewport-sm-max: 639px;      /* Small devices end */
+    --viewport-md-min: 640px;      /* Medium devices start */
+    --viewport-md-max: 767px;      /* Medium devices end */
+    --viewport-lg-min: 768px;      /* Large devices start */
+    --viewport-lg-max: 1023px;     /* Large devices end */
+    --viewport-xl-min: 1024px;     /* Extra large devices start */
+    --viewport-xl-max: 1279px;     /* Extra large devices end */
+    --viewport-2xl-min: 1280px;    /* 2X large devices start */
+    --viewport-2xl-max: 1535px;    /* 2X large devices end */
+    --viewport-3xl-min: 1536px;    /* 3X large devices start */
+    
+    /* Context-aware responsive multipliers */
+    --responsive-scale-factor: 1;
+    --responsive-touch-scale: 1;
+    --responsive-spacing-scale: 1;
+    --responsive-animation-scale: 1;
+  }
+  
+  /* Context-aware responsive scaling */
+  [data-context="miniapp"] {
+    --responsive-scale-factor: 0.9;
+    --responsive-touch-scale: 1.1;
+    --responsive-spacing-scale: 0.85;
+    --responsive-animation-scale: 0.8;
+  }
+  
+  [data-context="web"] {
+    --responsive-scale-factor: 1;
+    --responsive-touch-scale: 1;
+    --responsive-spacing-scale: 1;
+    --responsive-animation-scale: 1;
+  }
+  
+  /* Viewport-specific responsive adjustments */
+  @media (max-width: 639px) {
+    :root {
+      --responsive-scale-factor: 0.85;
+      --responsive-touch-scale: 1.15;
+      --responsive-spacing-scale: 0.8;
+      --responsive-animation-scale: 0.7;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    :root {
+      --responsive-scale-factor: 1.05;
+      --responsive-touch-scale: 0.95;
+      --responsive-spacing-scale: 1.1;
+      --responsive-animation-scale: 1.1;
+    }
+  }
+  
+  /* ================================================
+     ENHANCED INTERACTION STATE SYSTEM
+     ================================================ */
+  
+  /* Advanced button interaction states building on .button-adaptive */
+  .button-adaptive {
+    position: relative;
+    cursor: pointer;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+    outline: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: 
+      all var(--animation-current-duration) var(--animation-current-ease),
+      box-shadow calc(var(--animation-current-duration) * 0.5) var(--animation-current-ease);
+  }
+  
+  .button-adaptive:hover {
+    transform: translateY(calc(-1px * var(--responsive-scale-factor)));
+    box-shadow: 
+      0 4px 12px hsla(var(--color-primary) / 0.15),
+      0 2px 4px hsla(var(--color-foreground) / 0.1);
+  }
+  
+  .button-adaptive:active {
+    transform: translateY(0);
+    transition-duration: calc(var(--animation-current-duration) * 0.3);
+    box-shadow: 
+      0 2px 4px hsla(var(--color-primary) / 0.1),
+      0 1px 2px hsla(var(--color-foreground) / 0.05);
+  }
+  
+  .button-adaptive:focus-visible {
+    outline: var(--focus-ring-width) solid hsl(var(--color-ring-current));
+    outline-offset: var(--focus-ring-offset);
+    box-shadow: 
+      0 0 0 calc(var(--focus-ring-width) + 1px) hsla(var(--color-ring-current) / 0.2),
+      0 4px 12px hsla(var(--color-primary) / 0.15);
+  }
+  
+  .button-adaptive:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    pointer-events: none;
+  }
+  
+  /* Context-specific button enhancements */
+  [data-context="miniapp"] .button-adaptive:hover {
+    transform: scale(calc(1.02 * var(--responsive-scale-factor)));
+    transition-duration: calc(var(--animation-current-duration) * 0.6);
+  }
+  
+  [data-context="miniapp"] .button-adaptive:active {
+    transform: scale(calc(0.98 * var(--responsive-scale-factor)));
+  }
+  
+  /* Enhanced input interaction states building on .input-adaptive */
+  .input-adaptive {
+    position: relative;
+    border: 1px solid hsl(var(--color-border-current));
+    background-color: hsl(var(--color-background));
+    transition: 
+      all var(--animation-current-duration) var(--animation-current-ease),
+      box-shadow calc(var(--animation-current-duration) * 0.5) var(--animation-current-ease);
+  }
+  
+  .input-adaptive:hover {
+    border-color: hsl(var(--color-ring-current) / 0.5);
+    box-shadow: 
+      0 2px 4px hsla(var(--color-foreground) / 0.05),
+      inset 0 1px 2px hsla(var(--color-foreground) / 0.03);
+  }
+  
+  .input-adaptive:focus {
+    outline: none;
+    border-color: hsl(var(--color-ring-current));
+    box-shadow: 
+      0 0 0 var(--focus-ring-width) hsla(var(--color-ring-current) / 0.2),
+      0 2px 8px hsla(var(--color-foreground) / 0.1),
+      inset 0 1px 2px hsla(var(--color-foreground) / 0.03);
+  }
+  
+  .input-adaptive:invalid {
+    border-color: hsl(var(--color-destructive));
+    box-shadow: 
+      0 0 0 1px hsla(var(--color-destructive) / 0.2),
+      0 2px 4px hsla(var(--color-destructive) / 0.1);
+  }
+  
+  .input-adaptive::placeholder {
+    color: hsl(var(--color-muted-foreground));
+    opacity: 0.6;
+    transition: opacity var(--animation-current-duration) var(--animation-current-ease);
+  }
+  
+  .input-adaptive:focus::placeholder {
+    opacity: 0.4;
+  }
+  
+  /* ================================================
+     ENHANCED TOUCH TARGET OPTIMIZATIONS
+     ================================================ */
+  
+  /* Advanced touch target system building on .touch-target-optimized */
+  .touch-target-optimized {
+    position: relative;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .touch-target-optimized::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--interaction-current-min-size) * var(--responsive-touch-scale));
+    height: calc(var(--interaction-current-min-size) * var(--responsive-touch-scale));
+    transform: translate(-50%, -50%);
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: auto;
+  }
+  
+  /* Enhanced touch targets for different contexts */
+  [data-context="miniapp"] .touch-target-optimized {
+    min-height: calc(var(--touch-target-generous) * var(--responsive-touch-scale));
+    min-width: calc(var(--touch-target-generous) * var(--responsive-touch-scale));
+  }
+  
+  [data-context="web"] .touch-target-optimized {
+    min-height: calc(var(--touch-target-comfortable) * var(--responsive-touch-scale));
+    min-width: calc(var(--touch-target-comfortable) * var(--responsive-touch-scale));
+  }
+  
+  /* Responsive touch target adjustments */
+  @media (max-width: 639px) {
+    .touch-target-optimized {
+      min-height: calc(var(--touch-target-generous) * 1.1);
+      min-width: calc(var(--touch-target-generous) * 1.1);
+    }
+  }
+  
+  @media (min-width: 1024px) and (hover: hover) {
+    .touch-target-optimized {
+      min-height: var(--touch-target-comfortable);
+      min-width: var(--touch-target-comfortable);
+    }
+  }
+  
+  /* Enhanced tap feedback for mobile devices */
+  @media (hover: none) {
+    .touch-target-optimized:active {
+      background-color: hsla(var(--color-foreground) / 0.05);
+      transition: background-color 50ms ease-out;
+    }
+    
+    .touch-target-optimized:active::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 120%;
+      height: 120%;
+      background: radial-gradient(circle, hsla(var(--color-primary) / 0.1) 0%, transparent 70%);
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: touch-ripple 300ms ease-out;
+    }
+  }
+  
+  @keyframes touch-ripple {
+    0% {
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0;
+    }
+  }
+  
+  /* ================================================
+     ADAPTIVE NAVIGATION ENHANCEMENTS
+     ================================================ */
+  
+  /* Enhanced navigation animations building on .nav-adaptive */
+  .nav-adaptive {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Smooth navigation transitions */
+  .nav-item-adaptive {
+    position: relative;
+    overflow: hidden;
+    border-radius: calc(var(--space-1) * var(--responsive-scale-factor));
+    transition: 
+      all var(--nav-current-transition-duration) var(--nav-current-transition-ease),
+      background-color calc(var(--nav-current-transition-duration) * 0.6) var(--nav-current-transition-ease);
+  }
+  
+  .nav-item-adaptive::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsla(var(--color-primary) / 0.1),
+      transparent
+    );
+    transition: left calc(var(--nav-current-transition-duration) * 1.5) var(--nav-current-transition-ease);
+  }
+  
+  .nav-item-adaptive:hover::before {
+    left: 100%;
+  }
+  
+  .nav-item-adaptive:hover {
+    background-color: hsla(var(--color-accent) / 0.5);
+    transform: translateX(calc(2px * var(--responsive-scale-factor)));
+  }
+  
+  .nav-item-adaptive:active {
+    transform: translateX(0);
+    transition-duration: calc(var(--nav-current-transition-duration) * 0.3);
+  }
+  
+  .nav-item-adaptive[aria-current="page"],
+  .nav-item-adaptive.active {
+    background-color: hsl(var(--color-secondary));
+    color: hsl(var(--color-secondary-foreground));
+    box-shadow: 
+      inset 3px 0 0 hsl(var(--color-primary)),
+      0 2px 4px hsla(var(--color-foreground) / 0.05);
+  }
+  
+  /* Enhanced icon animations building on .nav-icon-adaptive */
+  .nav-icon-adaptive {
+    transition: 
+      all var(--nav-current-transition-duration) var(--nav-current-transition-ease),
+      filter calc(var(--nav-current-transition-duration) * 0.5) var(--nav-current-transition-ease);
+  }
+  
+  .nav-item-adaptive:hover .nav-icon-adaptive {
+    transform: scale(calc(1.1 * var(--responsive-scale-factor)));
+    filter: drop-shadow(0 2px 4px hsla(var(--color-primary) / 0.2));
+  }
+  
+  .nav-item-adaptive:active .nav-icon-adaptive {
+    transform: scale(calc(1.05 * var(--responsive-scale-factor)));
+  }
+  
+  /* Context-specific navigation enhancements */
+  [data-context="miniapp"] .nav-item-adaptive:hover {
+    transform: scale(calc(1.02 * var(--responsive-scale-factor)));
+    background-color: hsla(var(--color-accent) / 0.3);
+  }
+  
+  [data-context="miniapp"] .nav-icon-adaptive {
+    filter: drop-shadow(0 1px 2px hsla(var(--color-foreground) / 0.1));
+  }
+  
+  /* Mobile navigation specific enhancements */
+  @media (max-width: 639px) {
+    .nav-adaptive {
+      backdrop-filter: blur(12px) saturate(150%);
+      background-color: hsla(var(--color-background) / 0.8);
+      border-bottom: 1px solid hsla(var(--color-border) / 0.5);
+    }
+    
+    .nav-item-adaptive {
+      padding: calc(var(--space-3) * var(--responsive-spacing-scale));
+    }
+    
+    .nav-item-adaptive:hover {
+      transform: none;
+      background-color: hsla(var(--color-accent) / 0.3);
+    }
+  }
+  
+  /* ================================================
+     CONTENT BROWSER ENHANCEMENTS
+     ================================================ */
+  
+  /* Enhanced grid animations building on .grid-adaptive */
+  .grid-adaptive {
+    --grid-item-delay: 0ms;
+    container-type: inline-size;
+    container-name: content-grid;
+  }
+  
+  .grid-adaptive > * {
+    animation: grid-item-entrance calc(var(--animation-current-duration) * 2) var(--animation-current-ease);
+    animation-delay: var(--grid-item-delay);
+    animation-fill-mode: both;
+  }
+  
+  @keyframes grid-item-entrance {
+    0% {
+      opacity: 0;
+      transform: translateY(calc(20px * var(--responsive-scale-factor))) scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  /* Staggered grid item animations */
+  .grid-adaptive > *:nth-child(1) { --grid-item-delay: 0ms; }
+  .grid-adaptive > *:nth-child(2) { --grid-item-delay: 100ms; }
+  .grid-adaptive > *:nth-child(3) { --grid-item-delay: 200ms; }
+  .grid-adaptive > *:nth-child(4) { --grid-item-delay: 300ms; }
+  .grid-adaptive > *:nth-child(5) { --grid-item-delay: 400ms; }
+  .grid-adaptive > *:nth-child(6) { --grid-item-delay: 500ms; }
+  .grid-adaptive > *:nth-child(n+7) { --grid-item-delay: 600ms; }
+  
+  /* Enhanced card hover states for content browser */
+  .grid-adaptive .card,
+  .grid-adaptive [data-card] {
+    position: relative;
+    transition: 
+      all var(--animation-current-duration) var(--animation-current-ease),
+      box-shadow calc(var(--animation-current-duration) * 0.6) var(--animation-current-ease);
+    cursor: pointer;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  .grid-adaptive .card:hover,
+  .grid-adaptive [data-card]:hover {
+    transform: translateY(calc(-4px * var(--responsive-scale-factor))) scale(calc(1.02 * var(--responsive-scale-factor)));
+    box-shadow: 
+      0 12px 24px hsla(var(--color-foreground) / 0.15),
+      0 4px 8px hsla(var(--color-foreground) / 0.1),
+      0 0 0 1px hsla(var(--color-border) / 0.5);
+    z-index: 2;
+  }
+  
+  .grid-adaptive .card:active,
+  .grid-adaptive [data-card]:active {
+    transform: translateY(calc(-2px * var(--responsive-scale-factor))) scale(1);
+    transition-duration: calc(var(--animation-current-duration) * 0.3);
+  }
+  
+  /* Context-specific content browser enhancements */
+  [data-context="miniapp"] .grid-adaptive {
+    gap: calc(var(--grid-current-gap) * var(--responsive-spacing-scale));
+  }
+  
+  [data-context="miniapp"] .grid-adaptive .card:hover,
+  [data-context="miniapp"] .grid-adaptive [data-card]:hover {
+    transform: scale(calc(1.03 * var(--responsive-scale-factor)));
+    box-shadow: 
+      0 8px 16px hsla(var(--color-foreground) / 0.12),
+      0 2px 4px hsla(var(--color-foreground) / 0.08);
+  }
+  
+  /* Container query enhancements for responsive grid */
+  @container content-grid (max-width: 400px) {
+    .grid-adaptive {
+      grid-template-columns: 1fr;
+      gap: calc(var(--space-component-gap-sm) * var(--responsive-spacing-scale));
+    }
+  }
+  
+  @container content-grid (min-width: 401px) and (max-width: 800px) {
+    .grid-adaptive {
+      grid-template-columns: repeat(2, 1fr);
+      gap: calc(var(--space-component-gap) * var(--responsive-spacing-scale));
+    }
+  }
+  
+  @container content-grid (min-width: 801px) {
+    .grid-adaptive {
+      grid-template-columns: repeat(var(--grid-current-columns), 1fr);
+      gap: calc(var(--space-component-gap-lg) * var(--responsive-spacing-scale));
+    }
+  }
+  
+  /* ================================================
+     PURCHASE FLOW ENHANCEMENTS
+     ================================================ */
+  
+  /* Enhanced transaction state animations */
+  .purchase-flow-container {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .purchase-flow-container[data-state="loading"] {
+    pointer-events: none;
+  }
+  
+  .purchase-flow-container[data-state="loading"]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsla(var(--color-primary) / 0.1),
+      transparent
+    );
+    animation: loading-shimmer 1.5s infinite;
+    z-index: 1;
+  }
+  
+  @keyframes loading-shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+  
+  /* Enhanced transaction progress indicators */
+  .transaction-progress {
+    position: relative;
+    height: 4px;
+    background-color: hsl(var(--color-muted));
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  
+  .transaction-progress::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--color-primary)),
+      hsl(var(--color-primary) / 0.8),
+      hsl(var(--color-primary))
+    );
+    background-size: 200% 100%;
+    border-radius: inherit;
+    transition: width var(--animation-current-duration) var(--animation-current-ease);
+    animation: progress-shine 2s infinite;
+  }
+  
+  @keyframes progress-shine {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  
+  .transaction-progress[data-progress="0"]::before { width: 0%; }
+  .transaction-progress[data-progress="25"]::before { width: 25%; }
+  .transaction-progress[data-progress="50"]::before { width: 50%; }
+  .transaction-progress[data-progress="75"]::before { width: 75%; }
+  .transaction-progress[data-progress="100"]::before { width: 100%; }
+  
+  /* Enhanced success and error state animations */
+  .transaction-state-success {
+    animation: success-pulse 0.6s ease-out;
+  }
+  
+  @keyframes success-pulse {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 hsla(var(--color-primary) / 0.7);
+    }
+    50% {
+      transform: scale(1.05);
+      box-shadow: 0 0 0 10px hsla(var(--color-primary) / 0);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 hsla(var(--color-primary) / 0);
+    }
+  }
+  
+  .transaction-state-error {
+    animation: error-shake 0.6s ease-out;
+  }
+  
+  @keyframes error-shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+  
+  /* ================================================
+     ERROR STATE AND FEEDBACK STYLING
+     ================================================ */
+  
+  /* Enhanced error state system */
+  .error-state {
+    border: 1px solid hsl(var(--color-destructive));
+    background-color: hsla(var(--color-destructive) / 0.05);
+    color: hsl(var(--color-destructive-foreground));
+    border-radius: calc(var(--space-2) * var(--responsive-scale-factor));
+    padding: calc(var(--space-content-padding) * var(--responsive-spacing-scale));
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .error-state::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background-color: hsl(var(--color-destructive));
+    animation: error-highlight 2s ease-in-out infinite;
+  }
+  
+  @keyframes error-highlight {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  /* Enhanced loading state system */
+  .loading-state {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  
+  .loading-state::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    border: 2px solid hsl(var(--color-muted));
+    border-top: 2px solid hsl(var(--color-primary));
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: loading-spinner 1s linear infinite;
+    z-index: 2;
+  }
+  
+  @keyframes loading-spinner {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+  
+  /* Enhanced success state system */
+  .success-state {
+    border: 1px solid hsl(var(--color-primary));
+    background-color: hsla(var(--color-primary) / 0.05);
+    color: hsl(var(--color-primary-foreground));
+    border-radius: calc(var(--space-2) * var(--responsive-scale-factor));
+    padding: calc(var(--space-content-padding) * var(--responsive-spacing-scale));
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .success-state::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--color-primary)),
+      hsla(var(--color-primary) / 0.5)
+    );
+    animation: success-highlight 3s ease-in-out;
+  }
+  
+  @keyframes success-highlight {
+    0% { height: 0%; }
+    50% { height: 100%; }
+    100% { height: 100%; opacity: 0.8; }
+  }
+  
+  /* ================================================
+     ENHANCED ACCESSIBILITY FEATURES
+     ================================================ */
+  
+  /* Advanced focus management system */
+  .focus-trap {
+    position: relative;
+  }
+  
+  .focus-trap::before,
+  .focus-trap::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .focus-trap::before {
+    top: 0;
+    left: 0;
+  }
+  
+  .focus-trap::after {
+    bottom: 0;
+    right: 0;
+  }
+  
+  /* Enhanced keyboard navigation support */
+  .keyboard-navigation {
+    outline: none;
+  }
+  
+  .keyboard-navigation:focus-visible {
+    outline: var(--focus-ring-width-thick) solid hsl(var(--color-ring-current));
+    outline-offset: var(--focus-ring-offset-thick);
+    box-shadow: 
+      0 0 0 calc(var(--focus-ring-width-thick) + 2px) hsla(var(--color-ring-current) / 0.2),
+      0 4px 12px hsla(var(--color-foreground) / 0.15);
+    position: relative;
+    z-index: 10;
+  }
+  
+  /* Skip links for accessibility */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background-color: hsl(var(--color-primary));
+    color: hsl(var(--color-primary-foreground));
+    padding: calc(var(--space-2) * var(--responsive-scale-factor)) calc(var(--space-4) * var(--responsive-scale-factor));
+    text-decoration: none;
+    border-radius: calc(var(--space-1) * var(--responsive-scale-factor));
+    z-index: var(--z-skip-link);
+    transition: top var(--animation-current-duration) var(--animation-current-ease);
+  }
+  
+  .skip-link:focus {
+    top: 6px;
+    outline: var(--focus-ring-width) solid hsl(var(--color-background));
+    outline-offset: 2px;
+  }
+  
+  /* Screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  
+  .sr-only-focusable:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+  
+  /* ================================================
+     REDUCED MOTION PREFERENCES
+     ================================================ */
+  
+  /* Respect user's motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .nav-item-adaptive,
+    .button-adaptive,
+    .input-adaptive,
+    .grid-adaptive > *,
+    .nav-icon-adaptive,
+    .transaction-progress::before {
+      animation: none !important;
+      transition: none !important;
+    }
+    
+    .nav-item-adaptive:hover,
+    .button-adaptive:hover,
+    .grid-adaptive .card:hover,
+    .grid-adaptive [data-card]:hover {
+      transform: none !important;
+    }
+    
+    .loading-state::after {
+      animation: none !important;
+      border: 2px solid hsl(var(--color-primary));
+      border-radius: 0;
+      width: 8px;
+      height: 8px;
+    }
+  }
+  
+  /* ================================================
+     PERFORMANCE OPTIMIZATIONS
+     ================================================ */
+  
+  /* Hardware acceleration for smooth animations */
+  .gpu-accelerated,
+  .nav-adaptive,
+  .nav-item-adaptive,
+  .button-adaptive,
+  .grid-adaptive .card,
+  .grid-adaptive [data-card] {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+  
+  /* Optimize for 60fps animations */
+  .smooth-animation {
+    will-change: transform, opacity;
+    contain: layout style paint;
+  }
+  
+  /* Remove will-change when not needed */
+  .nav-item-adaptive:not(:hover),
+  .button-adaptive:not(:hover),
+  .grid-adaptive .card:not(:hover),
+  .grid-adaptive [data-card]:not(:hover) {
+    will-change: auto;
+  }
+  
+  /* ================================================
+     CONTEXT-SPECIFIC RESPONSIVE ENHANCEMENTS
+     ================================================ */
+  
+  /* Web-specific enhancements */
+  [data-context="web"] {
+    /* Enhanced hover states for desktop */
+    --hover-lift-distance: 2px;
+    --hover-scale-factor: 1.02;
+    --hover-shadow-intensity: 0.15;
+  }
+  
+  [data-context="web"] .button-adaptive:hover {
+    box-shadow: 
+      0 6px 16px hsla(var(--color-primary) / var(--hover-shadow-intensity)),
+      0 2px 4px hsla(var(--color-foreground) / 0.1);
+  }
+  
+  /* MiniApp-specific enhancements */
+  [data-context="miniapp"] {
+    /* Enhanced touch feedback for mobile */
+    --touch-feedback-scale: 0.98;
+    --touch-feedback-duration: 150ms;
+    --social-highlight-color: hsl(214 100% 60%);
+  }
+  
+  [data-context="miniapp"] .button-adaptive:active {
+    transform: scale(var(--touch-feedback-scale));
+    transition-duration: var(--touch-feedback-duration);
+  }
+  
+  [data-context="miniapp"] .social-feature {
+    border-left: 3px solid var(--social-highlight-color);
+    background-color: hsla(214 100% 60% / 0.05);
+  }
+  
+  /* ================================================
+     COMPONENT-SPECIFIC RESPONSIVE PATTERNS
+     ================================================ */
+  
+  /* AdaptiveNavigation specific responsive patterns */
+  .adaptive-navigation-container[data-display-mode="sidebar-full"] {
+    grid-template-areas: "sidebar content";
+    grid-template-columns: var(--nav-current-width) 1fr;
+  }
+  
+  .adaptive-navigation-container[data-display-mode="sidebar-compact"] {
+    grid-template-areas: "sidebar content";
+    grid-template-columns: var(--nav-sidebar-width-collapsed) 1fr;
+  }
+  
+  .adaptive-navigation-container[data-display-mode="header-menu"],
+  .adaptive-navigation-container[data-display-mode="header-compact"] {
+    grid-template-areas: 
+      "header"
+      "content";
+    grid-template-rows: var(--nav-current-height) 1fr;
+  }
+  
+  /* UnifiedContentBrowser specific responsive patterns */
+  .unified-content-browser[data-view-mode="grid"] .content-list {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-current-columns), 1fr);
+    gap: calc(var(--grid-current-gap) * var(--responsive-spacing-scale));
+  }
+  
+  .unified-content-browser[data-view-mode="list"] .content-list {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-component-gap) * var(--responsive-spacing-scale));
+  }
+  
+  .unified-content-browser[data-context="miniapp"] .content-item {
+    padding: calc(var(--space-content-padding-sm) * var(--responsive-spacing-scale));
+    border-radius: calc(var(--space-2) * var(--responsive-scale-factor));
+  }
+  
+  /* UnifiedPurchaseFlow specific responsive patterns */
+  .unified-purchase-flow[data-context="web"] {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .unified-purchase-flow[data-context="miniapp"] {
+    width: 100%;
+    padding: calc(var(--space-content-padding-xs) * var(--responsive-spacing-scale));
+  }
+  
+  .unified-purchase-flow[data-step="processing"] {
+    pointer-events: none;
+    opacity: 0.8;
+  }
+  
+  .unified-purchase-flow[data-step="success"] .purchase-button {
+    background-color: hsl(var(--color-primary));
+    animation: success-pulse 0.6s ease-out;
+  }
+  
+  .unified-purchase-flow[data-step="error"] {
+    animation: error-shake 0.6s ease-out;
+  }
+  
+  /* ================================================
+     VIEWPORT-SPECIFIC OPTIMIZATIONS
+     ================================================ */
+  
+  /* Extra small devices (phones, less than 480px) */
+  @media (max-width: 479px) {
+    .button-adaptive {
+      min-height: calc(var(--touch-target-generous) * 1.1);
+      padding: calc(var(--space-3) * var(--responsive-spacing-scale)) calc(var(--space-4) * var(--responsive-spacing-scale));
+    }
+    
+    .grid-adaptive {
+      grid-template-columns: 1fr !important;
+      gap: calc(var(--space-component-gap-xs) * var(--responsive-spacing-scale));
+    }
+    
+    .nav-item-adaptive {
+      padding: calc(var(--space-4) * var(--responsive-spacing-scale));
+      font-size: calc(var(--text-current-base) * 1.1);
+    }
+  }
+  
+  /* Small devices (landscape phones, 480px and up) */
+  @media (min-width: 480px) and (max-width: 639px) {
+    .container-unified {
+      padding-left: calc(var(--space-4) * var(--responsive-spacing-scale));
+      padding-right: calc(var(--space-4) * var(--responsive-spacing-scale));
+    }
+    
+    .grid-adaptive {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+  }
+  
+  /* Medium devices (tablets, 640px and up) */
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .adaptive-navigation-container[data-context="web"] {
+      grid-template-columns: var(--nav-sidebar-width-compact) 1fr;
+    }
+    
+    .button-adaptive {
+      min-height: var(--interaction-current-button-height);
+    }
+    
+    .grid-adaptive {
+      grid-template-columns: repeat(2, 1fr);
+      gap: calc(var(--space-component-gap) * var(--responsive-spacing-scale));
+    }
+  }
+  
+  /* Large devices (desktops, 1024px and up) */
+  @media (min-width: 1024px) {
+    .hover-enhanced {
+      transition: all var(--animation-current-duration) var(--animation-current-ease);
+    }
+    
+    .hover-enhanced:hover {
+      transform: translateY(calc(-2px * var(--responsive-scale-factor)));
+      box-shadow: 0 8px 16px hsla(var(--color-foreground) / 0.12);
+    }
+    
+    .grid-adaptive {
+      grid-template-columns: repeat(var(--grid-current-columns), 1fr);
+      gap: calc(var(--space-component-gap-lg) * var(--responsive-spacing-scale));
+    }
+  }
+  
+  /* Extra large devices (large desktops, 1280px and up) */
+  @media (min-width: 1280px) {
+    .container-unified {
+      max-width: var(--container-7xl);
+    }
+    
+    .adaptive-navigation-container[data-context="web"] {
+      grid-template-columns: var(--nav-sidebar-width-full) 1fr;
+    }
+    
+    .button-adaptive {
+      min-height: calc(var(--interaction-button-height-large) * var(--responsive-scale-factor));
+    }
+  }
+  
+  /* ================================================
+     PRINT STYLES
+     ================================================ */
+  
+  @media print {
+    .nav-adaptive,
+    .button-adaptive,
+    .loading-state::after,
+    .transaction-progress,
+    .skip-link {
+      display: none !important;
+    }
+    
+    .grid-adaptive {
+      display: block !important;
+    }
+    
+    .grid-adaptive > * {
+      break-inside: avoid;
+      margin-bottom: calc(var(--space-4) * var(--responsive-spacing-scale));
+    }
+    
+    .container-unified {
+      max-width: none !important;
+      padding: 0 !important;
+    }
+  }

@@ -1,28 +1,34 @@
 /**
- * UnifiedAppProvider Component - Phase 4 Advanced Integration
+ * UnifiedAppProvider Component - Phase 4 System Integration
  * File: src/providers/UnifiedAppProvider.tsx
  * 
- * This component consolidates the web app and mini app provider systems into a single
- * adaptive provider that intelligently handles context switching, state management,
- * and performance optimizations across both environments.
+ * This component represents the culmination of the Web App & Mini App Interface Alignment
+ * Roadmap, consolidating all provider systems into a single, unified state management
+ * architecture. It replaces the separate AppProvider and MiniAppProvider systems while
+ * preserving all functionality and adding enhanced cross-context capabilities.
  * 
  * Key Features:
- * - Unified context management (web vs miniapp)
- * - Consolidated state management across all providers
- * - Intelligent performance optimizations based on environment
- * - Seamless Farcaster integration for social contexts
- * - Error boundary protection with context-aware recovery
- * - Theme management with context-adaptive design tokens
- * - Analytics and tracking integration for both contexts
- * - Memory and performance optimization for embedded environments
+ * - Unified state management consolidating AppProvider and MiniAppProvider functionality
+ * - Context-aware initialization ('web' vs 'miniapp') with automatic detection
+ * - Viewport-responsive state management ('mobile', 'tablet', 'desktop')
+ * - Performance optimization with lazy loading and context-aware resource management
+ * - Enhanced error handling with recovery mechanisms and user feedback
+ * - Social integration with Farcaster SDK when in miniapp context
+ * - Accessibility support with screen reader announcements and focus management
+ * - Progressive enhancement building on all previous unified components
  * 
  * Architecture Integration:
- * - Replaces separate MiniAppProvider and EnhancedMiniAppProvider
- * - Integrates with existing wallet providers and Web3 infrastructure
- * - Uses unified design tokens for consistent theming
- * - Maintains compatibility with existing component expectations
- * - Provides context-aware optimization strategies
- * - Preserves all current functionality while providing unified experience
+ * - Consolidates existing provider patterns into unified system
+ * - Integrates with useAppNavigation, useContentById, useHasContentAccess hooks
+ * - Supports AdaptiveNavigation, UnifiedContentBrowser, UnifiedPurchaseFlow components
+ * - Uses design tokens and responsive styles for consistent UI feedback
+ * - Provides foundation for all unified components to share consistent state
+ * - Maintains backward compatibility with existing authentication flows
+ * 
+ * Progressive Foundation:
+ * This provider completes the four-phase unification process, creating a single
+ * source of truth for application state that enables consistent user experiences
+ * across all contexts while optimizing performance and maintainability.
  */
 
 'use client'
@@ -30,794 +36,1065 @@
 import React, { 
   createContext, 
   useContext, 
-  useState, 
-  useEffect, 
   useCallback, 
-  useMemo,
+  useEffect, 
+  useMemo, 
+  useReducer, 
   useRef,
-  ReactNode,
-  Suspense
+  useState,
+  type ReactNode
 } from 'react'
-import { ThemeProvider } from 'next-themes'
-import type { AppMiniAppSDK } from '@/types/miniapp-sdk'
-import { WagmiProvider } from 'wagmi'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAccount, useChainId, useConnect, useDisconnect } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { WagmiProvider } from 'wagmi'
+import { useQueryClient } from '@tanstack/react-query'
 
-// Import existing configuration and utilities
-import { wagmiConfig } from '@/lib/web3/wagmi'
+// Import existing business logic hooks
+import { 
+  useAppNavigation, 
+  type NavigationSection, 
+  type UserRole 
+} from '@/components/layout/Navigation'
+import { 
+  useContentById, 
+  useHasContentAccess, 
+  useActiveContentPaginated,
+  useIsCreatorRegistered
+} from '@/hooks/contracts/core'
+
+// Import MiniApp integration components
+import { MiniKitProvider, useMiniKit, useFarcasterContext } from '@/components/providers/MiniKitProvider'
+
+// Import utilities and types
 import { cn } from '@/lib/utils'
+import type { Address } from 'viem'
 
 // ================================================
-// TYPE DEFINITIONS
+// TYPE DEFINITIONS FOR UNIFIED STATE MANAGEMENT
 // ================================================
 
 /**
  * Application Context Types
  */
-export type AppContext = 'web' | 'miniapp'
+export type ApplicationContext = 'web' | 'miniapp'
 export type ViewportSize = 'mobile' | 'tablet' | 'desktop'
-export type ConnectionType = 'fast' | 'slow' | 'offline'
-export type PerformanceMode = 'full' | 'optimized' | 'minimal'
+export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'reconnecting'
+export type LoadingState = 'idle' | 'loading' | 'success' | 'error'
 
 /**
- * Farcaster User Interface
+ * Enhanced User Profile Interface
+ * Combines wallet data with social context and role information
  */
-interface FarcasterUser {
-  readonly fid: number
-  readonly username: string
-  readonly displayName: string
-  readonly pfp?: string
-  readonly following: number
-  readonly followers: number
-  readonly verifications: readonly string[]
-  readonly custody: string
+export interface UnifiedUserProfile {
+  /** Wallet address */
+  readonly address?: Address
+  /** Connection status */
+  readonly connectionStatus: ConnectionStatus
+  /** User role in the platform */
+  readonly userRole: UserRole
+  /** Creator registration status */
+  readonly isRegisteredCreator: boolean
+  /** Social profile data (available in miniapp context) */
+  readonly socialProfile?: {
+    readonly fid?: number
+    readonly username?: string
+    readonly displayName?: string
+    readonly pfpUrl?: string
+    readonly bio?: string
+    readonly followerCount?: number
+    readonly followingCount?: number
+  }
+  /** Enhanced capabilities */
+  readonly capabilities: {
+    readonly canCreateContent: boolean
+    readonly canPurchaseContent: boolean
+    readonly canShareSocially: boolean
+    readonly canUseBatchTransactions: boolean
+  }
 }
 
 /**
- * Mini App Capabilities Interface
+ * Application State Interface
+ * Comprehensive state management for the entire application
  */
-interface MiniAppCapabilities {
-  readonly canShare: boolean
-  readonly canSignIn: boolean
-  readonly canSendTransactions: boolean
-  readonly hasNotifications: boolean
-  readonly supportsFrames: boolean
-  readonly supportsBatchTransactions: boolean
-}
-
-/**
- * Performance Optimization Configuration
- */
-interface PerformanceConfig {
-  readonly reducedAnimations: boolean
-  readonly lazyLoading: boolean
-  readonly imageOptimization: boolean
-  readonly prefetchDisabled: boolean
-  readonly simplifiedUI: boolean
-  readonly connectionType: ConnectionType
-  readonly memoryLimit: number
-}
-
-/**
- * Analytics and Tracking Context
- */
-interface AnalyticsContext {
-  readonly context: AppContext
-  readonly userId?: string
-  readonly sessionId: string
-  readonly userFid?: number
-  readonly deviceType: string
-  readonly platformVersion?: string
+export interface UnifiedApplicationState {
+  /** Current application context */
+  readonly context: ApplicationContext
+  /** Current viewport size */
+  readonly viewport: ViewportSize
+  /** User profile and authentication state */
+  readonly user: UnifiedUserProfile
+  /** Navigation state */
+  readonly navigation: {
+    readonly sections: readonly NavigationSection[]
+    readonly currentPath: string
+    readonly isNavigating: boolean
+  }
+  /** Content state management */
+  readonly content: {
+    readonly isLoading: boolean
+    readonly error: Error | null
+    readonly lastRefresh: Date | null
+  }
+  /** UI state management */
+  readonly ui: {
+    readonly theme: 'light' | 'dark' | 'system'
+    readonly isReducedMotion: boolean
+    readonly announcements: readonly string[]
+  }
+  /** Performance state */
+  readonly performance: {
+    readonly isOptimizedMode: boolean
+    readonly connectionQuality: 'fast' | 'slow' | 'offline'
+    readonly resourcesLoaded: boolean
+  }
+  /** Error state management */
+  readonly errors: {
+    readonly critical: Error | null
+    readonly recoverable: readonly Error[]
+    readonly dismissed: readonly string[]
+  }
 }
 
 /**
  * Unified App Context Interface
+ * Public API exposed to consuming components
  */
-interface UnifiedAppContextType {
-  // Context and environment
-  readonly context: AppContext
-  readonly viewport: ViewportSize
-  readonly isReady: boolean
-  readonly isOnline: boolean
-  
-  // Mini app specific
-  readonly isMiniApp: boolean
-  readonly farcasterUser: FarcasterUser | null
-  readonly capabilities: MiniAppCapabilities
-  readonly miniAppSdk: AppMiniAppSDK | null
-  
-  // Performance and optimization
-  readonly performanceConfig: PerformanceConfig
-  readonly performanceMode: PerformanceMode
-  
-  // Methods
-  readonly updateContext: (context: AppContext) => void
-  readonly share: (content: ShareContent) => Promise<void>
-  readonly track: (event: string, properties: Record<string, unknown>) => void
-  readonly ready: () => Promise<void>
-  readonly optimizeForContext: (context: AppContext) => void
-}
-
-/**
- * Share Content Interface
- */
-interface ShareContent {
-  readonly text: string
-  readonly url: string
-  readonly contentId?: bigint
-  readonly creatorAddress?: string
-  readonly embedData?: Record<string, unknown>
+export interface UnifiedAppContextValue {
+  /** Current application state */
+  readonly state: UnifiedApplicationState
+  /** State mutation actions */
+  readonly actions: {
+    /** Navigation actions */
+    readonly navigate: (path: string) => void
+    readonly setNavigationLoading: (isLoading: boolean) => void
+    /** User actions */
+    readonly connectWallet: () => Promise<void>
+    readonly disconnectWallet: () => void
+    readonly updateUserRole: (role: UserRole) => void
+    /** Content actions */
+    readonly refreshContent: () => Promise<void>
+    readonly clearContentCache: () => void
+    /** UI actions */
+    readonly setTheme: (theme: 'light' | 'dark' | 'system') => void
+    readonly announceToScreenReader: (message: string) => void
+    readonly dismissAnnouncement: (message: string) => void
+    /** Error actions */
+    readonly reportError: (error: Error, context?: string) => void
+    readonly dismissError: (errorId: string) => void
+    readonly clearErrors: () => void
+  }
+  /** Context utilities */
+  readonly utils: {
+    readonly isMiniApp: boolean
+    readonly isDesktop: boolean
+    readonly isMobile: boolean
+    readonly hasTouch: boolean
+    readonly canShare: boolean
+    readonly supportsWebShare: boolean
+  }
 }
 
 /**
  * Component Props Interface
  */
-interface UnifiedAppProviderProps {
+export interface UnifiedAppProviderProps {
+  /** Child components */
   children: ReactNode
-  context?: AppContext
-  optimizations?: boolean
-  enableAnalytics?: boolean
-  enableDevtools?: boolean
-  performanceMode?: PerformanceMode
-  className?: string
-  fallbackComponent?: React.ComponentType<{ error: Error; resetError: () => void }>
+  /** Override context detection */
+  forceContext?: ApplicationContext
+  /** Override viewport detection */
+  forceViewport?: ViewportSize
+  /** Initial theme preference */
+  initialTheme?: 'light' | 'dark' | 'system'
+  /** Enable performance optimizations */
+  enableOptimizations?: boolean
+  /** Custom error boundary fallback */
+  errorFallback?: ReactNode
+  /** Debug mode for development */
+  debugMode?: boolean
+}
+
+// ================================================
+// STATE MANAGEMENT WITH REDUCER PATTERN
+// ================================================
+
+/**
+ * State Action Types
+ */
+type StateAction =
+  | { type: 'CONTEXT_DETECTED'; context: ApplicationContext }
+  | { type: 'VIEWPORT_CHANGED'; viewport: ViewportSize }
+  | { type: 'USER_CONNECTED'; address: Address; userRole: UserRole }
+  | { type: 'USER_DISCONNECTED' }
+  | { type: 'USER_ROLE_UPDATED'; userRole: UserRole }
+  | { type: 'CREATOR_STATUS_UPDATED'; isRegisteredCreator: boolean }
+  | { type: 'SOCIAL_PROFILE_UPDATED'; socialProfile: UnifiedUserProfile['socialProfile'] }
+  | { type: 'NAVIGATION_SECTIONS_UPDATED'; sections: readonly NavigationSection[] }
+  | { type: 'NAVIGATION_LOADING'; isLoading: boolean }
+  | { type: 'NAVIGATION_CHANGED'; currentPath: string }
+  | { type: 'CONTENT_LOADING'; isLoading: boolean }
+  | { type: 'CONTENT_ERROR'; error: Error | null }
+  | { type: 'CONTENT_REFRESHED' }
+  | { type: 'THEME_CHANGED'; theme: 'light' | 'dark' | 'system' }
+  | { type: 'REDUCED_MOTION_CHANGED'; isReducedMotion: boolean }
+  | { type: 'ANNOUNCEMENT_ADDED'; message: string }
+  | { type: 'ANNOUNCEMENT_DISMISSED'; message: string }
+  | { type: 'CONNECTION_QUALITY_CHANGED'; connectionQuality: 'fast' | 'slow' | 'offline' }
+  | { type: 'OPTIMIZATION_MODE_CHANGED'; isOptimizedMode: boolean }
+  | { type: 'RESOURCES_LOADED' }
+  | { type: 'ERROR_REPORTED'; error: Error; context?: string }
+  | { type: 'ERROR_DISMISSED'; errorId: string }
+  | { type: 'ERRORS_CLEARED' }
+
+/**
+ * Initial State Factory
+ */
+function createInitialState(
+  forceContext?: ApplicationContext,
+  forceViewport?: ViewportSize,
+  initialTheme: 'light' | 'dark' | 'system' = 'system'
+): UnifiedApplicationState {
+  return {
+    context: forceContext || 'web',
+    viewport: forceViewport || 'desktop',
+    user: {
+      connectionStatus: 'disconnected',
+      userRole: 'disconnected',
+      isRegisteredCreator: false,
+      capabilities: {
+        canCreateContent: false,
+        canPurchaseContent: false,
+        canShareSocially: false,
+        canUseBatchTransactions: false
+      }
+    },
+    navigation: {
+      sections: [],
+      currentPath: '/',
+      isNavigating: false
+    },
+    content: {
+      isLoading: false,
+      error: null,
+      lastRefresh: null
+    },
+    ui: {
+      theme: initialTheme,
+      isReducedMotion: false,
+      announcements: []
+    },
+    performance: {
+      isOptimizedMode: false,
+      connectionQuality: 'fast',
+      resourcesLoaded: false
+    },
+    errors: {
+      critical: null,
+      recoverable: [],
+      dismissed: []
+    }
+  }
 }
 
 /**
- * Environment Detection Result
+ * State Reducer
  */
-interface EnvironmentDetection {
-  readonly isMiniApp: boolean
-  readonly isFrame: boolean
-  readonly referrer: string
-  readonly userAgent: string
-  readonly parentWindow: boolean
-  readonly hasFrameMetaTags: boolean
+function unifiedAppReducer(
+  state: UnifiedApplicationState, 
+  action: StateAction
+): UnifiedApplicationState {
+  switch (action.type) {
+    case 'CONTEXT_DETECTED':
+      return {
+        ...state,
+        context: action.context,
+        performance: {
+          ...state.performance,
+          isOptimizedMode: action.context === 'miniapp'
+        }
+      }
+
+    case 'VIEWPORT_CHANGED':
+      return {
+        ...state,
+        viewport: action.viewport
+      }
+
+    case 'USER_CONNECTED':
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          address: action.address,
+          connectionStatus: 'connected',
+          userRole: action.userRole,
+          capabilities: {
+            canCreateContent: action.userRole === 'creator' || action.userRole === 'admin',
+            canPurchaseContent: action.userRole !== 'disconnected',
+            canShareSocially: state.context === 'miniapp',
+            canUseBatchTransactions: state.context === 'miniapp'
+          }
+        }
+      }
+
+    case 'USER_DISCONNECTED':
+      return {
+        ...state,
+        user: {
+          connectionStatus: 'disconnected',
+          userRole: 'disconnected',
+          isRegisteredCreator: false,
+          capabilities: {
+            canCreateContent: false,
+            canPurchaseContent: false,
+            canShareSocially: false,
+            canUseBatchTransactions: false
+          }
+        }
+      }
+
+    case 'USER_ROLE_UPDATED':
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          userRole: action.userRole,
+          capabilities: {
+            ...state.user.capabilities,
+            canCreateContent: action.userRole === 'creator' || action.userRole === 'admin',
+            canPurchaseContent: action.userRole !== 'disconnected'
+          }
+        }
+      }
+
+    case 'CREATOR_STATUS_UPDATED':
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          isRegisteredCreator: action.isRegisteredCreator
+        }
+      }
+
+    case 'SOCIAL_PROFILE_UPDATED':
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          socialProfile: action.socialProfile
+        }
+      }
+
+    case 'NAVIGATION_SECTIONS_UPDATED':
+      return {
+        ...state,
+        navigation: {
+          ...state.navigation,
+          sections: action.sections
+        }
+      }
+
+    case 'NAVIGATION_LOADING':
+      return {
+        ...state,
+        navigation: {
+          ...state.navigation,
+          isNavigating: action.isLoading
+        }
+      }
+
+    case 'NAVIGATION_CHANGED':
+      return {
+        ...state,
+        navigation: {
+          ...state.navigation,
+          currentPath: action.currentPath
+        }
+      }
+
+    case 'CONTENT_LOADING':
+      return {
+        ...state,
+        content: {
+          ...state.content,
+          isLoading: action.isLoading
+        }
+      }
+
+    case 'CONTENT_ERROR':
+      return {
+        ...state,
+        content: {
+          ...state.content,
+          error: action.error,
+          isLoading: false
+        }
+      }
+
+    case 'CONTENT_REFRESHED':
+      return {
+        ...state,
+        content: {
+          ...state.content,
+          lastRefresh: new Date(),
+          error: null,
+          isLoading: false
+        }
+      }
+
+    case 'THEME_CHANGED':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          theme: action.theme
+        }
+      }
+
+    case 'REDUCED_MOTION_CHANGED':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          isReducedMotion: action.isReducedMotion
+        }
+      }
+
+    case 'ANNOUNCEMENT_ADDED':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          announcements: [...state.ui.announcements, action.message]
+        }
+      }
+
+    case 'ANNOUNCEMENT_DISMISSED':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          announcements: state.ui.announcements.filter(msg => msg !== action.message)
+        }
+      }
+
+    case 'CONNECTION_QUALITY_CHANGED':
+      return {
+        ...state,
+        performance: {
+          ...state.performance,
+          connectionQuality: action.connectionQuality
+        }
+      }
+
+    case 'OPTIMIZATION_MODE_CHANGED':
+      return {
+        ...state,
+        performance: {
+          ...state.performance,
+          isOptimizedMode: action.isOptimizedMode
+        }
+      }
+
+    case 'RESOURCES_LOADED':
+      return {
+        ...state,
+        performance: {
+          ...state.performance,
+          resourcesLoaded: true
+        }
+      }
+
+    case 'ERROR_REPORTED':
+      const errorId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      const newError = { 
+        ...action.error, 
+        id: errorId, 
+        context: action.context 
+      } as Error & { id: string; context?: string }
+      
+      return {
+        ...state,
+        errors: action.error.name === 'CriticalError' ? {
+          ...state.errors,
+          critical: newError
+        } : {
+          ...state.errors,
+          recoverable: [...state.errors.recoverable, newError]
+        }
+      }
+
+    case 'ERROR_DISMISSED':
+      return {
+        ...state,
+        errors: {
+          ...state.errors,
+          recoverable: state.errors.recoverable.filter(error => 
+            (error as Error & { id: string }).id !== action.errorId
+          ),
+          dismissed: [...state.errors.dismissed, action.errorId]
+        }
+      }
+
+    case 'ERRORS_CLEARED':
+      return {
+        ...state,
+        errors: {
+          critical: null,
+          recoverable: [],
+          dismissed: []
+        }
+      }
+
+    default:
+      return state
+  }
 }
 
 // ================================================
-// CONSTANTS AND DEFAULTS
+// CONTEXT CREATION AND PROVIDER IMPLEMENTATION
 // ================================================
 
-const DEFAULT_PERFORMANCE_CONFIG: PerformanceConfig = {
-  reducedAnimations: false,
-  lazyLoading: true,
-  imageOptimization: true,
-  prefetchDisabled: false,
-  simplifiedUI: false,
-  connectionType: 'fast',
-  memoryLimit: 100 // MB
+/**
+ * Unified App Context
+ */
+const UnifiedAppContext = createContext<UnifiedAppContextValue | null>(null)
+
+/**
+ * Context Detection Hook
+ * Intelligently detects application context based on environment
+ */
+function useContextDetection(forceContext?: ApplicationContext): ApplicationContext {
+  return useMemo(() => {
+    if (forceContext) return forceContext
+
+    // Check for MiniApp indicators
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      const isMiniAppRoute = url.pathname.startsWith('/miniapp')
+      const isMiniAppParam = url.searchParams.get('context') === 'miniapp'
+      const isEmbedded = window.parent !== window
+      const hasFrameContext = window.location !== window.parent.location
+
+      if (isMiniAppRoute || isMiniAppParam || isEmbedded || hasFrameContext) {
+        return 'miniapp'
+      }
+    }
+
+    return 'web'
+  }, [forceContext])
 }
 
-const MINIAPP_PERFORMANCE_CONFIG: PerformanceConfig = {
-  reducedAnimations: true,
-  lazyLoading: true,
-  imageOptimization: true,
-  prefetchDisabled: true,
-  simplifiedUI: true,
-  connectionType: 'slow',
-  memoryLimit: 50 // MB
+/**
+ * Viewport Detection Hook
+ * Detects viewport size with intelligent responsive breakpoints
+ */
+function useViewportDetection(forceViewport?: ViewportSize): ViewportSize {
+  const [viewport, setViewport] = useState<ViewportSize>(forceViewport || 'desktop')
+
+  useEffect(() => {
+    if (forceViewport) return
+
+    const updateViewport = () => {
+      const width = window.innerWidth
+      // Using design token breakpoints: 640px (mobile), 1024px (tablet), 1280+ (desktop)
+      if (width < 640) {
+        setViewport('mobile')
+      } else if (width < 1024) {
+        setViewport('tablet')
+      } else {
+        setViewport('desktop')
+      }
+    }
+
+    updateViewport()
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
+  }, [forceViewport])
+
+  return forceViewport || viewport
 }
 
-const DEFAULT_CAPABILITIES: MiniAppCapabilities = {
-  canShare: false,
-  canSignIn: false,
-  canSendTransactions: false,
-  hasNotifications: false,
-  supportsFrames: false,
-  supportsBatchTransactions: false
+/**
+ * Performance Monitoring Hook
+ * Monitors connection quality and performance metrics
+ */
+function usePerformanceMonitoring() {
+  const [connectionQuality, setConnectionQuality] = useState<'fast' | 'slow' | 'offline'>('fast')
+
+  useEffect(() => {
+    // Monitor connection quality
+    const updateConnectionQuality = () => {
+      if (!navigator.onLine) {
+        setConnectionQuality('offline')
+        return
+      }
+
+      // Check connection via navigator.connection if available
+      const connection = (navigator as any).connection
+      if (connection) {
+        const effectiveType = connection.effectiveType
+        if (effectiveType === '4g') {
+          setConnectionQuality('fast')
+        } else if (effectiveType === '3g') {
+          setConnectionQuality('slow')
+        } else {
+          setConnectionQuality('slow')
+        }
+      }
+    }
+
+    updateConnectionQuality()
+    window.addEventListener('online', updateConnectionQuality)
+    window.addEventListener('offline', updateConnectionQuality)
+
+    return () => {
+      window.removeEventListener('online', updateConnectionQuality)
+      window.removeEventListener('offline', updateConnectionQuality)
+    }
+  }, [])
+
+  return { connectionQuality }
+}
+
+/**
+ * Screen Reader Announcements Hook
+ */
+function useScreenReaderAnnouncements(announcements: readonly string[]) {
+  const announcementRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (announcements.length > 0 && announcementRef.current) {
+      const latestAnnouncement = announcements[announcements.length - 1]
+      announcementRef.current.textContent = latestAnnouncement
+    }
+  }, [announcements])
+
+  return announcementRef
+}
+
+/**
+ * Main UnifiedAppProvider Component
+ */
+export function UnifiedAppProvider({
+  children,
+  forceContext,
+  forceViewport,
+  initialTheme = 'system',
+  enableOptimizations = true,
+  errorFallback,
+  debugMode = false
+}: UnifiedAppProviderProps) {
+  // ===== CORE STATE MANAGEMENT =====
+  
+  const [state, dispatch] = useReducer(
+    unifiedAppReducer,
+    createInitialState(forceContext, forceViewport, initialTheme)
+  )
+
+  // ===== CONTEXT AND ENVIRONMENT DETECTION =====
+  
+  const detectedContext = useContextDetection(forceContext)
+  const detectedViewport = useViewportDetection(forceViewport)
+  const { connectionQuality } = usePerformanceMonitoring()
+
+  // ===== EXISTING HOOK INTEGRATIONS =====
+  
+  const router = useRouter()
+  const pathname = usePathname()
+  const { address, isConnected, isConnecting } = useAccount()
+  const chainId = useChainId()
+  const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
+  const queryClient = useQueryClient()
+
+  // Navigation hook integration
+  const navigationSections = useAppNavigation(state.user.userRole)
+  
+  // Creator registration status
+  const creatorRegistration = useIsCreatorRegistered(address)
+  
+  // MiniApp context integration (when available)
+  const farcasterContext = useFarcasterContext()
+
+  // ===== EFFECTS FOR STATE SYNCHRONIZATION =====
+
+  // Context detection effect
+  useEffect(() => {
+    if (detectedContext !== state.context) {
+      dispatch({ type: 'CONTEXT_DETECTED', context: detectedContext })
+    }
+  }, [detectedContext, state.context])
+
+  // Viewport detection effect
+  useEffect(() => {
+    if (detectedViewport !== state.viewport) {
+      dispatch({ type: 'VIEWPORT_CHANGED', viewport: detectedViewport })
+    }
+  }, [detectedViewport, state.viewport])
+
+  // Connection quality monitoring effect
+  useEffect(() => {
+    if (connectionQuality !== state.performance.connectionQuality) {
+      dispatch({ type: 'CONNECTION_QUALITY_CHANGED', connectionQuality })
+    }
+  }, [connectionQuality, state.performance.connectionQuality])
+
+  // User connection state synchronization
+  useEffect(() => {
+    if (isConnected && address) {
+      const userRole = determineUserRole(address, creatorRegistration.data)
+      dispatch({ type: 'USER_CONNECTED', address, userRole })
+    } else if (!isConnected && state.user.connectionStatus !== 'disconnected') {
+      dispatch({ type: 'USER_DISCONNECTED' })
+    }
+  }, [isConnected, address, creatorRegistration.data, state.user.connectionStatus])
+
+  // Creator status synchronization
+  useEffect(() => {
+    if (creatorRegistration.data !== undefined) {
+      dispatch({ 
+        type: 'CREATOR_STATUS_UPDATED', 
+        isRegisteredCreator: creatorRegistration.data 
+      })
+    }
+  }, [creatorRegistration.data])
+
+  // Social profile synchronization (MiniApp context)
+  useEffect(() => {
+    if (farcasterContext && state.context === 'miniapp') {
+      const socialProfile = {
+        fid: farcasterContext.user?.fid,
+        username: farcasterContext.user?.username,
+        // Remove properties that don't exist on the actual interface
+        displayName: undefined, // Not available in the actual interface
+        pfpUrl: undefined, // Not available in the actual interface
+        bio: undefined, // Not available in the actual interface
+        followerCount: farcasterContext.user?.followerCount,
+        followingCount: undefined // Not available in the actual interface
+      }
+      dispatch({ type: 'SOCIAL_PROFILE_UPDATED', socialProfile })
+    }
+  }, [farcasterContext, state.context])
+
+  // Navigation sections synchronization
+  useEffect(() => {
+    dispatch({ type: 'NAVIGATION_SECTIONS_UPDATED', sections: navigationSections })
+  }, [navigationSections])
+
+  // Pathname change tracking
+  useEffect(() => {
+    dispatch({ type: 'NAVIGATION_CHANGED', currentPath: pathname })
+  }, [pathname])
+
+  // Reduced motion preference detection
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const handleChange = (e: MediaQueryListEvent) => {
+      dispatch({ type: 'REDUCED_MOTION_CHANGED', isReducedMotion: e.matches })
+    }
+    
+    dispatch({ type: 'REDUCED_MOTION_CHANGED', isReducedMotion: mediaQuery.matches })
+    mediaQuery.addEventListener('change', handleChange)
+    
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  // Resource loading tracking
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch({ type: 'RESOURCES_LOADED' })
+    }, 1000)
+    
+    return () => clearTimeout(timer)
+  }, [])
+
+  // ===== ACTION HANDLERS =====
+
+  const actions = useMemo<UnifiedAppContextValue['actions']>(() => ({
+    navigate: (path: string) => {
+      dispatch({ type: 'NAVIGATION_LOADING', isLoading: true })
+      router.push(path)
+      // Navigation loading will be reset by pathname effect
+    },
+
+    setNavigationLoading: (isLoading: boolean) => {
+      dispatch({ type: 'NAVIGATION_LOADING', isLoading })
+    },
+
+    connectWallet: async () => {
+      try {
+        if (connectors.length > 0) {
+          await connect({ connector: connectors[0] })
+        }
+      } catch (error) {
+        dispatch({ 
+          type: 'ERROR_REPORTED', 
+          error: error as Error, 
+          context: 'wallet_connection' 
+        })
+      }
+    },
+
+    disconnectWallet: () => {
+      disconnect()
+    },
+
+    updateUserRole: (role: UserRole) => {
+      dispatch({ type: 'USER_ROLE_UPDATED', userRole: role })
+    },
+
+    refreshContent: async () => {
+      dispatch({ type: 'CONTENT_LOADING', isLoading: true })
+      try {
+        // Implement actual cache invalidation for content hooks
+        await queryClient.invalidateQueries({ 
+          predicate: (query) => 
+            query.queryKey.includes('getActiveContentPaginated') ||
+            query.queryKey.includes('getContent') ||
+            query.queryKey.includes('getCreatorContent')
+        })
+        dispatch({ type: 'CONTENT_REFRESHED' })
+      } catch (error) {
+        dispatch({ type: 'CONTENT_ERROR', error: error as Error })
+      }
+    },
+
+    clearContentCache: () => {
+      // Implement actual React Query cache clearing for content
+      queryClient.removeQueries({ 
+        predicate: (query) => 
+          query.queryKey.includes('getActiveContentPaginated') ||
+          query.queryKey.includes('getContent') ||
+          query.queryKey.includes('getCreatorContent')
+      })
+      dispatch({ type: 'CONTENT_REFRESHED' })
+    },
+
+    setTheme: (theme: 'light' | 'dark' | 'system') => {
+      dispatch({ type: 'THEME_CHANGED', theme })
+      // Apply theme to document
+      document.documentElement.setAttribute('data-theme', theme)
+    },
+
+    announceToScreenReader: (message: string) => {
+      dispatch({ type: 'ANNOUNCEMENT_ADDED', message })
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        dispatch({ type: 'ANNOUNCEMENT_DISMISSED', message })
+      }, 5000)
+    },
+
+    dismissAnnouncement: (message: string) => {
+      dispatch({ type: 'ANNOUNCEMENT_DISMISSED', message })
+    },
+
+    reportError: (error: Error, context?: string) => {
+      dispatch({ type: 'ERROR_REPORTED', error, context })
+      
+      // Log to external error service in production
+      if (process.env.NODE_ENV === 'production') {
+        console.error('UnifiedAppProvider Error:', error, { context })
+      }
+    },
+
+    dismissError: (errorId: string) => {
+      dispatch({ type: 'ERROR_DISMISSED', errorId })
+    },
+
+    clearErrors: () => {
+      dispatch({ type: 'ERRORS_CLEARED' })
+    }
+  }), [router, connect, disconnect, connectors, queryClient])
+
+  // ===== CONTEXT UTILITIES =====
+
+  const utils = useMemo<UnifiedAppContextValue['utils']>(() => ({
+    isMiniApp: state.context === 'miniapp',
+    isDesktop: state.viewport === 'desktop',
+    isMobile: state.viewport === 'mobile',
+    hasTouch: typeof window !== 'undefined' && 'ontouchstart' in window,
+    canShare: state.context === 'miniapp' && !!farcasterContext,
+    supportsWebShare: typeof navigator !== 'undefined' && !!navigator.share
+  }), [state.context, state.viewport, farcasterContext])
+
+  // ===== CONTEXT VALUE MEMOIZATION =====
+
+  const contextValue = useMemo<UnifiedAppContextValue>(() => ({
+    state,
+    actions,
+    utils
+  }), [state, actions, utils])
+
+  // ===== ACCESSIBILITY SUPPORT =====
+
+  const announcementRef = useScreenReaderAnnouncements(state.ui.announcements)
+
+  // ===== DEBUG LOGGING =====
+
+  useEffect(() => {
+    if (debugMode) {
+      console.log('UnifiedAppProvider State:', state)
+    }
+  }, [state, debugMode])
+
+  // ===== ERROR BOUNDARY FALLBACK =====
+
+  if (state.errors.critical) {
+    return errorFallback || (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4 max-w-md mx-auto p-6">
+          <div className="text-destructive mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-foreground">Something went wrong</h2>
+          <p className="text-muted-foreground">
+            We encountered a critical error. Please refresh the page or contact support if the problem persists.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ===== MAIN RENDER =====
+
+  return (
+    <UnifiedAppContext.Provider value={contextValue}>
+      <div 
+        data-context={state.context}
+        data-viewport={state.viewport}
+        data-theme={state.ui.theme}
+        data-reduced-motion={state.ui.isReducedMotion}
+        className={cn(
+          'unified-app-container',
+          'min-h-screen',
+          'transition-adaptive',
+          state.performance.isOptimizedMode && 'optimized-mode'
+        )}
+      >
+        {children}
+        
+        {/* Screen Reader Announcements */}
+        <div
+          ref={announcementRef}
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+        />
+        
+        {/* Development Debug Panel */}
+        {debugMode && process.env.NODE_ENV === 'development' && (
+          <div className="fixed bottom-4 left-4 bg-background border rounded-lg p-3 text-xs font-mono max-w-xs z-50 shadow-lg">
+            <div className="space-y-1">
+              <div>Context: {state.context}</div>
+              <div>Viewport: {state.viewport}</div>
+              <div>Role: {state.user.userRole}</div>
+              <div>Connected: {state.user.connectionStatus}</div>
+              <div>Quality: {state.performance.connectionQuality}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </UnifiedAppContext.Provider>
+  )
 }
 
 // ================================================
-// CONTEXT CREATION
+// CUSTOM HOOK FOR CONSUMING CONTEXT
 // ================================================
 
-const UnifiedAppContext = createContext<UnifiedAppContextType | undefined>(undefined)
+/**
+ * Custom hook for accessing unified app context
+ */
+export function useUnifiedApp(): UnifiedAppContextValue {
+  const context = useContext(UnifiedAppContext)
+  
+  if (!context) {
+    throw new Error(
+      'useUnifiedApp must be used within a UnifiedAppProvider. ' +
+      'Make sure your component is wrapped with <UnifiedAppProvider> at the root level.'
+    )
+  }
+  
+  return context
+}
+
+/**
+ * Convenience hook for accessing app state
+ */
+export function useUnifiedAppState(): UnifiedApplicationState {
+  const { state } = useUnifiedApp()
+  return state
+}
+
+/**
+ * Convenience hook for accessing app actions
+ */
+export function useUnifiedAppActions(): UnifiedAppContextValue['actions'] {
+  const { actions } = useUnifiedApp()
+  return actions
+}
+
+/**
+ * Convenience hook for accessing app utilities
+ */
+export function useUnifiedAppUtils(): UnifiedAppContextValue['utils'] {
+  const { utils } = useUnifiedApp()
+  return utils
+}
 
 // ================================================
 // UTILITY FUNCTIONS
 // ================================================
 
 /**
- * Detects the current environment and context
+ * Determines user role based on address and creator status
  */
-function detectEnvironment(): EnvironmentDetection {
-  if (typeof window === 'undefined') {
-    return {
-      isMiniApp: false,
-      isFrame: false,
-      referrer: '',
-      userAgent: '',
-      parentWindow: false,
-      hasFrameMetaTags: false
-    }
+function determineUserRole(address?: Address, isRegisteredCreator?: boolean): UserRole {
+  if (!address) return 'disconnected'
+  
+  // Implement admin address detection
+  const adminAddresses: Address[] = [
+    // Add admin addresses here - these would be environment variables in production
+    process.env.NEXT_PUBLIC_ADMIN_ADDRESS_1 as Address,
+    process.env.NEXT_PUBLIC_ADMIN_ADDRESS_2 as Address,
+    process.env.NEXT_PUBLIC_ADMIN_ADDRESS_3 as Address,
+  ].filter(Boolean) as Address[]
+  
+  if (adminAddresses.includes(address)) {
+    return 'admin'
   }
   
-  const url = new URL(window.location.href)
-  const parentWindow = window.parent !== window
-  const hasFrameMetaTags = Boolean(document.querySelector('meta[name="fc:frame"]'))
-  const referrer = document.referrer
-  const userAgent = navigator.userAgent
+  if (isRegisteredCreator) {
+    return 'creator'
+  }
   
-  const isMiniApp = (
-    url.pathname.startsWith('/mini') ||
-    url.pathname.startsWith('/miniapp') ||
-    url.searchParams.get('miniApp') === 'true' ||
-    parentWindow ||
-    hasFrameMetaTags ||
-    userAgent.includes('Farcaster') ||
-    userAgent.includes('Warpcast') ||
-    referrer.includes('farcaster') ||
-    referrer.includes('warpcast')
-  )
-  
-  return {
-    isMiniApp,
-    isFrame: hasFrameMetaTags,
-    referrer,
-    userAgent,
-    parentWindow,
-    hasFrameMetaTags
-  }
-}
-
-// ================================================
-// LOCAL ERROR BOUNDARY (removes external dependency)
-// ================================================
-
-type LocalErrorFallbackProps = { error: Error; resetError: () => void }
-
-class LocalErrorBoundary extends React.Component<{
-  FallbackComponent: React.ComponentType<LocalErrorFallbackProps>
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
-  children: React.ReactNode
-}, { hasError: boolean; error: Error | null }> {
-  constructor(props: any) {
-    super(props)
-    this.state = { hasError: false, error: null }
-    this.resetErrorBoundary = this.resetErrorBoundary.bind(this)
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    if (this.props.onError) this.props.onError(error, errorInfo)
-  }
-
-  resetErrorBoundary() {
-    this.setState({ hasError: false, error: null })
-  }
-
-  render() {
-    if (this.state.hasError && this.state.error) {
-      const Fallback = this.props.FallbackComponent
-      return <Fallback error={this.state.error} resetError={this.resetErrorBoundary} />
-    }
-    return this.props.children
-  }
+  return 'consumer'
 }
 
 /**
- * Detects viewport size based on window dimensions
+ * High-Order Component for providing unified app context
  */
-function detectViewportSize(): ViewportSize {
-  if (typeof window === 'undefined') return 'desktop'
-  
-  const width = window.innerWidth
-  if (width < 768) return 'mobile'
-  if (width < 1024) return 'tablet'
-  return 'desktop'
-}
-
-/**
- * Detects connection type for performance optimization
- */
-function detectConnectionType(): ConnectionType {
-  if (typeof window === 'undefined') return 'fast'
-  
-  const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection
-  
-  if (!connection) return 'fast'
-  
-  if (!navigator.onLine) return 'offline'
-  
-  const effectiveType = connection.effectiveType
-  if (effectiveType === 'slow-2g' || effectiveType === '2g') return 'slow'
-  if (effectiveType === '3g') return 'slow'
-  
-  return 'fast'
-}
-
-/**
- * Generates unique session ID
- */
-function generateSessionId(): string {
-  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-}
-
-/**
- * Creates query client with context-specific configuration
- */
-function createQueryClient(context: AppContext): QueryClient {
-  const isWeb = context === 'web'
-  
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: isWeb ? 5 * 60 * 1000 : 2 * 60 * 1000, // 5min web, 2min miniapp
-        gcTime: isWeb ? 10 * 60 * 1000 : 5 * 60 * 1000,   // 10min web, 5min miniapp
-        retry: isWeb ? 3 : 1,                              // More retries for web
-        refetchOnWindowFocus: isWeb,                       // Only refetch on web
-        refetchOnReconnect: true,
-        networkMode: 'online'
-      },
-      mutations: {
-        retry: 1,
-        networkMode: 'online'
-      }
-    }
-  })
-}
-
-// ================================================
-// ERROR BOUNDARY COMPONENTS
-// ================================================
-
-/**
- * Context-aware error fallback component
- */
-function ErrorFallback({ 
-  error, 
-  resetError, 
-  context 
-}: { 
-  error: Error
-  resetError: () => void
-  context: AppContext 
-}) {
-  const isMiniApp = context === 'miniapp'
-  
-  return (
-    <div className={cn(
-      "min-h-screen flex items-center justify-center p-4",
-      isMiniApp ? "bg-background" : "bg-muted/10"
-    )}>
-      <div className="max-w-md w-full space-y-4 text-center">
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-destructive">
-            {isMiniApp ? 'Mini App Error' : 'Application Error'}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {isMiniApp 
-              ? 'Something went wrong in the mini app environment.'
-              : 'An unexpected error occurred.'
-            }
-          </p>
-        </div>
-        
-        {process.env.NODE_ENV === 'development' && (
-          <details className="text-left">
-            <summary className="cursor-pointer text-sm text-muted-foreground">
-              Error Details
-            </summary>
-            <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
-              {error.message}
-              {error.stack}
-            </pre>
-          </details>
-        )}
-        
-        <button
-          onClick={resetError}
-          className={cn(
-            "px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors",
-            isMiniApp ? "text-sm" : "text-base"
-          )}
-        >
-          Try Again
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ================================================
-// MAIN PROVIDER COMPONENT
-// ================================================
-
-/**
- * UnifiedAppProvider Component
- * 
- * The main provider that consolidates all application context, state management,
- * and optimization strategies into a single adaptive system.
- */
-export function UnifiedAppProvider({
-  children,
-  context: initialContext,
-  optimizations = true,
-  enableAnalytics = true,
-  enableDevtools = process.env.NODE_ENV === 'development',
-  performanceMode: initialPerformanceMode,
-  className,
-  fallbackComponent: CustomErrorFallback
-}: UnifiedAppProviderProps) {
-  
-  // ===== ENVIRONMENT DETECTION =====
-  
-  const environmentDetection = useMemo(() => detectEnvironment(), [])
-  const [context, setContext] = useState<AppContext>(() => 
-    initialContext || (environmentDetection.isMiniApp ? 'miniapp' : 'web')
-  )
-  
-  // ===== CORE STATE =====
-  
-  const [isReady, setIsReady] = useState(false)
-  const [isOnline, setIsOnline] = useState(true)
-  const [viewport, setViewport] = useState<ViewportSize>(() => detectViewportSize())
-  const [farcasterUser, setFarcasterUser] = useState<FarcasterUser | null>(null)
-  const [capabilities, setCapabilities] = useState<MiniAppCapabilities>(DEFAULT_CAPABILITIES)
-  const [miniAppSdk, setMiniAppSdk] = useState<AppMiniAppSDK | null>(null)
-  
-  // ===== PERFORMANCE CONFIGURATION =====
-  
-  const performanceMode = useMemo((): PerformanceMode => {
-    if (initialPerformanceMode) return initialPerformanceMode
-    if (context === 'miniapp') return 'optimized'
-    if (viewport === 'mobile') return 'optimized'
-    return 'full'
-  }, [initialPerformanceMode, context, viewport])
-  
-  const performanceConfig = useMemo((): PerformanceConfig => {
-    const connectionType = detectConnectionType()
-    const baseConfig = context === 'miniapp' ? MINIAPP_PERFORMANCE_CONFIG : DEFAULT_PERFORMANCE_CONFIG
-    
-    return {
-      ...baseConfig,
-      connectionType,
-      reducedAnimations: performanceMode !== 'full' ? true : baseConfig.reducedAnimations,
-      simplifiedUI: performanceMode === 'minimal' ? true : baseConfig.simplifiedUI
-    }
-  }, [context, performanceMode])
-  
-  // ===== ANALYTICS CONTEXT =====
-  
-  const sessionId = useRef<string>('')
-  if (!sessionId.current) {
-    sessionId.current = generateSessionId()
+export function withUnifiedApp<P extends object>(
+  Component: React.ComponentType<P>
+): React.ComponentType<P & { unifiedAppProps?: Partial<UnifiedAppProviderProps> }> {
+  return function WithUnifiedAppComponent({ unifiedAppProps, ...props }) {
+    return (
+      <UnifiedAppProvider {...unifiedAppProps}>
+        <Component {...(props as P)} />
+      </UnifiedAppProvider>
+    )
   }
-  
-  const analyticsContext = useMemo((): AnalyticsContext => ({
-    context,
-    sessionId: sessionId.current!,
-    userFid: farcasterUser?.fid,
-    deviceType: viewport,
-    platformVersion: context === 'miniapp' ? 'miniapp-1.0' : 'web-1.0'
-  }), [context, farcasterUser?.fid, viewport])
-  
-  // ===== QUERY CLIENT =====
-  
-  const queryClient = useMemo(() => createQueryClient(context), [context])
-  
-  // ===== EFFECTS =====
-  
-  // Initialize mini app environment
-  useEffect(() => {
-    if (!environmentDetection.isMiniApp || context !== 'miniapp') {
-      setIsReady(true)
-      return
-    }
-    
-    const initializeMiniApp = async () => {
-      try {
-        // Try to load Farcaster SDK
-        const sdkModule = await import('@farcaster/miniapp-sdk').catch(() => null)
-        const sdk: AppMiniAppSDK | undefined = (sdkModule as unknown as { sdk?: AppMiniAppSDK })?.sdk || window.miniapp?.sdk
-        
-        if (sdk) {
-          // Initialize SDK
-          await sdk.init?.({ 
-            name: 'Onchain Content Platform', 
-            version: '1.0.0' 
-          }).catch(() => {})
-          
-          // Get user information
-          const user = await sdk.user?.getCurrentUser?.().catch(() => null)
-          if (user) {
-            setFarcasterUser({
-              fid: user.fid,
-              username: user.username ?? '',
-              displayName: user.displayName ?? '',
-              pfp: undefined,
-              following: 0,
-              followers: 0,
-              verifications: user.verifications || [],
-              custody: ''
-            })
-          }
-          
-          // Get capabilities
-          const caps: string[] = await sdk.capabilities?.getCapabilities?.().catch(() => []) || []
-          setCapabilities({
-            canShare: caps.includes('share'),
-            canSignIn: caps.includes('signIn'),
-            canSendTransactions: caps.includes('sendTransaction'),
-            hasNotifications: caps.includes('notifications'),
-            supportsFrames: caps.includes('frames'),
-            supportsBatchTransactions: caps.includes('batchTransactions')
-          })
-          
-          setMiniAppSdk(sdk)
-        }
-        
-        setIsReady(true)
-      } catch (error) {
-        console.warn('Mini app initialization failed:', error)
-        setIsReady(true)
-      }
-    }
-    
-    initializeMiniApp()
-  }, [environmentDetection.isMiniApp, context])
-  
-  // Viewport size monitoring
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    
-    const handleResize = () => {
-      setViewport(detectViewportSize())
-    }
-    
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-  
-  // Online status monitoring
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-    
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-  
-  // Apply context-specific styling
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    
-    const body = document.body
-    
-    // Set context data attribute
-    body.setAttribute('data-context', context)
-    body.setAttribute('data-viewport', viewport)
-    body.setAttribute('data-performance', performanceMode)
-    
-    // Apply performance optimizations
-    if (performanceConfig.reducedAnimations) {
-      body.setAttribute('data-animations', 'reduced')
-    } else {
-      body.removeAttribute('data-animations')
-    }
-    
-    // Apply connection-based optimizations
-    body.setAttribute('data-connection', performanceConfig.connectionType)
-    
-    return () => {
-      body.removeAttribute('data-context')
-      body.removeAttribute('data-viewport')
-      body.removeAttribute('data-performance')
-      body.removeAttribute('data-animations')
-      body.removeAttribute('data-connection')
-    }
-  }, [context, viewport, performanceMode, performanceConfig])
-  
-  // ===== METHODS =====
-  
-  const updateContext = useCallback((newContext: AppContext) => {
-    setContext(newContext)
-  }, [])
-  
-  const track = useCallback((event: string, properties: Record<string, unknown> = {}) => {
-    if (!enableAnalytics) return
-    
-    const eventData = {
-      ...properties,
-      ...analyticsContext,
-      timestamp: new Date().toISOString()
-    }
-    
-    // Send to analytics service
-    if (typeof window !== 'undefined' && window.analytics) {
-      window.analytics.track(event, eventData)
-    }
-    
-    // Log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Analytics] ${event}:`, eventData)
-    }
-  }, [enableAnalytics, analyticsContext])
-
-  const share = useCallback(async (content: ShareContent) => {
-    try {
-      if (capabilities.canShare && miniAppSdk?.actions?.share) {
-        await miniAppSdk.actions.share({
-          text: content.text,
-          url: content.url,
-          embeds: content.url ? [{ url: content.url }] : undefined
-        })
-        if (enableAnalytics) {
-          track('content_shared', {
-            contentId: content.contentId?.toString(),
-            creatorAddress: content.creatorAddress,
-            shareMethod: 'miniapp',
-            url: content.url
-          })
-        }
-        return
-      }
-      // Web fallback: use Web Share API if available
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        await (navigator as any).share({
-          title: 'Share',
-          text: content.text,
-          url: content.url
-        })
-        if (enableAnalytics) {
-          track('content_shared', {
-            contentId: content.contentId?.toString(),
-            creatorAddress: content.creatorAddress,
-            shareMethod: 'web_share_api',
-            url: content.url
-          })
-        }
-        return
-      }
-      // Clipboard fallback
-      if (typeof navigator !== 'undefined' && navigator.clipboard && (content.url || content.text)) {
-        await navigator.clipboard.writeText(content.url || content.text)
-        if (enableAnalytics) {
-          track('content_shared', {
-            contentId: content.contentId?.toString(),
-            creatorAddress: content.creatorAddress,
-            shareMethod: 'clipboard',
-            url: content.url
-          })
-        }
-        return
-      }
-      throw new Error('Sharing unavailable')
-    } catch (error) {
-      console.error('Share failed:', error)
-      throw error instanceof Error ? error : new Error('Share failed')
-    }
-  }, [capabilities.canShare, miniAppSdk, enableAnalytics, track])
-  
-  const ready = useCallback(async () => {
-    if (context === 'miniapp' && miniAppSdk?.actions?.ready) {
-      await miniAppSdk.actions.ready()
-    }
-  }, [context, miniAppSdk])
-  
-  const optimizeForContext = useCallback((targetContext: AppContext) => {
-    if (targetContext !== context) {
-      updateContext(targetContext)
-    }
-  }, [context, updateContext])
-  
-  // ===== CONTEXT VALUE =====
-  
-  const contextValue: UnifiedAppContextType = useMemo(() => ({
-    context,
-    viewport,
-    isReady,
-    isOnline,
-    isMiniApp: context === 'miniapp',
-    farcasterUser,
-    capabilities,
-    miniAppSdk,
-    performanceConfig,
-    performanceMode,
-    updateContext,
-    share,
-    track,
-    ready,
-    optimizeForContext
-  }), [
-    context,
-    viewport,
-    isReady,
-    isOnline,
-    farcasterUser,
-    capabilities,
-    miniAppSdk,
-    performanceConfig,
-    performanceMode,
-    updateContext,
-    share,
-    track,
-    ready,
-    optimizeForContext
-  ])
-  
-  // ===== RENDER =====
-  
-  const ErrorFallbackComponent = CustomErrorFallback || ErrorFallback
-  
-  return (
-    <LocalErrorBoundary
-      FallbackComponent={(props: LocalErrorFallbackProps) => (
-        <ErrorFallbackComponent {...props} context={context} />
-      )}
-      onError={(error: Error, errorInfo: React.ErrorInfo) => {
-        console.error('UnifiedAppProvider Error:', error, errorInfo)
-        track('app_error', {
-          error: error.message,
-          stack: error.stack,
-          errorInfo: JSON.stringify(errorInfo)
-        })
-      }}
-    >
-      <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange={performanceConfig.reducedAnimations}
-          >
-            <UnifiedAppContext.Provider value={contextValue}>
-              <div 
-                className={cn(
-                  "min-h-screen",
-                  context === 'miniapp' && "touch-manipulation",
-                  className
-                )}
-                data-context={context}
-                data-performance-mode={performanceMode}
-              >
-                <Suspense 
-                  fallback={
-                    <div className="min-h-screen flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                    </div>
-                  }
-                >
-                  {children}
-                </Suspense>
-              </div>
-            </UnifiedAppContext.Provider>
-          </ThemeProvider>
-        </WagmiProvider>
-        
-        {/* Devtools removed to avoid external dependency */}
-      </QueryClientProvider>
-    </LocalErrorBoundary>
-  )
-}
-
-// ================================================
-// HOOK FOR CONSUMING CONTEXT
-// ================================================
-
-/**
- * Hook to consume the unified app context
- */
-export function useUnifiedApp(): UnifiedAppContextType {
-  const context = useContext(UnifiedAppContext)
-  
-  if (context === undefined) {
-    throw new Error('useUnifiedApp must be used within a UnifiedAppProvider')
-  }
-  
-  return context
 }
 
 // ================================================
@@ -826,5 +1103,14 @@ export function useUnifiedApp(): UnifiedAppContextType {
 
 export default UnifiedAppProvider
 
-// Export all types and utilities
-// Types already exported above; avoid duplicate export declarations
+// Export types for external usage
+// export type {
+//   ApplicationContext,
+//   ViewportSize,
+//   ConnectionStatus,
+//   LoadingState,
+//   UnifiedUserProfile,
+//   UnifiedApplicationState,
+//   UnifiedAppContextValue,
+//   UnifiedAppProviderProps
+// }

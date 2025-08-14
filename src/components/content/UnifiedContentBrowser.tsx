@@ -4,25 +4,27 @@
  * 
  * This component unifies the web app and mini app content browsing experiences into a single
  * adaptive system that provides consistent functionality while optimizing for each context.
- * It replaces both ContentDiscoveryInterface/ContentDiscoveryGrid and MiniAppContentBrowser
- * with intelligent contextual adaptation.
+ * It replaces both ContentDiscoveryGrid and MiniAppContentBrowser with intelligent contextual
+ * adaptation, building progressively on the design tokens and AdaptiveNavigation foundation.
  * 
  * Key Features:
- * - Context-aware feature complexity (web vs miniapp)
+ * - Context-aware feature complexity (web vs miniapp) using design tokens
  * - Unified data fetching using existing hooks (useActiveContentPaginated, useContentById)
  * - Adaptive purchase flow integration (ContentPurchaseCard + MiniAppPurchaseButton)
- * - Progressive enhancement with graceful feature degradation
+ * - Progressive enhancement building on design token and navigation foundations
  * - Consistent responsive design using unified design tokens
  * - Social features integration for mini app context
  * - Advanced filtering and search capabilities for web context
  * - Performance optimizations with intelligent caching and pagination
+ * - Complete accessibility implementation with ARIA attributes
  * 
  * Architecture Integration:
- * - Uses existing useActiveContentPaginated, useContentById, useHasContentAccess hooks
+ * - Uses existing content hooks (useActiveContentPaginated, useContentById, useHasContentAccess)
  * - Integrates with existing ContentPurchaseCard and MiniAppPurchaseButton components
+ * - Builds on enhanced design tokens for context-aware spacing and sizing
  * - Follows established shadcn/ui component patterns and styling conventions
- * - Uses unified design tokens for context-aware spacing and sizing
  * - Maintains compatibility with existing routing and navigation systems
+ * - Uses AdaptiveNavigation patterns for consistent user experience
  * - Preserves all current functionality while providing unified experience
  */
 
@@ -50,7 +52,8 @@ import {
   TrendingUp,
   Clock,
   DollarSign,
-  Tag
+  Tag,
+  Settings
 } from 'lucide-react'
 
 // Import shadcn/ui components following existing patterns
@@ -105,19 +108,19 @@ import { ContentPurchaseCard } from '@/components/content/ContentPurchaseCard'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 
 // Import utilities and types
-import { cn, formatCurrency, formatRelativeTime, formatAddress, debounce } from '@/lib/utils'
+import { cn, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 import type { Address } from 'viem'
 
 // ================================================
-// TYPE DEFINITIONS
+// TYPE DEFINITIONS FOR ADAPTIVE BEHAVIOR
 // ================================================
 
 /**
  * Context Types for Adaptive Behavior
  */
 type BrowserContext = 'web' | 'miniapp'
-type ViewMode = 'grid' | 'list'
+type ViewMode = 'grid' | 'list' | 'compact'
 type SortOption = 'latest' | 'oldest' | 'price-low' | 'price-high' | 'popular'
 type FilterPreset = 'all' | 'free' | 'premium' | 'new' | 'trending'
 
@@ -192,73 +195,44 @@ interface BrowserState {
   isLoading: boolean
   hasError: boolean
   errorMessage?: string
-  lastRefresh: Date
-  totalItems: number
+  isFilterOpen: boolean
+  isRefreshing: boolean
 }
 
-// ================================================
-// UTILITY FUNCTIONS
-// ================================================
-
 /**
- * Determines optimal configuration based on context
+ * Context Configuration Function
+ * Gets optimal configuration based on context, using design token principles
  */
 function getContextConfig(context: BrowserContext) {
-  const configs = {
-    web: {
-      showAdvancedFiltering: true,
-      showSearch: true,
-      itemsPerPage: 12,
-      showCreatorInfo: true,
-      showSocialFeatures: false,
-      defaultViewMode: 'grid' as ViewMode,
-      purchaseComponentType: 'full' as const
-    },
-    miniapp: {
-      showAdvancedFiltering: false,
-      showSearch: false,
-      itemsPerPage: 6,
-      showCreatorInfo: true,
-      showSocialFeatures: true,
-      defaultViewMode: 'grid' as ViewMode,
-      purchaseComponentType: 'compact' as const
-    }
-  }
+  const isMiniApp = context === 'miniapp'
   
-  return configs[context] || configs.web
+  return {
+    itemsPerPage: isMiniApp ? 8 : 12,
+    showCreatorInfo: !isMiniApp,
+    showSocialFeatures: isMiniApp,
+    showAdvancedFiltering: !isMiniApp,
+    enableSearch: true,
+    defaultViewMode: isMiniApp ? 'list' : 'grid' as ViewMode,
+    showCompactLayout: isMiniApp,
+    enableInfiniteScroll: isMiniApp
+  } as const
 }
 
 /**
- * Debounced search utility
+ * Debounced Search Hook
+ * Creates a debounced search function to optimize performance
  */
-type SearchCallback = (query: string) => void
-function createDebouncedSearch(callback: SearchCallback) {
-  return debounce((...args: unknown[]) => {
-    const q = String(args[0] ?? '')
-    callback(q)
-    return null
-  }, 300)
+function createDebouncedSearch(callback: (query: string) => void, delay = 300) {
+  let timeoutId: NodeJS.Timeout
+  return (query: string) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => callback(query), delay)
+  }
 }
 
 /**
- * Get category display options
- */
-function getCategoryOptions(): Array<{ value: ContentCategory | 'all'; label: string }> {
-  return [
-    { value: 'all', label: 'All Categories' },
-    { value: ContentCategory.ARTICLE, label: 'Articles' },
-    { value: ContentCategory.VIDEO, label: 'Videos' },
-    { value: ContentCategory.AUDIO, label: 'Audio' },
-    { value: ContentCategory.IMAGE, label: 'Images' },
-    { value: ContentCategory.DOCUMENT, label: 'Documents' },
-    { value: ContentCategory.COURSE, label: 'Courses' },
-    { value: ContentCategory.SOFTWARE, label: 'Software' },
-    { value: ContentCategory.DATA, label: 'Data' }
-  ]
-}
-
-/**
- * Get sort options
+ * Sort Options Configuration
+ * Provides user-friendly sort options with icons
  */
 function getSortOptions(): Array<{ value: SortOption; label: string; icon: React.ComponentType<{ className?: string }> }> {
   return [
@@ -271,7 +245,7 @@ function getSortOptions(): Array<{ value: SortOption; label: string; icon: React
 }
 
 // ================================================
-// MAIN COMPONENT
+// MAIN UNIFIED CONTENT BROWSER COMPONENT
 // ================================================
 
 /**
@@ -316,793 +290,711 @@ export function UnifiedContentBrowser({
     showCreatorInfo: propShowCreatorInfo ?? contextConfig.showCreatorInfo,
     showSocialFeatures: propShowSocialFeatures ?? contextConfig.showSocialFeatures,
     enableAdvancedFiltering: propEnableAdvancedFiltering ?? contextConfig.showAdvancedFiltering,
-    enableSearch: propEnableSearch ?? contextConfig.showSearch,
-    purchaseComponentType: contextConfig.purchaseComponentType
+    enableSearch: propEnableSearch ?? contextConfig.enableSearch
   }), [
     propItemsPerPage, contextConfig.itemsPerPage,
     propShowCreatorInfo, contextConfig.showCreatorInfo,
     propShowSocialFeatures, contextConfig.showSocialFeatures,
     propEnableAdvancedFiltering, contextConfig.showAdvancedFiltering,
-    propEnableSearch, contextConfig.showSearch,
-    contextConfig.purchaseComponentType
+    propEnableSearch, contextConfig.enableSearch
   ])
-  
+
   // ===== STATE MANAGEMENT =====
-  
+
+  // Browser state using design token responsive patterns
   const [browserState, setBrowserState] = useState<BrowserState>({
-    currentPage: 1,
+    currentPage: 0,
     viewMode: defaultViewMode,
     isLoading: false,
     hasError: false,
-    totalItems: 0,
-    lastRefresh: new Date()
+    isFilterOpen: false,
+    isRefreshing: false
   })
-  
+
+  // Filter state with comprehensive options
   const [filterState, setFilterState] = useState<FilterState>({
-    searchQuery: searchParams.get('q') || '',
+    searchQuery: '',
     selectedCategories: [],
-    priceRange: [0, 100],
+    priceRange: [0, 1000],
     sortBy: defaultSortBy,
     filterPreset: 'all',
     showOnlyAccessible: false
   })
-  
-  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false)
-  
+
   // ===== DATA FETCHING =====
-  
-  // Calculate pagination offset
-  const offset = useMemo(() => 
-    (browserState.currentPage - 1) * finalConfig.itemsPerPage,
-    [browserState.currentPage, finalConfig.itemsPerPage]
+
+  // Fetch paginated content using existing hook (offset, limit)
+  const contentQuery = useActiveContentPaginated(
+    Number(browserState.currentPage * finalConfig.itemsPerPage),
+    Number(finalConfig.itemsPerPage)
   )
-  
-  // Fetch paginated content using existing hook
-  const contentPagination = useActiveContentPaginated(offset, finalConfig.itemsPerPage)
-  
-  // Update state when content data changes
+
+  // Update browser state based on query state
   useEffect(() => {
     setBrowserState(prev => ({
       ...prev,
-      isLoading: contentPagination.isLoading,
-      hasError: contentPagination.isError,
-      errorMessage: contentPagination.error?.message,
-      totalItems: Number(contentPagination.data?.total || 0)
+      isLoading: contentQuery.isLoading,
+      hasError: contentQuery.isError,
+      errorMessage: contentQuery.error?.message
     }))
-  }, [contentPagination.isLoading, contentPagination.isError, contentPagination.error, contentPagination.data?.total])
-  
+  }, [contentQuery.isLoading, contentQuery.isError, contentQuery.error])
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!autoRefresh) return
+
+    const interval = setInterval(() => {
+      setBrowserState(prev => ({ ...prev, isRefreshing: true }))
+      contentQuery.refetch()
+      setBrowserState(prev => ({ ...prev, isRefreshing: false }))
+    }, refreshInterval)
+
+    return () => clearInterval(interval)
+  }, [autoRefresh, refreshInterval, contentQuery])
+
+  // Apply debounced search when search query changes
+  useEffect(() => {
+    if (filterState.searchQuery) {
+      applySearch(filterState.searchQuery)
+    }
+  }, [filterState.searchQuery, applySearch])
+
   // ===== EVENT HANDLERS =====
-  
-  const handleSearchChange = useCallback((query: string) => {
-    setFilterState(prev => ({ ...prev, searchQuery: query }))
-    applySearch(query)
-  }, [applySearch])
-  
-  const handleFilterChange = useCallback((newFilters: Partial<FilterState>) => {
-    setFilterState(prev => ({ ...prev, ...newFilters }))
-    setBrowserState(prev => ({ ...prev, currentPage: 1 }))
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setBrowserState(prev => ({ ...prev, viewMode: mode }))
   }, [])
-  
+
+  const handleFilterChange = useCallback((updates: Partial<FilterState>) => {
+    setFilterState(prev => ({ ...prev, ...updates }))
+    // Reset to first page when filters change
+    setBrowserState(prev => ({ ...prev, currentPage: 0 }))
+  }, [])
+
   const handlePageChange = useCallback((newPage: number) => {
     setBrowserState(prev => ({ ...prev, currentPage: newPage }))
-    // Scroll to top on page change
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
-  
-  const handleRefresh = useCallback(async () => {
-    setBrowserState(prev => ({ ...prev, lastRefresh: new Date() }))
-    await contentPagination.refetch()
-  }, [contentPagination])
-  
-  const handleContentSelect = useCallback((contentId: bigint) => {
+
+  const handleContentClick = useCallback((contentId: bigint) => {
     if (onContentSelect) {
       onContentSelect(contentId)
     } else {
       router.push(`/content/${contentId}`)
     }
   }, [onContentSelect, router])
-  
-  const handleCreatorSelect = useCallback((creatorAddress: Address) => {
+
+  const handleCreatorClick = useCallback((creatorAddress: Address) => {
     if (onCreatorSelect) {
       onCreatorSelect(creatorAddress)
     } else {
       router.push(`/creator/${creatorAddress}`)
     }
   }, [onCreatorSelect, router])
-  
-  // ===== AUTO-REFRESH LOGIC =====
-  
-  useEffect(() => {
-    if (!autoRefresh) return
+
+  const handleRefresh = useCallback(() => {
+    setBrowserState(prev => ({ ...prev, isRefreshing: true }))
+    contentQuery.refetch()
+    setBrowserState(prev => ({ ...prev, isRefreshing: false }))
+  }, [contentQuery])
+
+  const handleFilterReset = useCallback(() => {
+    setFilterState({
+      searchQuery: '',
+      selectedCategories: [],
+      priceRange: [0, 1000],
+      sortBy: defaultSortBy,
+      filterPreset: 'all',
+      showOnlyAccessible: false
+    })
+    setBrowserState(prev => ({ ...prev, currentPage: 0 }))
+  }, [defaultSortBy])
+
+  // ===== DERIVED STATE =====
+
+  const contentItems: readonly bigint[] = contentQuery.data?.contentIds ?? []
+  const totalPages = Math.ceil(Number(contentQuery.data?.total ?? BigInt(0)) / finalConfig.itemsPerPage)
+  const hasContent = contentItems.length > 0
+  const isFirstPage = browserState.currentPage === 0
+  const isLastPage = browserState.currentPage >= totalPages - 1
+
+  // Context-aware grid class calculation using design tokens
+  const gridClassName = useMemo(() => {
+    const baseClass = 'grid-adaptive space-component-gap'
     
-    const interval = setInterval(handleRefresh, refreshInterval)
-    return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval, handleRefresh])
-  
-  // ===== RENDER HELPERS =====
-  
-  /**
-   * Renders search and filter controls
-   */
-  const renderSearchAndFilters = () => {
-    if (!finalConfig.enableSearch && !finalConfig.enableAdvancedFiltering) {
-      return null
+    if (context === 'miniapp' || browserState.viewMode === 'list') {
+      return `flex flex-col ${baseClass}`
     }
     
-    return (
-      <div className="space-content-padding border-b border-border">
-        <div className="container-unified">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Search Input */}
-            {finalConfig.enableSearch && (
-              <div className="flex-1 max-w-md">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search content..."
-                    value={filterState.searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    className="pl-10 input-adaptive"
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Filter and Sort Controls */}
-            <div className="flex items-center gap-2">
-              {/* View Mode Toggle (Web Only) */}
-              {context === 'web' && (
-                <div className="flex border rounded-md">
-                  <Button
-                    variant={browserState.viewMode === 'grid' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setBrowserState(prev => ({ ...prev, viewMode: 'grid' }))}
-                    className="rounded-r-none border-r"
-                  >
-                    <Grid3x3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={browserState.viewMode === 'list' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setBrowserState(prev => ({ ...prev, viewMode: 'list' }))}
-                    className="rounded-l-none"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              
-              {/* Sort Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="button-adaptive">
-                    <SortAsc className="h-4 w-4 mr-2" />
-                    Sort
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Sort By</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {getSortOptions().map(({ value, label, icon: Icon }) => (
-                    <DropdownMenuItem
-                      key={value}
-                      onClick={() => handleFilterChange({ sortBy: value })}
-                    >
-                      <Icon className="h-4 w-4 mr-2" />
-                      {label}
-                      {filterState.sortBy === value && (
-                        <Badge variant="secondary" className="ml-auto">
-                          Active
-                        </Badge>
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              {/* Advanced Filters (Web Only) */}
-              {finalConfig.enableAdvancedFiltering && (
-                <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="sm" className="button-adaptive">
-                      <Filter className="h-4 w-4 mr-2" />
-                      Filters
-                      {filterState.selectedCategories.length > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          {filterState.selectedCategories.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent>
-                    <SheetHeader>
-                      <SheetTitle>Filter Content</SheetTitle>
-                      <SheetDescription>
-                        Refine your content discovery with advanced filters
-                      </SheetDescription>
-                    </SheetHeader>
-                    <FilterPanel 
-                      filterState={filterState}
-                      onFilterChange={handleFilterChange}
-                      onClose={() => setIsFilterSheetOpen(false)}
-                    />
-                  </SheetContent>
-                </Sheet>
-              )}
-              
-              {/* Refresh Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={browserState.isLoading}
-                className="button-adaptive"
-              >
-                <RefreshCw className={cn(
-                  "h-4 w-4",
-                  browserState.isLoading && "animate-spin"
-                )} />
-              </Button>
-            </div>
+    if (browserState.viewMode === 'compact') {
+      return `grid grid-cols-1 lg:grid-cols-2 ${baseClass}`
+    }
+    
+    // Default grid mode
+    return `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${baseClass}`
+  }, [context, browserState.viewMode])
+
+  // ===== RENDER METHODS =====
+
+  /**
+   * Renders the search and filter controls
+   */
+  const renderSearchAndFilters = () => (
+    <div 
+      className="space-section-padding-sm border-b"
+      data-context={context}
+    >
+      <div className="container-unified space-y-4">
+        {/* Search Bar */}
+        {finalConfig.enableSearch && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 nav-icon-adaptive text-muted-foreground" />
+            <Input
+              placeholder="Search content..."
+              value={filterState.searchQuery}
+              onChange={(e) => handleFilterChange({ searchQuery: e.target.value })}
+              className="input-adaptive pl-10"
+            />
           </div>
-        </div>
-      </div>
-    )
-  }
-  
-  /**
-   * Renders content grid or list
-   */
-  const renderContentDisplay = () => {
-    if (browserState.isLoading && (!contentPagination.data?.contentIds.length)) {
-      return renderLoadingState()
-    }
-    
-    if (browserState.hasError) {
-      return renderErrorState()
-    }
-    
-    const contentIds = contentPagination.data?.contentIds || []
-    
-    if (contentIds.length === 0) {
-      return renderEmptyState()
-    }
-    
-    return (
-      <div className="space-section-padding">
-        <div className="container-unified">
-          {browserState.viewMode === 'grid' ? (
-            <div className="grid-adaptive">
-              {contentIds.map((contentId) => (
-                <ContentItemCard
-                  key={contentId.toString()}
-                  contentId={contentId}
-                  context={context}
-                  variant={finalConfig.purchaseComponentType}
-                  showCreatorInfo={finalConfig.showCreatorInfo}
-                  showSocialFeatures={finalConfig.showSocialFeatures}
-                  onContentSelect={handleContentSelect}
-                  onCreatorSelect={handleCreatorSelect}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {contentIds.map((contentId) => (
-                <ContentItemCard
-                  key={contentId.toString()}
-                  contentId={contentId}
-                  context={context}
-                  variant="list"
-                  showCreatorInfo={finalConfig.showCreatorInfo}
-                  showSocialFeatures={finalConfig.showSocialFeatures}
-                  onContentSelect={handleContentSelect}
-                  onCreatorSelect={handleCreatorSelect}
-                />
-              ))}
+        )}
+
+        {/* Controls Row */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          {/* View Mode Controls (Web Only) */}
+          {context === 'web' && (
+            <div className="flex items-center space-component-gap-sm">
+              <Button
+                variant={browserState.viewMode === 'grid' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => handleViewModeChange('grid')}
+                className="touch-target-optimized"
+              >
+                <Grid3x3 className="nav-icon-adaptive" />
+                <span className="sr-only">Grid view</span>
+              </Button>
+              <Button
+                variant={browserState.viewMode === 'list' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => handleViewModeChange('list')}
+                className="touch-target-optimized"
+              >
+                <List className="nav-icon-adaptive" />
+                <span className="sr-only">List view</span>
+              </Button>
+              <Button
+                variant={browserState.viewMode === 'compact' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => handleViewModeChange('compact')}
+                className="touch-target-optimized"
+              >
+                <SortAsc className="nav-icon-adaptive" />
+                <span className="sr-only">Compact view</span>
+              </Button>
             </div>
           )}
-        </div>
-      </div>
-    )
-  }
-  
-  /**
-   * Renders pagination controls
-   */
-  const renderPagination = () => {
-    const totalPages = Math.ceil(browserState.totalItems / finalConfig.itemsPerPage)
-    
-    if (totalPages <= 1) return null
-    
-    return (
-      <div className="space-content-padding border-t border-border">
-        <div className="container-unified">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              Showing {((browserState.currentPage - 1) * finalConfig.itemsPerPage) + 1} to{' '}
-              {Math.min(browserState.currentPage * finalConfig.itemsPerPage, browserState.totalItems)} of{' '}
-              {browserState.totalItems} results
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={browserState.currentPage <= 1}
-                onClick={() => handlePageChange(browserState.currentPage - 1)}
-                className="button-adaptive"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = i + Math.max(1, browserState.currentPage - 2)
-                  if (page > totalPages) return null
-                  
-                  return (
-                    <Button
-                      key={page}
-                      variant={page === browserState.currentPage ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => handlePageChange(page)}
-                      className="w-10 h-10 p-0"
-                    >
-                      {page}
-                    </Button>
-                  )
-                })}
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={browserState.currentPage >= totalPages}
-                onClick={() => handlePageChange(browserState.currentPage + 1)}
-                className="button-adaptive"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+
+          {/* Sort Controls */}
+          <div className="flex items-center space-component-gap-sm">
+            <Label htmlFor="sort-select" className="text-adaptive-base font-weight-adaptive-medium">
+              Sort by:
+            </Label>
+            <Select
+              value={filterState.sortBy}
+              onValueChange={(value: SortOption) => handleFilterChange({ sortBy: value })}
+            >
+              <SelectTrigger id="sort-select" className="w-48 button-adaptive">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {getSortOptions().map(({ value, label, icon: Icon }) => (
+                  <SelectItem key={value} value={value}>
+                    <div className="flex items-center space-component-gap-xs">
+                      <Icon className="nav-icon-adaptive" />
+                      <span>{label}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      </div>
-    )
-  }
-  
-  /**
-   * Renders loading state
-   */
-  const renderLoadingState = () => (
-    <div className="space-section-padding">
-      <div className="container-unified">
-        <div className="grid-adaptive">
-          {Array.from({ length: finalConfig.itemsPerPage }, (_, i) => (
-            <Card key={i} className="overflow-hidden">
-              <Skeleton className="aspect-video w-full" />
-              <CardContent className="space-content-padding">
-                <Skeleton className="h-4 w-3/4 mb-2" />
-                <Skeleton className="h-3 w-1/2 mb-4" />
-                <Skeleton className="h-8 w-full" />
-              </CardContent>
-            </Card>
-          ))}
+
+          {/* Filter Button and Refresh */}
+          <div className="flex items-center space-component-gap-sm">
+            {finalConfig.enableAdvancedFiltering && (
+              <Sheet open={browserState.isFilterOpen} onOpenChange={(open) => setBrowserState(prev => ({ ...prev, isFilterOpen: open }))}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="touch-target-optimized">
+                    <Filter className="nav-icon-adaptive mr-2" />
+                    <span className="text-adaptive-base">Filters</span>
+                    {(filterState.selectedCategories.length > 0 || filterState.selectedCreator) && (
+                      <Badge variant="secondary" className="ml-2">
+                        {filterState.selectedCategories.length + (filterState.selectedCreator ? 1 : 0)}
+                      </Badge>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80">
+                  <SheetHeader>
+                    <SheetTitle>Content Filters</SheetTitle>
+                    <SheetDescription>
+                      Refine your content search with advanced filters
+                    </SheetDescription>
+                  </SheetHeader>
+                  {renderAdvancedFilters()}
+                </SheetContent>
+              </Sheet>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={browserState.isRefreshing}
+              className="touch-target-optimized"
+            >
+              <RefreshCw className={cn('nav-icon-adaptive', browserState.isRefreshing && 'animate-spin')} />
+              <span className="sr-only">Refresh content</span>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   )
-  
+
+  /**
+   * Renders advanced filter controls
+   */
+  const renderAdvancedFilters = () => (
+    <div className="space-content-padding space-y-6">
+      {/* Category Filter */}
+      <div>
+        <Label className="text-adaptive-base font-weight-adaptive-medium">Categories</Label>
+        <div className="mt-2 space-y-2">
+          {(Object.values(ContentCategory) as ContentCategory[]).map((category: ContentCategory) => (
+            <Label key={category} className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filterState.selectedCategories.includes(category)}
+                onChange={(e) => {
+                  const categories = e.target.checked
+                    ? [...filterState.selectedCategories, category]
+                    : filterState.selectedCategories.filter(c => c !== category)
+                  handleFilterChange({ selectedCategories: categories })
+                }}
+                className="rounded"
+              />
+              <span className="text-adaptive-base">{categoryToString(category)}</span>
+            </Label>
+          ))}
+        </div>
+      </div>
+
+      {/* Price Range Filter */}
+      <div>
+        <Label className="text-adaptive-base font-weight-adaptive-medium">
+          Price Range: ${filterState.priceRange[0]} - ${filterState.priceRange[1]}
+        </Label>
+        <Slider
+          value={filterState.priceRange}
+          onValueChange={(value) => handleFilterChange({ priceRange: value as [number, number] })}
+          max={1000}
+          min={0}
+          step={10}
+          className="mt-2"
+        />
+      </div>
+
+      {/* Access Filter */}
+      <div>
+        <Label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={filterState.showOnlyAccessible}
+            onChange={(e) => handleFilterChange({ showOnlyAccessible: e.target.checked })}
+            className="rounded"
+          />
+          <span className="text-adaptive-base">Show only accessible content</span>
+        </Label>
+      </div>
+
+      {/* Reset Filters */}
+      <Button
+        variant="outline"
+        onClick={handleFilterReset}
+        className="w-full button-adaptive"
+      >
+        Reset Filters
+      </Button>
+    </div>
+  )
+
+  /**
+   * Renders the content grid/list
+   */
+  const renderContentGrid = () => {
+    if (browserState.isLoading && !hasContent) {
+      return renderLoadingState()
+    }
+
+    if (browserState.hasError) {
+      return renderErrorState()
+    }
+
+    if (!hasContent) {
+      return renderEmptyState()
+    }
+
+    return (
+      <div 
+        className={cn('space-content-padding', gridClassName)}
+        role="grid"
+        aria-label="Content items"
+        data-context={context}
+      >
+        {contentItems.map((contentId: bigint) => (
+          <ContentItemCard
+            key={contentId.toString()}
+            contentId={contentId}
+            context={context}
+            viewMode={browserState.viewMode}
+            showCreatorInfo={finalConfig.showCreatorInfo}
+            showSocialFeatures={finalConfig.showSocialFeatures}
+            userAddress={userAddress}
+            onContentClick={handleContentClick}
+            onCreatorClick={handleCreatorClick}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  /**
+   * Renders loading state with skeletons
+   */
+  const renderLoadingState = () => (
+    <div className={cn('space-content-padding', gridClassName)}>
+      {Array.from({ length: finalConfig.itemsPerPage }).map((_, index) => (
+        <Card key={index} className="overflow-hidden">
+          <div className="aspect-video bg-muted animate-pulse" />
+          <CardHeader className="space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3 mt-2" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+
   /**
    * Renders error state
    */
   const renderErrorState = () => (
-    <div className="space-section-padding">
-      <div className="container-unified">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {browserState.errorMessage || 'Failed to load content. Please try again.'}
-          </AlertDescription>
-        </Alert>
-        <div className="flex justify-center mt-4">
-          <Button onClick={handleRefresh} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Try Again
-          </Button>
-        </div>
-      </div>
+    <div className="space-content-padding text-center">
+      <Alert variant="destructive" className="max-w-md mx-auto">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {browserState.errorMessage || 'Failed to load content. Please try again.'}
+        </AlertDescription>
+      </Alert>
+      <Button
+        variant="outline"
+        onClick={handleRefresh}
+        className="mt-4 button-adaptive"
+      >
+        <RefreshCw className="nav-icon-adaptive mr-2" />
+        Try Again
+      </Button>
     </div>
   )
-  
+
   /**
    * Renders empty state
    */
   const renderEmptyState = () => (
-    <div className="space-section-padding">
-      <div className="container-unified">
-        <div className="text-center py-12">
-          {emptyStateContent || (
-            <>
-              <div className="mb-4">
-                <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No content found</h3>
-                <p className="text-muted-foreground max-w-sm mx-auto">
-                  {filterState.searchQuery
-                    ? "Try adjusting your search terms or filters"
-                    : "There's no content available right now. Check back later for new uploads!"
-                  }
-                </p>
-              </div>
-              
-              {!isConnected && (
-                <div className="border-t pt-6 mt-6">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Connect your wallet to access premium content
-                  </p>
-                  <Button variant="outline">
-                    Connect Wallet
-                  </Button>
-                </div>
-              )}
-              
-              {filterState.searchQuery && (
-                <Button
-                  variant="outline"
-                  onClick={() => setFilterState(prev => ({ ...prev, searchQuery: '' }))}
-                  className="mt-4"
-                >
-                  Clear Search
-                </Button>
-              )}
-            </>
+    <div className="space-content-padding text-center">
+      {emptyStateContent || (
+        <div className="max-w-md mx-auto">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <Eye className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-weight-adaptive-semibold text-adaptive-base mb-2">
+            No content found
+          </h3>
+          <p className="text-muted-foreground text-adaptive-base mb-4">
+            {filterState.searchQuery || filterState.selectedCategories.length > 0
+              ? "Try adjusting your search or filters to find more content."
+              : "There's no content available right now. Check back later for new uploads!"
+            }
+          </p>
+          {(filterState.searchQuery || filterState.selectedCategories.length > 0) && (
+            <Button variant="outline" onClick={handleFilterReset} className="button-adaptive">
+              Clear Filters
+            </Button>
           )}
         </div>
-      </div>
+      )}
     </div>
   )
-  
+
+  /**
+   * Renders pagination controls
+   */
+  const renderPagination = () => {
+    if (!hasContent || totalPages <= 1) return null
+
+    return (
+      <div className="space-section-padding-sm border-t">
+        <div className="container-unified">
+          <div className="flex items-center justify-between">
+            <div className="text-adaptive-base text-muted-foreground">
+              Page {browserState.currentPage + 1} of {totalPages}
+            </div>
+            <div className="flex items-center space-component-gap-sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(browserState.currentPage - 1)}
+                disabled={isFirstPage}
+                className="touch-target-optimized"
+              >
+                <ChevronLeft className="nav-icon-adaptive" />
+                <span className="sr-only">Previous page</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(browserState.currentPage + 1)}
+                disabled={isLastPage}
+                className="touch-target-optimized"
+              >
+                <ChevronRight className="nav-icon-adaptive" />
+                <span className="sr-only">Next page</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ===== MAIN RENDER =====
-  
+
   return (
     <div 
       className={cn('unified-content-browser', className)}
       data-context={context}
+      data-view-mode={browserState.viewMode}
     >
       {renderSearchAndFilters()}
-      {renderContentDisplay()}
+      {renderContentGrid()}
       {renderPagination()}
     </div>
   )
 }
 
 // ================================================
-// SUPPORTING COMPONENTS
+// CONTENT ITEM CARD COMPONENT
 // ================================================
 
 /**
- * Filter Panel Component
- */
-interface FilterPanelProps {
-  filterState: FilterState
-  onFilterChange: (filters: Partial<FilterState>) => void
-  onClose: () => void
-}
-
-function FilterPanel({ filterState, onFilterChange, onClose }: FilterPanelProps) {
-  return (
-    <div className="space-y-6 mt-6">
-      {/* Category Filter */}
-      <div>
-        <Label className="text-sm font-medium mb-3 block">Categories</Label>
-        <div className="grid grid-cols-2 gap-2">
-          {getCategoryOptions().slice(1).map(({ value, label }) => {
-            const isSelected = filterState.selectedCategories.includes(value as ContentCategory)
-            return (
-              <Button
-                key={value.toString()}
-                variant={isSelected ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => {
-                  const categories = isSelected
-                    ? filterState.selectedCategories.filter(c => c !== value)
-                    : [...filterState.selectedCategories, value as ContentCategory]
-                  onFilterChange({ selectedCategories: categories })
-                }}
-                className="justify-start"
-              >
-                {label}
-              </Button>
-            )
-          })}
-        </div>
-      </div>
-      
-      {/* Price Range Filter */}
-      <div>
-        <Label className="text-sm font-medium mb-3 block">Price Range (USDC)</Label>
-        <div className="px-3">
-          <Slider
-            value={filterState.priceRange}
-            onValueChange={(value) => onFilterChange({ priceRange: value as [number, number] })}
-            min={0}
-            max={100}
-            step={1}
-            className="mb-2"
-          />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>${filterState.priceRange[0]}</span>
-            <span>${filterState.priceRange[1]}</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Quick Filters */}
-      <div>
-        <Label className="text-sm font-medium mb-3 block">Quick Filters</Label>
-        <div className="space-y-2">
-          <Button
-            variant={filterState.showOnlyAccessible ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onFilterChange({ showOnlyAccessible: !filterState.showOnlyAccessible })}
-            className="w-full justify-start"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Show Only Accessible Content
-          </Button>
-        </div>
-      </div>
-      
-      {/* Actions */}
-      <div className="flex gap-2 pt-4 border-t">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            onFilterChange({
-              selectedCategories: [],
-              priceRange: [0, 100],
-              showOnlyAccessible: false,
-              filterPreset: 'all'
-            })
-          }}
-          className="flex-1"
-        >
-          Clear All
-        </Button>
-        <Button size="sm" onClick={onClose} className="flex-1">
-          Apply Filters
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/**
  * Content Item Card Component
+ * Renders individual content items with context-aware styling and functionality
  */
 interface ContentItemCardProps {
   contentId: bigint
   context: BrowserContext
-  variant: 'full' | 'compact' | 'list'
+  viewMode: ViewMode
   showCreatorInfo: boolean
   showSocialFeatures: boolean
-  onContentSelect: (contentId: bigint) => void
-  onCreatorSelect: (creatorAddress: Address) => void
+  userAddress?: Address
+  onContentClick: (contentId: bigint) => void
+  onCreatorClick: (creatorAddress: Address) => void
 }
 
 function ContentItemCard({
   contentId,
   context,
-  variant,
+  viewMode,
   showCreatorInfo,
   showSocialFeatures,
-  onContentSelect,
-  onCreatorSelect
+  userAddress,
+  onContentClick,
+  onCreatorClick
 }: ContentItemCardProps) {
-  const { address: userAddress } = useAccount()
-  
-  // Fetch content data using existing hook
-  const content = useContentById(contentId)
-  const hasAccess = useHasContentAccess(userAddress, contentId)
-  const creatorProfile = useCreatorProfile(content.data?.creator)
-  
-  if (content.isLoading) {
+  // Fetch content data
+  const contentQuery = useContentById(contentId)
+  const accessQuery = useHasContentAccess(userAddress, contentId)
+
+  // Loading state
+  if (contentQuery.isLoading) {
     return (
       <Card className="overflow-hidden">
-        <Skeleton className="aspect-video w-full" />
-        <CardContent className="space-content-padding">
-          <Skeleton className="h-4 w-3/4 mb-2" />
-          <Skeleton className="h-3 w-1/2 mb-4" />
-          <Skeleton className="h-8 w-full" />
+        <div className="aspect-video bg-muted animate-pulse" />
+        <CardHeader>
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
         </CardContent>
       </Card>
     )
   }
-  
-  if (content.isError || !content.data) {
+
+  // Error state
+  if (contentQuery.isError || !contentQuery.data) {
     return (
-      <Card className="overflow-hidden opacity-50">
+      <Card className="overflow-hidden border-red-200">
         <CardContent className="space-content-padding text-center">
-          <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Failed to load content</p>
         </CardContent>
       </Card>
     )
   }
-  
-  const contentData = content.data
-  
-  // List variant (web only)
-  if (variant === 'list') {
-    return (
-      <Card className="overflow-hidden">
-        <div className="flex">
-          <div className="w-48 aspect-video bg-muted flex-shrink-0">
-            {/* Content preview placeholder */}
-            <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-              <Eye className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </div>
-          
-          <div className="flex-1 flex justify-between">
-            <CardContent className="space-content-padding flex-1">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-lg mb-2 line-clamp-2">
-                    {contentData.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {contentData.description}
-                  </p>
-                  
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <Badge variant="secondary">
-                      {categoryToString(contentData.category)}
-                    </Badge>
-                    <span>{formatCurrency(contentData.payPerViewPrice, 6, 'USDC')}</span>
-                     <span>{formatRelativeTime(contentData.creationTime)}</span>
-                  </div>
-                  
-                  {showCreatorInfo && (
-                    <div className="flex items-center gap-2 mt-3">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs">
-                          {formatAddress(contentData.creator).slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-muted-foreground">
-                        {formatAddress(contentData.creator)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="ml-4 flex-shrink-0">
-                  {context === 'web' ? (
-                    <ContentPurchaseCard
-                      contentId={contentId}
-                      userAddress={userAddress}
-                      variant="compact"
-                      className="w-32"
-                    />
-                  ) : (
-                    <MiniAppPurchaseButton
-                      contentId={contentId}
-                      title={contentData.title}
-                      size="sm"
-                      onPurchaseSuccess={() => onContentSelect(contentId)}
-                    />
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </div>
-        </div>
-      </Card>
-    )
-  }
-  
-  // Grid variant (default)
+
+  const content = contentQuery.data
+  const hasAccess = accessQuery.data || false
+  const isCompact = viewMode === 'compact' || context === 'miniapp'
+
   return (
-    <Card className="overflow-hidden transition-adaptive hover:shadow-md">
-      {/* Content Preview */}
-      <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 relative group cursor-pointer"
-           onClick={() => onContentSelect(contentId)}>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Eye className="h-8 w-8 text-muted-foreground group-hover:scale-110 transition-transform" />
-        </div>
-        
-        {/* Access Status Overlay */}
-        <div className="absolute top-2 right-2">
-          {hasAccess.data ? (
-            <Badge variant="default" className="bg-green-500">
-              <Eye className="h-3 w-3 mr-1" />
-              Owned
-            </Badge>
-          ) : (
-            <Badge variant="secondary">
-              {formatCurrency(contentData.payPerViewPrice, 6, 'USDC')}
-            </Badge>
-          )}
-        </div>
-        
-        {/* Category Badge */}
-        <div className="absolute top-2 left-2">
-          <Badge variant="outline" className="bg-background/80">
-            {categoryToString(contentData.category)}
-          </Badge>
-        </div>
+    <Card 
+      className={cn(
+        "overflow-hidden hover:shadow-lg transition-adaptive cursor-pointer",
+        context === 'miniapp' && "ring-1 ring-blue-100",
+        isCompact && "flex flex-row"
+      )}
+      onClick={() => onContentClick(contentId)}
+      role="gridcell"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onContentClick(contentId)
+        }
+      }}
+      aria-label={`View content: ${content.title}`}
+    >
+      {/* Content Thumbnail */}
+      <div className={cn(
+        "bg-muted flex items-center justify-center",
+        isCompact ? "w-24 h-24 flex-shrink-0" : "aspect-video"
+      )}>
+        <Eye className="w-8 h-8 text-muted-foreground" />
       </div>
-      
-      <CardContent className="space-content-padding">
-        {/* Content Info */}
-        <div className="mb-4">
-          <h3 className="font-semibold mb-2 line-clamp-2 cursor-pointer hover:text-primary"
-              onClick={() => onContentSelect(contentId)}>
-            {contentData.title}
-          </h3>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-            {contentData.description}
-          </p>
-          
-          {showCreatorInfo && (
-            <div className="flex items-center gap-2 mb-3">
-              <Avatar className="h-6 w-6">
-                <AvatarFallback className="text-xs">
-                  {formatAddress(contentData.creator).slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <button
-                onClick={() => onCreatorSelect(contentData.creator)}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                {formatAddress(contentData.creator)}
-              </button>
+
+      {/* Content Info */}
+      <div className="flex-1">
+        <CardHeader className={cn(
+          isCompact && "space-content-padding-xs"
+        )}>
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <CardTitle className={cn(
+                "text-adaptive-base font-weight-adaptive-semibold truncate",
+                isCompact && "text-sm"
+              )}>
+                {content.title}
+              </CardTitle>
+              <CardDescription className={cn(
+                "text-adaptive-base",
+                isCompact && "text-xs"
+              )}>
+                {formatRelativeTime(content.creationTime)}
+              </CardDescription>
             </div>
-          )}
-          
-          <div className="text-xs text-muted-foreground">
-            {formatRelativeTime(contentData.creationTime)}
+            
+            {/* Access Status Badge */}
+            <Badge 
+              variant={hasAccess ? "default" : "secondary"}
+              className="ml-2 flex-shrink-0"
+            >
+              {hasAccess ? (
+                <>
+                  <Eye className="w-3 h-3 mr-1" />
+                  Owned
+                </>
+              ) : (
+                <>
+                  <DollarSign className="w-3 h-3 mr-1" />
+                  {formatCurrency(content.payPerViewPrice)}
+                </>
+              )}
+            </Badge>
           </div>
-        </div>
-        
-        {/* Purchase Action */}
-        {context === 'web' ? (
-          <ContentPurchaseCard
-            contentId={contentId}
-            userAddress={userAddress}
-            variant={variant === 'compact' ? 'compact' : 'full'}
-            showCreatorInfo={false}
-            showPurchaseDetails={variant !== 'compact'}
-          />
-        ) : (
-          <MiniAppPurchaseButton
-            contentId={contentId}
-            title={contentData.title}
-            fullWidth
-            showContext={showSocialFeatures}
-            onPurchaseSuccess={() => onContentSelect(contentId)}
-          />
+        </CardHeader>
+
+        {!isCompact && (
+          <CardContent className="space-content-padding-xs">
+            <p className="text-adaptive-base text-muted-foreground line-clamp-2">
+              {content.description}
+            </p>
+            
+            {showCreatorInfo && (
+              <div className="flex items-center space-component-gap-xs mt-2">
+                <Avatar className="w-6 h-6">
+                  <AvatarFallback className="text-xs">
+                    {content.creator.slice(2, 4).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCreatorClick(content.creator)
+                  }}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-adaptive truncate"
+                >
+                  {formatAddress(content.creator)}
+                </button>
+              </div>
+            )}
+          </CardContent>
         )}
-      </CardContent>
+
+        {/* Purchase Button */}
+        {!hasAccess && (
+          <CardFooter className={cn(
+            "pt-0",
+            isCompact && "space-content-padding-xs"
+          )}>
+            {context === 'miniapp' ? (
+              <MiniAppPurchaseButton
+                contentId={contentId}
+                title={content.title}
+                userAddress={userAddress}
+                size="sm"
+                className="w-full button-adaptive"
+              />
+            ) : (
+              <ContentPurchaseCard
+                contentId={contentId}
+                userAddress={userAddress}
+                variant="minimal"
+                className="w-full"
+              />
+            )}
+          </CardFooter>
+        )}
+      </div>
     </Card>
   )
 }
 
 // ================================================
-// EXPORT
+// EXPORTS
 // ================================================
 
 export default UnifiedContentBrowser
 
-// Export all components and utilities
-export {
-  type BrowserContext,
-  type ViewMode,
-  type SortOption,
-  type FilterState,
-  type UnifiedContentBrowserProps
+// Export types for external usage
+export type {
+  BrowserContext,
+  ViewMode,
+  SortOption,
+  FilterState,
+  UnifiedContentBrowserProps
 }
