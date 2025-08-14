@@ -53,14 +53,21 @@ export function EnhancedMiniAppProvider({ children }: { children: ReactNode }): 
 
 				if (inMiniApp) {
 					const sdkMod = await import('@farcaster/miniapp-sdk').catch(() => null)
-					const sdk: any = sdkMod?.sdk ?? (window as any).miniapp?.sdk
+					const sdk = (sdkMod as unknown as { sdk?: import('@/types/miniapp-sdk').AppMiniAppSDK })?.sdk ?? window.miniapp?.sdk
 
 					if (sdk) {
-						await sdk.init?.({ name: 'Content Platform', version: '1.0.0' }).catch(() => {})
-						const user = await sdk.user?.getCurrentUser?.().catch(() => null)
-						if (user) setFarcasterUser(user)
+						sdk.init && (await sdk.init({ name: 'Bloom', version: '1.0.0' }).catch(() => {}))
+						const user = sdk.user && (await sdk.user.getCurrentUser?.().catch(() => null))
+						if (user) setFarcasterUser({
+							fid: user.fid,
+							username: user.username || '',
+							displayName: user.displayName || '',
+							pfp: undefined,
+							following: 0,
+							followers: 0
+						})
 
-						const caps: string[] = (await sdk.capabilities?.getCapabilities?.().catch(() => [])) ?? []
+						const caps: string[] = sdk.capabilities ? (await sdk.capabilities.getCapabilities?.().catch(() => [])) ?? [] : []
 						setCapabilities({
 							canShare: caps.includes('share'),
 							canSignIn: caps.includes('signIn'),
@@ -83,22 +90,22 @@ export function EnhancedMiniAppProvider({ children }: { children: ReactNode }): 
 	}, [])
 
 	const ready = async (): Promise<void> => {
-		if (isMiniApp && (window as any).miniapp?.sdk) {
-			await (window as any).miniapp.sdk.actions.ready()
+		if (isMiniApp && window.miniapp?.sdk) {
+			await window.miniapp.sdk.actions.ready()
 		}
 	}
 
 	const share = async (content: ShareContent): Promise<void> => {
 		if (!capabilities.canShare) throw new Error('Sharing not available in this environment')
-		const sdk = (window as any).miniapp?.sdk
-		if (sdk) {
+		const sdk = window.miniapp?.sdk
+		if (sdk && sdk.actions.share) {
 			await sdk.actions.share({ text: content.text, url: content.url, embeds: content.url ? [{ url: content.url }] : undefined })
 		}
 	}
 
-	const track = (event: string, properties: Record<string, any>): void => {
-		if (typeof window !== 'undefined' && (window as any).analytics) {
-			;(window as any).analytics.track(event, {
+	const track = (event: string, properties: Record<string, unknown>): void => {
+	if (typeof window !== 'undefined' && window.analytics) {
+			window.analytics.track(event, {
 				...properties,
 				context: 'miniapp',
 				isMiniApp,

@@ -93,7 +93,7 @@ function ContentCard({
   userAddress?: `0x${string}`
   showCreatorInfo: boolean
   isMiniApp: boolean
-  farcasterUser: any
+  farcasterUser: { fid?: number; username?: string; displayName?: string; verifications?: readonly `0x${string}`[] } | null
   onContentSelect?: (contentId: bigint) => void
 }) {
   // Fetch content data using your existing hook
@@ -345,7 +345,7 @@ export function MiniAppContentBrowser({
   // MiniApp environment and user context
   const isMiniApp = useMiniKitAvailable()
   const farcasterCtx = useFarcasterContext()
-  const farcasterUser = farcasterCtx?.user
+  const farcasterUser = farcasterCtx?.user ?? null
   const isReady = true
   const setReady = () => {}
   

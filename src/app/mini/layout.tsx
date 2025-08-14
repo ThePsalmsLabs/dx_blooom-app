@@ -9,7 +9,7 @@ function EarlyReady(): React.ReactElement | null {
 		const tryReady = async (): Promise<void> => {
 			try {
 				const mod = await import('@farcaster/miniapp-sdk').catch(() => null)
-				const sdk = mod?.sdk ?? (typeof window !== 'undefined' ? (window as any)?.miniapp?.sdk : undefined)
+				const sdk = mod?.sdk ?? (typeof window !== 'undefined' ? window?.miniapp?.sdk : undefined)
 				if (sdk && !cancelled) {
 					await sdk.actions.ready().catch(() => {})
 				}

@@ -72,8 +72,8 @@ function ContentSearchAndFilter({
 		{ id: 'other', label: 'Other', count: 12 },
 	]
 
-	const priceRanges = [
-		{ id: 'any', label: 'Any Price', min: 0, max: Infinity },
+	const priceRanges: Array<{ id: 'any' | 'free' | 'low' | 'mid' | 'high'; label: string; min: number; max: number }> = [
+		{ id: 'any', label: 'Any Price', min: 0, max: Number.POSITIVE_INFINITY },
 		{ id: 'free', label: 'Free', min: 0, max: 0 },
 		{ id: 'low', label: 'Under $10', min: 0, max: 10 },
 		{ id: 'mid', label: '$10 - $50', min: 10, max: 50 },

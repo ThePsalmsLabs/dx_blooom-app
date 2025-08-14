@@ -2,8 +2,8 @@
 // Analytics for MiniApp usage patterns
 
 export interface MiniAppAnalyticsEvent {
-	event: string
-	properties: Record<string, any>
+    event: string
+    properties: Record<string, unknown>
 	timestamp: number
 	sessionId: string
 	userFid?: number
@@ -21,14 +21,14 @@ class MiniAppAnalytics {
 		this.startBatchFlushing()
 	}
 
-	track(event: string, properties: Record<string, any> = {}): void {
+    track(event: string, properties: Record<string, unknown> = {}): void {
 		const analyticsEvent: MiniAppAnalyticsEvent = {
 			event,
 			properties,
 			timestamp: Date.now(),
 			sessionId: this.sessionId,
-			userFid: (typeof window !== 'undefined' ? (window as any)?.miniapp?.user?.fid : undefined),
-			contentId: properties.contentId,
+            userFid: (typeof window !== 'undefined' ? window?.miniapp?.user?.fid : undefined),
+			contentId: typeof (properties as { contentId?: unknown }).contentId === 'string' ? (properties as { contentId?: string }).contentId : undefined,
 		}
 
 		this.events.push(analyticsEvent)

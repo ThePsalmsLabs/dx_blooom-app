@@ -40,7 +40,7 @@ function ContentBrowserSkeleton(): React.ReactElement {
 }
 
 class MiniAppErrorBoundary extends React.Component<{ children: React.ReactNode; onRetry?: () => void }, { hasError: boolean; error?: Error }> {
-	constructor(props: any) {
+	constructor(props: { children: React.ReactNode; onRetry?: () => void }) {
 		super(props)
 		this.state = { hasError: false }
 	}

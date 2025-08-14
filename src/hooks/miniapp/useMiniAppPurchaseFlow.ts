@@ -61,17 +61,17 @@ export function useMiniAppPurchaseFlow(): {
 	}, [])
 
 	const triggerSocialShare = useCallback((contentId: bigint): void => {
-		if (typeof window !== 'undefined' && (window as any).miniapp?.sdk) {
-			const sdk = (window as any).miniapp.sdk
-			sdk.actions
-				.share({
+		if (typeof window !== 'undefined' && window.miniapp?.sdk) {
+			const sdk = window.miniapp.sdk
+			if (sdk.actions.share) {
+				sdk.actions.share({
 					text: `Just discovered amazing content on this platform! 🎨`,
 					url: `${window.location.origin}/content/${contentId}`,
 					embeds: [{ url: `${window.location.origin}/content/${contentId}` }],
-				})
-				.catch((err: unknown) => {
+				}).catch((err: unknown) => {
 					console.warn('Social sharing failed:', err)
 				})
+			}
 		}
 	}, [])
 

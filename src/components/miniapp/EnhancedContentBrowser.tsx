@@ -31,7 +31,7 @@ export default function EnhancedContentBrowser({
 }: {
     optimized: OptimizationState
     capabilities: Capabilities
-    onAnalyticsEvent: (event: string, properties: Record<string, any>) => void
+    onAnalyticsEvent: (event: string, properties: Record<string, unknown>) => void
     onPurchaseSuccess?: (args: { id: number; title: string; creator?: string }) => void
     onShareIntent?: (args: { id: number; title: string; creator?: string }) => void
 }): React.ReactElement {

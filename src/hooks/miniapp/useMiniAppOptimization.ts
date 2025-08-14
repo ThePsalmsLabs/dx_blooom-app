@@ -37,11 +37,11 @@ export function useMiniAppOptimization(): {
 	// Detect connection quality and adjust accordingly
 	useEffect(() => {
 		if (typeof navigator !== 'undefined' && 'connection' in navigator) {
-			const connection = (navigator as unknown as { connection?: any }).connection
+			const connection = (navigator as unknown as { connection?: unknown }).connection as unknown as { addEventListener?: (type: 'change', listener: () => void) => void; removeEventListener?: (type: 'change', listener: () => void) => void }
 			if (!connection) return
 
 			const updateConnection = (): void => {
-				const effectiveType: string | undefined = connection.effectiveType
+				const effectiveType: string | undefined = (connection as unknown as { effectiveType?: string }).effectiveType
 				setOptimization((prev) => ({
 					...prev,
 					connectionType: effectiveType === '4g' ? 'fast' : 'slow',
@@ -71,7 +71,7 @@ export function useMiniAppOptimization(): {
 		}
 
 		// Prefer modern API; fallback to legacy addListener when present
-		const mqAny = mediaQuery as unknown as { addEventListener?: any; removeEventListener?: any; addListener?: any; removeListener?: any }
+		const mqAny = mediaQuery as unknown as { addEventListener?: (type: 'change', listener: (ev: MediaQueryListEvent) => void) => void; removeEventListener?: (type: 'change', listener: (ev: MediaQueryListEvent) => void) => void; addListener?: (listener: (ev: MediaQueryListEvent) => void) => void; removeListener?: (listener: (ev: MediaQueryListEvent) => void) => void }
 		if (typeof mqAny.addEventListener === 'function') {
 			mqAny.addEventListener('change', handleChange)
 		} else if (typeof mqAny.addListener === 'function') {
@@ -81,7 +81,7 @@ export function useMiniAppOptimization(): {
 		setOptimization((prev) => ({ ...prev, reducedAnimations: mediaQuery.matches }))
 
 		return () => {
-			const rmAny = mediaQuery as unknown as { removeEventListener?: any; removeListener?: any }
+		const rmAny = mediaQuery as unknown as { removeEventListener?: (type: 'change', listener: (ev: MediaQueryListEvent) => void) => void; removeListener?: (listener: (ev: MediaQueryListEvent) => void) => void }
 			if (typeof rmAny.removeEventListener === 'function') {
 				rmAny.removeEventListener('change', handleChange)
 			} else if (typeof rmAny.removeListener === 'function') {
@@ -93,7 +93,7 @@ export function useMiniAppOptimization(): {
 	// Detect if running in MiniApp context for additional optimizations
 	useEffect(() => {
 		if (typeof window === 'undefined' || typeof document === 'undefined') return
-		const inMiniApp = window.parent !== window || Boolean((window as any).miniapp) || document.referrer.includes('farcaster')
+		const inMiniApp = window.parent !== window || Boolean(window.miniapp) || document.referrer.includes('farcaster')
 		if (inMiniApp) {
 			setOptimization((prev) => ({
 				...prev,

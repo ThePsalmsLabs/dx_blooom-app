@@ -40,8 +40,8 @@ export default function SocialShareModal({ open = false, onClose, title, url, cr
 							try {
 								if (onCast) {
 									await onCast()
-								} else if ((window as any)?.miniapp?.sdk) {
-									await (window as any).miniapp.sdk.actions.share({
+							} else if (window?.miniapp?.sdk && window.miniapp.sdk.actions.share) {
+								await window.miniapp.sdk.actions.share({
 										text: title ? `Check this out: ${title}` : 'Check this out',
 										url,
 										embeds: url ? [{ url }] : undefined,

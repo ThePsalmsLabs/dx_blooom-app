@@ -10,7 +10,7 @@ export default function MiniAppHomeClient(): React.ReactElement {
 		const callReady = async (): Promise<boolean> => {
 			try {
 				const mod = await import('@farcaster/miniapp-sdk').catch(() => null)
-				const sdk = mod?.sdk ?? (typeof window !== 'undefined' ? (window as any)?.miniapp?.sdk : undefined)
+				const sdk = mod?.sdk ?? (typeof window !== 'undefined' ? window?.miniapp?.sdk : undefined)
 				if (!sdk) return false
 				if (!cancelled) {
 					await sdk.actions.ready()
