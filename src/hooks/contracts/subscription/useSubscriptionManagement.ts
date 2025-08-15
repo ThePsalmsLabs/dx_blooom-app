@@ -51,6 +51,7 @@ import {
   import { getContractAddresses } from '@/lib/contracts/config'
   import { SUBSCRIPTION_MANAGER_ABI, CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
   import type { ContractReadResult, ContractWriteWithConfirmationResult } from '@/hooks/contracts/core'
+  import { useSubscriptionPurchase } from './useSubscriptionPurchase'
   
   // ===== SUBSCRIPTION MANAGEMENT TYPE DEFINITIONS =====
   
@@ -603,38 +604,86 @@ import {
       reset: resetCancellation
     }
   
-    // ===== RETURN INTERFACE =====
+      // ===== SUBSCRIPTION PURCHASE FUNCTIONALITY =====
   
+  // Import the subscription purchase hook
+  const subscriptionPurchase = useSubscriptionPurchase()
+
+  const subscribe = useCallback(async (creatorAddress: Address) => {
+    if (!effectiveUserAddress) {
+      throw new Error('User address required')
+    }
+
+    // First check if user has sufficient USDC balance
+    // Note: This requires the creator profile data to be available
+    // The balance checking should be done in the UI components before calling subscribe
+    
+    // Execute subscription purchase
+    await subscriptionPurchase.subscribe(creatorAddress)
+    
+    // Refresh subscription data after successful purchase
+    await Promise.all([
+      userSubscriptionsQuery.refetch(),
+      activeSubscriptionsQuery.refetch()
+    ])
+  }, [effectiveUserAddress, subscriptionPurchase, userSubscriptionsQuery.refetch, activeSubscriptionsQuery.refetch])
+
+  // Add function to get user subscription details for a specific creator
+  const getUserSubscriptionDetails = useCallback((userAddress: Address, creatorAddress: Address) => {
+    // Find subscription in active subscriptions
+    const subscription = activeSubscriptions.subscriptions.find((sub: SubscriptionDetails) => 
+      sub.creator === creatorAddress && sub.user === userAddress
+    )
+    
+    if (!subscription) return null
+    
     return {
-      // Subscription data
-      allSubscriptions,
-      activeSubscriptions,
-      
-      // Data fetching state
-      isLoading,
-      isError,
-      error,
-      
-      // Conditional hooks for specific subscriptions
-      useSubscriptionDetails,
-      useSubscriptionStatus,
-      
-      // Write operations
-      cancelSubscription,
-      cancellationState,
-      
-      // Utility functions
-      refetchAll: useCallback(async () => {
-        await Promise.all([
-          userSubscriptionsQuery.refetch(),
-          activeSubscriptionsQuery.refetch()
-        ])
-      }, [userSubscriptionsQuery.refetch, activeSubscriptionsQuery.refetch]),
-      
-      // Raw query access for advanced usage
-      userSubscriptionsQuery,
-      activeSubscriptionsQuery
-    } as const
+      isActive: subscription.isActive,
+      expiryTime: subscription.endTime,
+      startTime: subscription.startTime,
+      renewalCount: subscription.renewalCount,
+      totalPaid: subscription.totalPaid
+    }
+  }, [activeSubscriptions.subscriptions])
+
+  // ===== RETURN INTERFACE =====
+
+  return {
+    // Subscription data
+    allSubscriptions,
+    activeSubscriptions,
+    
+    // Data fetching state
+    isLoading,
+    isError,
+    error,
+    
+    // Conditional hooks for specific subscriptions
+    useSubscriptionDetails,
+    useSubscriptionStatus,
+    
+    // Write operations
+    cancelSubscription,
+    cancellationState,
+    
+    // ADD THIS MISSING SUBSCRIPTION PURCHASE FUNCTIONALITY:
+    subscribe, // ADD THIS
+    isSubscribing: subscriptionPurchase.isLoading, // ADD THIS
+    subscriptionError: subscriptionPurchase.error, // ADD THIS
+    getUserSubscriptionDetails, // ADD THIS
+    
+    // Utility functions
+    refetchAll: useCallback(async () => {
+      await Promise.all([
+        userSubscriptionsQuery.refetch(),
+        activeSubscriptionsQuery.refetch()
+      ])
+    }, [userSubscriptionsQuery.refetch, activeSubscriptionsQuery.refetch]),
+    
+    // Raw query access for advanced usage
+    userSubscriptionsQuery,
+    activeSubscriptionsQuery
+  } as const
   }
   
   // ===== EXPORT TYPES FOR COMPONENT USAGE =====

@@ -62,6 +62,7 @@ import { useUnifiedContentPurchaseFlow, UnifiedPurchaseFlowResult, PaymentMethod
 import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
 import { EnhancedPaymentOptions } from './EnhancedPaymentOptions'
+import { SubscribeButton } from '@/components/subscription'
 
 
 
@@ -1288,7 +1289,7 @@ export function ContentPurchaseCard({
         )}
       </CardContent>
 
-      <CardFooter className="flex gap-2">
+      <CardFooter className="flex-col gap-3">
         {hasAccess ? (
           <Button onClick={handleViewContent} className="w-full">
             <Eye className="h-4 w-4 mr-2" />
@@ -1301,7 +1302,7 @@ export function ContentPurchaseCard({
               <Button
                 variant="outline"
                 onClick={handleRetry}
-                className="flex-1"
+                className="w-full"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
@@ -1315,8 +1316,22 @@ export function ContentPurchaseCard({
               paymentStep={paymentState.paymentStep}
               selectedMethod={paymentState.selectedMethod}
               onClick={handlePurchase}
-              className={paymentState.paymentStep === 'error' ? "flex-1" : "w-full"}
+              className={paymentState.paymentStep === 'error' ? "w-full" : "w-full"}
             />
+            
+            {/* Secondary action - subscribe to creator */}
+            <div className="w-full pt-2 border-t">
+              <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+                <span>Or subscribe for all content:</span>
+              </div>
+              <SubscribeButton
+                creatorAddress={content?.creator}
+                size="sm"
+                variant="outline"
+                showPrice={true}
+                className="w-full"
+              />
+            </div>
           </>
         )}
       </CardFooter>

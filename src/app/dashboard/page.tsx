@@ -57,8 +57,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Input,
-  useToast
+  Input
 } from '@/components/ui/index'
 
 // Import our architectural layers - demonstrating complete integration
@@ -123,8 +122,7 @@ export default function SubscriptionManagementPage() {
   const pendingEarnings = useCreatorPendingEarnings(userAddress as `0x${string}` | undefined)
   const dashboardUI = useCreatorDashboardUI(userAddress as `0x${string}` | undefined)
   
-  // Toast notifications
-  const { toast } = useToast()
+
 
   // Force refresh creator data when dashboard loads (helps with post-registration navigation)
   useEffect(() => {
@@ -152,14 +150,10 @@ export default function SubscriptionManagementPage() {
       url.searchParams.delete('newRegistration')
       window.history.replaceState({}, '', url.toString())
       
-      // Show welcome message
-      toast({
-        title: "Welcome to Your Creator Dashboard! 🎉",
-        description: "Your registration is complete. Start creating amazing content!",
-        duration: 5000
-      })
+      // Show welcome message using console for now (toast causes SSR issues)
+      console.log('🎉 Welcome to Your Creator Dashboard! Your registration is complete.')
     }
-  }, [creatorProfile, toast])
+  }, [creatorProfile])
 
   // Dashboard state management
   const [managementState, setManagementState] = useState<SubscriptionManagementState>({
