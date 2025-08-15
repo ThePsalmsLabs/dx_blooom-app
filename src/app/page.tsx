@@ -61,9 +61,11 @@ import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 // Import business logic and UI integration hooks
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { useAllCreators } from '@/hooks/contracts/useAllCreators'
 
 // Import utilities and types
 import { ContentCategory } from '@/types/contracts'
+import { formatCurrency } from '@/lib/utils'
 
 /**
  * Home Page State Interface
@@ -122,6 +124,7 @@ export default function HomePage() {
   const walletUI = useWalletConnectionUI()
   const { data: isCreator } = useIsCreatorRegistered(address)
   const { data: creatorProfile } = useCreatorProfile(address)
+  const allCreators = useAllCreators()
 
   // Component state management
   const [pageState, setPageState] = useState<HomePageState>({
@@ -139,35 +142,61 @@ export default function HomePage() {
     monthlyActiveUsers: '45.2K'
   }), [])
 
-  const featuredCreators: readonly FeaturedCreator[] = useMemo(() => [
-    {
-      address: '0x1234...',
-      displayName: 'TechGuruAlex',
-      avatar: '/vercel.svg',
-      category: 'Software Development',
-      earnings: '$15.2K',
-      subscriberCount: '1.2K',
-      bio: 'Building the future of decentralized applications'
-    },
-    {
-      address: '0x5678...',
-      displayName: 'CryptoAnalystSara',
-      avatar: '/next.svg',
-      category: 'Market Analysis',
-      earnings: '$23.8K',
-      subscriberCount: '2.1K',
-      bio: 'Deep dives into DeFi protocols and market trends'
-    },
-    {
-      address: '0x9abc...',
-      displayName: 'NFTArtistMike',
-      avatar: '/globe.svg',
-      category: 'Digital Art',
-      earnings: '$31.5K',
-      subscriberCount: '3.4K',
-      bio: 'Creating next-generation digital experiences'
+  const featuredCreators: readonly FeaturedCreator[] = useMemo(() => {
+    if (!allCreators.topCreators || allCreators.topCreators.length === 0) {
+      // Fallback to hardcoded data if no creators are loaded yet
+      return [
+        {
+          address: '0x1234...',
+          displayName: 'TechGuruAlex',
+          avatar: '/vercel.svg',
+          category: 'Software Development',
+          earnings: '$15.2K',
+          subscriberCount: '1.2K',
+          bio: 'Building the future of decentralized applications'
+        },
+        {
+          address: '0x5678...',
+          displayName: 'CryptoAnalystSara',
+          avatar: '/next.svg',
+          category: 'Market Analysis',
+          earnings: '$23.8K',
+          subscriberCount: '2.1K',
+          bio: 'Deep dives into DeFi protocols and market trends'
+        },
+        {
+          address: '0x9abc...',
+          displayName: 'NFTArtistMike',
+          avatar: '/globe.svg',
+          category: 'Digital Art',
+          earnings: '$31.5K',
+          subscriberCount: '3.4K',
+          bio: 'Creating next-generation digital experiences'
+        }
+      ]
     }
-  ], [])
+
+    // Use real creator data from the contract
+    return allCreators.topCreators.slice(0, 3).map((creator, index) => {
+      const fallbackNames = ['TechGuruAlex', 'CryptoAnalystSara', 'NFTArtistMike']
+      const fallbackCategories = ['Software Development', 'Market Analysis', 'Digital Art']
+      const fallbackBios = [
+        'Building the future of decentralized applications',
+        'Deep dives into DeFi protocols and market trends',
+        'Creating next-generation digital experiences'
+      ]
+
+      return {
+        address: creator.address,
+        displayName: fallbackNames[index] || `Creator ${index + 1}`,
+        avatar: `/api/avatar/${creator.address}`,
+        category: fallbackCategories[index] || 'Content Creation',
+        earnings: formatCurrency(creator.profile?.totalEarnings || BigInt(0), 6, 'USDC'),
+        subscriberCount: creator.profile?.subscriberCount?.toString() || '0',
+        bio: fallbackBios[index] || 'Building amazing content on the blockchain'
+      }
+    })
+  }, [allCreators.topCreators])
 
   // Content category configuration for tabs
   const contentCategories = useMemo(() => [

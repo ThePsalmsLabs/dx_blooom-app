@@ -37,7 +37,8 @@ import {
   Wallet,
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Users
 } from 'lucide-react'
 import {
   Button,
@@ -577,7 +578,8 @@ function MobileNavigation({ userRole, context, style }: MobileNavigationProps) {
   const mobileNavItems = useMemo(() => {
     const baseItems = [
       { label: 'Home', href: '/', icon: Home },
-      { label: 'Browse', href: '/browse', icon: Compass }
+      { label: 'Browse', href: '/browse', icon: Compass },
+      { label: 'Creators', href: '/creators', icon: Users }
     ]
 
     if (userRole === 'creator') {
