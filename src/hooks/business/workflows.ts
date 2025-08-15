@@ -3734,6 +3734,9 @@ export interface CreatorOnboardingFlowResult {
   readonly profile: Creator | null
   readonly register: (subscriptionPrice: bigint, profileData: string) => void
   readonly reset: () => void
+  readonly hasJustRegistered: boolean // Add this flag
+  readonly registrationCheck: any // Add this for manual refresh
+  readonly creatorProfile: any // Add this for manual refresh
   readonly registrationProgress: {
     readonly isSubmitting: boolean
     readonly isConfirming: boolean
@@ -4136,6 +4139,9 @@ export function useCreatorOnboarding(
     profile: profileData,
     register,
     reset,
+    hasJustRegistered: workflowState.hasJustRegistered, // Add this
+    registrationCheck, // Add this
+    creatorProfile, // Add this
     registrationProgress
   }
 }

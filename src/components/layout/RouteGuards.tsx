@@ -590,7 +590,11 @@ export function RouteGuards({
   // Comprehensive permission checking (existing logic preserved)
   const permissionResult: PermissionResult = useMemo(() => {
     const blockers: PermissionResult['blockers'][number][] = []
-
+    
+    // Get URL params to check for fresh registration
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+    const isNewRegistration = searchParams?.get('newRegistration') === 'true'
+    
     // Check wallet connection requirement
     if (requiredLevel !== 'public' && !isConnected) {
       blockers.push({
@@ -602,7 +606,7 @@ export function RouteGuards({
       })
     }
 
-    // Check network compatibility
+    // Check network compatibility  
     if (isConnected && !isSupportedChain(chainId)) {
       const currentChain = getCurrentChain()
       blockers.push({
@@ -614,9 +618,14 @@ export function RouteGuards({
       })
     }
 
-    // Check creator registration requirements
+    // Enhanced creator registration check with fresh registration handling
     if (requiredLevel === 'creator_basic' || requiredLevel === 'creator_verified') {
-      if (isConnected && !creatorRegistration.data) {
+      // Special handling for users who just completed registration
+      if (isNewRegistration && isConnected) {
+        console.log('🔍 New registration detected, allowing access pending data refresh...')
+        // Allow access for newly registered users while data refreshes
+        // The registration hooks should refresh automatically
+      } else if (isConnected && !creatorRegistration.data) {
         blockers.push({
           type: 'registration',
           message: 'Creator registration required to access creator features',

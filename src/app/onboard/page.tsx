@@ -236,7 +236,8 @@ function OnboardingContent() {
     console.log('🔍 Success handling effect triggered:', {
       currentStep: onboarding.currentStep,
       isNavigating,
-      showSuccessDialog
+      showSuccessDialog,
+      hasJustRegistered: onboarding.hasJustRegistered // Add this flag check
     })
     
     if (onboarding.currentStep === 'registered' && !isNavigating) {
@@ -251,25 +252,56 @@ function OnboardingContent() {
       }
       
       setIsNavigating(true)
-      const redirectTimeout = setTimeout(() => {
-        console.log('🔄 Auto-redirecting to dashboard...')
+      
+      // Enhanced redirect logic with retry mechanism
+      const attemptRedirect = async (attempt = 1, maxAttempts = 3) => {
         try {
-          // Add a small delay to allow blockchain data to update
-          setTimeout(() => {
-            router.push('/dashboard')
-            console.log('✅ Auto-redirect initiated successfully')
-          }, 1000) // Additional 1 second delay
+          console.log(`🔄 Redirect attempt ${attempt}/${maxAttempts}`)
+          
+          // Force refresh the registration status before redirecting
+          if (attempt === 1) {
+            console.log('🔄 Refreshing registration data...')
+            await onboarding.registrationCheck?.refetch?.()
+            await onboarding.creatorProfile?.refetch?.()
+            
+            // Wait a moment for the data to update
+            await new Promise(resolve => setTimeout(resolve, 1500))
+          }
+          
+          // Navigate to dashboard with registration flag
+          router.push('/dashboard?newRegistration=true')
+          console.log('✅ Redirect initiated successfully')
+          
         } catch (error) {
-          console.error('❌ Auto-redirect failed:', error)
+          console.error(`❌ Redirect attempt ${attempt} failed:`, error)
+          
+          if (attempt < maxAttempts) {
+            // Retry with exponential backoff
+            const delay = Math.pow(2, attempt) * 1000
+            setTimeout(() => attemptRedirect(attempt + 1, maxAttempts), delay)
+          } else {
+            console.error('❌ All redirect attempts failed')
+            // Fallback: show manual navigation option
+            toast({
+              title: "Registration Complete!",
+              description: "Please manually navigate to your dashboard.",
+              duration: 10000
+            })
+          }
         }
-      }, 2500)
+      }
+      
+      // Start the redirect process after a brief delay
+      const redirectTimeout = setTimeout(() => {
+        attemptRedirect()
+      }, 1000)
       
       return () => {
         console.log('🧹 Cleaning up redirect timeout')
         clearTimeout(redirectTimeout)
       }
     }
-  }, [onboarding.currentStep, onboarding.profile, router, toast, showSuccessDialog, isNavigating])
+  }, [onboarding.currentStep, onboarding.profile, onboarding.hasJustRegistered, router, toast, showSuccessDialog, isNavigating])
   
   // Handle navigation state reset if user navigates away manually
   useEffect(() => {

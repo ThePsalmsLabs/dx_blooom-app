@@ -57,7 +57,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Input
+  Input,
+  useToast
 } from '@/components/ui/index'
 
 // Import our architectural layers - demonstrating complete integration
@@ -121,6 +122,9 @@ export default function SubscriptionManagementPage() {
   const creatorContent = useCreatorContent(userAddress as `0x${string}` | undefined)
   const pendingEarnings = useCreatorPendingEarnings(userAddress as `0x${string}` | undefined)
   const dashboardUI = useCreatorDashboardUI(userAddress as `0x${string}` | undefined)
+  
+  // Toast notifications
+  const { toast } = useToast()
 
   // Force refresh creator data when dashboard loads (helps with post-registration navigation)
   useEffect(() => {
@@ -129,6 +133,33 @@ export default function SubscriptionManagementPage() {
       creatorProfile.refetch()
     }
   }, [isConnected, userAddress, creatorProfile])
+
+  // Handle fresh registrations
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const searchParams = new URLSearchParams(window.location.search)
+    const isNewRegistration = searchParams.get('newRegistration') === 'true'
+    
+    if (isNewRegistration) {
+      console.log('🎉 New creator detected! Refreshing data and cleaning URL...')
+      
+      // Force refresh all creator data
+      creatorProfile.refetch?.()
+      
+      // Clean up the URL parameter
+      const url = new URL(window.location.href)
+      url.searchParams.delete('newRegistration')
+      window.history.replaceState({}, '', url.toString())
+      
+      // Show welcome message
+      toast({
+        title: "Welcome to Your Creator Dashboard! 🎉",
+        description: "Your registration is complete. Start creating amazing content!",
+        duration: 5000
+      })
+    }
+  }, [creatorProfile, toast])
 
   // Dashboard state management
   const [managementState, setManagementState] = useState<SubscriptionManagementState>({
