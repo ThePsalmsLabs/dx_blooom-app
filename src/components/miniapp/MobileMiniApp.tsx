@@ -13,7 +13,7 @@ import {
 	Clock,
 	Star,
 } from 'lucide-react'
-import SocialContentBrowser from '@/components/miniapp/SocialContentBrowser'
+import { UnifiedContentBrowser } from '@/components/content/UnifiedContentBrowser'
 
 // Mobile-first MiniApp container with safe area handling
 function MiniAppContainer({ children }: { children: React.ReactNode }): React.ReactElement {
@@ -306,7 +306,13 @@ export default function MiniAppMobile(): React.ReactElement {
 			<QuickActionsBar onExplore={() => setFilter('explore')} onTrending={() => setFilter('trending')} onNew={() => setFilter('new')} />
 
 			{/* Social content browser */}
-			<SocialContentBrowser />
+			<UnifiedContentBrowser
+				context="miniapp"
+				showCreatorInfo={true}
+				showSocialFeatures={true}
+				enableAdvancedFiltering={false}
+				itemsPerPage={8}
+			/>
 
 			{/* Bottom CTA */}
 			<div className="px-4 pb-6">

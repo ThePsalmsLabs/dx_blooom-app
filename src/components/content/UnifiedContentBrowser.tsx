@@ -4,7 +4,7 @@
  * 
  * This component unifies the web app and mini app content browsing experiences into a single
  * adaptive system that provides consistent functionality while optimizing for each context.
- * It replaces both ContentDiscoveryGrid and MiniAppContentBrowser with intelligent contextual
+ * It replaces both ContentDiscoveryGrid and Browser with intelligent contextual
  * adaptation, building progressively on the design tokens and AdaptiveNavigation foundation.
  * 
  * Key Features:

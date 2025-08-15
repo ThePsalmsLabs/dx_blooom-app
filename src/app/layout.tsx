@@ -13,20 +13,19 @@
  * connections won't work anywhere in your application.
  * 
  * Key Changes Made to Fix Provider Issues:
- * 1. Replaced individual providers with AllProviders for proper hierarchy
+ * 1. Replaced individual providers with UnifiedAppProvider for proper hierarchy
  * 2. Ensured AuthProvider is available to all components
  * 3. Added development debugging to help identify configuration issues
  * 4. Maintained proper import order for CSS styles
  */
 
 import type { Metadata } from 'next'
-import { AllProviders } from '@/components/providers/AllProviders'
+import { Providers } from '@/components/providers/Providers'
 // Root layout is a Server Component; avoid client hooks here
 
 // Import RainbowKit styles before app globals to ensure base modal styles load correctly
 import '@rainbow-me/rainbowkit/styles.css'
 import './globals.css'
-
 
 // Comprehensive metadata configuration for SEO and social sharing
 export const metadata: Metadata = {
@@ -45,7 +44,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://your-domain.com',
+    url: 'https://dxbloom.com',
     title: 'OnChain Content Platform - Create, Share, and Earn',
     description: 'The decentralized platform where creators own their content and earn fairly through blockchain technology.',
     siteName: 'OnChain Content Platform',
@@ -95,8 +94,8 @@ export const metadata: Metadata = {
  * the provider hierarchy that makes context available everywhere.
  * 
  * Key Changes Made:
- * 1. Wrapped everything with AllProviders to establish context hierarchy
- * 2. Removed the individual provider imports since they're now in AllProviders
+ * 1. Wrapped everything with UnifiedAppProvider to establish context hierarchy
+ * 2. Added WagmiProvider and QueryClientProvider for Web3 functionality
  * 3. Added development debugging to help identify issues
  */
 export default function RootLayout({
@@ -108,21 +107,15 @@ export default function RootLayout({
     <html lang="en" data-context="desktop">
       <body className="min-h-screen bg-background font-sans antialiased bg-amber-glow">
         {/* 
-          🔧 KEY FIX: This AllProviders wrapper ensures that every component
+          🔧 KEY FIX: This provider hierarchy ensures that every component
           in your app has access to all the context providers, including AuthProvider.
           
           This is like connecting the main electrical panel to every room in the house.
           Now any component anywhere in your app can use useAuth, useWeb3, etc.
         */}
-        <AllProviders>
-          {/* 
-            Development Debug Info - Remove this in production
-            This helps you verify that providers are working correctly
-          */}
-          {/* Debug UI removed to keep layout a pure Server Component */}
-          
+        <Providers>
           {children}
-        </AllProviders>
+        </Providers>
       </body>
     </html>
   )

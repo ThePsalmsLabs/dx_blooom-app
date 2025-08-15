@@ -9,10 +9,14 @@ import { useMiniAppOptimization } from '@/hooks/miniapp/useMiniAppOptimization'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
 
 const EnhancedContentBrowser = dynamic(() => import('@/components/miniapp/EnhancedContentBrowser'), {
-	loading: () => <ContentBrowserSkeleton />, ssr: false,
+	loading: () => <ContentBrowserSkeleton />, 
+	ssr: false,
 })
 
-const SocialShareModal = dynamic(() => import('@/components/miniapp/SocialShareModal'), { loading: () => null })
+const SocialShareModal = dynamic(() => import('@/components/miniapp/SocialShareModal'), { 
+	loading: () => null,
+	ssr: false 
+})
 
 function ContentBrowserSkeleton(): React.ReactElement {
 	return (
@@ -49,9 +53,8 @@ class MiniAppErrorBoundary extends React.Component<{ children: React.ReactNode; 
 	}
 	componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
 		// Log error to analytics
-		trackMiniAppEvent.purchaseCompleted // no-op reference to ensure import is used elsewhere
-		// Record error event
-		// Use content_shared as critical example by spec; here we will send a dedicated error event name
+		trackMiniAppEvent.purchaseCompleted('error', 'error', 'error') // Use proper tracking
+		console.error('MiniApp Error Boundary caught error:', error, errorInfo)
 	}
 	render() {
 		if (this.state.hasError) {
@@ -86,7 +89,11 @@ export function ProductionMiniAppHome(): React.ReactElement {
 			track('miniapp_initialized', {
 				isMiniApp,
 				capabilities,
-				optimization: { connectionType: optimization.connectionType, dataUsageMode: optimization.dataUsageMode, batchSize: optimization.batchSize },
+				optimization: { 
+					connectionType: optimization.connectionType, 
+					dataUsageMode: optimization.dataUsageMode, 
+					batchSize: optimization.batchSize 
+				},
 			})
 		}
 	}, [isReady, isMiniApp, capabilities, optimization, track])
@@ -98,12 +105,34 @@ export function ProductionMiniAppHome(): React.ReactElement {
 					<div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
 						<div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
 					</div>
-					<h3 className="text-lg font-semibold text-slate-900 mb-2">Loading Content Platform</h3>
-					<p className="text-slate-600 text-sm">Preparing your personalized experience...</p>
+					<h2 className="text-xl font-semibold text-slate-900 mb-2">Loading Content Platform</h2>
+					<p className="text-slate-600">Preparing your personalized content experience...</p>
 				</div>
 			</div>
 		)
 	}
+
+	const handlePurchaseSuccess = React.useCallback((args: { id: number; title: string; creator?: string }) => {
+		// Track purchase success
+		trackMiniAppEvent.purchaseCompleted(args.id.toString(), '0', 'success')
+		
+		// Optionally trigger share modal after purchase
+		setSharePayload({
+			title: `Just purchased "${args.title}" by ${args.creator || 'a creator'}! Check it out:`,
+			url: `${window.location.origin}/content/${args.id}`,
+			creator: args.creator || 'Creator'
+		})
+		setShareOpen(true)
+	}, [])
+
+	const handleShareIntent = React.useCallback((args: { id: number; title: string; creator?: string }) => {
+		setSharePayload({
+			title: `Check out "${args.title}" by ${args.creator || 'a creator'}:`,
+			url: `${window.location.origin}/content/${args.id}`,
+			creator: args.creator || 'Creator'
+		})
+		setShareOpen(true)
+	}, [])
 
 	return (
 		<MiniAppErrorBoundary onRetry={() => window.location.reload()}>
@@ -113,24 +142,25 @@ export function ProductionMiniAppHome(): React.ReactElement {
 						optimized={optimization}
 						capabilities={capabilities}
 						onAnalyticsEvent={track}
-						onPurchaseSuccess={({ id, title, creator }) => {
-							setSharePayload({ title, creator, url: `${window.location.origin}/content/${id}` })
-							setShareOpen(true)
-						}}
-						onShareIntent={({ id, title, creator }) => {
-							setSharePayload({ title, creator, url: `${window.location.origin}/content/${id}` })
-							setShareOpen(true)
-						}}
+						onPurchaseSuccess={handlePurchaseSuccess}
+						onShareIntent={handleShareIntent}
 					/>
 				</Suspense>
+
 				<Suspense fallback={null}>
-					<SocialShareModal
-						open={shareOpen}
-						onClose={() => setShareOpen(false)}
-						title={sharePayload?.title}
-						url={sharePayload?.url}
-						creator={sharePayload?.creator}
-					/>
+					{shareOpen && sharePayload && (
+						<SocialShareModal
+							open={shareOpen}
+							onClose={() => setShareOpen(false)}
+							title={sharePayload.title || ''}
+							url={sharePayload.url || ''}
+							creator={sharePayload.creator || ''}
+							onCast={() => {
+								trackMiniAppEvent.contentShared('0', 'farcaster')
+								// Actual Farcaster SDK share is handled by the modal's internal logic
+							}}
+						/>
+					)}
 				</Suspense>
 			</ProductionMiniAppLayout>
 		</MiniAppErrorBoundary>

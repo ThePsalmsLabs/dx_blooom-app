@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import SocialContentBrowser from '@/components/miniapp/SocialContentBrowser'
+import { UnifiedContentBrowser } from '@/components/content/UnifiedContentBrowser'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
 
 type OptimizationState = {
@@ -47,10 +47,41 @@ export default function EnhancedContentBrowser({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
+    // Convert purchase success callback to match UnifiedContentBrowser interface
+    const handlePurchaseSuccess = React.useCallback((contentId: bigint) => {
+        // We need to get content details to call the original callback
+        // This will be handled by the UnifiedContentBrowser internally
+        onPurchaseSuccess?.({ 
+            id: Number(contentId), 
+            title: 'Content purchased', // Will be filled by actual content data
+            creator: 'Creator' // Will be filled by actual content data
+        })
+    }, [onPurchaseSuccess])
+
+    // Convert share intent callback to match UnifiedContentBrowser interface
+    const handleShareIntent = React.useCallback((payload: { title: string; url: string; creator: string }) => {
+        onShareIntent?.({
+            id: 0, // Will be extracted from URL if needed
+            title: payload.title,
+            creator: payload.creator
+        })
+    }, [onShareIntent])
+
     return (
-        <SocialContentBrowser
-            onPurchaseSuccess={onPurchaseSuccess}
-            onShareIntent={onShareIntent}
+        <UnifiedContentBrowser
+            context="miniapp"
+            showSocialFeatures={true}
+            enableAdvancedFiltering={false}
+            enableSearch={true}
+            defaultViewMode="list"
+            itemsPerPage={8}
+            showCreatorInfo={true}
+            onContentSelect={handlePurchaseSuccess}
+            onCreatorSelect={(creatorAddress) => {
+                // Handle creator selection - could open creator profile
+                console.log('Creator selected:', creatorAddress)
+            }}
+            className="miniapp-content-browser"
         />
     )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
+import { UnifiedContentBrowser } from '@/components/content/UnifiedContentBrowser'
 
 export default function MiniAppHomeClient(): React.ReactElement {
 	React.useEffect(() => {
@@ -84,14 +84,12 @@ export default function MiniAppHomeClient(): React.ReactElement {
 
 					{/* Enhanced Content Browser - The core functionality of the MiniApp */}
 					<div className="miniapp-content-wrapper">
-						<MiniAppContentBrowser
-							className="w-full"
-							itemsPerPage={12}
+						<UnifiedContentBrowser
+							context="miniapp"
 							showCreatorInfo={true}
-							onContentSelect={(contentId) => {
-								// Handle content selection - could trigger detailed view or purchase flow
-								console.log('Content selected:', contentId)
-							}}
+							showSocialFeatures={true}
+							enableAdvancedFiltering={false}
+							itemsPerPage={12}
 						/>
 					</div>
 
