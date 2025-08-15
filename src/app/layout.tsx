@@ -31,29 +31,29 @@ import './globals.css'
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
   title: {
-    template: '%s | OnChain Content Platform',
-    default: 'OnChain Content Platform - Create, Share, and Earn'
+    template: '%s | Bloom',
+    default: 'Bloom - Create, Share, and Earn'
   },
   description: 'The decentralized platform where creators own their content, build direct relationships with their audience, and earn fairly for their work through blockchain technology.',
   keywords: ['Web3', 'Content Creation', 'Blockchain', 'Creator Economy', 'USDC', 'Base Network'],
-  authors: [{ name: 'OnChain Content Platform' }],
-  creator: 'OnChain Content Platform',
-  publisher: 'OnChain Content Platform',
+  authors: [{ name: 'Bloom' }],
+  creator: 'Bloom',
+  publisher: 'Bloom',
   
   // Open Graph configuration for social media sharing
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://dxbloom.com',
-    title: 'OnChain Content Platform - Create, Share, and Earn',
+    title: 'Bloom - Create, Share, and Earn',
     description: 'The decentralized platform where creators own their content and earn fairly through blockchain technology.',
-    siteName: 'OnChain Content Platform',
+    siteName: 'Bloom',
     images: [
       {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'OnChain Content Platform'
+        url: '/images/miniapp-og-square.png',
+        width: 400,
+        height: 400,
+        alt: 'Bloom'
       }
     ]
   },
@@ -61,10 +61,10 @@ export const metadata: Metadata = {
   // Twitter Card configuration
   twitter: {
     card: 'summary_large_image',
-    title: 'OnChain Content Platform - Create, Share, and Earn',
+    title: 'Bloom - Create, Share, and Earn',
     description: 'The decentralized platform where creators own their content and earn fairly through blockchain technology.',
-    images: ['/twitter-image.png'],
-    creator: '@yourhandle'
+    images: ['/images/miniapp-og-square.png'],
+    creator: '@bloom'
   },
   
   // Search engine optimization
@@ -83,6 +83,18 @@ export const metadata: Metadata = {
   // Site verification for search engines
   verification: {
     google: 'your-google-verification-code'
+  },
+  
+  // Favicon configuration
+  icons: {
+    icon: [
+      { url: '/images/miniapp-og-square.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/miniapp-og-square.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/images/miniapp-og-square.png', sizes: '180x180', type: 'image/png' }
+    ],
+    shortcut: '/images/miniapp-og-square.png'
   }
 }
 
@@ -120,45 +132,3 @@ export default function RootLayout({
     </html>
   )
 }
-
-/**
- * Provider Debug Component
- * 
- * This component helps you verify that your providers are working correctly
- * during development. It will show you the current state of your contexts.
- */
-// Removed client-only debug helpers from Server Component
-
-/**
- * Environment Variables Checklist
- * 
- * For wallet connections to work properly, make sure you have these
- * environment variables configured in your .env.local file:
- * 
- * Required for basic functionality:
- * - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID (get from WalletConnect Cloud)
- * - NEXT_PUBLIC_ALCHEMY_API_KEY (get from Alchemy dashboard)
- * 
- * Optional for enhanced features:
- * - NEXT_PUBLIC_COINBASE_PROJECT_ID (for Coinbase-specific features)
- * - NEXT_PUBLIC_ONCHAINKIT_API_KEY (for OnchainKit enhanced UI)
- * - NEXT_PUBLIC_BICONOMY_PAYMASTER_API_KEY (for gasless transactions)
- * 
- * The ProviderDebugInfo component will show you which of these
- * are properly configured when you run the app in development mode.
- */
-
-/**
- * Testing Your Provider Fix
- * 
- * After applying these changes, test your provider setup by:
- * 1. Starting your development server (npm run dev)
- * 2. Navigate to your dashboard page
- * 3. Check the debug info in the bottom-left corner
- * 4. You should see both AuthProvider and Web3Provider showing as available
- * 5. The dashboard should load without the "useAuth must be used within an AuthProvider" error
- * 
- * If you still see errors, check the ProviderDebugInfo
- * in the bottom-left corner for configuration issues, and look at
- * the browser console for any error messages.
- */

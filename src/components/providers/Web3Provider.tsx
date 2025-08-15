@@ -676,7 +676,7 @@ export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): J
           showRecentTransactions={true}
           // Custom app info that appears in wallet connection
           appInfo={{
-            appName: 'OnChain Content Platform',
+            appName: 'Bloom',
             learnMoreUrl: 'https://your-domain.com/about',
           }}
           // Cool mode adds subtle animations

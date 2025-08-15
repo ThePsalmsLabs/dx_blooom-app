@@ -99,9 +99,9 @@ const connectors = [
   // MetaMask connector with proper error handling
   metaMask({
     dappMetadata: {
-      name: 'Onchain Content Platform',
+      name: 'Bloom',
       url: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
-      iconUrl: '/favicon.ico',
+      iconUrl: '/images/miniapp-og-square.png',
     },
     // Enable extension detection for better UX
     extensionOnly: false,
@@ -109,8 +109,8 @@ const connectors = [
   
   // Coinbase Wallet with Smart Wallet support (important for Base chain integration)
   coinbaseWallet({
-    appName: 'Onchain Content Platform',
-    appLogoUrl: '/favicon.ico',
+    appName: 'Bloom',
+    appLogoUrl: '/images/miniapp-og-square.png',
     // Enable Smart Wallet features for enhanced UX
     preference: 'smartWalletOnly', // This integrates with Base's ecosystem
   }),
@@ -119,10 +119,10 @@ const connectors = [
   walletConnect({
     projectId: WALLETCONNECT_PROJECT_ID,
     metadata: {
-      name: 'Onchain Content Platform',
+      name: 'Bloom',
       description: 'Decentralized content subscription platform on Base',
       url: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
-      icons: ['/favicon.ico'],
+      icons: ['/images/miniapp-og-square.png'],
     },
     // Show QR code modal for mobile connections
     showQrModal: true,
@@ -151,7 +151,7 @@ const storage = createStorage({
  */
 export const wagmiConfig = getDefaultConfig({
   // Application identification for wallets and services
-  appName: 'Onchain Content Platform',
+  appName: 'Bloom',
   appDescription: 'Decentralized content subscription platform on Base',
   appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
   appIcon: '/favicon.ico',

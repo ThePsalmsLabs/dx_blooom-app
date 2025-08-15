@@ -89,7 +89,7 @@ const storage = createStorage({
  */
 export const miniAppConfig = getDefaultConfig({
   // Application identification - preserved from your existing config
-  appName: 'Onchain Content Platform',
+  appName: 'Bloom',
   appDescription: 'Decentralized content subscription platform on Base',
   appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
   appIcon: '/favicon.ico',
