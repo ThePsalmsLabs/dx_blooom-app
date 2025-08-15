@@ -388,6 +388,17 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   // This hook provides the openConnectModal function that actually
   // displays the wallet selection modal to users
   const { openConnectModal } = useConnectModal()
+  
+  // Debug logging to help identify the issue
+  console.log('🔍 useWalletConnectionUI Debug:', {
+    openConnectModal: !!openConnectModal,
+    openConnectModalType: typeof openConnectModal,
+    connectors: connectors?.length,
+    isConnected,
+    isConnecting,
+    address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null
+  })
+  
   const hasWalletConnectProjectId = Boolean(
     (process.env.NEXT_PUBLIC_REOWN_PROJECT_ID && process.env.NEXT_PUBLIC_REOWN_PROJECT_ID.length > 0) ||
     (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID.length > 0)
@@ -451,17 +462,25 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
    * properly configured, and provides helpful error messages for debugging.
    */
   const handleConnect = useCallback(() => {
+    console.log('🚀 handleConnect called', {
+      openConnectModal: !!openConnectModal,
+      hasWalletConnectProjectId,
+      environment: process.env.NODE_ENV
+    })
+    
     try {
       setError(null)
       
       // Prefer custom modal if WalletConnect project ID is missing to avoid RainbowKit runtime issues
       if (process.env.NODE_ENV === 'development' && !hasWalletConnectProjectId) {
+        console.log('⚠️ Using custom modal due to missing WalletConnect project ID')
         setShowWalletModal(true)
         return
       }
 
       // Check if RainbowKit modal is available
       if (openConnectModal) {
+        console.log('✅ RainbowKit modal available, opening...')
         // This actually opens the wallet selection modal!
         openConnectModal()
         if (process.env.NODE_ENV === 'development') {
@@ -469,6 +488,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
           setTimeout(() => {
             const rkModal = document.querySelector('[data-testid="rk-connect-modal"]') as HTMLElement | null
             if (!rkModal) {
+              console.log('⚠️ RainbowKit modal not found in DOM, falling back to custom modal')
               setShowWalletModal(true)
               return
             }
@@ -476,11 +496,13 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
             const styles = getComputedStyle(rkModal)
             const isVisible = rect.width > 0 && rect.height > 0 && styles.visibility !== 'hidden' && styles.display !== 'none' && styles.opacity !== '0'
             if (!isVisible) {
+              console.log('⚠️ RainbowKit modal not visible, falling back to custom modal')
               setShowWalletModal(true)
             }
           }, 250)
         }
       } else {
+        console.log('❌ RainbowKit modal not available, falling back to custom modal')
         // If modal isn't available, fall back to custom modal
         if (process.env.NODE_ENV === 'development') {
           setShowWalletModal(true)
@@ -488,8 +510,8 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet. Please try again.'
+      console.error('💥 Wallet connection error:', err)
       setError(errorMessage)
-      console.error('Wallet connection error:', err)
       // Fallback to custom modal only in dev
       if (process.env.NODE_ENV === 'development') {
         setShowWalletModal(true)
