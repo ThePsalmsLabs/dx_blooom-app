@@ -272,7 +272,7 @@ export const INTEGRATION_TIPS = {
     
     return useSmartPurchase ? 
       <SmartContentPurchaseCard {...props} /> : 
-      <ContentPurchaseCard {...props} />
+      <SmartContentPurchaseCard {...props} /> // Always use smart version now
   `,
 
   // 2. Mobile Optimization

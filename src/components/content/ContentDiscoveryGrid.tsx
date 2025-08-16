@@ -713,15 +713,16 @@ function ContentDisplayCard({
       </CardContent>
       
       <CardFooter className="pt-0">
-        <ContentPurchaseCard
+        <SmartContentPurchaseCard
           contentId={contentId}
-          userAddress={userAddress as `0x${string}`}
-          variant="compact"
+          compact={true}
+          showBalanceDetails={false}
+          enableSwapIntegration={true}
           onPurchaseSuccess={() => {
             // Refresh access control data
             accessControl.refetch()
           }}
-          onViewContent={handleSelect}
+          className="w-full"
         />
       </CardFooter>
     </Card>

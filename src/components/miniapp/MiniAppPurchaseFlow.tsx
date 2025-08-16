@@ -7,7 +7,7 @@
 
 import React, { useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
-import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
+import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 import { useX402ContentPurchaseFlow } from '@/hooks/business/workflows'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
@@ -294,7 +294,12 @@ export function MiniAppPurchaseFlow({
       </div>
       
       {/* Enhanced Content Purchase Card */}
-      <ContentPurchaseCard {...enhancedPropsForWeb3Card} />
+      <SmartContentPurchaseCard 
+        contentId={contentId}
+        showBalanceDetails={true}
+        enableSwapIntegration={true}
+        className="w-full"
+      />
       
       {/* Social Context Information */}
       {socialContext.farcasterContext && (

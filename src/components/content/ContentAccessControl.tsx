@@ -8,7 +8,7 @@ import { Eye } from 'lucide-react'
 import { useContentById } from '@/hooks/contracts/core'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 import { useHasContentAccess } from '@/hooks/contracts/core'
-import { ContentPurchaseCard } from '@/components/content/ContentPurchaseCard'
+import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 import { SubscriptionPurchaseModal } from '@/components/subscription/SubscriptionPurchaseModal'
 import { formatCurrency } from '@/lib/utils'
 
@@ -61,10 +61,12 @@ export function ContentAccessControl({
         <p className="text-sm text-muted-foreground mb-3">
           One-time purchase for permanent access to this content
         </p>
-        <ContentPurchaseCard
+        <SmartContentPurchaseCard
           contentId={contentId}
-          userAddress={userAddress as `0x${string}`}
-          variant="compact"
+          compact={true}
+          showBalanceDetails={false}
+          enableSwapIntegration={true}
+          className="w-full"
         />
       </div>
 

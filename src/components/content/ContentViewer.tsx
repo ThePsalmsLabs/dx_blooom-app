@@ -71,7 +71,7 @@ import {
 } from '@/hooks/contracts/core'
 
 import { useAccount } from 'wagmi'
-import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
+import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 import { categoryToString } from '@/types/contracts'
 
 /**
@@ -678,10 +678,11 @@ function AccessDeniedState({
         </div>
         
         <div className="max-w-md mx-auto">
-          <ContentPurchaseCard 
+          <SmartContentPurchaseCard 
             contentId={contentId}
-            userAddress={userAddress as `0x${string}`}
-            variant="full"
+            showBalanceDetails={true}
+            enableSwapIntegration={true}
+            className="w-full"
           />
         </div>
       </CardContent>
