@@ -9,9 +9,7 @@ import {
   Zap, 
   ShoppingCart, 
   Loader2, 
-  CheckCircle, 
   AlertCircle,
-  DollarSign,
   Wallet
 } from 'lucide-react'
 
@@ -21,13 +19,9 @@ import { cn } from '@/lib/utils'
 
 // Import enhanced MiniApp hooks from Phase 2
 import { 
-  useMiniAppPurchaseFlow,
-  type MiniAppPurchaseFlowResult 
+  useMiniAppPurchaseFlow
 } from '@/hooks/business/miniapp-commerce'
-import { 
-  useMiniAppSocial,
-  type MiniAppSocialResult 
-} from '@/hooks/business/miniapp-social'
+import { useMiniAppSocial } from '@/hooks/business/miniapp-social'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
 
 /**

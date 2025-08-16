@@ -1,15 +1,7 @@
 import React from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { 
-  Grid3X3, 
-  List, 
-  Smartphone, 
-  ChevronLeft, 
-  ChevronRight,
-  Loader2
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { CreatorCard } from './CreatorCard'
 import type { Address } from 'viem'
 import type { CreatorFilters } from './CreatorsFilter'

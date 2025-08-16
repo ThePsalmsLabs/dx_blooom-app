@@ -8,10 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Search, 
-  Filter, 
   Users, 
   Star, 
-  TrendingUp,
   Grid,
   List
 } from 'lucide-react'

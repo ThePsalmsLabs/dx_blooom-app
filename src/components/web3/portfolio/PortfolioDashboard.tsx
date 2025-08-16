@@ -30,9 +30,6 @@ import {
   Target,
   BookOpen,
   ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  Plus,
   Filter,
   Search
 } from 'lucide-react'
@@ -48,7 +45,6 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,7 +57,8 @@ import { cn } from '@/lib/utils'
 
 // Import our analytics foundation and previous phase components
 import { usePortfolioAnalytics } from '@/hooks/web3/usePortfolioAnalytics'
-import { useTokenBalances, TokenBalanceCard, SwapModal } from '@/components/web3/portfolio'
+import { useEnhancedTokenBalances } from '@/hooks/web3/useEnhancedTokenBalances'
+import { TokenBalanceCard, SwapModal } from '@/components/web3/portfolio'
 import type { TokenInfo } from '@/hooks/web3/useTokenBalances'
 
 /**
@@ -99,7 +96,11 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
   onSwapRequest,
   className
 }) => {
-  const { tokens, totalPortfolioValue, isLoading, refreshBalances } = useTokenBalances()
+  const { 
+    tokens, 
+    totalPortfolioValue, 
+    isLoading 
+  } = useEnhancedTokenBalances()
   const analytics = usePortfolioAnalytics()
   
   // Dashboard configuration state
@@ -125,7 +126,7 @@ export const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({
    * most important to them.
    */
   const displayTokens = useMemo(() => {
-    let filtered = tokens.filter(token => {
+    const filtered = tokens.filter(token => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase()

@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
-import { useTokenBalances, type TokenInfo, formatUSDValue } from '@/hooks/web3/useTokenBalances'
+import { useEnhancedTokenBalances, type TokenInfo, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
 import { TokenBalanceCard } from './TokenBalanceCard'
 
 interface TokenBalanceListProps {
@@ -61,7 +61,7 @@ export const TokenBalanceList: React.FC<TokenBalanceListProps> = ({
     isLoading, 
     error, 
     refreshBalances 
-  } = useTokenBalances()
+  } = useEnhancedTokenBalances()
   
   const [showZeroBalances, setShowZeroBalances] = useState(!hideZeroBalances)
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'native' | 'stablecoin'>('all')

@@ -26,7 +26,7 @@ import {
   PaymentMethod
 } from '@/hooks/contracts/payments'
 import { useContentById as useContentDetails } from '@/hooks/contracts/content'
-import { useTokenBalances, formatUSDValue } from '@/hooks/web3/useTokenBalances'
+import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
 
 /* -------------------------------------------------------------------------- */
 /*                              INTERNAL TYPES                                */
@@ -67,7 +67,7 @@ export function ContentPurchaseCard({
 
   const unifiedPurchase = useUnifiedContentPurchase(contentId, userAddress)
   const contentDetails = useContentDetails(contentId)
-  const tokenBalances = useTokenBalances()
+  const tokenBalances = useEnhancedTokenBalances()
 
   const priceDisplay = contentDetails.data
     ? (Number(contentDetails.data.payPerViewPrice) / 1_000_000).toFixed(2)

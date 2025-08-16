@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -96,7 +96,7 @@ export function CreatorSubscriptionPurchase({
       
       toast({
         title: "Subscription Successful! 🎉",
-        description: "You now have access to all of this creator's content for 30 days.",
+        description: "You now have access to all of this creator&apos;s content for 30 days.",
       })
       
       onSubscriptionSuccess?.()

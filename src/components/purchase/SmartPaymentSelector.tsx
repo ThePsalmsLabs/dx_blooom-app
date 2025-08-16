@@ -22,11 +22,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { 
-  useTokenBalances, 
+  useEnhancedTokenBalances, 
   formatUSDValue, 
   formatTokenAmount,
   type TokenInfo 
-} from '@/hooks/web3/useTokenBalances'
+} from '@/hooks/web3/useEnhancedTokenBalances'
 import { PaymentMethod } from '@/hooks/business/workflows'
 
 // Import Phase 3 swap functionality
@@ -125,7 +125,7 @@ export const SmartPaymentSelector: React.FC<SmartPaymentSelectorProps> = ({
     canAffordContentPrice,
     getPaymentCapabilities,
     refreshBalances
-  } = useTokenBalances()
+  } = useEnhancedTokenBalances()
   
   // Phase 3: Swap integration state
   const [showSwapModal, setShowSwapModal] = useState(false)

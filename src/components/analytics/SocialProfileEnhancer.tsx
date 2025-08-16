@@ -3,7 +3,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { CheckCircle, ExternalLink, RefreshCw, AlertCircle, Users, Loader2 } from 'lucide-react'
+import { CheckCircle, RefreshCw, AlertCircle, Users, Loader2 } from 'lucide-react'
 
 // Import your existing UI components following established patterns
 import {

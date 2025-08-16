@@ -32,12 +32,11 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
 import {
   Calendar,
   CreditCard,
-  DollarSign,
   AlertCircle,
   CheckCircle2,
   Clock,
@@ -45,14 +44,11 @@ import {
   Trash2,
   RefreshCw,
   Search,
-  Filter,
   TrendingUp,
   Wallet,
-  AlertTriangle,
-  Info,
   Plus,
-  Eye,
-  EyeOff,
+  AlertTriangle,
+  DollarSign,
   Users
 } from 'lucide-react'
 
@@ -100,7 +96,6 @@ import { useAutoRenewalManagement } from '@/hooks/contracts/subscription/useAuto
 import { 
   formatCurrency, 
   formatAddress, 
-  formatRelativeTime,
   formatAbsoluteTime 
 } from '@/lib/utils'
 

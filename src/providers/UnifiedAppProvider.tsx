@@ -33,22 +33,11 @@
 
 'use client'
 
-import React, { 
-  createContext, 
-  useContext, 
-  useCallback, 
-  useEffect, 
-  useMemo, 
-  useReducer, 
-  useRef,
-  useState,
-  type ReactNode
-} from 'react'
+import { ReactNode, createContext, useContext, useMemo, useState, useEffect, useRef, useReducer } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useAccount, useChainId, useConnect, useDisconnect } from 'wagmi'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { WagmiProvider } from 'wagmi'
+import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
+import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
 // Import existing business logic hooks
 import { 
@@ -57,14 +46,8 @@ import {
   type UserRole 
 } from '@/components/layout/Navigation'
 import { 
-  useContentById, 
-  useHasContentAccess, 
-  useActiveContentPaginated,
   useIsCreatorRegistered
 } from '@/hooks/contracts/core'
-
-// Import MiniApp integration components
-import { MiniKitProvider, useMiniKit, useFarcasterContext } from '@/components/providers/MiniKitProvider'
 
 // Import utilities and types
 import { cn } from '@/lib/utils'
@@ -633,7 +616,7 @@ function usePerformanceMonitoring() {
       }
 
       // Check connection via navigator.connection if available
-      const connection = (navigator as any).connection
+      const connection = (navigator as { connection?: { effectiveType?: string } }).connection
       if (connection) {
         const effectiveType = connection.effectiveType
         if (effectiveType === '4g') {
@@ -683,7 +666,6 @@ export function UnifiedAppProvider({
   forceContext,
   forceViewport,
   initialTheme = 'system',
-  enableOptimizations = true,
   errorFallback,
   debugMode = false
 }: UnifiedAppProviderProps) {
@@ -704,8 +686,7 @@ export function UnifiedAppProvider({
   
   const router = useRouter()
   const pathname = usePathname()
-  const { address, isConnected, isConnecting } = useAccount()
-  const chainId = useChainId()
+  const { address, isConnected } = useAccount()
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
   const queryClient = useQueryClient()
@@ -768,11 +749,11 @@ export function UnifiedAppProvider({
       const socialProfile = {
         fid: farcasterContext.user?.fid,
         username: farcasterContext.user?.username,
-        // Remove properties that don't exist on the actual interface
+        // Only include properties that exist on the actual interface
         displayName: undefined, // Not available in the actual interface
         pfpUrl: undefined, // Not available in the actual interface
         bio: undefined, // Not available in the actual interface
-        followerCount: farcasterContext.user?.followerCount,
+        followerCount: undefined, // Not available in the actual interface
         followingCount: undefined // Not available in the actual interface
       }
       dispatch({ type: 'SOCIAL_PROFILE_UPDATED', socialProfile })

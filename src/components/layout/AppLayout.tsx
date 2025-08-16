@@ -69,7 +69,7 @@ import {
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { WalletConnectButton, WalletStatus } from '@/components/web3/WalletConnectModal'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-config'
-import { useTokenBalances, formatUSDValue } from '@/hooks/web3/useTokenBalances'
+import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
 
 /**
  * User Role Types
@@ -344,7 +344,6 @@ function AppHeader({
   onNavigationToggle,
   onDisconnect,
   onProfileClick,
-  walletUI,
   headerContent
 }: AppHeaderProps) {
   // Avoid hydration mismatches by rendering client-only bits after mount
@@ -352,7 +351,7 @@ function AppHeader({
   React.useEffect(() => { setIsMounted(true) }, [])
   
   // Portfolio integration for header display
-  const { totalPortfolioValue, isLoading: balancesLoading } = useTokenBalances()
+  const { totalPortfolioValue, isLoading: balancesLoading } = useEnhancedTokenBalances()
   return (
     <header className="border-b bg-background relative z-40">
       <div className="container mx-auto px-2 sm:px-4">

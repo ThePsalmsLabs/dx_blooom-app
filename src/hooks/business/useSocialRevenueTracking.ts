@@ -403,9 +403,6 @@ export function useSocialRevenueTracking(
   // Integration with existing earnings tracking
   const pendingEarnings = useCreatorPendingEarnings(effectiveCreatorAddress)
   
-  // Integration with Component 4.2's Mini App analytics
-  const miniAppAnalytics = useMiniAppAnalytics()
-  
   // Contract configuration for event listening
   const contractConfig = useMemo(() => getCommerceIntegrationContract(chainId), [chainId])
   

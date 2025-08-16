@@ -37,30 +37,22 @@ import { useRouter } from 'next/navigation'
 import { useAccount, useBalance, useChainId } from 'wagmi'
 import {
   ShoppingCart,
-  CreditCard,
   Zap,
-  Eye,
-  Lock,
-  Unlock,
-  CheckCircle,
   AlertCircle,
   Loader2,
-  DollarSign,
   RefreshCw,
-  Share2,
-  Users,
-  Sparkles,
   TrendingUp,
   AlertTriangle,
-  Info,
-  ExternalLink,
-  ArrowRight,
   Wallet,
-  Shield,
   Clock,
-  X,
+  CheckCircle,
+  Share2,
+  Sparkles,
+  Users,
+  Shield,
+  ChevronUp,
   ChevronDown,
-  ChevronUp
+  Info
 } from 'lucide-react'
 
 // Import shadcn/ui components following existing patterns
@@ -114,7 +106,7 @@ import {
 
 // Import utilities and types
 import { cn, formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
-import { ContentCategory, categoryToString } from '@/types/contracts'
+import { categoryToString } from '@/types/contracts'
 import type { Address } from 'viem'
 
 // ================================================

@@ -50,7 +50,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 // Import real business logic and token balance system
-import { useTokenBalances, formatUSDValue, type TokenInfo } from '@/hooks/web3/useTokenBalances'
+import { useEnhancedTokenBalances, formatUSDValue, type TokenInfo } from '@/hooks/web3/useEnhancedTokenBalances'
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
 import { 
   useUnifiedContentPurchaseFlow, 
@@ -186,7 +186,7 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
     refreshBalances,
     canAffordContentPrice,
     getPaymentCapabilities
-  } = useTokenBalances()
+  } = useEnhancedTokenBalances()
   
   // Real business logic hooks
   const { data: content, isLoading: contentLoading } = useContentById(contentId)

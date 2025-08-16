@@ -6,9 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { useRouter } from 'next/navigation'
 import { 
   Users, 
-  DollarSign, 
   FileText, 
-  Star, 
   CheckCircle2,
   TrendingUp
 } from 'lucide-react'

@@ -3,26 +3,44 @@
 // Production-ready provider that integrates with existing architecture
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-interface MiniAppContextType {
-	isMiniApp: boolean
-	isReady: boolean
-	farcasterUser?: {
-		fid: number
-		username: string
-		displayName: string
-		pfp?: string
-		following: number
-		followers: number
-	}
-	capabilities: {
-		canShare: boolean
-		canSignIn: boolean
-		canSendTransactions: boolean
-		hasNotifications: boolean
-	}
-	ready: () => Promise<void>
-	share: (content: ShareContent) => Promise<void>
-	track: (event: string, properties: Record<string, any>) => void
+interface EnhancedMiniAppProviderProps {
+  children: React.ReactNode
+  config?: {
+    enableOptimizations?: boolean
+    enableSocialFeatures?: boolean
+    enableAnalytics?: boolean
+    customTheme?: Record<string, unknown>
+  }
+}
+
+interface MiniAppContextValue {
+  isMiniApp: boolean
+  isReady: boolean
+  platform: 'ios' | 'android' | 'web' | 'unknown'
+  version: string
+  features: {
+    socialSharing: boolean
+    analytics: boolean
+    payments: boolean
+  }
+  capabilities: {
+    socialSharing: boolean
+    analytics: boolean
+    payments: boolean
+    hasNotifications?: boolean
+  }
+  config: Record<string, unknown>
+  track: (event: string, data?: Record<string, unknown>) => void
+  ready: () => Promise<void>
+  share: (content: ShareContent) => Promise<void>
+  farcasterUser: {
+    fid: number
+    username: string
+    displayName: string
+    pfp?: string
+    following: number
+    followers: number
+  } | null
 }
 
 interface ShareContent {
@@ -32,17 +50,28 @@ interface ShareContent {
 	creatorAddress?: string
 }
 
-const MiniAppContext = createContext<MiniAppContextType | undefined>(undefined)
+const MiniAppContext = createContext<MiniAppContextValue | undefined>(undefined)
 
-export function EnhancedMiniAppProvider({ children }: { children: ReactNode }): React.ReactElement {
+export function EnhancedMiniAppProvider({ children }: EnhancedMiniAppProviderProps): React.ReactElement {
 	const [isMiniApp, setIsMiniApp] = useState(false)
 	const [isReady, setIsReady] = useState(false)
-	const [farcasterUser, setFarcasterUser] = useState<MiniAppContextType['farcasterUser']>()
-	const [capabilities, setCapabilities] = useState<MiniAppContextType['capabilities']>({
-		canShare: false,
-		canSignIn: false,
-		canSendTransactions: false,
-		hasNotifications: false,
+	const [farcasterUser, setFarcasterUser] = useState<{
+		fid: number
+		username: string
+		displayName: string
+		pfp?: string
+		following: number
+		followers: number
+	} | null>(null)
+	const [capabilities, setCapabilities] = useState<{
+		socialSharing: boolean
+		analytics: boolean
+		payments: boolean
+		hasNotifications?: boolean
+	}>({
+		socialSharing: false,
+		analytics: false,
+		payments: false,
 	})
 
 	useEffect(() => {
@@ -69,9 +98,9 @@ export function EnhancedMiniAppProvider({ children }: { children: ReactNode }): 
 
 						const caps: string[] = sdk.capabilities ? (await sdk.capabilities.getCapabilities?.().catch(() => [])) ?? [] : []
 						setCapabilities({
-							canShare: caps.includes('share'),
-							canSignIn: caps.includes('signIn'),
-							canSendTransactions: caps.includes('sendTransaction'),
+							socialSharing: caps.includes('share'),
+							analytics: caps.includes('signIn'),
+							payments: caps.includes('sendTransaction'),
 							hasNotifications: caps.includes('notifications'),
 						})
 						setIsReady(true)
@@ -95,18 +124,14 @@ export function EnhancedMiniAppProvider({ children }: { children: ReactNode }): 
 		}
 	}
 
-	const share = async (content: ShareContent): Promise<void> => {
-		if (!capabilities.canShare) throw new Error('Sharing not available in this environment')
-		const sdk = window.miniapp?.sdk
-		if (sdk && sdk.actions.share) {
-			await sdk.actions.share({ text: content.text, url: content.url, embeds: content.url ? [{ url: content.url }] : undefined })
+	const track = (event: string, data?: Record<string, unknown>): void => {
+		if (capabilities.analytics) {
+			console.log('MiniApp Analytics Event:', event, data)
+			// Implement actual analytics tracking here
 		}
-	}
-
-	const track = (event: string, properties: Record<string, unknown>): void => {
-	if (typeof window !== 'undefined' && window.analytics) {
-			window.analytics.track(event, {
-				...properties,
+		if (typeof window !== 'undefined' && (window as any).analytics) {
+			(window as any).analytics.track(event, {
+				...data,
 				context: 'miniapp',
 				isMiniApp,
 				userFid: farcasterUser?.fid,
@@ -114,12 +139,32 @@ export function EnhancedMiniAppProvider({ children }: { children: ReactNode }): 
 		}
 	}
 
-	const contextValue: MiniAppContextType = { isMiniApp, isReady, farcasterUser, capabilities, ready, share, track }
+	const share = async (content: ShareContent): Promise<void> => {
+		if (!capabilities.socialSharing) throw new Error('Sharing not available in this environment')
+		const sdk = (window as any).miniapp?.sdk
+		if (sdk && sdk.actions.share) {
+			await sdk.actions.share({ text: content.text, url: content.url, embeds: content.url ? [{ url: content.url }] : undefined })
+		}
+	}
+
+	const contextValue: MiniAppContextValue = { 
+		isMiniApp, 
+		isReady, 
+		platform: 'web',
+		version: '1.0.0',
+		features: capabilities,
+		capabilities,
+		config: {},
+		track, 
+		ready, 
+		share,
+		farcasterUser
+	}
 
 	return <MiniAppContext.Provider value={contextValue}>{children}</MiniAppContext.Provider>
 }
 
-export function useMiniApp(): MiniAppContextType {
+export function useMiniApp(): MiniAppContextValue {
 	const context = useContext(MiniAppContext)
 	if (context === undefined) {
 		throw new Error('useMiniApp must be used within a MiniAppProvider')

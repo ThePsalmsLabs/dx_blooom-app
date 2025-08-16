@@ -7,6 +7,7 @@ import { type Address } from 'viem'
 
 // MiniApp provider utilities (Phase 1)
 import { useMiniKitAvailable, useFarcasterContext } from '@/components/providers/MiniKitProvider'
+import { trackMiniAppEvent, miniAppAnalytics } from '@/lib/miniapp/analytics'
 
 
 /**
@@ -349,10 +350,14 @@ export function useMiniAppSocial(): MiniAppSocialResult {
       
       // Track the share event for analytics
       trackEngagement('share', params.contentId, {
-        shareText,
-        embedCount: embeds.length,
-        hasCustomText: Boolean(params.customText),
-        creatorAddress: params.creatorAddress
+        platform: 'farcaster',
+        timestamp: Date.now(),
+        additionalData: {
+          shareText,
+          embedCount: embeds.length,
+          hasCustomText: Boolean(params.customText),
+          creatorAddress: params.creatorAddress
+        }
       })
       
       const result: SocialShareResult = {
@@ -425,30 +430,24 @@ export function useMiniAppSocial(): MiniAppSocialResult {
     contentId: bigint,
     metadata?: Record<string, any>
   ): void => {
-    if (!isMiniAppEnvironment) {
-      console.warn('Social engagement tracking only available in MiniApp environment')
-      return
+    if (!farcasterContext?.user?.fid) return
+
+    try {
+      const engagementData = {
+        eventType: action,
+        contentId: contentId.toString(),
+        userFid: farcasterContext.user.fid,
+        platform: 'farcaster',
+        timestamp: Date.now(),
+        metadata: metadata || {}
+      }
+
+      // Use the generic track method for engagement events
+      miniAppAnalytics.track('engagement', engagementData)
+    } catch (error) {
+      console.error('Failed to track engagement:', error)
     }
-
-    const event: SocialEngagementEvent = {
-      action,
-      contentId,
-      fid: socialUser.fid || undefined,
-      username: socialUser.username || undefined,
-      clientName: (farcasterContext as any)?.client?.name || 'unknown',
-      timestamp: Date.now(),
-      metadata
-    }
-
-    setEngagementState(prev => ({
-      ...prev,
-      eventQueue: [...prev.eventQueue, event],
-      trackedEventsCount: prev.trackedEventsCount + 1,
-      lastEventAt: new Date()
-    }))
-
-    console.log('📊 Social engagement tracked:', { action, contentId: contentId.toString(), metadata })
-  }, [isMiniAppEnvironment, socialUser, farcasterContext])
+  }, [farcasterContext?.user?.fid])
   
   /**
    * Specialized Tracking Methods
@@ -458,9 +457,13 @@ export function useMiniAppSocial(): MiniAppSocialResult {
    */
   const trackView = useCallback((contentId: bigint): void => {
     trackEngagement('view', contentId, {
-      viewedAt: Date.now(),
-      referrer: typeof window !== 'undefined' ? document.referrer : '',
-      userAgent: typeof window !== 'undefined' ? navigator.userAgent : ''
+      platform: 'farcaster',
+      timestamp: Date.now(),
+      additionalData: {
+        viewedAt: Date.now(),
+        referrer: typeof window !== 'undefined' ? document.referrer : '',
+        userAgent: typeof window !== 'undefined' ? navigator.userAgent : ''
+      }
     })
   }, [trackEngagement])
   
@@ -469,8 +472,12 @@ export function useMiniAppSocial(): MiniAppSocialResult {
     interactionType: string
   ): void => {
     trackEngagement('interact', contentId, {
-      interactionType,
-      interactedAt: Date.now()
+      platform: 'farcaster',
+      timestamp: Date.now(),
+      additionalData: {
+        interactionType,
+        interactedAt: Date.now()
+      }
     })
   }, [trackEngagement])
   
@@ -479,9 +486,13 @@ export function useMiniAppSocial(): MiniAppSocialResult {
     purchaseAmount: bigint
   ): void => {
     trackEngagement('purchase', contentId, {
-      purchaseAmount: purchaseAmount.toString(),
-      purchasedAt: Date.now(),
-      socialContext: true
+      platform: 'farcaster',
+      timestamp: Date.now(),
+      additionalData: {
+        purchaseAmount: purchaseAmount.toString(),
+        purchasedAt: Date.now(),
+        socialContext: true
+      }
     })
   }, [trackEngagement])
 

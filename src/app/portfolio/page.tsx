@@ -16,7 +16,7 @@
 
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { 
@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils'
 // Import the complete portfolio system
 import { 
   PortfolioDashboard, 
-  useTokenBalances, 
+  useEnhancedTokenBalances, 
   usePortfolioAnalytics,
   type TokenInfo 
 } from '@/components/web3/portfolio'
@@ -67,7 +67,7 @@ interface PortfolioPageState {
 export default function PortfolioPage() {
   const router = useRouter()
   const { address, isConnected } = useAccount()
-  const { totalPortfolioValue, tokens } = useTokenBalances()
+  const { totalPortfolioValue, tokens } = useEnhancedTokenBalances()
   const { metrics } = usePortfolioAnalytics()
   
   const [pageState, setPageState] = useState<PortfolioPageState>({

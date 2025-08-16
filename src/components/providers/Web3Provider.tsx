@@ -11,7 +11,7 @@ import React, {
   JSX
 } from 'react'
 import { WagmiProvider, useAccount, useChainId, useWalletClient } from 'wagmi'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { base, baseSepolia } from 'viem/chains'
 import { type Address, parseUnits } from 'viem'
@@ -669,7 +669,6 @@ function EnhancedWeb3ProviderInner({ children }: EnhancedWeb3ProviderProps): JSX
  */
 export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): JSX.Element {
   return (
-    <QueryClientProvider client={queryClient}>
     <WagmiProvider config={wagmiConfig}>
         <RainbowKitProvider
           // Show recent transactions in the modal
@@ -687,7 +686,6 @@ export function EnhancedWeb3Provider({ children }: EnhancedWeb3ProviderProps): J
           </EnhancedWeb3ProviderInner>
         </RainbowKitProvider>
       </WagmiProvider>
-      </QueryClientProvider>
   )
 }
 

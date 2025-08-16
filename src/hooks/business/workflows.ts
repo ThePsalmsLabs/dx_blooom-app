@@ -157,11 +157,6 @@ interface ContentDetails {
   reportCount: bigint
 }
 
-interface PaymentIntentResult {
-  intentId: string  // bytes16 returned as hex string
-  expectedAmount: bigint
-  deadline: bigint
-}
 
 /**
  * Payment Method Configuration Interface
@@ -408,13 +403,12 @@ export function useUnifiedContentPurchaseFlow(
   // Core blockchain data hooks
   const contentQuery = useContentById(contentId)
   const accessQuery = useHasContentAccess(userAddress, contentId)
-  const usdcBalance = useTokenBalance(contractAddresses?.USDC, userAddress)
   const purchaseContent = usePurchaseContent()
   const approveToken = useApproveToken()
 
   // Commerce Protocol transaction hooks
-  const { writeContract: writeCommerceContract, data: commerceHash, isPending: isCommerceLoading } = useWriteContract()
-  const { isLoading: isCommerceConfirming, isSuccess: isCommerceConfirmed } = useWaitForTransactionReceipt({
+  const { writeContract: writeCommerceContract, data: commerceHash } = useWriteContract()
+  const { isSuccess: isCommerceConfirmed } = useWaitForTransactionReceipt({
     hash: commerceHash
   })
 
@@ -1785,11 +1779,6 @@ export interface PurchaseProgress {
  * This interface manages the overall state of the purchase workflow,
  * including current step, error handling, and progress tracking.
  */
-interface WorkflowState {
-  readonly currentStep: ContentPurchaseFlowStep
-  readonly error: Error | null
-  readonly lastSuccessfulStep: ContentPurchaseFlowStep | null
-}
 
 export function useContentPurchaseFlow(
   contentId: bigint | undefined,
@@ -1819,7 +1808,7 @@ export function useContentPurchaseFlow(
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.USDC)
 
   // Contract interaction hooks
-  const { writeContract, data: transactionHash, error: transactionError, isPending } = useWriteContract()
+  const { writeContract, data: transactionHash, error: transactionError } = useWriteContract()
   const { data: receipt, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash: transactionHash
   })
@@ -2347,38 +2336,6 @@ export interface ExtendedContentPurchaseFlowResult {
   }
 }
 
-interface PlatformPaymentRequest {
-  readonly paymentType: number
-  readonly creator: Address
-  readonly contentId: bigint
-  readonly paymentToken: Address
-  readonly maxSlippage: number
-  readonly deadline: number
-}
-
-interface PaymentIntentResponse {
-  readonly intent: {
-    readonly recipientAmount: bigint
-    readonly deadline: bigint
-    readonly recipient: Address
-    readonly recipientCurrency: Address
-    readonly refundDestination: Address
-    readonly feeAmount: bigint
-    readonly id: string
-    readonly operator: Address
-  }
-  readonly context: {
-    readonly user: Address
-    readonly creator: Address
-    readonly paymentType: number
-    readonly contentId: bigint
-    readonly creatorAmount: bigint
-    readonly platformFee: bigint
-    readonly operatorFee: bigint
-    readonly paymentToken: Address
-    readonly expectedAmount: bigint
-  }
-}
 
 export function useExtendedContentPurchaseFlow(
   contentId: bigint | undefined,
@@ -2406,8 +2363,8 @@ export function useExtendedContentPurchaseFlow(
   const approveToken = useApproveToken()
   const purchaseContent = usePurchaseContent()
 
-  const { writeContract: writeCommerceContract, data: commerceHash, isPending: isCommercePending } = useWriteContract()
-  const { isLoading: isCommerceConfirming, isSuccess: isCommerceConfirmed } = useWaitForTransactionReceipt({
+  const { writeContract: writeCommerceContract, data: commerceHash } = useWriteContract()
+  const { isSuccess: isCommerceConfirmed } = useWaitForTransactionReceipt({
     hash: commerceHash
   })
 
@@ -3419,7 +3376,6 @@ export function useEnhancedContentPublishingFlow(
   const { address: connectedAddress } = useAccount()
   const effectiveUserAddress = (userAddress || connectedAddress) as Address | undefined
   const chainId = useChainId()
-  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
   const basePublishingFlow = useContentPublishingFlow(effectiveUserAddress)
   const farcasterContext = useFarcasterContext()
   const miniAppAnalytics = useMiniAppAnalytics(effectiveUserAddress)
@@ -3751,8 +3707,8 @@ export function useCreatorOnboarding(
   const chainId = useChainId()
   
   const registrationCheck = useIsCreatorRegistered(userAddress)
-  const creatorProfile = useCreatorProfile(userAddress)
   const registerCreator = useRegisterCreator()
+  const creatorProfile = useCreatorProfile(userAddress)
   
   // Guard against indefinite "checking" by tracking how long we've been in that state
   // and forcing a deterministic transition if remote reads remain stuck.

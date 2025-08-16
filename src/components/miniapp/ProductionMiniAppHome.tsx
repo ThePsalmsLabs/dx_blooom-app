@@ -84,6 +84,14 @@ export function ProductionMiniAppHome(): React.ReactElement {
 	const [shareOpen, setShareOpen] = React.useState(false)
 	const [sharePayload, setSharePayload] = React.useState<{ title?: string; url?: string; creator?: string } | null>(null)
 
+	// Map capabilities to match the expected interface
+	const mappedCapabilities = {
+		canShare: capabilities.socialSharing,
+		canSignIn: capabilities.analytics,
+		canSendTransactions: capabilities.payments,
+		hasNotifications: capabilities.hasNotifications || false
+	}
+
 	React.useEffect(() => {
 		if (isReady) {
 			track('miniapp_initialized', {
@@ -140,7 +148,7 @@ export function ProductionMiniAppHome(): React.ReactElement {
 				<Suspense fallback={<ContentBrowserSkeleton />}>
 					<EnhancedContentBrowser
 						optimized={optimization}
-						capabilities={capabilities}
+						capabilities={mappedCapabilities}
 						onAnalyticsEvent={track}
 						onPurchaseSuccess={handlePurchaseSuccess}
 						onShareIntent={handleShareIntent}

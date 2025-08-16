@@ -7,13 +7,13 @@
  * Real Implementation Examples - Ready to Use
  */
 
-import React from 'react'
+import { useState, useEffect } from 'react'
 import { Address } from 'viem'
 import { 
   SmartContentPurchaseCard, 
   SmartPaymentSelector,
   TokenInfo,
-  useTokenBalances 
+  useEnhancedTokenBalances 
 } from '@/components/web3/portfolio'
 import { PaymentMethod } from '@/hooks/business/workflows'
 
@@ -50,14 +50,48 @@ export function ContentPageExample({ contentId }: { contentId: bigint }) {
  * Use the smart payment selector in checkout flows
  */
 export function CheckoutFlowExample({ totalAmount }: { totalAmount: bigint }) {
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = React.useState<PaymentMethod>()
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>()
 
-  const handlePaymentMethodSelect = (method: PaymentMethod, analysis: any) => {
+  const handlePaymentMethodSelect = (method: PaymentMethod, analysis: {
+    method: PaymentMethod
+    token: any
+    name: string
+    symbol: string
+    icon: React.ComponentType<{ className?: string }>
+    status: 'available' | 'insufficient' | 'unavailable' | 'loading'
+    currentBalance: number
+    currentBalanceFormatted: string
+    currentBalanceUSD: number
+    requiredAmount: number
+    requiredAmountFormatted: string
+    shortfall: number
+    shortfallFormatted: string
+    canAfford: boolean
+    efficiency: number
+    recommendation: 'best' | 'good' | 'acceptable' | 'avoid'
+  }) => {
     setSelectedPaymentMethod(method)
     console.log('User selected:', method, 'Analysis:', analysis)
   }
 
-  const handleInsufficientBalance = (analysis: any) => {
+  const handleInsufficientBalance = (analysis: {
+    method: PaymentMethod
+    token: any
+    name: string
+    symbol: string
+    icon: React.ComponentType<{ className?: string }>
+    status: 'available' | 'insufficient' | 'unavailable' | 'loading'
+    currentBalance: number
+    currentBalanceFormatted: string
+    currentBalanceUSD: number
+    requiredAmount: number
+    requiredAmountFormatted: string
+    shortfall: number
+    shortfallFormatted: string
+    canAfford: boolean
+    efficiency: number
+    recommendation: 'best' | 'good' | 'acceptable' | 'avoid'
+  }) => {
     console.log('Insufficient balance for:', analysis.method)
     // Show swap options or funding instructions
   }
@@ -96,7 +130,7 @@ export function MobileContentPurchaseExample({ contentId }: { contentId: bigint 
  * Show spending capability at a glance
  */
 export function SpendingCapabilityWidget() {
-  const { getPaymentCapabilities, totalPortfolioValue } = useTokenBalances()
+  const { getPaymentCapabilities, totalPortfolioValue } = useEnhancedTokenBalances()
   const capabilities = getPaymentCapabilities()
 
   return (
@@ -133,7 +167,24 @@ export function SubscriptionPurchaseExample({
   creatorAddress: Address
   monthlyPrice: bigint 
 }) {
-  const handleMethodSelect = (method: PaymentMethod, analysis: any) => {
+  const handleMethodSelect = (method: PaymentMethod, analysis: {
+    method: PaymentMethod
+    token: any
+    name: string
+    symbol: string
+    icon: React.ComponentType<{ className?: string }>
+    status: 'available' | 'insufficient' | 'unavailable' | 'loading'
+    currentBalance: number
+    currentBalanceFormatted: string
+    currentBalanceUSD: number
+    requiredAmount: number
+    requiredAmountFormatted: string
+    shortfall: number
+    shortfallFormatted: string
+    canAfford: boolean
+    efficiency: number
+    recommendation: 'best' | 'good' | 'acceptable' | 'avoid'
+  }) => {
     console.log('Subscription payment method:', method)
     // Proceed with subscription setup using selected method
   }
@@ -170,7 +221,7 @@ export function BulkPurchaseExample({
   contentIds: bigint[]
   totalAmount: bigint 
 }) {
-  const [processingStates, setProcessingStates] = React.useState<Record<string, boolean>>({})
+  const [processingStates, setProcessingStates] = useState<Record<string, boolean>>({})
 
   const handleBulkPurchase = async (method: PaymentMethod) => {
     console.log(`Processing bulk purchase of ${contentIds.length} items with ${method}`)
@@ -223,9 +274,9 @@ export function BulkPurchaseExample({
  * For PWA installations and offline considerations
  */
 export function PWAOptimizedPurchase({ contentId }: { contentId: bigint }) {
-  const [isOffline, setIsOffline] = React.useState(!navigator.onLine)
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleOnline = () => setIsOffline(false)
     const handleOffline = () => setIsOffline(true)
     
@@ -242,7 +293,7 @@ export function PWAOptimizedPurchase({ contentId }: { contentId: bigint }) {
     return (
       <div className="p-4 border rounded-lg bg-yellow-50 border-yellow-200">
         <p className="text-yellow-800">
-          You're offline. Purchase functionality will be available when you reconnect.
+          You&apos;re offline. Purchase functionality will be available when you reconnect.
         </p>
       </div>
     )

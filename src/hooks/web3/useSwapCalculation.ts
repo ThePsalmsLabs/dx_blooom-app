@@ -34,11 +34,10 @@
  * This hook abstracts all this complexity into simple, user-friendly information.
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useAccount, useReadContract, useChainId } from 'wagmi'
-import { formatUnits, parseUnits, type Address } from 'viem'
+import { useState, useMemo, useCallback } from 'react'
+import { useAccount, useChainId } from 'wagmi'
+import { formatUnits, type Address } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 import type { TokenInfo } from '@/hooks/web3/useTokenBalances'
 
 /**

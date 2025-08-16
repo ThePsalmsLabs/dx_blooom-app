@@ -29,9 +29,9 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useAccount, useChainId } from 'wagmi'
+import { useAccount } from 'wagmi'
 import {
   Menu,
   ChevronLeft,
@@ -39,11 +39,9 @@ import {
   Settings,
   User,
   LogOut,
-  Shield,
   X,
   MoreHorizontal,
-  Home,
-  Compass
+  Home
 } from 'lucide-react'
 
 // Import shadcn/ui components following existing patterns
@@ -75,9 +73,6 @@ import {
   type NavigationItem,
   type UserRole 
 } from '@/components/layout/Navigation'
-import { 
-  useIsCreatorRegistered 
-} from '@/hooks/contracts/core'
 import { cn, formatAddress } from '@/lib/utils'
 
 // ================================================
@@ -221,14 +216,10 @@ export function AdaptiveNavigation({
   const router = useRouter()
   const pathname = usePathname()
   const { address, isConnected } = useAccount()
-  const chainId = useChainId()
   
   // Viewport detection using design token breakpoints
   const viewport = useViewportSize()
   const displayMode = useDisplayMode(context, viewport, forceDisplayMode)
-  
-  // Creator registration status for role-based navigation
-  const creatorRegistration = useIsCreatorRegistered(address)
   
   // Navigation state management
   const [navigationState, setNavigationState] = useState<NavigationState>({
@@ -534,7 +525,6 @@ interface NavigationSectionComponentProps {
 
 function NavigationSectionComponent({
   section,
-  displayMode,
   isCompact,
   activeItemId,
   onItemClick
@@ -784,7 +774,6 @@ interface UserProfileDropdownProps {
 
 function UserProfileDropdown({
   address,
-  userRole,
   onProfileClick,
   onLogout
 }: UserProfileDropdownProps) {

@@ -30,16 +30,15 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
-import {
+import { useAccount, useChainId } from 'wagmi'
+import { 
   Search,
   Filter,
   Grid3x3,
   List,
   SortAsc,
-  SortDesc,
   Loader2,
   AlertCircle,
   RefreshCw,
@@ -47,67 +46,42 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-  X,
-  Sparkles,
-  TrendingUp,
   Clock,
   DollarSign,
-  Tag,
-  Settings
+  TrendingUp
 } from 'lucide-react'
-
-// Import shadcn/ui components following existing patterns
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Skeleton } from '@/components/ui/skeleton'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-
-// Import existing business logic hooks and components
-import {
-  useActiveContentPaginated,
-  useContentById,
-  useHasContentAccess,
-  useCreatorProfile
-} from '@/hooks/contracts/core'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/seperator'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { useContentDiscovery } from '@/hooks/contracts/content/useContentDiscovery'
+import { useAllCreators } from '@/hooks/contracts/useAllCreators'
+import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
+import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
+import { useUnifiedContentPurchaseFlow } from '@/hooks/business/workflows'
+import { PaymentMethod } from '@/hooks/business/workflows'
+import { getContractAddresses } from '@/lib/contracts/config'
+import { getSupportedTokens } from '@/hooks/business/workflows'
+import { TokenConfig } from '@/hooks/business/workflows'
+import { useActiveContentPaginated, useContentById, useHasContentAccess, useCreatorProfile } from '@/hooks/contracts/core'
 import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
-
-// Import utilities and types
 import { cn, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 import type { Address } from 'viem'

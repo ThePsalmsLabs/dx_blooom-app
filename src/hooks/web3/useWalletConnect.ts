@@ -200,7 +200,6 @@ export function useWalletConnect(
   const {
     accountType,
     smartAccountConfig,
-    capabilities,
     upgradeToSmartAccount: upgradeSmartAccount,
     error: contextError,
   } = useEnhancedWeb3()

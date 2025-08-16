@@ -11,7 +11,7 @@
  * - Matches your component naming and structure conventions
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useAccount, useBalance, useChainId, useReadContract } from 'wagmi'
 import { formatUnits, type Address } from 'viem'
 import { getContractAddresses, USDC_DECIMALS } from '@/lib/contracts/config'
@@ -118,45 +118,11 @@ const getSupportedTokens = (chainId: number): Omit<TokenInfo, 'balance' | 'balan
  * Hook to fetch ETH price from your price oracle
  * Uses getETHPrice function which returns ETH amount for a given USDC amount
  */
-const useEthPrice = (chainId: number): { price: number; isLoading: boolean; error: Error | null } => {
-  try {
-    const contractAddresses = getContractAddresses(chainId)
-    
-    // Query: How much ETH can we get for 1 USDC (1e6 because USDC has 6 decimals)
-    const priceQuery = useReadContract({
-      address: contractAddresses.PRICE_ORACLE,
-      abi: PRICE_ORACLE_ABI,
-      functionName: 'getETHPrice',
-      args: [BigInt(1e6)], // 1 USDC
-      query: {
-        refetchInterval: 30000, // Refresh every 30 seconds
-        staleTime: 15000,       // Consider stale after 15 seconds
-        retry: 3,
-        enabled: true
-      }
-    })
-
-    // Calculate USD price: if 1 USDC = X ETH, then 1 ETH = 1/X USDC
-    let price = 2400 // Fallback price
-    
-    if (priceQuery.data && priceQuery.data > 0) {
-      // priceQuery.data is ETH amount (in wei) for 1 USDC
-      const ethForOneUSDC = Number(priceQuery.data) / 1e18 // Convert wei to ETH
-      price = 1 / ethForOneUSDC // If 1 USDC = 0.0004 ETH, then 1 ETH = 2500 USDC
-    }
-
-    return {
-      price,
-      isLoading: priceQuery.isLoading,
-      error: priceQuery.error
-    }
-  } catch (error) {
-    // Fallback if price oracle is not available
-    return {
-      price: 2400, // Fallback ETH price
-      isLoading: false,
-      error: null
-    }
+const getFallbackEthPrice = (): { price: number; isLoading: boolean; error: Error | null } => {
+  return {
+    price: 2400, // Fallback ETH price
+    isLoading: false,
+    error: null
   }
 }
 
@@ -179,7 +145,42 @@ export const useTokenBalances = (): TokenBalanceState => {
   const supportedTokens = useMemo(() => getSupportedTokens(chainId), [chainId])
   
   // Fetch ETH price from your price oracle
-  const ethPriceData = useEthPrice(chainId)
+  const contractAddresses = useMemo(() => {
+    try {
+      return getContractAddresses(chainId)
+    } catch {
+      return null
+    }
+  }, [chainId])
+  
+  const ethPriceQuery = useReadContract({
+    address: contractAddresses?.PRICE_ORACLE,
+    abi: PRICE_ORACLE_ABI,
+    functionName: 'getETHPrice',
+    args: [BigInt(1e6)], // 1 USDC
+    query: {
+      refetchInterval: 30000,
+      staleTime: 15000,
+      retry: 3,
+      enabled: !!contractAddresses?.PRICE_ORACLE
+    }
+  })
+  
+  const ethPriceData = useMemo(() => {
+    if (!ethPriceQuery.data || ethPriceQuery.data <= 0) {
+      return getFallbackEthPrice()
+    }
+    
+    // Calculate USD price: if 1 USDC = X ETH, then 1 ETH = 1/X USDC
+    const ethForOneUSDC = Number(ethPriceQuery.data) / 1e18
+    const price = 1 / ethForOneUSDC
+    
+    return {
+      price,
+      isLoading: ethPriceQuery.isLoading,
+      error: ethPriceQuery.error
+    }
+  }, [ethPriceQuery.data, ethPriceQuery.isLoading, ethPriceQuery.error])
   
   // Native ETH balance
   const ethBalance = useBalance({

@@ -7,7 +7,7 @@
  */
 
 // Phase 1: Foundation Components
-export { useTokenBalances } from '@/hooks/web3/useTokenBalances'
+export { useEnhancedTokenBalances } from '@/hooks/web3/useEnhancedTokenBalances'
 export type { TokenInfo, TokenBalanceState } from '@/hooks/web3/useTokenBalances'
 export { TokenBalanceCard } from './TokenBalanceCard'
 export { TokenBalanceList } from './TokenBalanceList'

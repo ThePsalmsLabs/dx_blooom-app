@@ -34,8 +34,8 @@
  * users make better financial decisions.
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useTokenBalances, type TokenInfo } from '@/hooks/web3/useTokenBalances'
+import { useState, useMemo, useCallback } from 'react'
+import { useEnhancedTokenBalances, type TokenInfo } from '@/hooks/web3/useEnhancedTokenBalances'
 
 /**
  * Portfolio Performance Metrics
@@ -112,7 +112,7 @@ export interface PortfolioAnalytics {
  * helps users make better financial decisions.
  */
 export const usePortfolioAnalytics = (): PortfolioAnalytics => {
-  const { tokens, totalPortfolioValue, isLoading, refreshBalances } = useTokenBalances()
+  const { tokens, totalPortfolioValue, isLoading, refreshBalances } = useEnhancedTokenBalances()
   const [lastUpdated, setLastUpdated] = useState(new Date())
   
   /**
