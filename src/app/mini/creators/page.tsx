@@ -25,6 +25,14 @@ export default function MiniAppCreatorsPage() {
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
+  // Derived data for backward compatibility
+  const topCreators = React.useMemo(() =>
+    [...allCreators.creators]
+      .sort((a, b) => Number(b.profile.totalEarnings) - Number(a.profile.totalEarnings))
+      .slice(0, 15),
+    [allCreators.creators]
+  )
+
   const filteredCreators = allCreators.creators.filter(creator => {
     const matchesSearch = !searchQuery || 
       creator.address.toLowerCase().includes(searchQuery.toLowerCase())
@@ -135,7 +143,7 @@ export default function MiniAppCreatorsPage() {
 
           <TabsContent value="featured">
             <div className="space-y-4">
-              {allCreators.topCreators.slice(0, 10).map((creator) => (
+              {topCreators.slice(0, 10).map((creator) => (
                 <CreatorCard
                   key={creator.address}
                   creatorAddress={creator.address}
@@ -148,7 +156,7 @@ export default function MiniAppCreatorsPage() {
 
           <TabsContent value="trending">
             <div className="grid grid-cols-1 gap-4">
-              {allCreators.topCreators.slice(0, 15).map((creator) => (
+              {topCreators.slice(0, 15).map((creator) => (
                 <CreatorCard
                   key={creator.address}
                   creatorAddress={creator.address}

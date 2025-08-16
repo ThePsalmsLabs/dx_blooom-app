@@ -1,31 +1,11 @@
-import { useReadContract, useReadContracts, useChainId } from 'wagmi'
-import { useMemo, useCallback, useState, useEffect } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useChainId, useReadContract, useReadContracts } from 'wagmi'
 import { type Address } from 'viem'
 import { getCreatorRegistryContract } from '@/lib/contracts/config'
 import { CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
-import type { Creator } from '@/types/contracts'
 
-interface CreatorListEntry {
-  address: Address
-  profile: Creator | null
-  isLoading: boolean
-  error: Error | null
-}
-
-interface AllCreatorsResult {
-  creators: readonly CreatorListEntry[]
-  totalCount: number
-  isLoading: boolean
-  error: Error | null
-  refetch: () => void
-  verifiedCreators: readonly CreatorListEntry[]
-  topCreators: readonly CreatorListEntry[]
-  loadMore: () => void
-  hasMore: boolean
-}
-
-// Type for the creator profile result from the contract
-interface CreatorProfileResult {
+// Define the creator profile type based on your contract structure
+export interface CreatorProfile {
   isRegistered: boolean
   subscriptionPrice: bigint
   isVerified: boolean
@@ -37,27 +17,34 @@ interface CreatorProfileResult {
   isSuspended: boolean
 }
 
-/**
- * PRODUCTION Hook to fetch all creators from the CreatorRegistry contract
- * 
- * This implementation properly fetches all creators by:
- * 1. Getting total creator count
- * 2. Batch fetching creator addresses
- * 3. Batch fetching creator profiles
- * 
- * For optimal performance in production, consider using a subgraph.
- */
+export interface CreatorWithAddress {
+  address: Address
+  profile: CreatorProfile
+}
+
+export interface AllCreatorsResult {
+  creators: CreatorWithAddress[]
+  totalCount: number
+  currentPage: number
+  hasMore: boolean
+  isLoading: boolean
+  isError: boolean
+  error: Error | null
+  loadMore: () => void
+  reset: () => void
+}
+
 export function useAllCreators(pageSize: number = 50): AllCreatorsResult {
   const chainId = useChainId()
   const [currentPage, setCurrentPage] = useState(0)
-  const [allCreatorAddresses, setAllCreatorAddresses] = useState<Address[]>([])
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [creators, setCreators] = useState<CreatorWithAddress[]>([])
   
-  const contractConfig = useMemo(() => getCreatorRegistryContract(chainId), [chainId])
+  // Simple contract address - avoid complex memoization
+  const contractAddress = getCreatorRegistryContract(chainId).address
 
   // Step 1: Get total number of creators
   const totalCountQuery = useReadContract({
-    address: contractConfig.address,
+    address: contractAddress,
     abi: CREATOR_REGISTRY_ABI,
     functionName: 'getTotalCreators',
     query: {
@@ -67,224 +54,141 @@ export function useAllCreators(pageSize: number = 50): AllCreatorsResult {
     }
   })
 
-  // Step 2: Generate contracts for batch fetching creator addresses
-  const creatorAddressContracts = useMemo(() => {
-    if (!totalCountQuery.data) return []
-    const count = Number(totalCountQuery.data)
-    const startIndex = currentPage * pageSize
-    const endIndex = Math.min(startIndex + pageSize, count)
-    
-    return Array.from({ length: endIndex - startIndex }, (_, i) => ({
-      address: contractConfig.address,
+  // Step 2: Calculate batch size and indices - simplified
+  const totalCount = Number(totalCountQuery.data || 0)
+  const maxItems = (currentPage + 1) * pageSize
+  const itemsToFetch = Math.min(maxItems, totalCount)
+  
+  // Step 3: Generate contracts for batch fetching - flattened approach
+  const addressContracts = []
+  for (let i = 0; i < itemsToFetch; i++) {
+    addressContracts.push({
+      address: contractAddress,
       abi: CREATOR_REGISTRY_ABI,
       functionName: 'getCreatorByIndex',
-      args: [BigInt(startIndex + i)]
-    }))
-  }, [totalCountQuery.data, currentPage, pageSize, contractConfig.address])
+      args: [BigInt(i)]
+    })
+  }
 
-  // Step 3: Batch fetch creator addresses
+  // Step 4: Batch fetch creator addresses
   const addressQueries = useReadContracts({
-    contracts: creatorAddressContracts,
+    contracts: addressContracts,
     query: {
-      enabled: creatorAddressContracts.length > 0,
+      enabled: addressContracts.length > 0,
       staleTime: 1000 * 60 * 10,
       retry: 3,
     }
   })
 
-  // Step 4: Extract addresses and create profile contracts
-  const creatorAddresses = useMemo(() => {
-    if (!addressQueries.data) return []
-    const addresses: Address[] = []
+  // Step 5: Process results with simplified dependency tracking
+  const addressQuerySuccessFlag = addressQueries.isSuccess
+  const addressQueryDataLength = addressQueries.data?.length || 0
+  
+  useEffect(() => {
+    if (!addressQuerySuccessFlag || addressQueryDataLength === 0) {
+      setValidAddressesForProfiles([])
+      return
+    }
+
+    // Extract valid addresses without complex data dependency
+    const addressData = addressQueries.data
+    if (!addressData) return
     
-    for (const result of addressQueries.data) {
+    const validAddresses: Address[] = []
+    for (const result of addressData) {
       if (result.status === 'success' && result.result) {
-        addresses.push(result.result as Address)
+        validAddresses.push(result.result as Address)
       }
     }
-    
-    return addresses
-  }, [addressQueries.data])
 
-  const profileContracts = useMemo(() => 
-    creatorAddresses.map(address => ({
-      address: contractConfig.address,
+    setValidAddressesForProfiles(validAddresses)
+  }, [addressQuerySuccessFlag, addressQueryDataLength])
+
+  // Separate state for addresses ready for profile fetching
+  const [validAddressesForProfiles, setValidAddressesForProfiles] = useState<Address[]>([])
+
+  // Step 6: Batch fetch creator profiles - separate query
+  const profileQueries = useReadContracts({
+    contracts: validAddressesForProfiles.map(address => ({
+      address: contractAddress,
       abi: CREATOR_REGISTRY_ABI,
       functionName: 'getCreatorProfile',
       args: [address]
     })),
-    [creatorAddresses, contractConfig.address]
-  )
-
-  // Step 5: Batch fetch creator profiles
-  const profileQueries = useReadContracts({
-    contracts: profileContracts,
     query: {
-      enabled: profileContracts.length > 0,
+      enabled: validAddressesForProfiles.length > 0,
       staleTime: 1000 * 60 * 5,
       retry: 3,
     }
   })
 
-  // Step 6: Combine addresses with profiles and update state
+  // Step 7: Process final results with simplified dependencies
+  const profileQuerySuccessFlag = profileQueries.isSuccess
+  const profileQueryDataLength = profileQueries.data?.length || 0
+  const validAddressesLength = validAddressesForProfiles.length
+  
   useEffect(() => {
-    if (profileQueries.data && creatorAddresses.length > 0) {
-      if (currentPage === 0) {
-        setAllCreatorAddresses(creatorAddresses)
-      } else {
-        setAllCreatorAddresses(prev => [...prev, ...creatorAddresses])
-      }
-    }
-  }, [profileQueries.data, creatorAddresses, currentPage])
-
-  // Step 7: Create the final creators array
-  const creators: CreatorListEntry[] = useMemo(() => {
-    if (currentPage === 0) {
-      return creatorAddresses.map((address, index) => {
-        const profileResult = profileQueries.data?.[index]
-        
-        if (profileResult?.status === 'success' && profileResult.result) {
-          const profile = profileResult.result as CreatorProfileResult
-          return {
-            address,
-            profile: {
-              isRegistered: profile.isRegistered,
-              subscriptionPrice: profile.subscriptionPrice,
-              isVerified: profile.isVerified,
-              totalEarnings: profile.totalEarnings,
-              contentCount: profile.contentCount,
-              subscriberCount: profile.subscriberCount,
-              registrationTime: profile.registrationTime,
-            } as Creator,
-            isLoading: profileQueries.isLoading,
-            error: null
-          }
-        }
-        
-        return {
-          address,
-          profile: null,
-          isLoading: profileQueries.isLoading,
-          error: profileResult?.status === 'failure' ? new Error('Failed to load profile') : null
-        }
-      })
+    if (!profileQuerySuccessFlag || profileQueryDataLength === 0 || validAddressesLength === 0) {
+      setCreators([])
+      return
     }
     
-    // For subsequent pages, combine with existing data
-    return allCreatorAddresses.map((address, index) => {
-      const profileResult = profileQueries.data?.[index]
+    // Process without complex data dependency
+    const profileData = profileQueries.data
+    if (!profileData) return
+    
+    const result: CreatorWithAddress[] = []
+    
+    for (let i = 0; i < validAddressesForProfiles.length && i < profileData.length; i++) {
+      const profileResult = profileData[i]
       
       if (profileResult?.status === 'success' && profileResult.result) {
-        const profile = profileResult.result as CreatorProfileResult
-        return {
-          address,
-          profile: {
-            isRegistered: profile.isRegistered,
-            subscriptionPrice: profile.subscriptionPrice,
-            isVerified: profile.isVerified,
-            totalEarnings: profile.totalEarnings,
-            contentCount: profile.contentCount,
-            subscriberCount: profile.subscriberCount,
-            registrationTime: profile.registrationTime,
-          } as Creator,
-          isLoading: profileQueries.isLoading,
-          error: null
+        const profile = profileResult.result as CreatorProfile
+        
+        // Only include active, non-suspended creators
+        if (profile.isRegistered && !profile.isSuspended) {
+          result.push({
+            address: validAddressesForProfiles[i],
+            profile
+          })
         }
       }
-      
-      return {
-        address,
-        profile: null,
-        isLoading: profileQueries.isLoading,
-        error: profileResult?.status === 'failure' ? new Error('Failed to load profile') : null
-      }
-    })
-  }, [creatorAddresses, profileQueries.data, profileQueries.isLoading, currentPage, allCreatorAddresses])
-
-  const verifiedCreators = useMemo(() => 
-    creators.filter(creator => creator.profile?.isVerified), 
-    [creators]
-  )
-
-  const topCreators = useMemo(() =>
-    [...creators]
-      .filter(creator => creator.profile)
-      .sort((a, b) => 
-        Number(b.profile!.totalEarnings) - Number(a.profile!.totalEarnings)
-      )
-      .slice(0, 10),
-    [creators]
-  )
-
-  const hasMore = useMemo(() => {
-    if (!totalCountQuery.data) return false
-    return (currentPage + 1) * pageSize < Number(totalCountQuery.data)
-  }, [totalCountQuery.data, currentPage, pageSize])
-
-  const loadMore = useCallback(() => {
-    if (hasMore && !isLoadingMore) {
-      setIsLoadingMore(true)
-      setCurrentPage(prev => prev + 1)
-      setIsLoadingMore(false)
     }
-  }, [hasMore, isLoadingMore])
+    
+    setCreators(result)
+  }, [profileQuerySuccessFlag, profileQueryDataLength, validAddressesLength])
 
-  const refetch = useCallback(() => {
+  // Calculate pagination info - simplified
+  const loadedCount = (currentPage + 1) * pageSize
+  const hasMore = loadedCount < totalCount
+
+  // Loading states - simplified
+  const isLoading = totalCountQuery.isLoading || addressQueries.isLoading || profileQueries.isLoading
+  const isError = totalCountQuery.isError || addressQueries.isError || profileQueries.isError
+  const error = totalCountQuery.error || addressQueries.error || profileQueries.error
+
+  // Actions
+  const loadMore = useCallback(() => {
+    if (hasMore && !isLoading) {
+      setCurrentPage(prev => prev + 1)
+    }
+  }, [hasMore, isLoading])
+
+  const reset = useCallback(() => {
     setCurrentPage(0)
-    setAllCreatorAddresses([])
-    totalCountQuery.refetch()
-    addressQueries.refetch()
-    profileQueries.refetch()
-  }, [totalCountQuery, addressQueries, profileQueries])
+    setCreators([])
+    setValidAddressesForProfiles([])
+  }, [])
 
   return {
     creators,
-    totalCount: Number(totalCountQuery.data || 0),
-    isLoading: totalCountQuery.isLoading || addressQueries.isLoading || profileQueries.isLoading,
-    error: totalCountQuery.error || addressQueries.error || profileQueries.error,
-    refetch,
-    verifiedCreators,
-    topCreators,
+    totalCount,
+    currentPage,
+    hasMore,
+    isLoading,
+    isError,
+    error,
     loadMore,
-    hasMore
+    reset
   }
 }
-
-/**
- * FUTURE: Graph Integration Hook
- * 
- * This hook will replace the contract-based fetching with subgraph queries
- * for better performance with large creator lists.
- * 
- * Example implementation:
- * 
- * export function useAllCreatorsGraph(): AllCreatorsResult {
- *   const { data, loading, error, refetch } = useQuery(CREATORS_QUERY, {
- *     variables: { first: 1000 },
- *     context: { client: graphClient }
- *   })
- *   
- *   // Transform GraphQL data to CreatorListEntry format
- *   const creators = useMemo(() => 
- *     data?.creators?.map(creator => ({
- *       address: creator.id,
- *       profile: creator,
- *       isLoading: false,
- *       error: null
- *     })) || [], [data]
- *   )
- *   
- *   return {
- *     creators,
- *     totalCount: data?.creators?.length || 0,
- *     isLoading: loading,
- *     error: error || null,
- *     refetch,
- *     verifiedCreators: creators.filter(c => c.profile?.isVerified),
- *     topCreators: creators
- *       .filter(c => c.profile)
- *       .sort((a, b) => Number(b.profile!.totalEarnings) - Number(a.profile!.totalEarnings))
- *       .slice(0, 10)
- *   }
- * }
- */

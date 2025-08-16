@@ -134,6 +134,14 @@ export default function HomePage() {
     selectedCreatorSpotlight: 0
   })
 
+  // Derived data for backward compatibility
+  const topCreators = useMemo(() =>
+    [...allCreators.creators]
+      .sort((a, b) => Number(b.profile.totalEarnings) - Number(a.profile.totalEarnings))
+      .slice(0, 10),
+    [allCreators.creators]
+  )
+
   // Mock data - in production, these would come from your contract hooks
   const platformStats: PlatformStats = useMemo(() => ({
     totalCreators: '2.3K',
@@ -143,7 +151,7 @@ export default function HomePage() {
   }), [])
 
   const featuredCreators: readonly FeaturedCreator[] = useMemo(() => {
-    if (!allCreators.topCreators || allCreators.topCreators.length === 0) {
+    if (!topCreators || topCreators.length === 0) {
       // Fallback to hardcoded data if no creators are loaded yet
       return [
         {
@@ -177,7 +185,7 @@ export default function HomePage() {
     }
 
     // Use real creator data from the contract
-    return allCreators.topCreators.slice(0, 3).map((creator, index) => {
+    return topCreators.slice(0, 3).map((creator, index) => {
       const fallbackNames = ['TechGuruAlex', 'CryptoAnalystSara', 'NFTArtistMike']
       const fallbackCategories = ['Software Development', 'Market Analysis', 'Digital Art']
       const fallbackBios = [
@@ -196,7 +204,7 @@ export default function HomePage() {
         bio: fallbackBios[index] || 'Building amazing content on the blockchain'
       }
     })
-  }, [allCreators.topCreators])
+  }, [topCreators])
 
   // Content category configuration for tabs
   const contentCategories = useMemo(() => [

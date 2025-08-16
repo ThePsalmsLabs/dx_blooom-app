@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { type Connector } from 'wagmi'
+import { TokenBalanceList } from '@/components/web3/portfolio'
 
 interface WalletConnectModalProps {
   isOpen: boolean
@@ -126,6 +127,21 @@ export function WalletConnectModal({
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Token Balances Section */}
+          {wallet.isConnected && wallet.isCorrectNetwork && (
+            <div className="border-t pt-4">
+              <TokenBalanceList
+                hideZeroBalances={true}
+                showHeader={true}
+                showRefreshButton={false}
+                maxItems={3}
+                layout="compact"
+                variant="modal"
+                showPortfolioValue={true}
+              />
+            </div>
           )}
 
           {/* Network Warning */}

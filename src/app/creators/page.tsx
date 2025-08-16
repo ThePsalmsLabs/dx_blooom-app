@@ -37,6 +37,19 @@ export default function CreatorsDirectoryPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Derived data for backward compatibility
+  const verifiedCreators = useMemo(() => 
+    allCreators.creators.filter(creator => creator.profile.isVerified), 
+    [allCreators.creators]
+  )
+
+  const topCreators = useMemo(() =>
+    [...allCreators.creators]
+      .sort((a, b) => Number(b.profile.totalEarnings) - Number(a.profile.totalEarnings))
+      .slice(0, 10),
+    [allCreators.creators]
+  )
+
   // Filter and sort creators
   const filteredCreators = useMemo(() => {
     let filtered = [...allCreators.creators]
@@ -117,7 +130,7 @@ export default function CreatorsDirectoryPage() {
               <div className="text-sm text-muted-foreground">Total Creators</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{allCreators.verifiedCreators.length}</div>
+              <div className="text-2xl font-bold text-green-600">{verifiedCreators.length}</div>
               <div className="text-sm text-muted-foreground">Verified</div>
             </div>
             <div className="text-center">
@@ -138,7 +151,7 @@ export default function CreatorsDirectoryPage() {
           </div>
           
           <div className="grid md:grid-cols-3 gap-6">
-            {allCreators.topCreators.slice(0, 3).map((creator) => (
+            {topCreators.slice(0, 3).map((creator) => (
               <CreatorCard
                 key={creator.address}
                 creatorAddress={creator.address}
@@ -221,7 +234,7 @@ export default function CreatorsDirectoryPage() {
 
                 <TabsContent value="verified">
                   <CreatorsGrid
-                    creatorAddresses={allCreators.verifiedCreators.map(c => c.address)}
+                    creatorAddresses={verifiedCreators.map(c => c.address)}
                     filters={filters}
                     viewMode={viewMode}
                     itemsPerPage={12}
@@ -230,7 +243,7 @@ export default function CreatorsDirectoryPage() {
 
                 <TabsContent value="trending">
                   <CreatorsGrid
-                    creatorAddresses={allCreators.topCreators.map(c => c.address)}
+                    creatorAddresses={topCreators.map(c => c.address)}
                     filters={filters}
                     viewMode={viewMode}
                     itemsPerPage={12}

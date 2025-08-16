@@ -26,6 +26,7 @@ import {
   PaymentMethod
 } from '@/hooks/contracts/payments'
 import { useContentById as useContentDetails } from '@/hooks/contracts/content'
+import { useTokenBalances, formatUSDValue } from '@/hooks/web3/useTokenBalances'
 
 /* -------------------------------------------------------------------------- */
 /*                              INTERNAL TYPES                                */
@@ -66,44 +67,60 @@ export function ContentPurchaseCard({
 
   const unifiedPurchase = useUnifiedContentPurchase(contentId, userAddress)
   const contentDetails = useContentDetails(contentId)
+  const tokenBalances = useTokenBalances()
 
   const priceDisplay = contentDetails.data
     ? (Number(contentDetails.data.payPerViewPrice) / 1_000_000).toFixed(2)
     : '—'
 
+  // Get payment affordability analysis
+  const paymentAnalysis = useMemo(() => {
+    if (!contentDetails.data) return null
+    return tokenBalances.canAffordContentPrice(contentDetails.data.payPerViewPrice)
+  }, [contentDetails.data, tokenBalances])
+
   /* ------------------------- PAYMENT OPTIONS ARRAY ------------------------ */
 
   const paymentOptions: PaymentOption[] = useMemo(
-    () => [
-      {
-        id: PaymentMethod.USDC,
-        name: 'USDC',
-        icon: DollarSign,
-        description: 'Direct payment with USDC',
-        estimatedTime: '~15 sec',
-        gasLevel: 'Low',
-        available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.USDC)
-      },
-      {
-        id: PaymentMethod.ETH,
-        name: 'ETH',
-        icon: Zap,
-        description: 'Pay with ETH via Commerce Protocol',
-        estimatedTime: '~45 sec',
-        gasLevel: 'Medium',
-        available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.ETH)
-      },
-      {
-        id: PaymentMethod.OTHER_TOKEN,
-        name: 'Other Token',
-        icon: Coins,
-        description: 'Pay with any supported ERC-20',
-        estimatedTime: '~60 sec',
-        gasLevel: 'High',
-        available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.OTHER_TOKEN)
-      }
-    ],
-    [unifiedPurchase.availablePaymentMethods]
+    () => {
+      const usdcToken = tokenBalances.getTokenBySymbol('USDC')
+      const ethToken = tokenBalances.getTokenBySymbol('ETH')
+      
+      return [
+        {
+          id: PaymentMethod.USDC,
+          name: 'USDC',
+          icon: DollarSign,
+          description: usdcToken 
+            ? `Direct payment • Balance: ${parseFloat(usdcToken.balanceFormatted).toFixed(2)} USDC`
+            : 'Direct payment with USDC',
+          estimatedTime: '~15 sec',
+          gasLevel: 'Low',
+          available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.USDC)
+        },
+        {
+          id: PaymentMethod.ETH,
+          name: 'ETH',
+          icon: Zap,
+          description: ethToken 
+            ? `Auto-swap to USDC • Balance: ${parseFloat(ethToken.balanceFormatted).toFixed(4)} ETH (${formatUSDValue(ethToken.balanceUSD)})`
+            : 'Pay with ETH via Commerce Protocol',
+          estimatedTime: '~45 sec',
+          gasLevel: 'Medium',
+          available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.ETH)
+        },
+        {
+          id: PaymentMethod.OTHER_TOKEN,
+          name: 'Other Token',
+          icon: Coins,
+          description: 'Pay with any supported ERC-20',
+          estimatedTime: '~60 sec',
+          gasLevel: 'High',
+          available: unifiedPurchase.availablePaymentMethods.includes(PaymentMethod.OTHER_TOKEN)
+        }
+      ]
+    },
+    [unifiedPurchase.availablePaymentMethods, tokenBalances]
   )
 
   /* -------------- FILTER + AUTO-SELECT BEST AVAILABLE METHOD -------------- */
@@ -112,13 +129,26 @@ export function ContentPurchaseCard({
 
   React.useEffect(() => {
     if (availableOptions.length > 0 && !availableOptions.find((o) => o.id === selectedMethod)) {
-      const bestOption =
-        availableOptions.find((o) => o.id === PaymentMethod.USDC) ||
-        availableOptions.find((o) => o.id === PaymentMethod.ETH) ||
-        availableOptions[0]
+      // Smart selection based on payment capabilities
+      const capabilities = tokenBalances.getPaymentCapabilities()
+      
+      let bestOption = availableOptions[0] // Fallback
+      
+      if (capabilities.recommendedPaymentMethod === 'USDC' && capabilities.canPayWithUSDC) {
+        bestOption = availableOptions.find((o) => o.id === PaymentMethod.USDC) || bestOption
+      } else if (capabilities.recommendedPaymentMethod === 'ETH' && capabilities.canPayWithETH) {
+        bestOption = availableOptions.find((o) => o.id === PaymentMethod.ETH) || bestOption
+      } else {
+        // Original fallback logic
+        bestOption =
+          availableOptions.find((o) => o.id === PaymentMethod.USDC) ||
+          availableOptions.find((o) => o.id === PaymentMethod.ETH) ||
+          availableOptions[0]
+      }
+      
       setSelectedMethod(bestOption.id)
     }
-  }, [availableOptions, selectedMethod])
+  }, [availableOptions, selectedMethod, tokenBalances])
 
   /* ----------------------------- HANDLERS --------------------------------- */
 
