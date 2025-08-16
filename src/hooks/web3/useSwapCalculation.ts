@@ -34,7 +34,7 @@
  * This hook abstracts all this complexity into simple, user-friendly information.
  */
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useAccount, useChainId } from 'wagmi'
 import { formatUnits, type Address } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
