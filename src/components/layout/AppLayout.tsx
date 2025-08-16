@@ -68,7 +68,7 @@ import {
 } from '@/hooks/contracts/core'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { WalletConnectButton, WalletStatus } from '@/components/web3/WalletConnectModal'
-import { isSupportedChain, getCurrentChain } from '@/lib/web3/wagmi'
+import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-config'
 import { useTokenBalances, formatUSDValue } from '@/hooks/web3/useTokenBalances'
 
 /**

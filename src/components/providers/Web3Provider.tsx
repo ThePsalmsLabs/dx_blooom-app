@@ -16,7 +16,7 @@ import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import { base, baseSepolia } from 'viem/chains'
 import { type Address, parseUnits } from 'viem'
 import { BiconomySmartAccountV2 } from '@biconomy/account'
-import { wagmiConfig, getCurrentChain, isSupportedChain } from '@/lib/web3/wagmi'
+import { enhancedWagmiConfig as wagmiConfig, getCurrentChain, isSupportedChain } from '@/lib/web3/enhanced-wagmi-config'
 import { createSmartAccount } from '@/lib/biconomy/config'
 
 

@@ -62,6 +62,7 @@ import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useAllCreators } from '@/hooks/contracts/useAllCreators'
+import { RPCHealthCheck } from '@/components/debug'
 
 // Import utilities and types
 import { ContentCategory } from '@/types/contracts'
@@ -328,6 +329,18 @@ export default function HomePage() {
               </div>
             </div>
           </section>
+
+          {/* RPC Configuration Test - Development Only */}
+          {process.env.NODE_ENV === 'development' && (
+            <section className="py-8">
+              <div className="container mx-auto">
+                <h2 className="text-lg font-semibold mb-4 text-center">RPC Configuration Test</h2>
+                <div className="flex justify-center">
+                  <RPCHealthCheck />
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Platform Statistics */}
           {pageState.showPlatformStats && (

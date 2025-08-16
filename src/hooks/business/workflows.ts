@@ -17,7 +17,7 @@ import {
   useRegisterCreator,
 } from '@/hooks/contracts/core'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { wagmiConfig } from '@/lib/web3/wagmi'
+import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
 import {
   getX402MiddlewareConfig,
   createX402PaymentProof,
