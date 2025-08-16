@@ -206,6 +206,16 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
             isActive: pathname.startsWith('/billing')
           },
           {
+            id: 'portfolio',
+            label: 'Portfolio',
+            href: '/portfolio',
+            icon: BarChart3,
+            description: 'View your token balances and portfolio analytics',
+            roles: ['consumer', 'creator', 'admin'],
+            isNew: true, // Highlight as new feature
+            isActive: pathname.startsWith('/portfolio')
+          },
+          {
             id: 'wallet-settings',
             label: 'Wallet Settings',
             href: '/wallet',

@@ -74,7 +74,7 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 import { useAccount } from 'wagmi'
-import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
+import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 
 /**

@@ -20,7 +20,8 @@ import {
 import { cn } from '@/lib/utils'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { type Connector } from 'wagmi'
-import { TokenBalanceList } from '@/components/web3/portfolio'
+import { TokenBalanceList, PortfolioDashboard, SwapModal } from '@/components/web3/portfolio'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface WalletConnectModalProps {
   isOpen: boolean
@@ -38,7 +39,14 @@ export function WalletConnectModal({
   const wallet = useWalletConnectionUI()
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null)
   
-  console.log('WalletConnectModal render', { isOpen, isConnected: wallet.isConnected, connectors: wallet.connectors?.length })
+  // State for integrated swap functionality
+  const [showSwapModal, setShowSwapModal] = useState(false)
+  const [selectedToken, setSelectedToken] = useState<any>(null)
+  
+  // WalletConnectModal state tracking for development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('WalletConnectModal render', { isOpen, isConnected: wallet.isConnected, connectors: wallet.connectors?.length })
+  }
 
   // Auto-close modal when connected (optional)
   useEffect(() => {
@@ -86,7 +94,9 @@ export function WalletConnectModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md" style={{ zIndex: 999999 }}>
+      <DialogContent className={cn(
+        wallet.isConnected ? "sm:max-w-4xl max-h-[80vh] overflow-y-auto" : "sm:max-w-md"
+      )} style={{ zIndex: 999999 }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5" />
@@ -129,18 +139,37 @@ export function WalletConnectModal({
             </Card>
           )}
 
-          {/* Token Balances Section */}
+          {/* Enhanced Portfolio Section with Tabs */}
           {wallet.isConnected && wallet.isCorrectNetwork && (
             <div className="border-t pt-4">
-              <TokenBalanceList
-                hideZeroBalances={true}
-                showHeader={true}
-                showRefreshButton={false}
-                maxItems={3}
-                layout="compact"
-                variant="modal"
-                showPortfolioValue={true}
-              />
+              <Tabs defaultValue="balances" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="balances">Token Balances</TabsTrigger>
+                  <TabsTrigger value="portfolio">Portfolio Analytics</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="balances" className="mt-4">
+                  <TokenBalanceList
+                    hideZeroBalances={true}
+                    showHeader={true}
+                    showRefreshButton={false}
+                    maxItems={3}
+                    layout="compact"
+                    variant="modal"
+                    showPortfolioValue={true}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="portfolio" className="mt-4">
+                  <PortfolioDashboard 
+                    onTokenSelect={(token) => {
+                      setSelectedToken(token)
+                      setShowSwapModal(true)
+                    }}
+                    className="max-h-96 overflow-y-auto"
+                  />
+                </TabsContent>
+              </Tabs>
             </div>
           )}
 
@@ -303,6 +332,24 @@ export function WalletConnectModal({
           )}
         </div>
       </DialogContent>
+      
+      {/* Integrated Swap Modal */}
+      {selectedToken && (
+        <SwapModal
+          isOpen={showSwapModal}
+          onClose={() => {
+            setShowSwapModal(false)
+            setSelectedToken(null)
+          }}
+          initialFromToken={selectedToken}
+          contextualMessage={`Swap ${selectedToken.symbol} for another token`}
+          onSwapComplete={(fromToken, toToken, amount) => {
+            setShowSwapModal(false)
+            setSelectedToken(null)
+            // Success notification already handled by SwapModal
+          }}
+        />
+      )}
     </Dialog>
   )
 }
@@ -327,15 +374,21 @@ export function WalletConnectButton({
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const handleClick = () => {
-    console.log('WalletConnectButton clicked', { showModal, isConnected: wallet.isConnected })
+    if (process.env.NODE_ENV === 'development') {
+      console.log('WalletConnectButton clicked', { showModal, isConnected: wallet.isConnected })
+    }
     
     if (showModal) {
       // Use custom modal
-      console.log('Opening custom modal')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Opening custom modal')
+      }
       setIsModalOpen(true)
     } else {
       // Use RainbowKit's modal via the wallet.connect() function
-      console.log('Using RainbowKit modal')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using RainbowKit modal')
+      }
       if (wallet.isConnected) {
         wallet.disconnect()
       } else {

@@ -47,6 +47,7 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 // Import real business logic and token balance system
 import { useTokenBalances, formatUSDValue, type TokenInfo } from '@/hooks/web3/useTokenBalances'
@@ -676,8 +677,11 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
             setShowSwapModal(false)
             setSwapContext(null)
             
-            // Show success message and potentially auto-trigger purchase
-            console.log(`Successfully swapped ${amount} ${fromToken.symbol} for ${toToken.symbol}`)
+            // Show success notification with proper feedback
+            toast.success("Swap Completed Successfully! 🎉", {
+              description: `Swapped ${amount} ${fromToken.symbol} for ${toToken.symbol}. You can now proceed with your purchase.`,
+              duration: 5000,
+            })
             
             // The purchase card will now show sufficient balance
             // and user can proceed with the purchase

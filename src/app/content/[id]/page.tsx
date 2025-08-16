@@ -60,7 +60,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 
 // Import the enhanced ContentPurchaseCard
-import { ContentPurchaseCard } from '@/components/web3/ContentPurchaseCard'
+import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 
 // Import business logic hooks
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
@@ -68,6 +68,7 @@ import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
 // Import utility functions
 import { cn, formatCurrency, formatRelativeTime, formatAddress, formatContentCategory } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
+import { toast } from 'sonner'
 
 /**
  * Page Props Interface
@@ -190,9 +191,17 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
     // Refresh access query to ensure UI reflects new access state
     accessQuery.refetch()
     
-    // Show success feedback (could integrate with toast system)
-    console.log('Purchase completed successfully!')
-  }, [accessQuery])
+    // Show success feedback with toast notification
+    toast.success("Purchase Successful! 🎉", {
+      description: `You now have access to "${contentQuery.data?.title || 'this content'}". Redirecting to content view...`,
+      duration: 4000,
+    })
+    
+    // Auto-redirect to content view after short delay
+    setTimeout(() => {
+      router.push(`/content/${contentId}/view`)
+    }, 2000)
+  }, [accessQuery, contentQuery.data?.title, router, contentId])
 
   /**
    * Content View Handler
@@ -287,12 +296,11 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
               <div className="sticky top-6 space-y-6">
                 {/* Purchase Card Integration */}
                 {accessState.showPurchaseCard && contentId && (
-                  <ContentPurchaseCard
+                  <SmartContentPurchaseCard
                     contentId={contentId}
-                    userAddress={userAddress}
                     onPurchaseSuccess={handlePurchaseSuccess}
-                    onViewContent={handleViewContent}
-                    variant="full"
+                    showBalanceDetails={true}
+                    enableSwapIntegration={true}
                     className="w-full"
                   />
                 )}

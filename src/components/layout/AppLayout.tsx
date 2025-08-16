@@ -69,6 +69,7 @@ import {
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { WalletConnectButton, WalletStatus } from '@/components/web3/WalletConnectModal'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/wagmi'
+import { useTokenBalances, formatUSDValue } from '@/hooks/web3/useTokenBalances'
 
 /**
  * User Role Types
@@ -349,6 +350,9 @@ function AppHeader({
   // Avoid hydration mismatches by rendering client-only bits after mount
   const [isMounted, setIsMounted] = React.useState(false)
   React.useEffect(() => { setIsMounted(true) }, [])
+  
+  // Portfolio integration for header display
+  const { totalPortfolioValue, isLoading: balancesLoading } = useTokenBalances()
   return (
     <header className="border-b bg-background relative z-40">
       <div className="container mx-auto px-2 sm:px-4">
@@ -429,6 +433,16 @@ function AppHeader({
                 showNetwork={true}
                 className="hidden md:flex"
               />
+            )}
+
+            {/* Portfolio Value Display */}
+            {isMounted && isConnected && !balancesLoading && totalPortfolioValue > 0 && (
+              <div className="hidden lg:flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-lg border border-green-200">
+                <BarChart3 className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {formatUSDValue(totalPortfolioValue)}
+                </span>
+              </div>
             )}
 
             {/* Wallet Connection / User Profile */}

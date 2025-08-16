@@ -10,7 +10,7 @@
  * Key Features:
  * - Context-aware feature complexity (web vs miniapp) using design tokens
  * - Unified data fetching using existing hooks (useActiveContentPaginated, useContentById)
- * - Adaptive purchase flow integration (ContentPurchaseCard + MiniAppPurchaseButton)
+ * - Adaptive purchase flow integration (SmartContentPurchaseCard + MiniAppPurchaseButton)
  * - Progressive enhancement building on design token and navigation foundations
  * - Consistent responsive design using unified design tokens
  * - Social features integration for mini app context
@@ -20,7 +20,7 @@
  * 
  * Architecture Integration:
  * - Uses existing content hooks (useActiveContentPaginated, useContentById, useHasContentAccess)
- * - Integrates with existing ContentPurchaseCard and MiniAppPurchaseButton components
+ * - Integrates with existing SmartContentPurchaseCard and MiniAppPurchaseButton components
  * - Builds on enhanced design tokens for context-aware spacing and sizing
  * - Follows established shadcn/ui component patterns and styling conventions
  * - Maintains compatibility with existing routing and navigation systems
@@ -104,7 +104,7 @@ import {
   useHasContentAccess,
   useCreatorProfile
 } from '@/hooks/contracts/core'
-import { ContentPurchaseCard } from '@/components/content/ContentPurchaseCard'
+import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 
 // Import utilities and types
@@ -970,10 +970,11 @@ function ContentItemCard({
                 className="w-full button-adaptive"
               />
             ) : (
-              <ContentPurchaseCard
+              <SmartContentPurchaseCard
                 contentId={contentId}
-                userAddress={userAddress}
-                variant="minimal"
+                compact={true}
+                showBalanceDetails={false}
+                enableSwapIntegration={true}
                 className="w-full"
               />
             )}
