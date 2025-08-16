@@ -21,7 +21,7 @@
 
 import { http, createConfig, fallback } from 'wagmi'
 import { base, baseSepolia } from 'wagmi/chains'
-import { metaMask, coinbaseWallet, walletConnect } from 'wagmi/connectors'
+import { metaMask, coinbaseWallet, walletConnect, injected, safe } from 'wagmi/connectors'
 
 // =============================================================================
 // RPC PROVIDER CONFIGURATION
@@ -248,6 +248,9 @@ const createBaseSepoliaTransport = () => {
  * proper configuration for production use.
  */
 const createWalletConnectors = () => [
+  // Injected connector - Detects any wallet that injects itself (MetaMask, Phantom, etc.)
+  injected(),
+  
   // MetaMask - Most popular wallet
   metaMask({
     dappMetadata: {
@@ -274,6 +277,9 @@ const createWalletConnectors = () => [
       icons: ['/favicon.ico'],
     },
   }),
+  
+  // Safe Wallet - For institutional and advanced users
+  safe(),
 ]
 
 // =============================================================================
