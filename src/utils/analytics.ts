@@ -17,25 +17,28 @@ export function isFeatureEnabled(featureName: string, userRole: string): boolean
   return enabledFeatures[featureName as keyof typeof enabledFeatures]?.includes(userRole) ?? false
 }
 
-export function validatePlatformStats(data: any): { isValid: boolean; errors: string[] } {
+export function validatePlatformStats(data: unknown): { isValid: boolean; errors: string[] } {
   const errors: string[] = []
   if (!data) {
     errors.push('Analytics data is undefined')
     return { isValid: false, errors }
   }
-  if (typeof data.totalContent !== 'bigint') {
+  const statsData = data as Record<string, unknown>
+  if (typeof statsData.totalContent !== 'bigint') {
     errors.push('Invalid totalContent value')
   }
-  if (typeof data.activeContent !== 'bigint') {
+  if (typeof statsData.activeContent !== 'bigint') {
     errors.push('Invalid activeContent value')
   }
   return { isValid: errors.length === 0, errors }
 }
 
-export default {
+const analyticsUtils = {
   TIME_PERIOD_CONFIG,
   isFeatureEnabled,
   validatePlatformStats
 }
+
+export default analyticsUtils
 
 

@@ -37,19 +37,6 @@ interface SignatureRequest {
   readonly userAddress?: string   // Optional user address for additional validation
 }
 
-/**
- * Signature Response Interface
- * 
- * This interface defines the structure of responses from the signature service,
- * providing clear indication of signing status and results.
- */
-interface SignatureResponse {
-  readonly success: boolean       // Whether the signing operation succeeded
-  readonly isSigned: boolean      // Whether the intent has been signed
-  readonly signature?: string     // The operator signature (if signed)
-  readonly error?: string         // Error message (if signing failed)
-  readonly expiresAt?: number     // When the signature expires
-}
 
 /**
  * Intent Registry Interface
@@ -306,7 +293,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let body: SignatureRequest
     try {
       body = await request.json()
-    } catch (error) {
+    } catch (_error) {
       return NextResponse.json(
         { 
           success: false, 

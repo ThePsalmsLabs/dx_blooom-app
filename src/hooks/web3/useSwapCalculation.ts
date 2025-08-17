@@ -37,15 +37,17 @@
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi'
+import { getTransactionReceipt } from 'viem/actions'
 import { formatUnits, type Address } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 import type { TokenInfo } from '@/hooks/web3/useTokenBalances'
 
-// Event topic for PaymentIntentCreated event
-// This should match the keccak256 hash of "PaymentIntentCreated(address,uint256,address,uint256,uint256)"
-const PAYMENT_INTENT_CREATED_TOPIC = '0x...' // You'll need to replace this with the actual event topic hash
+// Event topic for PaymentIntentCreated event from CommerceProtocolIntegration
+// This matches the actual event signature: PaymentIntentCreated(bytes16,address,address,uint8,uint256,uint256,uint256,uint256,address,uint256)
+import { keccak256, toHex } from 'viem'
+const PAYMENT_INTENT_CREATED_TOPIC = keccak256(toHex('PaymentIntentCreated(bytes16,address,address,uint8,uint256,uint256,uint256,uint256,address,uint256)'))
 
 /**
  * Comprehensive Swap State Interface
@@ -381,22 +383,16 @@ export const useSwapCalculation = (
 
 /**
  * Helper function to extract intent ID from transaction logs
- * This parses the logs to find the PaymentIntentCreated event
+ * Uses the proper utility from intentExtraction module
  */
+import { extractIntentIdFromLogs as extractIntent } from '@/utils/transactions/intentExtraction'
+
 const extractIntentIdFromLogs = (logs: any[]): string => {
-  for (const log of logs) {
-    try {
-      // Look for PaymentIntentCreated event
-      if (log.topics && log.topics[0] === PAYMENT_INTENT_CREATED_TOPIC) {
-        // Extract intent ID from log data
-        const intentId = log.topics[1] // Intent ID is typically the first indexed parameter
-        return intentId
-      }
-    } catch (error) {
-      console.error('Error parsing log:', error)
-    }
+  const result = extractIntent(logs)
+  if (result && result.success && result.intentId) {
+    return result.intentId
   }
-  throw new Error('Intent ID not found in transaction logs')
+  throw new Error(result?.error || 'Intent ID not found in transaction logs')
 }
 
 
@@ -440,6 +436,7 @@ export const useSwapExecution = () => {
     error: string | null
     intentId: string | null
     transactionHash: string | null
+    estimatedTimeRemaining?: number
   }>({
     step: 'idle',
     message: 'Ready to swap',
@@ -529,129 +526,88 @@ export const useSwapExecution = () => {
    * This function implements the complete swap flow using your CommerceProtocolIntegration.
    * It creates a payment intent for the swap, waits for signature, and executes.
    */
-  const executeSwap = useCallback(async (
-    fromToken: TokenInfo,
-    toToken: TokenInfo,
-    fromAmount: string,
-    slippageTolerance: number
-  ): Promise<{ success: boolean; intentId?: string; error?: string }> => {
+
+const executeSwap = useCallback(async (
+  fromToken: TokenInfo,
+  toToken: TokenInfo,
+  fromAmount: string,
+  slippageTolerance: number
+): Promise<{ success: boolean; intentId?: string; error?: string }> => {
+  
+  if (!address || !contractAddresses) {
+    const error = 'Wallet not connected or contract addresses unavailable'
+    setSwapState(prev => ({ 
+      ...prev, 
+      step: 'error', 
+      error, 
+      intentId: null, 
+      transactionHash: null 
+    }))
+    return { success: false, error }
+  }
+  
+  try {
+    // Phase 1: Create Payment Intent
+    setSwapState({
+      step: 'creating_intent',
+      message: `Creating swap intent: ${fromToken.symbol} → ${toToken.symbol}`,
+      progress: 20,
+      error: null,
+      intentId: null,
+      transactionHash: null,
+      estimatedTimeRemaining: 180
+    })
     
-    if (!address || !contractAddresses) {
-      const error = 'Wallet not connected or contract addresses unavailable'
-      setSwapState(prev => ({ ...prev, step: 'error', error }))
-      return { success: false, error }
+    const paymentRequest = {
+      paymentType: 0, // PayPerView type for swaps
+      creator: address, // User is both creator and recipient for swaps
+      contentId: BigInt(0), // Special contentId for swaps
+      paymentToken: fromToken.address,
+      maxSlippage: BigInt(Math.floor(slippageTolerance * 100)),
+      deadline: BigInt(Math.floor(Date.now() / 1000) + 3600)
     }
     
-    try {
-      // Phase 1: Create Payment Intent
-      setSwapState({
-        step: 'creating_intent',
-        message: `Creating swap intent: ${fromToken.symbol} → ${toToken.symbol}`,
-        progress: 20,
-        error: null,
-        intentId: null,
-        transactionHash: null
-      })
-      
-      const paymentRequest = {
-        paymentType: 0, // For swaps, user is both creator and recipient
-        creator: address,
-        contentId: BigInt(0), // Special contentId for swaps
-        paymentToken: fromToken.address,
-        maxSlippage: BigInt(Math.floor(slippageTolerance * 100)),
-        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600)
-      }
-      
-      console.log('🔄 Creating swap payment intent:', {
-        from: `${fromAmount} ${fromToken.symbol}`,
-        to: toToken.symbol,
-        slippage: `${slippageTolerance}%`,
-        paymentRequest
-      })
-      
-      // Create intent and capture transaction hash
-      const txHash = await writeContract({
-        address: contractAddresses.COMMERCE_INTEGRATION,
-        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
-        functionName: 'createPaymentIntent',
-        args: [paymentRequest]
-      })
-      
-      // Phase 2: Wait for Transaction and Extract Intent ID
-      setSwapState(prev => ({ 
-        ...prev, 
-        step: 'extracting_intent_id', 
-        progress: 30,
-        message: 'Transaction confirmed. Extracting intent ID...'
-      }))
-      
-      // Wait for transaction receipt using the existing hook
-      const { data: receipt } = await new Promise<{ data: any }>((resolve, reject) => {
-        const interval = setInterval(() => {
-          if (isCreateSuccess && createIntentHash) {
-            clearInterval(interval)
-            resolve({ data: { logs: [] } }) // Simplified for now
-          }
-        }, 1000)
-        
-        // Timeout after 30 seconds
-        setTimeout(() => {
-          clearInterval(interval)
-          reject(new Error('Transaction confirmation timeout'))
-        }, 30000)
-      })
-      
-      const intentId = extractIntentIdFromLogs(receipt.logs)
-      
-      if (!intentId) {
-        throw new Error('Failed to extract intent ID from transaction logs')
-      }
-      
-      // Phase 3: Poll Backend for Signature
-      setSwapState(prev => ({ 
-        ...prev, 
-        step: 'waiting_signature', 
-        progress: 50,
-        message: 'Waiting for backend signature...'
-      }))
-      
-      const signature = await pollForSignature(intentId)
-      
-      // Phase 4: Execute with Signature
-      setSwapState(prev => ({ 
-        ...prev, 
-        step: 'executing_swap', 
-        progress: 80,
-        message: 'Executing swap with signature...'
-      }))
-      
-      await executeSignedIntent(intentId, signature, contractAddresses, executeIntent)
-      
-      setSwapState(prev => ({ 
-        ...prev, 
-        step: 'completed', 
-        progress: 100,
-        message: 'Swap completed successfully!'
-      }))
-      
-      console.log('✅ Swap completed successfully with intent ID:', intentId)
-      return { success: true, intentId }
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error('Swap execution failed:', error)
-      
-      setSwapState(prev => ({
-        ...prev,
-        step: 'error',
-        message: `Swap failed: ${errorMessage}`,
-        progress: 0,
-        error: errorMessage
-      }))
-      
-      return { success: false, error: errorMessage }
-    }
-  }, [address, contractAddresses, writeContract])
+    console.log('🔄 Creating payment intent:', paymentRequest)
+    
+    // Execute transaction 
+    await writeContract({
+      address: contractAddresses.COMMERCE_INTEGRATION,
+      abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+      functionName: 'createPaymentIntent',
+      args: [paymentRequest] as any
+    })
+    
+    // The transaction hash will be available in createIntentHash from the hook
+    setSwapState(prev => ({ 
+      ...prev, 
+      step: 'extracting_intent_id', 
+      progress: 40,
+      message: 'Transaction submitted. Waiting for confirmation...'
+    }))
+    
+    console.log('⏳ Transaction submitted, monitoring for confirmation...')
+    
+    // The actual transaction monitoring, intent extraction, and signature polling 
+    // will be handled by the useEffect hooks that monitor createIntentHash and isCreateSuccess
+    
+    return { success: true, intentId: 'pending_extraction' }
+    
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('❌ Swap execution failed:', error)
+    
+    setSwapState({
+      step: 'error',
+      message: `Swap failed: ${errorMessage}`,
+      progress: 0,
+      error: errorMessage,
+      intentId: null,
+      transactionHash: null
+    })
+    
+    return { success: false, error: errorMessage }
+  }
+}, [address, contractAddresses, writeContract, isCreateSuccess, createIntentHash])
   
   /**
    * Execute Signed Intent
@@ -721,17 +677,87 @@ export const useSwapExecution = () => {
     })
   }, [])
   
-  // Update state based on transaction status
+  // Enhanced transaction monitoring with intent extraction and signature polling
   useEffect(() => {
-    if (isCreateSuccess && createIntentHash) {
-      setSwapState(prev => ({
-        ...prev,
-        step: 'waiting_signature',
-        message: 'Intent transaction confirmed. Waiting for signature...',
-        progress: 50
-      }))
+    if (isCreateSuccess && createIntentHash && swapState.step === 'extracting_intent_id') {
+      console.log('🔍 Transaction confirmed, extracting intent ID from receipt...')
+      
+      const processIntentExtraction = async () => {
+        try {
+          // Get the transaction receipt with logs
+          const publicClient = usePublicClient()
+          if (!publicClient) {
+            throw new Error('Public client not available')
+          }
+          
+          const receipt = await getTransactionReceipt(publicClient, { hash: createIntentHash })
+          
+          if (!receipt || !receipt.logs) {
+            throw new Error('Transaction receipt or logs not available')
+          }
+          
+          console.log('📋 Transaction receipt received, extracting intent ID...')
+          const intentId = extractIntentIdFromLogs(receipt.logs)
+          
+          if (!intentId) {
+            throw new Error('Failed to extract intent ID from transaction logs')
+          }
+          
+          console.log('✅ Intent ID extracted:', intentId)
+          
+          // Update state with extracted intent ID
+          setSwapState(prev => ({
+            ...prev,
+            step: 'waiting_signature',
+            message: 'Intent created. Waiting for backend signature...',
+            progress: 60,
+            intentId,
+            estimatedTimeRemaining: 60
+          }))
+          
+          // Start polling for signature
+          try {
+            console.log('🔐 Starting signature polling...')
+            const signature = await pollForSignature(intentId)
+            
+            console.log('✅ Signature received, executing swap...')
+            
+            // Update state for execution
+            setSwapState(prev => ({
+              ...prev,
+              step: 'executing_swap',
+              message: 'Signature received. Executing swap...',
+              progress: 80,
+              estimatedTimeRemaining: 30
+            }))
+            
+            // Execute the signed swap
+            await executeSignedSwap(intentId)
+            
+          } catch (signatureError) {
+            console.error('❌ Signature polling or execution failed:', signatureError)
+            setSwapState(prev => ({
+              ...prev,
+              step: 'error',
+              error: signatureError instanceof Error ? signatureError.message : 'Signature polling failed',
+              progress: 0
+            }))
+          }
+          
+        } catch (extractionError) {
+          console.error('❌ Intent extraction failed:', extractionError)
+          setSwapState(prev => ({
+            ...prev,
+            step: 'error',
+            error: extractionError instanceof Error ? extractionError.message : 'Intent extraction failed',
+            progress: 0
+          }))
+        }
+      }
+      
+      processIntentExtraction()
     }
-  }, [isCreateSuccess, createIntentHash])
+  }, [isCreateSuccess, createIntentHash, swapState.step, pollForSignature, executeSignedSwap])
   
   useEffect(() => {
     if (isExecuteSuccess && executeHash) {

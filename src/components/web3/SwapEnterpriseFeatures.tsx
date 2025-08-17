@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import * as React from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { AlertTriangle, Shield, TrendingUp, Activity, Zap, Eye, Clock, DollarSign, BarChart3, AlertCircle, CheckCircle2, Loader2, Sparkles, Lock, Target } from 'lucide-react';
 
 // ================================================================================

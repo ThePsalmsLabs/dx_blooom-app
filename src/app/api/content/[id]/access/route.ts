@@ -321,7 +321,7 @@ async function checkSubscriptionAccess(
  * verification endpoint, ensuring that Frame interactions and other client-side
  * requests can successfully verify content access regardless of their origin.
  */
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: {
