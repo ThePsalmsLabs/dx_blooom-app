@@ -248,22 +248,19 @@ const createBaseSepoliaTransport = () => {
  * proper configuration for production use.
  */
 const createWalletConnectors = () => [
-  // Injected connector - Detects any wallet that injects itself (MetaMask, Phantom, etc.)
-  injected(),
-  
-  // MetaMask - Most popular wallet
+  // MetaMask - Most popular wallet (explicitly configured)
   metaMask({
     dappMetadata: {
       name: 'Onchain Content Platform',
       url: typeof window !== 'undefined' ? window.location.origin : '',
-      iconUrl: '/favicon.ico',
+      iconUrl: typeof window !== 'undefined' ? `${window.location.origin}/favicon.ico` : '',
     },
   }),
   
   // Coinbase Wallet - Great for Base network
   coinbaseWallet({
     appName: 'Onchain Content Platform',
-    appLogoUrl: '/favicon.ico',
+    appLogoUrl: typeof window !== 'undefined' ? `${window.location.origin}/favicon.ico` : '',
     preference: 'smartWalletOnly', // Use smart wallets when possible
   }),
   
@@ -274,12 +271,16 @@ const createWalletConnectors = () => [
       name: 'Onchain Content Platform',
       description: 'Discover and purchase premium content on Base',
       url: typeof window !== 'undefined' ? window.location.origin : '',
-      icons: ['/favicon.ico'],
+      icons: [typeof window !== 'undefined' ? `${window.location.origin}/favicon.ico` : ''],
     },
   }),
   
   // Safe Wallet - For institutional and advanced users
   safe(),
+  
+  // Injected connector - Detects any wallet that injects itself (Phantom, Brave Wallet, etc.)
+  // This should be last to avoid conflicts with explicit connectors
+  injected(),
 ]
 
 // =============================================================================
