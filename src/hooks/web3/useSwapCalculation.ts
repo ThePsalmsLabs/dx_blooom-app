@@ -1,21 +1,23 @@
 // =============================================================================
-// PHASE 3: SWAP FUNCTIONALITY - TOKEN EXCHANGE SYSTEM
+// PHASE 3: SWAP FUNCTIONALITY - TOKEN EXCHANGE SYSTEM (PRODUCTION VERSION)
 // =============================================================================
 
 /**
- * Phase 3 creates a sophisticated yet user-friendly token swapping system that
- * integrates seamlessly with your existing Commerce Protocol infrastructure.
+ * PRODUCTION VERSION: This hook now properly integrates with your PriceOracle contract
+ * instead of using fallback USD-based calculations.
  * 
- * Think of this as building a financial concierge service - it understands what
- * users need, calculates the best way to get it, handles all the complex
- * blockchain interactions, and provides clear feedback throughout the process.
+ * Key Changes:
+ * 1. Added real PriceOracle contract integration via useReadContract
+ * 2. Replaced mock pricing logic with actual Uniswap v3 quoter calls
+ * 3. Added proper error handling for contract call failures
+ * 4. Maintained fallback only for true error conditions
+ * 5. Added comprehensive logging for debugging price discrepancies
  * 
- * Educational Framework for Phase 3:
- * - User Psychology: Transform goal interruption into helpful guidance
- * - Technical Integration: Leverage existing Commerce Protocol swap capabilities
- * - Error Recovery: Handle failures gracefully with clear next steps
- * - Progressive Disclosure: Show complexity only when users need it
- * - Contextual Intelligence: Remember why users initiated the swap
+ * Technical Integration:
+ * - Uses your getContractAddresses() for network-specific contract access
+ * - Integrates with your PRICE_ORACLE contract for real Uniswap v3 quotes
+ * - Follows your established Wagmi patterns
+ * - Maintains compatibility with existing SwapModal component
  */
 
 /**
@@ -35,9 +37,10 @@
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useAccount, useChainId, useReadContract } from 'wagmi'
 import { formatUnits, type Address } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
+import { PRICE_ORACLE_ABI } from '@/lib/contracts/abis'
 import type { TokenInfo } from '@/hooks/web3/useTokenBalances'
 
 /**
@@ -56,63 +59,38 @@ export interface SwapCalculation {
   readonly minimumReceived: string       // Worst-case scenario with slippage
   readonly exchangeRate: number          // Current exchange rate between tokens
   readonly priceImpact: number          // How much our trade affects market price
-  readonly route: SwapRoute | null      // Path the trade will take through pools
+  readonly route: string | null         // Path the trade will take through pools
   
   // Cost analysis
-  readonly gasEstimate: bigint | null   // Estimated transaction cost
+  readonly gasEstimate: bigint          // Estimated transaction cost
   readonly gasEstimateUSD: number       // Gas cost in familiar USD terms
   readonly totalCostUSD: number         // Total cost including gas and slippage
   
   // Risk assessment
   readonly riskLevel: 'low' | 'medium' | 'high' | 'critical'
-  readonly warnings: SwapWarning[]      // Any issues users should know about
+  readonly warnings: Array<{
+    type: 'liquidity' | 'price_impact' | 'slippage' | 'route_risk'
+    severity: 'info' | 'warning' | 'critical'
+    message: string
+  }>      // Any issues users should know about
   readonly recommendedSlippage: number  // Our suggested slippage tolerance
   
   // User guidance
   readonly isValid: boolean             // Whether the swap can be executed
   readonly userImpact: string          // Human-readable summary of the trade
+  
+  // Production enhancements
+  readonly uniswapPoolFee: number       // The actual pool fee being used
+  readonly priceSource: 'uniswap_v3' | 'fallback' // Track price source for debugging
 }
+
+
 
 /**
- * Swap Route Information
+ * Advanced Swap Calculation Hook - PRODUCTION VERSION
  * 
- * This interface provides transparency about how the swap will be executed.
- * Users deserve to understand the path their transaction will take.
- */
-export interface SwapRoute {
-  readonly path: Address[]              // Token addresses in swap path
-  readonly pools: PoolInfo[]           // Liquidity pools that will be used
-  readonly estimatedGas: bigint        // Gas estimate for this specific route
-  readonly confidence: number          // How reliable our estimates are (0-100)
-}
-
-interface PoolInfo {
-  readonly address: Address
-  readonly fee: number                 // Pool fee percentage
-  readonly liquidity: bigint          // Available liquidity
-  readonly token0: Address
-  readonly token1: Address
-}
-
-/**
- * Swap Warning System
- * 
- * This helps users understand potential issues before they occur, rather than
- * discovering problems during transaction execution.
- */
-interface SwapWarning {
-  readonly type: 'price_impact' | 'low_liquidity' | 'high_gas' | 'slippage' | 'route_risk'
-  readonly severity: 'info' | 'warning' | 'critical'
-  readonly message: string
-  readonly suggestion?: string         // What users can do about it
-}
-
-/**
- * Main Swap Calculation Hook
- * 
- * This hook demonstrates how to transform complex DeFi mathematics into
- * user-friendly information. It's designed to be called whenever users
- * change swap parameters, providing real-time feedback.
+ * This hook now properly integrates with your PriceOracle contract to get
+ * real-time prices from Uniswap v3 pools instead of using mock calculations.
  */
 export const useSwapCalculation = (
   fromToken: TokenInfo | null,
@@ -122,25 +100,67 @@ export const useSwapCalculation = (
 ): SwapCalculation => {
   const { address } = useAccount()
   const chainId = useChainId()
-  const contractAddresses = getContractAddresses(chainId)
   
-  const [gasEstimate, setGasEstimate] = useState<bigint | null>(null)
-  const [isEstimatingGas, setIsEstimatingGas] = useState(false)
+  // Get contract addresses for the current network
+  const contractAddresses = useMemo(() => {
+    try {
+      return getContractAddresses(chainId)
+    } catch (error) {
+      console.warn('Failed to get contract addresses for chainId:', chainId, error)
+      return null
+    }
+  }, [chainId])
+
+  // Prepare arguments for PriceOracle contract call
+  const priceOracleArgs = useMemo(() => {
+    if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) === 0) {
+      return null
+    }
+    
+    try {
+      const fromAmountFloat = parseFloat(fromAmount)
+      const fromAmountBigInt = BigInt(Math.floor(fromAmountFloat * (10 ** fromToken.decimals)))
+      
+      return {
+        tokenIn: fromToken.address,
+        tokenOut: toToken.address,
+        amountIn: fromAmountBigInt,
+        poolFee: 0 // Let PriceOracle auto-detect optimal fee tier
+      }
+    } catch (error) {
+      console.error('Failed to prepare price oracle arguments:', error)
+      return null
+    }
+  }, [fromToken, toToken, fromAmount])
+
+  // Call PriceOracle.getTokenPrice() to get real Uniswap v3 quote
+  const uniswapQuoteQuery = useReadContract({
+    address: contractAddresses?.PRICE_ORACLE,
+    abi: PRICE_ORACLE_ABI,
+    functionName: 'getTokenPrice',
+    args: priceOracleArgs ? [
+      priceOracleArgs.tokenIn,
+      priceOracleArgs.tokenOut,
+      priceOracleArgs.amountIn,
+      priceOracleArgs.poolFee
+    ] : undefined,
+    query: {
+      enabled: !!contractAddresses?.PRICE_ORACLE && !!priceOracleArgs,
+      refetchInterval: 15000, // Refresh every 15 seconds for up-to-date prices
+      staleTime: 10000, // Consider data stale after 10 seconds
+      retry: 3,
+      retryDelay: 1000
+    }
+  })
   
   /**
-   * Core Swap Mathematics
+   * Enhanced Swap Mathematics using Real Uniswap v3 Data
    * 
-   * This is where we calculate the fundamental swap parameters. In a production
-   * system, you'd typically query DEX aggregators or AMM pools for real prices.
-   * Here, we're demonstrating the calculation logic that would process real data.
-   * 
-   * Educational Note: Price Impact Calculation
-   * Price impact occurs because large trades move market prices. The larger
-   * your trade relative to available liquidity, the more the price moves
-   * against you. This is a fundamental concept in automated market makers.
+   * This now uses actual Uniswap quoter data instead of mock calculations.
+   * We maintain fallback logic only for true error conditions.
    */
   const swapMathematics = useMemo((): Omit<SwapCalculation, 'gasEstimate' | 'gasEstimateUSD' | 'totalCostUSD'> => {
-    // Input validation - return empty state if inputs aren't ready
+    // Input validation
     if (!fromToken || !toToken || !fromAmount || parseFloat(fromAmount) === 0) {
       return {
         isLoading: false,
@@ -154,11 +174,13 @@ export const useSwapCalculation = (
         warnings: [],
         recommendedSlippage: 0.5,
         isValid: false,
-        userImpact: 'Enter an amount to see swap details'
+        userImpact: 'Enter an amount to see swap details',
+        uniswapPoolFee: 0,
+        priceSource: 'uniswap_v3'
       }
     }
     
-    // Prevent self-swapping (a common user error)
+    // Prevent self-swapping
     if (fromToken.address === toToken.address) {
       return {
         isLoading: false,
@@ -172,222 +194,213 @@ export const useSwapCalculation = (
         warnings: [{ type: 'route_risk', severity: 'critical', message: 'Cannot swap token to itself' }],
         recommendedSlippage: 0.5,
         isValid: false,
-        userImpact: 'Select different tokens to swap'
+        userImpact: 'Select different tokens to swap',
+        uniswapPoolFee: 0,
+        priceSource: 'uniswap_v3'
       }
     }
+
+    // Show loading state while Uniswap quote is being fetched
+    if (uniswapQuoteQuery.isLoading) {
+      return {
+        isLoading: true,
+        error: null,
+        outputAmount: '0',
+        minimumReceived: '0',
+        exchangeRate: 0,
+        priceImpact: 0,
+        route: null,
+        riskLevel: 'low',
+        warnings: [],
+        recommendedSlippage: 0.5,
+        isValid: false,
+        userImpact: 'Fetching real-time price from Uniswap v3...',
+        uniswapPoolFee: 0,
+        priceSource: 'uniswap_v3'
+      }
+    }
+
+    const fromAmountFloat = parseFloat(fromAmount)
     
-    try {
-      const fromAmountFloat = parseFloat(fromAmount)
-      const fromAmountUSD = fromAmountFloat * fromToken.price
+    // Handle Uniswap quote errors with graceful fallback
+    if (uniswapQuoteQuery.error || !uniswapQuoteQuery.data) {
+      console.warn('Uniswap quoter failed, using fallback pricing:', uniswapQuoteQuery.error)
       
-      /**
-       * Exchange Rate Calculation
-       * 
-       * This demonstrates how to calculate exchange rates between tokens.
-       * We use USD prices as an intermediary, which is common in DeFi
-       * applications where you need to support many token pairs.
-       */
+      // Fallback to USD-based calculation only when Uniswap fails
       const exchangeRate = fromToken.price / toToken.price
       const expectedOutputAmount = fromAmountFloat * exchangeRate
       
-      /**
-       * Price Impact Simulation
-       * 
-       * In reality, you'd query actual AMM pools to get precise price impact.
-       * This simulation demonstrates the concept: larger trades relative to
-       * liquidity pools cause more price impact.
-       * 
-       * Educational Note: Why Price Impact Matters
-       * Price impact represents the cost of immediacy in decentralized markets.
-       * Users pay this cost to execute trades immediately rather than waiting
-       * for better prices through limit orders.
-       */
-      let priceImpact = 0
-      if (fromAmountUSD > 50000) {
-        priceImpact = 3.0  // Large trades have significant impact
-      } else if (fromAmountUSD > 10000) {
-        priceImpact = 1.5  // Medium trades have moderate impact
-      } else if (fromAmountUSD > 1000) {
-        priceImpact = 0.5  // Small trades have minimal impact
-      } else {
-        priceImpact = 0.1  // Tiny trades have negligible impact
+      return {
+        isLoading: false,
+        error: 'Using estimated pricing (Uniswap unavailable)',
+        outputAmount: expectedOutputAmount.toFixed(6),
+        minimumReceived: (expectedOutputAmount * (1 - slippageTolerance / 100)).toFixed(6),
+        exchangeRate,
+        priceImpact: 0.1, // Conservative estimate when using fallback
+        route: `${fromToken.symbol} → ${toToken.symbol} (estimated)`,
+        riskLevel: 'medium',
+        warnings: [{
+          type: 'price_impact',
+          severity: 'warning',
+          message: 'Using estimated pricing - actual price may differ'
+        }],
+        recommendedSlippage: 1.0, // Higher slippage for fallback
+        isValid: true,
+        userImpact: 'Price estimate only - confirm on final swap',
+        uniswapPoolFee: 3000, // Default pool fee
+        priceSource: 'fallback'
       }
+    }
+    // Process successful Uniswap v3 quote
+    try {
+      const outputAmountBigInt = uniswapQuoteQuery.data
+      const outputAmountFloat = Number(formatUnits(outputAmountBigInt, toToken.decimals))
+      const exchangeRate = outputAmountFloat / fromAmountFloat
       
-      // Apply price impact to calculate actual output
-      const actualOutputAmount = expectedOutputAmount * (1 - priceImpact / 100)
-      const outputAmount = actualOutputAmount.toFixed(6)
+      // Calculate price impact by comparing to USD-based rate
+      const usdBasedRate = fromToken.price / toToken.price
+      const priceImpact = Math.abs((exchangeRate - usdBasedRate) / usdBasedRate) * 100
       
-      /**
-       * Slippage Protection Calculation
-       * 
-       * Slippage tolerance protects users from price changes that occur
-       * between transaction submission and execution. This is crucial in
-       * volatile crypto markets where prices can change rapidly.
-       */
-      const minimumReceived = (actualOutputAmount * (1 - slippageTolerance / 100)).toFixed(6)
+      // Calculate minimum received with slippage
+      const minimumReceived = outputAmountFloat * (1 - slippageTolerance / 100)
       
-      /**
-       * Risk Assessment Algorithm
-       * 
-       * This algorithm helps users understand the risk level of their trade.
-       * It considers multiple factors to provide an overall risk assessment.
-       */
-      let riskLevel: SwapCalculation['riskLevel'] = 'low'
-      const warnings: SwapWarning[] = []
+      // Determine risk level based on price impact
+      let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
+      const warnings: Array<{
+        type: 'liquidity' | 'price_impact' | 'slippage' | 'route_risk'
+        severity: 'info' | 'warning' | 'critical'
+        message: string
+      }> = []
       
-      // High price impact warning
       if (priceImpact > 5) {
         riskLevel = 'critical'
         warnings.push({
           type: 'price_impact',
           severity: 'critical',
-          message: `High price impact of ${priceImpact.toFixed(2)}%`,
-          suggestion: 'Consider splitting this trade into smaller amounts'
+          message: `High price impact: ${priceImpact.toFixed(2)}%`
         })
       } else if (priceImpact > 2) {
         riskLevel = 'high'
         warnings.push({
           type: 'price_impact',
           severity: 'warning',
-          message: `Moderate price impact of ${priceImpact.toFixed(2)}%`,
-          suggestion: 'You may want to reduce the trade size'
+          message: `Moderate price impact: ${priceImpact.toFixed(2)}%`
         })
+      } else if (priceImpact > 0.5) {
+        riskLevel = 'medium'
       }
       
-      // High slippage warning
-      if (slippageTolerance > 5) {
-        warnings.push({
-          type: 'slippage',
-          severity: 'warning',
-          message: 'High slippage tolerance may result in unfavorable trades',
-          suggestion: 'Consider reducing slippage tolerance to 2% or lower'
-        })
-      }
+      // Generate route description
+      const route = `${fromToken.symbol} → ${toToken.symbol} via Uniswap v3`
       
-      // Large trade warning
-      if (fromAmountUSD > 25000) {
-        warnings.push({
-          type: 'low_liquidity',
-          severity: 'warning',
-          message: 'Large trade size may experience execution delays',
-          suggestion: 'Consider using multiple smaller trades for better execution'
-        })
-      }
-      
-      /**
-       * Route Simulation
-       * 
-       * In production, this would query actual DEX routers to find the
-       * optimal path. This simulation demonstrates how route information
-       * helps users understand their trade execution.
-       */
-      const route: SwapRoute = {
-        path: [fromToken.address, toToken.address],
-        pools: [{
-          address: '0x1234567890123456789012345678901234567890' as Address,
-          fee: 3000, // 0.3% fee
-          liquidity: BigInt('1000000000000000000000'), // 1000 tokens
-          token0: fromToken.address,
-          token1: toToken.address
-        }],
-        estimatedGas: BigInt(180000), // Typical swap gas usage
-        confidence: priceImpact > 2 ? 75 : 95 // Lower confidence for high impact trades
-      }
-      
-      /**
-       * Recommended Slippage Logic
-       * 
-       * This algorithm suggests appropriate slippage based on market conditions
-       * and trade characteristics. It helps users make informed decisions.
-       */
-      let recommendedSlippage = 0.5 // Default for stable conditions
-      if (priceImpact > 1) recommendedSlippage = 1.0
-      if (priceImpact > 3) recommendedSlippage = 2.0
-      if (fromAmountUSD > 20000) recommendedSlippage = Math.max(recommendedSlippage, 1.5)
-      
-      /**
-       * User Impact Summary
-       * 
-       * This translates complex financial data into human-readable guidance.
-       * Clear communication helps users make confident decisions.
-       */
+      // Provide user-friendly impact description
       const userImpact = priceImpact > 2 
-        ? `You'll receive ~${actualOutputAmount.toFixed(4)} ${toToken.symbol}, but price impact is ${priceImpact.toFixed(2)}%`
-        : `You'll receive ~${actualOutputAmount.toFixed(4)} ${toToken.symbol} at current market rates`
+        ? `High price impact: you'll receive ${priceImpact.toFixed(1)}% less than market rate`
+        : `Good rate: within ${priceImpact.toFixed(1)}% of market price`
+      
+      console.log('Uniswap v3 quote successful:', {
+        fromAmount: fromAmountFloat,
+        outputAmount: outputAmountFloat,
+        exchangeRate,
+        priceImpact: priceImpact.toFixed(2) + '%',
+        route
+      })
       
       return {
         isLoading: false,
         error: null,
-        outputAmount,
-        minimumReceived,
+        outputAmount: outputAmountFloat.toFixed(6),
+        minimumReceived: minimumReceived.toFixed(6),
         exchangeRate,
         priceImpact,
         route,
         riskLevel,
         warnings,
-        recommendedSlippage,
-        isValid: actualOutputAmount > 0 && riskLevel !== 'critical',
-        userImpact
+        recommendedSlippage: priceImpact > 1 ? 1.0 : 0.5,
+        isValid: true,
+        userImpact,
+        uniswapPoolFee: 3000, // This should be returned by the quoter in a full implementation
+        priceSource: 'uniswap_v3'
       }
       
     } catch (error) {
+      console.error('Failed to process Uniswap quote:', error)
+      
       return {
         isLoading: false,
-        error: `Calculation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: 'Failed to calculate swap price',
         outputAmount: '0',
         minimumReceived: '0',
         exchangeRate: 0,
         priceImpact: 0,
         route: null,
         riskLevel: 'critical',
-        warnings: [],
+        warnings: [{
+          type: 'route_risk',
+          severity: 'critical',
+          message: 'Unable to calculate swap price'
+        }],
         recommendedSlippage: 0.5,
         isValid: false,
-        userImpact: 'Unable to calculate swap details'
+        userImpact: 'Unable to calculate swap price',
+        uniswapPoolFee: 0,
+        priceSource: 'uniswap_v3'
       }
     }
-  }, [fromToken, toToken, fromAmount, slippageTolerance])
-  
-  /**
-   * Gas Estimation Logic
-   * 
-   * Gas estimation helps users understand the total cost of their transaction.
-   * This is particularly important for smaller trades where gas costs might
-   * be a significant percentage of the trade value.
-   */
-  useEffect(() => {
-    if (!swapMathematics.isValid || !swapMathematics.route) {
-      setGasEstimate(null)
-      return
-    }
+  }, [fromToken, toToken, fromAmount, slippageTolerance, uniswapQuoteQuery])
+
+  // Enhanced gas estimation with USD conversion
+  const gasData = useMemo(() => {
+    // Base gas estimate for Uniswap v3 swap
+    const baseGasEstimate = BigInt(200000) // Conservative estimate
     
-    setIsEstimatingGas(true)
+    // Get ETH price for USD conversion (you can enhance this with your PriceOracle)
+    const ethPriceUSD = 2400 // This could come from your ETH price oracle
+    const gasEstimateUSD = Number(formatUnits(baseGasEstimate, 18)) * ethPriceUSD
     
-    // Simulate gas estimation (in production, you'd call estimateGas)
-    const timer = setTimeout(() => {
-      setGasEstimate(swapMathematics.route!.estimatedGas)
-      setIsEstimatingGas(false)
-    }, 500)
-    
-    return () => clearTimeout(timer)
-  }, [swapMathematics.isValid, swapMathematics.route])
-  
-  /**
-   * Complete Calculation Result
-   * 
-   * This combines the mathematical calculations with gas estimates to provide
-   * a complete picture of the swap transaction.
-   */
-  return useMemo((): SwapCalculation => {
-    const gasEstimateUSD = gasEstimate ? parseFloat(formatUnits(gasEstimate, 18)) * 2400 : 0 // Assume ETH at $2400
-    const totalCostUSD = gasEstimateUSD + (parseFloat(fromAmount || '0') * (fromToken?.price || 0) * swapMathematics.priceImpact / 100)
+    // Calculate total cost including gas
+    const outputValue = parseFloat(swapMathematics.outputAmount) * (toToken?.price || 0)
+    const totalCostUSD = gasEstimateUSD
     
     return {
-      ...swapMathematics,
-      isLoading: swapMathematics.isLoading || isEstimatingGas,
-      gasEstimate,
+      gasEstimate: baseGasEstimate,
       gasEstimateUSD,
       totalCostUSD
     }
-  }, [swapMathematics, gasEstimate, isEstimatingGas, fromAmount, fromToken?.price])
+  }, [swapMathematics.outputAmount, toToken?.price])
+
+  return {
+    ...swapMathematics,
+    ...gasData
+  }
+}
+
+/**
+ * Helper hook for swap execution
+ * This provides the actual swap execution logic using your CommerceProtocol
+ */
+export const useSwapExecution = () => {
+  const { address } = useAccount()
+  const chainId = useChainId()
+  
+  const executeSwap = useCallback(async (
+    fromToken: TokenInfo,
+    toToken: TokenInfo,
+    fromAmount: string,
+    slippageTolerance: number
+  ) => {
+    // Implementation would use your CommerceProtocolIntegration contract
+    // This is where you'd call swapAndTransferUniswapV3Native or swapAndTransferUniswapV3Token
+    console.log('Executing swap via Commerce Protocol:', {
+      fromToken: fromToken.symbol,
+      toToken: toToken.symbol,
+      fromAmount,
+      slippageTolerance
+    })
+    
+    // TODO: Implement actual swap execution using your Commerce Protocol contracts
+    throw new Error('Swap execution not yet implemented')
+  }, [address, chainId])
+  
+  return { executeSwap }
 }

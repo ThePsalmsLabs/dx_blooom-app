@@ -23,8 +23,8 @@ export { SmartContentPurchaseCard } from '@/components/content/SmartContentPurch
 export { SmartPaymentSelector } from '@/components/purchase/SmartPaymentSelector'
 
 // Phase 3: Swap Functionality
-export { useSwapCalculation } from '@/hooks/web3/useSwapCalculation'
-export type { SwapCalculation, SwapRoute } from '@/hooks/web3/useSwapCalculation'
+export { useSwapCalculation, useSwapExecution } from '@/hooks/web3/useSwapCalculation'
+export type { SwapCalculation } from '@/hooks/web3/useSwapCalculation'
 export { SwapModal } from './SwapModal'
 
 // Phase 4: Portfolio Dashboard
