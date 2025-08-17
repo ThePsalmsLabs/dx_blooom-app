@@ -748,9 +748,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
                       <div className="font-medium">{warning.message}</div>
-                      {warning.suggestion && (
-                        <div className="text-sm mt-1">{warning.suggestion}</div>
-                      )}
                     </AlertDescription>
                   </Alert>
                 ))}

@@ -43,6 +43,10 @@ import { getContractAddresses } from '@/lib/contracts/config'
 import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 import type { TokenInfo } from '@/hooks/web3/useTokenBalances'
 
+// Event topic for PaymentIntentCreated event
+// This should match the keccak256 hash of "PaymentIntentCreated(address,uint256,address,uint256,uint256)"
+const PAYMENT_INTENT_CREATED_TOPIC = '0x...' // You'll need to replace this with the actual event topic hash
+
 /**
  * Comprehensive Swap State Interface
  * 
@@ -376,6 +380,46 @@ export const useSwapCalculation = (
 }
 
 /**
+ * Helper function to extract intent ID from transaction logs
+ * This parses the logs to find the PaymentIntentCreated event
+ */
+const extractIntentIdFromLogs = (logs: any[]): string => {
+  for (const log of logs) {
+    try {
+      // Look for PaymentIntentCreated event
+      if (log.topics && log.topics[0] === PAYMENT_INTENT_CREATED_TOPIC) {
+        // Extract intent ID from log data
+        const intentId = log.topics[1] // Intent ID is typically the first indexed parameter
+        return intentId
+      }
+    } catch (error) {
+      console.error('Error parsing log:', error)
+    }
+  }
+  throw new Error('Intent ID not found in transaction logs')
+}
+
+
+
+/**
+ * Helper function to execute signed intent
+ * This calls the executePaymentWithSignature function on your contract
+ */
+const executeSignedIntent = async (
+  intentId: string, 
+  signature: string,
+  contractAddresses: any,
+  executeIntent: any
+): Promise<void> => {
+  await executeIntent({
+    address: contractAddresses.COMMERCE_INTEGRATION,
+    abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+    functionName: 'executePaymentWithSignature',
+    args: [intentId as `0x${string}`, signature as `0x${string}`]
+  })
+}
+
+/**
  * Production Swap Execution Hook
  * 
  * This hook provides robust swap execution using your CommerceProtocolIntegration contract.
@@ -390,7 +434,7 @@ export const useSwapExecution = () => {
   
   // State management for swap execution
   const [swapState, setSwapState] = useState<{
-    step: 'idle' | 'creating_intent' | 'waiting_signature' | 'executing' | 'completed' | 'error'
+    step: 'idle' | 'creating_intent' | 'extracting_intent_id' | 'waiting_signature' | 'executing_swap' | 'executing' | 'completed' | 'error'
     message: string
     progress: number
     error: string | null
@@ -418,6 +462,55 @@ export const useSwapExecution = () => {
   // Contract write hook for creating payment intents
   const { writeContract, data: createIntentHash, isPending: isCreatingIntent } = useWriteContract()
   
+  /**
+   * Helper function to get intent hash from intent ID
+   * This is a placeholder - you'll need to implement based on your backend
+   */
+  const getIntentHash = useCallback(async (intentId: string): Promise<string> => {
+    // This should call your backend to get the intent hash
+    // For now, returning a placeholder
+    return `0x${intentId}`
+  }, [])
+  
+  /**
+   * Helper function to poll backend for signature
+   * This integrates with your existing API endpoint for signature status
+   */
+  const pollForSignature = useCallback(async (intentId: string): Promise<string> => {
+    const maxAttempts = 30 // 30 seconds with 1-second intervals
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch('/api/commerce/signature-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            intentId, 
+            intentHash: await getIntentHash(intentId)
+          })
+        })
+        
+        const data = await response.json()
+        
+        if (data.isSigned && data.signature) {
+          return data.signature
+        }
+        
+        // Update progress during polling
+        setSwapState(prev => ({ 
+          ...prev, 
+          message: `Waiting for backend signature... (${attempt + 1}/${maxAttempts})`
+        }))
+        
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      } catch (error) {
+        console.error('Signature polling error:', error)
+      }
+    }
+    
+    throw new Error('Signature timeout - backend did not provide signature')
+  }, [getIntentHash, setSwapState])
+  
   // Contract write hook for executing signed intents
   const { writeContract: executeIntent, data: executeHash, isPending: isExecuting } = useWriteContract()
   
@@ -431,7 +524,7 @@ export const useSwapExecution = () => {
   })
   
   /**
-   * Execute Swap Function
+   * Enhanced Execute Swap Function
    * 
    * This function implements the complete swap flow using your CommerceProtocolIntegration.
    * It creates a payment intent for the swap, waits for signature, and executes.
@@ -450,6 +543,7 @@ export const useSwapExecution = () => {
     }
     
     try {
+      // Phase 1: Create Payment Intent
       setSwapState({
         step: 'creating_intent',
         message: `Creating swap intent: ${fromToken.symbol} → ${toToken.symbol}`,
@@ -459,21 +553,13 @@ export const useSwapExecution = () => {
         transactionHash: null
       })
       
-      // Calculate amounts
-      const fromAmountFloat = parseFloat(fromAmount)
-      const fromAmountBigInt = BigInt(Math.floor(fromAmountFloat * (10 ** fromToken.decimals)))
-      const slippageBps = BigInt(Math.floor(slippageTolerance * 100)) // Convert to basis points
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
-      
-      // Create payment request for swap
-      // We use a special contentId (0) to indicate this is a swap transaction
       const paymentRequest = {
-        paymentType: 0, // Using PayPerView type but will be handled as swap by backend
-        creator: address, // User is both creator and recipient for swaps
+        paymentType: 0, // For swaps, user is both creator and recipient
+        creator: address,
         contentId: BigInt(0), // Special contentId for swaps
         paymentToken: fromToken.address,
-        maxSlippage: slippageBps,
-        deadline
+        maxSlippage: BigInt(Math.floor(slippageTolerance * 100)),
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600)
       }
       
       console.log('🔄 Creating swap payment intent:', {
@@ -483,35 +569,76 @@ export const useSwapExecution = () => {
         paymentRequest
       })
       
-      // Create payment intent through CommerceProtocolIntegration
-      await writeContract({
+      // Create intent and capture transaction hash
+      const txHash = await writeContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
         abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
         functionName: 'createPaymentIntent',
         args: [paymentRequest]
       })
       
-      setSwapState(prev => ({
-        ...prev,
-        step: 'waiting_signature',
-        message: 'Swap intent created. Waiting for backend signature...',
-        progress: 40,
-        transactionHash: null // Will be set when transaction is mined
+      // Phase 2: Wait for Transaction and Extract Intent ID
+      setSwapState(prev => ({ 
+        ...prev, 
+        step: 'extracting_intent_id', 
+        progress: 30,
+        message: 'Transaction confirmed. Extracting intent ID...'
       }))
       
-      // In a full implementation, you would:
-      // 1. Wait for the transaction to be mined
-      // 2. Extract the intentId from the transaction logs
-      // 3. Poll your backend for the signature
-      // 4. Call executePaymentWithSignature when ready
+      // Wait for transaction receipt using the existing hook
+      const { data: receipt } = await new Promise<{ data: any }>((resolve, reject) => {
+        const interval = setInterval(() => {
+          if (isCreateSuccess && createIntentHash) {
+            clearInterval(interval)
+            resolve({ data: { logs: [] } }) // Simplified for now
+          }
+        }, 1000)
+        
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          clearInterval(interval)
+          reject(new Error('Transaction confirmation timeout'))
+        }, 30000)
+      })
       
-      // For now, we'll simulate this process
-      console.log('✅ Swap intent creation initiated')
+      const intentId = extractIntentIdFromLogs(receipt.logs)
       
-      return { success: true, intentId: 'pending' }
+      if (!intentId) {
+        throw new Error('Failed to extract intent ID from transaction logs')
+      }
+      
+      // Phase 3: Poll Backend for Signature
+      setSwapState(prev => ({ 
+        ...prev, 
+        step: 'waiting_signature', 
+        progress: 50,
+        message: 'Waiting for backend signature...'
+      }))
+      
+      const signature = await pollForSignature(intentId)
+      
+      // Phase 4: Execute with Signature
+      setSwapState(prev => ({ 
+        ...prev, 
+        step: 'executing_swap', 
+        progress: 80,
+        message: 'Executing swap with signature...'
+      }))
+      
+      await executeSignedIntent(intentId, signature, contractAddresses, executeIntent)
+      
+      setSwapState(prev => ({ 
+        ...prev, 
+        step: 'completed', 
+        progress: 100,
+        message: 'Swap completed successfully!'
+      }))
+      
+      console.log('✅ Swap completed successfully with intent ID:', intentId)
+      return { success: true, intentId }
       
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown swap error'
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('Swap execution failed:', error)
       
       setSwapState(prev => ({
@@ -524,7 +651,7 @@ export const useSwapExecution = () => {
       
       return { success: false, error: errorMessage }
     }
-  }, [address, chainId, contractAddresses, writeContract])
+  }, [address, contractAddresses, writeContract])
   
   /**
    * Execute Signed Intent
