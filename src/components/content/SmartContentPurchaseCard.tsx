@@ -16,6 +16,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import Image from 'next/image'
 import { 
   ShoppingCart, 
   Lock, 
@@ -134,6 +135,37 @@ const SMART_PAYMENT_METHODS: SmartPaymentMethodConfig[] = [
     warningMessage: 'May require multiple transaction steps'
   }
 ]
+
+/**
+ * Get token image path for a given payment method
+ */
+function getTokenImage(method: PaymentMethod, symbol?: string): string {
+  if (symbol) {
+    switch (symbol.toUpperCase()) {
+      case 'USDC':
+        return '/images/usdc-logo.webp'
+      case 'ETH':
+        return '/images/eth-logo.png'
+      case 'WETH':
+        return '/images/weth-logo.jpeg'
+      case 'CBETH':
+        return '/images/cb-eth-logo.png'
+      case 'DAI':
+        return '/images/DAI-logo.png'
+      default:
+        return '/images/usdc-logo.webp' // fallback
+    }
+  }
+  
+  switch (method) {
+    case PaymentMethod.ETH:
+      return '/images/eth-logo.png'
+    case PaymentMethod.USDC:
+      return '/images/usdc-logo.webp'
+    default:
+      return '/images/usdc-logo.webp'
+  }
+}
 
 /**
  * Component Props Interface
@@ -421,18 +453,23 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
   
   return (
     <TooltipProvider>
-      <Card className={cn("w-full max-w-md", className)}>
-        <CardHeader className={cn("text-center", compact && "pb-4")}>
-          {/* Content Preview */}
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <Lock className="h-8 w-8 text-white" />
+      <Card className={cn("w-full max-w-2xl mx-auto", className)}>
+        <CardHeader className={cn("text-center sm:text-left", compact && "pb-4")}>
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            {/* Content Preview */}
+            <div className="w-16 h-16 mx-auto sm:mx-0 flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <Lock className="h-8 w-8 text-white" />
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <CardTitle className={cn("text-lg sm:text-xl", compact && "text-base")}>
+                {content.title}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Premium content • <span className="font-semibold text-blue-600">${contentPriceDisplay} USDC</span>
+              </CardDescription>
+            </div>
           </div>
-          <CardTitle className={cn("text-lg", compact && "text-base")}>
-            {content.title}
-          </CardTitle>
-          <CardDescription>
-            Premium content • ${contentPriceDisplay} USDC
-          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -475,7 +512,6 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
             <div className="space-y-2">
               {paymentMethodsWithStatus.map((method) => {
                 const isSelected = method.id === selectedPaymentMethod
-                const IconComponent = method.icon
                 
                 return (
                   <div
@@ -491,7 +527,15 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
                     onClick={() => method.status !== 'unavailable' && setSelectedPaymentMethod(method.id)}
                   >
                     <div className="flex items-center gap-3">
-                      <IconComponent className="h-5 w-5" />
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                        <Image
+                          src={getTokenImage(method.id, method.symbol)}
+                          alt={`${method.name} logo`}
+                          width={24}
+                          height={24}
+                          className="w-5 h-5 object-contain"
+                        />
+                      </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{method.name}</span>

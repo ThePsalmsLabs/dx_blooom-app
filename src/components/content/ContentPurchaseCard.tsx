@@ -137,13 +137,13 @@ interface PurchaseProgressState {
 }
 
 /**
- * Default Payment Method Configurations
+ * Default Payment Method Configurations - USDC Prioritized
  */
 const DEFAULT_PAYMENT_METHODS: PaymentMethodConfig[] = [
   {
     id: PaymentMethod.USDC,
     name: 'USDC',
-    description: 'Direct payment with USDC - fastest and cheapest',
+    description: 'Stable payment - recommended for best experience',
     estimatedTime: '~15 sec',
     gasEstimate: 'Low',
     requiresApproval: true,
@@ -153,8 +153,8 @@ const DEFAULT_PAYMENT_METHODS: PaymentMethodConfig[] = [
   {
     id: PaymentMethod.ETH,
     name: 'ETH',
-    description: 'Pay with ETH via Commerce Protocol conversion',
-    estimatedTime: '~45 sec',
+    description: 'Pay with native Ethereum',
+    estimatedTime: '~30 sec',
     gasEstimate: 'Medium',
     requiresApproval: false,
     icon: Zap,
@@ -488,7 +488,7 @@ export function ContentPurchaseCard({
     }
   })
 
-  // Multi-payment state management
+  // Multi-payment state management - USDC prioritized as default
   const [paymentState, setPaymentState] = useState<MultiPaymentState>({
     selectedMethod: PaymentMethod.USDC,
     availableTokens: {
@@ -781,11 +781,12 @@ export function ContentPurchaseCard({
 
   /**
    * Determine the best available payment method based on user's balances
+   * USDC is always prioritized as the recommended payment method
    */
   const recommendedPaymentMethod = useMemo(() => {
     const tokens = paymentState.availableTokens
     
-    // First preference: USDC if available and user has enough
+    // First preference: USDC if available and user has enough (prioritized)
     if (tokens[PaymentMethod.USDC]?.hasEnoughBalance) {
       return PaymentMethod.USDC
     }
@@ -1201,30 +1202,32 @@ export function ContentPurchaseCard({
 
   // Full variant with complete functionality
   return (
-    <Card className={cn('w-full max-w-lg mx-auto', className)}>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold line-clamp-2">
+    <Card className={cn('w-full max-w-2xl mx-auto', className)}>
+      <CardHeader className="pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-lg sm:text-xl font-semibold line-clamp-2">
               {content.title}
             </CardTitle>
-            <CardDescription className="mt-1 line-clamp-2">
+            <CardDescription className="mt-1 line-clamp-2 text-sm sm:text-base">
               {content.description}
             </CardDescription>
           </div>
-          <AccessStatusBadge hasAccess={hasAccess} />
+          <div className="flex-shrink-0">
+            <AccessStatusBadge hasAccess={hasAccess} />
+          </div>
         </div>
         
         {/* Creator Information */}
         {showCreatorInfo && (
-          <div className="flex items-center space-x-3 mt-4">
-            <Avatar className="h-8 w-8">
+          <div className="flex items-center space-x-3 mt-4 p-3 bg-gray-50 rounded-lg">
+            <Avatar className="h-8 w-8 flex-shrink-0">
               <AvatarFallback className="text-xs">
                 {formatAddress(content.creator).slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-gray-900 truncate">
                 {formatAddress(content.creator)}
               </p>
               <p className="text-xs text-gray-500">Content Creator</p>
@@ -1233,32 +1236,37 @@ export function ContentPurchaseCard({
         )}
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 sm:space-y-6">
         {!hasAccess && (
           <>
             {/* Price Display */}
             {showPurchaseDetails && (
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Content Price</span>
-                <span className="font-medium text-lg">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-blue-900">Content Price</span>
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">Premium</Badge>
+                </div>
+                <span className="font-bold text-lg sm:text-xl text-blue-900">
                   {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
                 </span>
               </div>
             )}
 
             {/* Multi-Payment Options Display */}
-            {(enableMultiPayment && paymentState.multiPaymentSupported && primaryPurchaseFlow.availableMethods.length > 1) ? (
-              <EnhancedPaymentOptions
-                purchaseFlow={primaryPurchaseFlow}
-                onPaymentMethodSelect={handlePaymentMethodChange}
-              />
-            ) : (
-              /* Fallback to Simple USDC Display */
-              <SimpleUSDCDisplay 
-                token={selectedToken}
-                isLoading={paymentState.isCheckingBalances}
-              />
-            )}
+            <div className="space-y-4">
+              {(enableMultiPayment && paymentState.multiPaymentSupported && primaryPurchaseFlow.availableMethods.length > 1) ? (
+                <EnhancedPaymentOptions
+                  purchaseFlow={primaryPurchaseFlow}
+                  onPaymentMethodSelect={handlePaymentMethodChange}
+                />
+              ) : (
+                /* Fallback to Simple USDC Display */
+                <SimpleUSDCDisplay 
+                  token={selectedToken}
+                  isLoading={paymentState.isCheckingBalances}
+                />
+              )}
+            </div>
 
             {/* Error Display */}
             {paymentState.errorMessage && (
@@ -1289,47 +1297,51 @@ export function ContentPurchaseCard({
         )}
       </CardContent>
 
-      <CardFooter className="flex-col gap-3">
+      <CardFooter className="flex-col gap-3 pt-6">
         {hasAccess ? (
-          <Button onClick={handleViewContent} className="w-full">
+          <Button onClick={handleViewContent} className="w-full h-12 text-base">
             <Eye className="h-4 w-4 mr-2" />
             View Content
           </Button>
         ) : (
           <>
-            {/* Retry Button */}
-            {paymentState.paymentStep === 'error' && (
-              <Button
-                variant="outline"
-                onClick={handleRetry}
-                className="w-full"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            )}
-            
-            {/* Main Purchase Button */}
-            <PurchaseButton
-              hasAccess={hasAccess}
-              selectedToken={selectedToken}
-              paymentStep={paymentState.paymentStep}
-              selectedMethod={paymentState.selectedMethod}
-              onClick={handlePurchase}
-              className={paymentState.paymentStep === 'error' ? "w-full" : "w-full"}
-            />
+            {/* Action Buttons - Mobile Responsive */}
+            <div className="w-full space-y-3">
+              {/* Retry Button */}
+              {paymentState.paymentStep === 'error' && (
+                <Button
+                  variant="outline"
+                  onClick={handleRetry}
+                  className="w-full h-12"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Purchase
+                </Button>
+              )}
+              
+              {/* Main Purchase Button */}
+              <PurchaseButton
+                hasAccess={hasAccess}
+                selectedToken={selectedToken}
+                paymentStep={paymentState.paymentStep}
+                selectedMethod={paymentState.selectedMethod}
+                onClick={handlePurchase}
+                className="w-full h-12 text-base font-semibold"
+              />
+            </div>
             
             {/* Secondary action - subscribe to creator */}
-            <div className="w-full pt-2 border-t">
-              <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-                <span>Or subscribe for all content:</span>
+            <div className="w-full pt-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm text-muted-foreground mb-3">
+                <span>Or get unlimited access:</span>
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Better Value</span>
               </div>
               <SubscribeButton
                 creatorAddress={content?.creator}
-                size="sm"
+                size="default"
                 variant="outline"
                 showPrice={true}
-                className="w-full"
+                className="w-full h-10"
               />
             </div>
           </>
@@ -1682,21 +1694,21 @@ function CompactPurchaseCard({
 }) {
   return (
     <Card className={cn('w-full', className)}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium truncate">{content.title}</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-medium text-sm sm:text-base line-clamp-2">{content.title}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
             </p>
           </div>
           
-          <div className="flex items-center gap-2 ml-4">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <AccessStatusBadge hasAccess={hasAccess} />
             {hasAccess ? (
-              <Button size="sm" onClick={onViewContent}>
+              <Button size="sm" onClick={onViewContent} className="h-8 px-3">
                 <Eye className="h-3 w-3 mr-1" />
-                View
+                <span className="hidden sm:inline">View</span>
               </Button>
             ) : (
               <PurchaseButton
@@ -1765,8 +1777,8 @@ function ContentPurchaseCardSkeleton({
   if (variant === 'compact') {
     return (
       <Card className={cn('w-full', className)}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-20" />
@@ -1791,14 +1803,19 @@ function ContentPurchaseCardSkeleton({
   }
   
   return (
-    <Card className={cn('w-full max-w-lg mx-auto', className)}>
-      <CardHeader>
+    <Card className={cn('w-full max-w-2xl mx-auto', className)}>
+      <CardHeader className="pb-4">
         <div className="space-y-3">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-full" />
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+            <Skeleton className="h-6 w-16" />
+          </div>
+          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <Skeleton className="h-8 w-8 rounded-full" />
-            <div className="space-y-1">
+            <div className="space-y-1 flex-1">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-3 w-16" />
             </div>
@@ -1806,16 +1823,17 @@ function ContentPurchaseCardSkeleton({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-16" />
+        <div className="space-y-4 sm:space-y-6">
+          <Skeleton className="h-16 w-full rounded-lg" />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
           </div>
-          <Skeleton className="h-32 w-full" />
         </div>
       </CardContent>
-      <CardFooter>
-        <Skeleton className="h-10 w-full" />
+      <CardFooter className="pt-6">
+        <Skeleton className="h-12 w-full" />
       </CardFooter>
     </Card>
   )

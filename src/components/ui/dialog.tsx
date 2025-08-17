@@ -34,9 +34,9 @@ function DialogPortal({
 }: React.ComponentProps<typeof DialogPrimitive.Portal> & {
   container?: HTMLElement | null
 }) {
-  // Default to document body if no container specified
-  // This ensures the modal renders at the top level
-  const portalContainer = container || (typeof document !== 'undefined' ? document.body : undefined)
+  // Always use document body for modals to ensure they're above everything
+  // This prevents container-related z-index stacking issues
+  const portalContainer = typeof document !== 'undefined' ? document.body : undefined
   
   return (
     <DialogPrimitive.Portal 
@@ -62,14 +62,26 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        // CRITICAL: Higher z-index to ensure it's above everything
-        "fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm",
+        // CRITICAL: Maximum z-index to ensure it's above everything including other modals
+        "fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm",
         // Enhanced animations for better UX
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=open]:duration-300 data-[state=closed]:duration-200",
+        // Ensure overlay is always visible and captures all interactions
+        "pointer-events-auto cursor-pointer",
         className
       )}
+      style={{
+        // Force overlay positioning and visibility
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        ...props.style
+      }}
       {...props}
     />
   )
@@ -94,32 +106,35 @@ function DialogContent({
         aria-describedby={undefined}
         className={cn(
           // CRITICAL: Maximum z-index to ensure visibility above everything
-          "fixed top-[50%] left-[50%] z-[9999]",
+          "fixed top-[50%] left-[50%] z-[10000]",
           // CRITICAL: Robust positioning and centering
           "translate-x-[-50%] translate-y-[-50%]",
           // CRITICAL: Explicit dimensions and constraints
           "w-full max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]",
           "sm:max-w-lg",
           // Styling and animations
-          "grid gap-4 rounded-lg border bg-background p-6 shadow-lg",
+          "grid gap-4 rounded-lg border bg-background p-6 shadow-2xl",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           "data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
           "data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]",
           "duration-200",
+          // Ensure proper pointer events and visibility
+          "pointer-events-auto visible opacity-100",
           // Emergency force render styles
           forceRender && "!opacity-100 !visible !pointer-events-auto",
           className
         )}
         style={{
+          // Always ensure proper positioning
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10000,
           // Emergency inline styles to force visibility if needed
           ...(forceRender && {
-            zIndex: 10000,
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
             opacity: 1,
             visibility: 'visible',
             pointerEvents: 'auto',

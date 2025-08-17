@@ -541,9 +541,24 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   }, [onClose])
   
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-md">
+    <div className="swap-modal-container">
+      <Dialog open={isOpen} onOpenChange={handleClose} modal={true}>
+        <DialogContent 
+          className={cn(
+            "sm:max-w-md max-w-[95vw]",
+            "!fixed !top-[50%] !left-[50%] !transform !-translate-x-1/2 !-translate-y-1/2",
+            "!z-[10000] bg-background border shadow-xl"
+          )}
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10000,
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}
+        >
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <ArrowUpDown className="h-5 w-5" />
@@ -783,8 +798,23 @@ export const SwapModal: React.FC<SwapModalProps> = ({
       </Dialog>
 
       {/* Token Selection Dialog */}
-      <Dialog open={!!state.showTokenSelector} onOpenChange={() => setState(prev => ({ ...prev, showTokenSelector: null }))}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={!!state.showTokenSelector} onOpenChange={() => setState(prev => ({ ...prev, showTokenSelector: null }))} modal={true}>
+        <DialogContent 
+          className={cn(
+            "sm:max-w-md max-w-[95vw]",
+            "!fixed !top-[50%] !left-[50%] !transform !-translate-x-1/2 !-translate-y-1/2",
+            "!z-[10001] bg-background border shadow-xl"
+          )}
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10001,
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Select Token</DialogTitle>
           </DialogHeader>
@@ -795,6 +825,6 @@ export const SwapModal: React.FC<SwapModalProps> = ({
           />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 }
