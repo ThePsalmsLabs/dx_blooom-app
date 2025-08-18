@@ -432,13 +432,14 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
   // Handle user already has access
   if (hasAccess) {
     return (
-      <Card className={cn("w-full max-w-md border-green-200 bg-green-50", className)}>
+      <Card className={cn("w-full max-w-md border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30", className)}>
         <CardContent className="text-center py-8">
-          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
-          <p className="font-medium text-green-800">You have access to this content</p>
+          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
+          <p className="font-medium text-green-800 dark:text-green-200">You have access to this content</p>
           <Button
             onClick={() => router.push(`/content/${contentId}`)}
             className="mt-3"
+            variant="default"
           >
             <ArrowRight className="h-4 w-4 mr-2" />
             View Content
@@ -453,20 +454,22 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
   
   return (
     <TooltipProvider>
-      <Card className={cn("w-full max-w-2xl mx-auto", className)}>
-        <CardHeader className={cn("text-center sm:text-left", compact && "pb-4")}>
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-            {/* Content Preview */}
-            <div className="w-16 h-16 mx-auto sm:mx-0 flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Lock className="h-8 w-8 text-white" />
+      <Card className={cn("w-full max-w-md mx-auto shadow-sm", className)}>
+        <CardHeader className="pb-6 bg-gradient-to-br from-background to-muted/30 border-b">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-foreground">Premium Content</h3>
+            <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+              <div className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></div>
+              <span className="text-xs font-medium">Available</span>
             </div>
-            
+          </div>
+          <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <CardTitle className={cn("text-lg sm:text-xl", compact && "text-base")}>
+              <CardTitle className="text-base font-medium text-foreground line-clamp-1">
                 {content.title}
               </CardTitle>
-              <CardDescription className="mt-1">
-                Premium content • <span className="font-semibold text-blue-600">${contentPriceDisplay} USDC</span>
+              <CardDescription className="mt-1 text-sm line-clamp-1">
+                Premium content • <span className="font-semibold text-primary">${contentPriceDisplay} USDC</span>
               </CardDescription>
             </div>
           </div>
@@ -493,10 +496,10 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
             </div>
           )}
           
-          {/* Smart Payment Method Selection */}
-          <div className="space-y-3">
+          {/* Enhanced Payment Method Selection with Dropdown Style */}
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Payment Method</label>
+              <label className="block text-sm font-medium text-gray-700">Payment Method</label>
               {suggestedPaymentMethod && suggestedPaymentMethod.id !== selectedPaymentMethod && (
                 <Button
                   variant="ghost"
@@ -509,76 +512,94 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
               )}
             </div>
             
-            <div className="space-y-2">
-              {paymentMethodsWithStatus.map((method) => {
-                const isSelected = method.id === selectedPaymentMethod
-                
-                return (
-                  <div
-                    key={method.id}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all",
-                      isSelected 
-                        ? "border-primary bg-primary/5" 
-                        : "border-border hover:border-primary/50",
-                      method.status === 'insufficient' && "border-red-200 bg-red-50",
-                      method.status === 'unavailable' && "opacity-50 cursor-not-allowed"
-                    )}
-                    onClick={() => method.status !== 'unavailable' && setSelectedPaymentMethod(method.id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
-                        <Image
-                          src={getTokenImage(method.id, method.symbol)}
-                          alt={`${method.name} logo`}
-                          width={24}
-                          height={24}
-                          className="w-5 h-5 object-contain"
-                        />
+            {/* Selected Method Display */}
+            {selectedMethodData && (
+              <div className="p-4 border rounded-lg bg-card">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden border border-border">
+                      <Image
+                        src={getTokenImage(selectedMethodData.id, selectedMethodData.symbol)}
+                        alt={`${selectedMethodData.name} logo`}
+                        width={24}
+                        height={24}
+                        className="w-5 h-5 object-contain"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{selectedMethodData.name}</span>
+                        {selectedMethodData.isPreferred && suggestedPaymentMethod?.id === selectedMethodData.id && (
+                          <Badge variant="secondary" className="text-xs">
+                            Recommended
+                          </Badge>
+                        )}
+                        {selectedMethodData.status === 'insufficient' && (
+                          <Badge variant="destructive" className="text-xs">
+                            Insufficient
+                          </Badge>
+                        )}
                       </div>
-                      <div>
+                      <div className="text-sm text-muted-foreground">{selectedMethodData.description}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-foreground font-mono text-sm">
+                      {selectedMethodData.status === 'loading' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        selectedMethodData.currentBalance
+                      )}
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      {selectedMethodData.status === 'insufficient' && selectedMethodData.shortfall ? 
+                        `Need ${selectedMethodData.shortfall.toFixed(4)} more` :
+                        'Available'
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Alternative Methods (if more than one available) */}
+            {paymentMethodsWithStatus.filter(m => m.status !== 'unavailable').length > 1 && !compact && (
+              <details className="group">
+                <summary className="cursor-pointer text-sm text-primary hover:text-primary/80 font-medium">
+                  View other payment options ({paymentMethodsWithStatus.filter(m => m.status !== 'unavailable').length - 1} more)
+                </summary>
+                <div className="mt-2 space-y-2 border rounded-lg p-2 bg-muted/30">
+                  {paymentMethodsWithStatus
+                    .filter(method => method.id !== selectedPaymentMethod && method.status !== 'unavailable')
+                    .map((method) => (
+                      <button
+                        key={method.id}
+                        className="w-full flex items-center justify-between p-2 rounded hover:bg-card transition-colors text-left"
+                        onClick={() => setSelectedPaymentMethod(method.id)}
+                      >
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{method.name}</span>
-                          {method.isPreferred && suggestedPaymentMethod?.id === method.id && (
-                            <Badge variant="secondary" className="text-xs">
-                              Recommended
-                            </Badge>
-                          )}
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden border border-border">
+                            <Image
+                              src={getTokenImage(method.id, method.symbol)}
+                              alt={`${method.name} logo`}
+                              width={16}
+                              height={16}
+                              className="w-4 h-4 object-contain"
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-foreground">{method.name}</span>
                           {method.status === 'insufficient' && (
                             <Badge variant="destructive" className="text-xs">
                               Insufficient
                             </Badge>
                           )}
-                          {method.status === 'unavailable' && (
-                            <Badge variant="outline" className="text-xs">
-                              Unavailable
-                            </Badge>
-                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {method.description}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        {method.status === 'loading' ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          method.currentBalance
-                        )}
-                      </div>
-                      {method.status === 'insufficient' && method.shortfall && (
-                        <div className="text-xs text-red-600">
-                          Need {method.shortfall.toFixed(4)} more
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                        <span className="text-sm font-mono text-muted-foreground">{method.currentBalance}</span>
+                      </button>
+                    ))}
+                </div>
+              </details>
+            )}
           </div>
           
           {/* Transaction Details */}
@@ -655,52 +676,58 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
           )}
         </CardContent>
 
-        <CardFooter>
-          {selectedMethodData?.status === 'insufficient' && (enableSwapIntegration || onSwapRequested) ? (
-            <div className="flex w-full gap-2">
+        <CardFooter className="p-6 bg-muted/30 border-t">
+          <div className="w-full space-y-4">
+            {selectedMethodData?.status === 'insufficient' && (enableSwapIntegration || onSwapRequested) ? (
               <Button
                 onClick={handlePurchase}
-                className="flex-1"
-                variant="outline"
+                className="w-full font-medium py-3 px-4 transition-all duration-200 flex items-center justify-center gap-2"
+                size="lg"
               >
-                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <ArrowUpDown className="h-4 w-4" />
                 Swap for {selectedMethodData.symbol}
               </Button>
-              {!enableSwapIntegration && onSwapRequested && (
-                <Button
-                  onClick={handlePurchase}
-                  variant="default"
-                  className="flex-1"
-                >
-                  <Zap className="h-4 w-4 mr-2" />
-                  Get Tokens
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Button
-              onClick={handlePurchase}
-              disabled={
-                !selectedMethodData || 
-                selectedMethodData.status !== 'available' || 
-                !purchaseFlow.canExecutePayment ||
-                ['executing', 'confirming'].includes(purchaseFlow.executionState.phase)
-              }
-              className="w-full"
-            >
-              {['executing', 'confirming'].includes(purchaseFlow.executionState.phase) ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {purchaseFlow.executionState.message}
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  Purchase Content
-                </>
-              )}
-            </Button>
-          )}
+            ) : (
+              <Button
+                onClick={handlePurchase}
+                disabled={
+                  !selectedMethodData || 
+                  selectedMethodData.status !== 'available' || 
+                  !purchaseFlow.canExecutePayment ||
+                  ['executing', 'confirming'].includes(purchaseFlow.executionState.phase)
+                }
+                className="w-full font-medium py-3 px-4 transition-all duration-200 flex items-center justify-center gap-2"
+                variant={
+                  selectedMethodData?.status === 'available' && !['executing', 'confirming'].includes(purchaseFlow.executionState.phase)
+                    ? 'default'
+                    : 'secondary'
+                }
+                size="lg"
+              >
+                {['executing', 'confirming'].includes(purchaseFlow.executionState.phase) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {purchaseFlow.executionState.message}
+                  </>
+                ) : selectedMethodData?.status !== 'available' ? (
+                  <>
+                    <AlertTriangle className="h-4 w-4" />
+                    Insufficient Balance
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4" />
+                    Purchase Content
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Footer Note */}
+            <p className="text-xs text-muted-foreground text-center">
+              * May require token approval first
+            </p>
+          </div>
         </CardFooter>
       </Card>
       
