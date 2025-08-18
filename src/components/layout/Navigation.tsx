@@ -112,6 +112,15 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
           description: 'Discover content across all categories',
           roles: ['disconnected', 'consumer', 'creator', 'admin'],
           isActive: pathname.startsWith('/browse')
+        },
+        {
+          id: 'creators-directory',
+          label: 'Creators',
+          href: '/creators',
+          icon: Users,
+          description: 'Discover and support amazing creators',
+          roles: ['disconnected', 'consumer', 'creator', 'admin'],
+          isActive: pathname.startsWith('/creators')
         }
       ],
       roles: ['disconnected', 'consumer', 'creator', 'admin'],
@@ -152,15 +161,6 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
           description: 'Most popular and engaging content',
           roles: ['consumer', 'creator', 'admin'],
           isActive: pathname.startsWith('/discovery/trending')
-        },
-        {
-          id: 'creators-directory',
-          label: 'Creators',
-          href: '/creators',
-          icon: Users,
-          description: 'Discover and support amazing creators',
-          roles: ['consumer', 'creator', 'admin'],
-          isActive: pathname.startsWith('/creators')
         }
       ],
       roles: ['consumer', 'creator', 'admin'],
