@@ -69,6 +69,7 @@ import {
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-config'
 import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
+import { WalletConnectButton } from '@/components/web3/WalletConnectButton'
 
 /**
  * User Role Types
@@ -447,7 +448,7 @@ function AppHeader({
                   onDisconnect={onDisconnect}
                 />
               ) : (
-                <div>Connect Wallet</div>
+                <WalletConnectButton variant="outline" size="sm" />
               )
             ) : (
               <div className="h-9 w-24 rounded-md bg-muted animate-pulse" />

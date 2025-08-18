@@ -58,10 +58,10 @@ import { RouteGuards } from '@/components/layout/RouteGuards'
 import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
 
 // Import business logic and UI integration hooks
-import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useAllCreators } from '@/hooks/contracts/useAllCreators'
-import { RPCHealthCheck } from '@/components/debug'
+import { WalletConnectButton } from '@/components/web3/WalletConnectButton'
+import { useWalletConnect } from '@/hooks/web3/useWalletConnect'
 
 // Import utilities and types
 import { ContentCategory } from '@/types/contracts'
@@ -120,8 +120,8 @@ export default function HomePage() {
   const router = useRouter()
   const { address, isConnected } = useAccount()
   
-  // Use our established UI integration hooks
-  const walletUI = useWalletConnectionUI()
+  // Use Privy-based wallet connection
+  const { login, isAuthenticated } = useWalletConnect()
   const { data: isCreator } = useIsCreatorRegistered(address)
   const { data: creatorProfile } = useCreatorProfile(address)
   const allCreators = useAllCreators()
@@ -229,10 +229,10 @@ export default function HomePage() {
         router.push('/onboard')
       }
     } else {
-      // Connect wallet first, then redirect to onboarding
-      walletUI.connect()
+      // Connect wallet first using Privy, then redirect to onboarding
+      login()
     }
-  }, [isConnected, isCreator, router, walletUI])
+  }, [isConnected, isCreator, router, login])
 
   const handleContentTabChange = useCallback((category: ContentCategory | 'featured') => {
     setPageState(prev => ({ ...prev, activeContentTab: category }))
@@ -268,9 +268,13 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {!isConnected ? (
                   <>
-                    <div className="text-lg px-8 py-4 btn-glow">
+                    <WalletConnectButton 
+                      variant="default" 
+                      size="lg"
+                      className="text-lg px-8 py-4"
+                    >
                       Connect Wallet
-                    </div>
+                    </WalletConnectButton>
                     <Button 
                       variant="glow" 
                       size="lg"
@@ -328,17 +332,7 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* RPC Configuration Test - Development Only */}
-          {process.env.NODE_ENV === 'development' && (
-            <section className="py-8">
-              <div className="container mx-auto">
-                <h2 className="text-lg font-semibold mb-4 text-center">RPC Configuration Test</h2>
-                <div className="flex justify-center">
-                  <RPCHealthCheck />
-                </div>
-              </div>
-            </section>
-          )}
+
 
           {/* Platform Statistics */}
           {pageState.showPlatformStats && (

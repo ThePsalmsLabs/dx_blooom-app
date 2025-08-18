@@ -308,9 +308,9 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       config={privyConfig}
     >
       <PrivyWagmiProvider>
-        <EnhancedWeb3ProviderInner>
-          {children}
-        </EnhancedWeb3ProviderInner>
+          <EnhancedWeb3ProviderInner>
+            {children}
+          </EnhancedWeb3ProviderInner>
       </PrivyWagmiProvider>
     </PrivyProvider>
   )
