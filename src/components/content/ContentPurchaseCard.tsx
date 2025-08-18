@@ -1,19 +1,8 @@
 /**
- * Production-Ready Multi-Payment ContentPurchaseCard
- * File: src/components/web3/ContentPurchaseCard.tsx
+ * Content Purchase Card Component
  * 
- * This is a fully robust, production-ready implementation that seamlessly integrates
- * with your existing smart contract infrastructure. It handles all edge cases,
- * provides comprehensive error handling, and gracefully degrades when needed.
- * 
- * Key Features:
- * - Seamless integration with your existing useContentPurchaseFlow hook
- * - Robust multi-token payment support with real balance checking
- * - Comprehensive error handling and recovery mechanisms
- * - Graceful fallback to USDC-only mode if multi-payment fails
- * - Proper React hook usage following all rules
- * - Real-time price calculations using your Price Oracle
- * - Progressive enhancement that doesn't break existing functionality
+ * A production content purchase interface that integrates with the application's
+ * smart contract infrastructure and provides multi-token payment support.
  */
 
 'use client'
@@ -61,7 +50,6 @@ import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance
 import { useUnifiedContentPurchaseFlow, UnifiedPurchaseFlowResult, PaymentMethod } from '@/hooks/business/workflows'
 import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
-import { EnhancedPaymentOptions } from './EnhancedPaymentOptions'
 import { SubscribeButton } from '@/components/subscription'
 
 
@@ -82,7 +70,7 @@ interface PaymentMethodConfig {
 }
 
 /**
- * Token Information Interface - Comprehensive Token Data
+ * Token Information Interface
  */
 interface TokenInfo {
   readonly address: Address
@@ -115,7 +103,7 @@ interface MultiPaymentState {
 }
 
 /**
- * Enhanced ContentPurchaseCard Props
+ * ContentPurchaseCard Props
  */
 interface ContentPurchaseCardProps {
   readonly contentId: bigint
@@ -204,7 +192,7 @@ function useContractABIs() {
 }
 
 /**
- * Enhanced Purchase Action Button Component
+ * Purchase Action Button Component
  * 
  * This component now makes intelligent decisions based on ALL available payment methods,
  * not just USDC. It shows the appropriate action based on what tokens the user has.
@@ -513,7 +501,7 @@ export function ContentPurchaseCard({
 
   /**
    * Multi-Payment Support Detection
-   * This checks if the user's environment supports advanced payment methods
+   * This checks if the user's environment supports multi-token payment methods
    */
   const checkMultiPaymentSupport = useCallback(() => {
     const hasRequiredContracts = !!(
@@ -530,8 +518,8 @@ export function ContentPurchaseCard({
   }, [contractAddresses, enableMultiPayment])
 
   /**
-   * Robust Token Balance Checking
-   * This function safely checks token balances with comprehensive error handling
+   * Token Balance Checking
+   * This function safely checks token balances with proper error handling
    */
   const checkTokenBalances = useCallback(async (content: Content) => {
     if (!effectiveUserAddress || !content) return
@@ -750,7 +738,7 @@ export function ContentPurchaseCard({
               [PaymentMethod.OTHER_TOKEN]: null
             },
             isCheckingBalances: false,
-            errorMessage: 'Advanced payment options unavailable - using USDC fallback'
+            errorMessage: 'Multi-token payment options unavailable - using USDC fallback'
           }))
         }
       }, 5000)
@@ -829,7 +817,7 @@ export function ContentPurchaseCard({
 
   /**
    * Production-Ready Purchase Execution
-   * This handles all payment methods with comprehensive error handling
+   * This handles all payment methods with proper error handling
    */
   const handlePurchase = useCallback(async () => {
     if (!contentQuery.data || !effectiveUserAddress) {
@@ -981,7 +969,7 @@ export function ContentPurchaseCard({
 
   /**
    * Custom Token Purchase via Commerce Protocol
-   * Complete implementation with comprehensive error handling and validation
+   * Complete implementation with proper error handling and validation
    */
   const handleCustomTokenPurchase = useCallback(async () => {
     if (!contentQuery.data || !contractAddresses || !effectiveUserAddress) {
@@ -1255,7 +1243,7 @@ export function ContentPurchaseCard({
             {/* Multi-Payment Options Display */}
             <div className="space-y-4">
               {(enableMultiPayment && paymentState.multiPaymentSupported && primaryPurchaseFlow.availableMethods.length > 1) ? (
-                <EnhancedPaymentOptions
+                <PaymentOptionsDisplay
                   purchaseFlow={primaryPurchaseFlow}
                   onPaymentMethodSelect={handlePaymentMethodChange}
                 />
@@ -1289,7 +1277,7 @@ export function ContentPurchaseCard({
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Advanced payment options are temporarily unavailable. You can still pay with USDC.
+                  Multi-token payment options are temporarily unavailable. You can still pay with USDC.
                 </AlertDescription>
               </Alert>
             )}

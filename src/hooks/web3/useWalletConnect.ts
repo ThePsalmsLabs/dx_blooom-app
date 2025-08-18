@@ -262,10 +262,10 @@ export function useWalletConnect(): UseWalletConnectReturn {
       address: smartAccountAddress,
       isDeployed: isSmartAccountDeployed,
       canSponsorGas: Boolean(smartAccount && hasAdvancedFeatures),
-      benefits: [
-        'Gasless transactions',
+    benefits: [
+      'Gasless transactions',
         'Batch operations', 
-        'Enhanced security',
+      'Enhanced security',
         'Recovery options'
       ],
       canUpgrade
@@ -356,7 +356,7 @@ export function useWalletConnect(): UseWalletConnectReturn {
   const clearError = useCallback(() => {
     setError(null)
   }, [])
-
+  
   // CORRECTED: Return object that maintains compatibility while adding Privy features
   return {
     // Connection State
@@ -392,4 +392,4 @@ export function useWalletConnect(): UseWalletConnectReturn {
     clearError,
     showNetworkWarning: !isCorrectNetwork && isConnected
   }
-}
+} 
