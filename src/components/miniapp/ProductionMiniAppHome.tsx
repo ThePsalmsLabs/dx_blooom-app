@@ -8,7 +8,7 @@ import { useMiniApp } from '@/components/providers/EnhancedMiniAppProvider'
 import { useMiniAppOptimization } from '@/hooks/miniapp/useMiniAppOptimization'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
 
-const EnhancedContentBrowser = dynamic(() => import('@/components/miniapp/EnhancedContentBrowser'), {
+const ContentBrowser = dynamic(() => import('@/components/miniapp/EnhancedContentBrowser'), {
 	loading: () => <ContentBrowserSkeleton />, 
 	ssr: false,
 })
@@ -146,7 +146,7 @@ export function ProductionMiniAppHome(): React.ReactElement {
 		<MiniAppErrorBoundary onRetry={() => window.location.reload()}>
 			<ProductionMiniAppLayout>
 				<Suspense fallback={<ContentBrowserSkeleton />}>
-					<EnhancedContentBrowser
+					<ContentBrowser
 						optimized={optimization}
 						capabilities={mappedCapabilities}
 						onAnalyticsEvent={track}

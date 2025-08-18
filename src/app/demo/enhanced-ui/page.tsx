@@ -3,6 +3,7 @@
 import React from 'react'
 import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
 import { ContentPurchaseCardDemo } from '@/components/content/ContentPurchaseCardDemo'
+import { Button } from '@/components/ui/button'
 
 /**
  * Enhanced UI Demo Page
@@ -31,7 +32,7 @@ export default function EnhancedUIDemoPage() {
           {/* Enhanced Purchase Cards */}
           {demoContentIds.map((contentId, index) => (
             <div key={contentId.toString()} className="flex flex-col">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Enhanced Card #{index + 1}
               </h3>
               <SmartContentPurchaseCard
@@ -47,69 +48,88 @@ export default function EnhancedUIDemoPage() {
           ))}
         </div>
 
+        {/* Enhanced Content Browser Demo */}
+        <div className="bg-card border rounded-xl p-8 mb-8">
+          <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
+            🎯 New Enhanced Content Browser
+          </h2>
+          <p className="text-muted-foreground mb-6 text-center max-w-3xl mx-auto">
+            The new responsive content browser automatically calculates optimal grid layouts, 
+            provides smooth sidebar transitions, and maintains perfect typography scaling across all devices.
+          </p>
+          
+          <div className="text-center">
+            <Button asChild size="lg">
+              <a href="/browse/enhanced">
+                Experience Enhanced Browser
+              </a>
+            </Button>
+          </div>
+        </div>
+
         {/* Features Showcase */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+        <div className="bg-card border rounded-xl p-8 mb-8">
+          <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
             ✨ Key UI/UX Improvements
           </h2>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="text-center p-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">🎯</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Clean Token Selection</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-semibold text-foreground mb-2">Clean Token Selection</h3>
+              <p className="text-sm text-muted-foreground">
                 Dropdown-style token selector with clear balance display and status indicators
               </p>
             </div>
             
             <div className="text-center p-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">⚡</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Better Loading States</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-semibold text-foreground mb-2">Better Loading States</h3>
+              <p className="text-sm text-muted-foreground">
                 Skeleton loading and smooth transitions prevent layout shifts
               </p>
             </div>
             
             <div className="text-center p-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">🎨</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Modern Design</h3>
-              <p className="text-sm text-gray-600">
-                Gradients, shadows, and improved visual hierarchy for better UX
+              <h3 className="font-semibold text-foreground mb-2">Theme-Aware Design</h3>
+              <p className="text-sm text-muted-foreground">
+                Proper light/dark mode support using your design system tokens
               </p>
             </div>
             
             <div className="text-center p-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">📱</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Mobile Optimized</h3>
-              <p className="text-sm text-gray-600">
-                Touch-friendly interface that works seamlessly on all devices
+              <h3 className="font-semibold text-foreground mb-2">Responsive Grid System</h3>
+              <p className="text-sm text-muted-foreground">
+                Intelligent column calculation that adapts to any screen size
               </p>
             </div>
             
             <div className="text-center p-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">🔄</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Smart Feedback</h3>
-              <p className="text-sm text-gray-600">
-                Color-coded buttons and clear status messages for different payment methods
+              <h3 className="font-semibold text-foreground mb-2">Smart Layout</h3>
+              <p className="text-sm text-muted-foreground">
+                Smooth sidebar transitions and optimal content organization
               </p>
             </div>
             
             <div className="text-center p-4">
-              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl">🛡️</span>
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Production Ready</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-semibold text-foreground mb-2">Production Ready</h3>
+              <p className="text-sm text-muted-foreground">
                 Full integration with existing smart contracts and error handling
               </p>
             </div>
@@ -170,6 +190,14 @@ export default function EnhancedUIDemoPage() {
             
             <div className="flex items-start gap-3">
               <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">4</span>
+              <div>
+                <p className="font-semibold">Enhanced Content Browser</p>
+                <p className="text-sm text-muted-foreground">Visit <code className="bg-muted px-2 py-1 rounded">/browse/enhanced</code> to see the new responsive grid system in action</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-3">
+              <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">5</span>
               <div>
                 <p className="font-semibold">Test Theme Switching</p>
                 <p className="text-sm text-muted-foreground">Toggle between light and dark modes to see how the UI adapts seamlessly</p>

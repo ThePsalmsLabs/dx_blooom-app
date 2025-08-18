@@ -16,6 +16,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
+import { formatUnits } from 'viem'
 import Image from 'next/image'
 import { 
   ShoppingCart, 
@@ -53,6 +54,7 @@ import { toast } from 'sonner'
 // Import real business logic and token balance system
 import { useEnhancedTokenBalances, formatUSDValue, type TokenInfo } from '@/hooks/web3/useEnhancedTokenBalances'
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
+import { USDC_DECIMALS } from '@/lib/contracts/config'
 import { 
   useUnifiedContentPurchaseFlow, 
   PaymentMethod,
@@ -202,6 +204,13 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(PaymentMethod.USDC)
   const [showPaymentDetails, setShowPaymentDetails] = useState(false)
   
+  // NEW: Staged purchase flow state
+  const [hasInitiatedPurchase, setHasInitiatedPurchase] = useState(false)
+  const [balanceCache, setBalanceCache] = useState<{
+    data: any
+    timestamp: number
+  } | null>(null)
+  
   // Phase 3: Swap integration state
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [swapContext, setSwapContext] = useState<{
@@ -210,7 +219,11 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
     contextMessage: string
   } | null>(null)
   
-  // Token balance integration
+  // Check if cache is still valid (30 seconds)
+  const isCacheValid = balanceCache && (Date.now() - balanceCache.timestamp) < 30000
+  
+  // Token balance integration - only fetch if purchase initiated or cache invalid
+  const shouldSkipBalanceFetch = !hasInitiatedPurchase && !isCacheValid
   const { 
     tokens, 
     totalPortfolioValue, 
@@ -219,6 +232,31 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
     canAffordContentPrice,
     getPaymentCapabilities
   } = useEnhancedTokenBalances()
+  
+  // Override loading state when skipping fetch
+  const actualBalancesLoading = shouldSkipBalanceFetch ? false : balancesLoading
+  
+  // Handle CTA button click to initiate purchase flow
+  const handleProceedToPurchase = useCallback(() => {
+    setHasInitiatedPurchase(true)
+    // Cache current data for 30 seconds
+    if (tokens && totalPortfolioValue) {
+      setBalanceCache({
+        data: { tokens, totalPortfolioValue },
+        timestamp: Date.now()
+      })
+    }
+  }, [tokens, totalPortfolioValue])
+  
+  // Update cache when balances are refreshed
+  useEffect(() => {
+    if (!actualBalancesLoading && hasInitiatedPurchase && tokens) {
+      setBalanceCache({
+        data: { tokens, totalPortfolioValue },
+        timestamp: Date.now()
+      })
+    }
+  }, [actualBalancesLoading, hasInitiatedPurchase, tokens, totalPortfolioValue])
   
   // Real business logic hooks
   const { data: content, isLoading: contentLoading } = useContentById(contentId)
@@ -230,7 +268,29 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
    * Combines token balance data with content pricing to provide intelligent recommendations
    */
   const paymentMethodsWithStatus = useMemo((): PaymentMethodWithStatus[] => {
-    if (!content || balancesLoading) {
+    if (!content) {
+      return SMART_PAYMENT_METHODS.map(method => ({
+        ...method,
+        status: 'loading' as const,
+        currentBalance: '...',
+        balanceUSD: 0,
+        required: 0
+      }))
+    }
+    
+    // If we haven't initiated purchase, show placeholder data
+    if (shouldSkipBalanceFetch) {
+      return SMART_PAYMENT_METHODS.map(method => ({
+        ...method,
+        status: 'unavailable' as const,
+        currentBalance: '...',
+        balanceUSD: 0,
+        required: Number(formatUnits(content.payPerViewPrice, USDC_DECIMALS))
+      }))
+    }
+    
+    // If we're loading balances after initiation
+    if (actualBalancesLoading) {
       return SMART_PAYMENT_METHODS.map(method => ({
         ...method,
         status: 'loading' as const,
@@ -283,7 +343,7 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
         shortfall: hasEnough ? undefined : required - currentBalance
       }
     })
-  }, [content, tokens, balancesLoading])
+  }, [content, tokens, actualBalancesLoading, shouldSkipBalanceFetch])
   
   /**
    * Intelligent Payment Method Suggestion
@@ -476,8 +536,40 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {/* CTA Button Section - Show when balances not yet fetched */}
+          {shouldSkipBalanceFetch && (
+            <div className="text-center py-6 space-y-4">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-lg animate-pulse" />
+                <div className="relative bg-card border border-primary/20 rounded-lg p-6">
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="relative">
+                      <Zap className="w-8 h-8 text-primary animate-bounce" />
+                      <div className="absolute -inset-1 bg-primary/20 rounded-full animate-ping" />
+                    </div>
+                  </div>
+                  <h4 className="text-lg font-semibold text-foreground mb-2">
+                    Ready to Purchase?
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Click below to check your wallet balance and proceed with payment
+                  </p>
+                  <Button
+                    onClick={handleProceedToPurchase}
+                    className="w-full font-medium py-3 px-4 transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                    size="lg"
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    Proceed to Payment
+                    <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Portfolio Overview Section */}
-          {showBalanceDetails && !compact && (
+          {showBalanceDetails && !compact && !shouldSkipBalanceFetch && (
             <div className="p-3 bg-muted/50 rounded-lg">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Portfolio Value</span>
@@ -496,8 +588,9 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
             </div>
           )}
           
-          {/* Enhanced Payment Method Selection with Dropdown Style */}
-          <div className="space-y-4">
+          {/* Enhanced Payment Method Selection with Dropdown Style - Only show after CTA initiated */}
+          {!shouldSkipBalanceFetch && (
+            <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">Payment Method</label>
               {suggestedPaymentMethod && suggestedPaymentMethod.id !== selectedPaymentMethod && (
@@ -601,9 +694,10 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
               </details>
             )}
           </div>
+          )}
           
           {/* Transaction Details */}
-          {selectedMethodData && selectedMethodData.status !== 'loading' && (
+          {!shouldSkipBalanceFetch && selectedMethodData && selectedMethodData.status !== 'loading' && (
             <div className="p-3 border rounded-lg space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Content Price:</span>
@@ -637,7 +731,7 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
           )}
           
           {/* Purchase State Progress */}
-          {purchaseFlow.executionState.phase !== 'idle' && (
+          {!shouldSkipBalanceFetch && purchaseFlow.executionState.phase !== 'idle' && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Purchase Status:</span>
@@ -651,7 +745,7 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
           )}
           
           {/* Insufficient Balance Warning */}
-          {selectedMethodData?.status === 'insufficient' && (
+          {!shouldSkipBalanceFetch && selectedMethodData?.status === 'insufficient' && (
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
@@ -666,7 +760,7 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
           )}
           
           {/* Warning Messages */}
-          {selectedMethodData?.warningMessage && (
+          {!shouldSkipBalanceFetch && selectedMethodData?.warningMessage && (
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
@@ -676,7 +770,8 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
           )}
         </CardContent>
 
-        <CardFooter className="p-6 bg-muted/30 border-t">
+        {!shouldSkipBalanceFetch && (
+          <CardFooter className="p-6 bg-muted/30 border-t">
           <div className="w-full space-y-4">
             {selectedMethodData?.status === 'insufficient' && (enableSwapIntegration || onSwapRequested) ? (
               <Button
@@ -728,7 +823,8 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
               * May require token approval first
             </p>
           </div>
-        </CardFooter>
+          </CardFooter>
+        )}
       </Card>
       
       {/* Phase 3: Integrated Swap Modal */}
