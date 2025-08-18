@@ -27,7 +27,7 @@
 
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useAccount, useChainId, useDisconnect, useSwitchChain, useConnect } from 'wagmi'
-import { useConnectModal } from '@rainbow-me/rainbowkit'
+import { useLogin } from '@privy-io/react-auth'
 import { type Address } from 'viem'
 
 // Import utility functions for data formatting
@@ -384,15 +384,15 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   const { switchChain } = useSwitchChain()
   const { connectAsync, connectors } = useConnect()
   
-  // RainbowKit modal control - THIS IS THE MISSING PIECE!
-  // This hook provides the openConnectModal function that actually
+  // Privy modal control - Replaces RainbowKit
+  // This hook provides the login function that actually
   // displays the wallet selection modal to users
-  const { openConnectModal } = useConnectModal()
+  const { login } = useLogin()
   
   // Debug logging to help identify the issue
   console.log('🔍 useWalletConnectionUI Debug:', {
-    openConnectModal: !!openConnectModal,
-    openConnectModalType: typeof openConnectModal,
+    login: !!login,
+    loginType: typeof login,
     connectors: connectors?.length,
     isConnected,
     isConnecting,
@@ -463,7 +463,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
    */
   const handleConnect = useCallback(() => {
     console.log('🚀 handleConnect called', {
-      openConnectModal: !!openConnectModal,
+      login: !!login,
       hasWalletConnectProjectId,
       environment: process.env.NODE_ENV
     })
@@ -478,32 +478,14 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
         return
       }
 
-      // Check if RainbowKit modal is available
-      if (openConnectModal) {
-        console.log('✅ RainbowKit modal available, opening...')
+      // Check if Privy login is available
+      if (login) {
+        console.log('✅ Privy login available, opening...')
         // This actually opens the wallet selection modal!
-        openConnectModal()
-        if (process.env.NODE_ENV === 'development') {
-          // Runtime safety: if modal doesn't render shortly in dev, fall back to custom modal
-          setTimeout(() => {
-            const rkModal = document.querySelector('[data-testid="rk-connect-modal"]') as HTMLElement | null
-            if (!rkModal) {
-              console.log('⚠️ RainbowKit modal not found in DOM, falling back to custom modal')
-              setShowWalletModal(true)
-              return
-            }
-            const rect = rkModal.getBoundingClientRect()
-            const styles = getComputedStyle(rkModal)
-            const isVisible = rect.width > 0 && rect.height > 0 && styles.visibility !== 'hidden' && styles.display !== 'none' && styles.opacity !== '0'
-            if (!isVisible) {
-              console.log('⚠️ RainbowKit modal not visible, falling back to custom modal')
-              setShowWalletModal(true)
-            }
-          }, 250)
-        }
+        login()
       } else {
-        console.log('❌ RainbowKit modal not available, falling back to custom modal')
-        // If modal isn't available, fall back to custom modal
+        console.log('❌ Privy login not available, falling back to custom modal')
+        // If login isn't available, fall back to custom modal
         if (process.env.NODE_ENV === 'development') {
           setShowWalletModal(true)
         }
@@ -517,7 +499,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
         setShowWalletModal(true)
       }
     }
-  }, [openConnectModal, hasWalletConnectProjectId])
+  }, [login, hasWalletConnectProjectId])
 
   /**
    * Handle Connector Selection for Custom Modal

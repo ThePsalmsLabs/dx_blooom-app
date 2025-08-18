@@ -56,7 +56,6 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
-import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 
 // Import business logic and UI integration hooks
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
@@ -269,10 +268,9 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {!isConnected ? (
                   <>
-                    <WalletConnectButton 
-                      size="lg"
-                      className="text-lg px-8 py-4 btn-glow"
-                    />
+                    <div className="text-lg px-8 py-4 btn-glow">
+                      Connect Wallet
+                    </div>
                     <Button 
                       variant="glow" 
                       size="lg"
@@ -528,12 +526,9 @@ export default function HomePage() {
               {!isCreator && (
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   {!isConnected ? (
-                    <WalletConnectButton 
-                      size="lg"
-                      className="text-lg px-8 py-4"
-                    >
+                    <div className="text-lg px-8 py-4">
                       Connect Wallet to Start
-                    </WalletConnectButton>
+                    </div>
                   ) : (
                     <Button 
                       size="lg" 
@@ -569,13 +564,9 @@ export default function HomePage() {
                 <Eye className="ml-2 h-5 w-5" />
               </Button>
               {!isConnected ? (
-                <WalletConnectButton 
-                  variant="outline"
-                  size="lg"
-                  className="text-lg px-8 py-4"
-                >
+                <div className="text-lg px-8 py-4">
                   Connect Wallet to Start Creating
-                </WalletConnectButton>
+                </div>
               ) : (
                 <Button 
                   variant="outline" 

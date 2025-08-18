@@ -32,12 +32,32 @@ NEXT_PUBLIC_ALCHEMY_API_KEY=your_alchemy_api_key_here
 # NEXT_PUBLIC_ANKR_API_KEY=your_ankr_api_key_here
 
 # =============================================================================
-# WALLET CONNECT (MOBILE WALLET SUPPORT)
+# PRIVY AUTHENTICATION (REQUIRED - REPLACES RAINBOWKIT)
+# =============================================================================
+
+# Privy App ID (Required for wallet connection)
+# Get your App ID from: https://console.privy.io/
+NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id_here
+
+# =============================================================================
+# BICONOMY SMART ACCOUNTS (OPTIONAL - FOR GASLESS TRANSACTIONS)
+# =============================================================================
+
+# Biconomy Paymaster API Key (For gas sponsorship)
+# Get your API key from: https://dashboard.biconomy.io/
+NEXT_PUBLIC_BICONOMY_PAYMASTER_API_KEY=your_biconomy_paymaster_api_key_here
+
+# Biconomy Bundler URL (For transaction bundling)
+# Get your bundler URL from: https://dashboard.biconomy.io/
+NEXT_PUBLIC_BICONOMY_BUNDLER_URL=your_biconomy_bundler_url_here
+
+# =============================================================================
+# WALLET CONNECT (MOBILE WALLET SUPPORT - OPTIONAL)
 # =============================================================================
 
 # WalletConnect Project ID (Free)
 # Get your project ID from: https://cloud.walletconnect.com/
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
+# NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
 
 # =============================================================================
 # COINBASE INTEGRATION (OPTIONAL)
@@ -58,18 +78,18 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id_here
 # CONFIGURATION NOTES
 # =============================================================================
 #
-# 1. START WITH INFURA: You already have this, so add it first
-# 2. ADD ALCHEMY: Excellent Base chain support, free tier available
-# 3. GET WALLETCONNECT: Free mobile wallet support
-# 4. OPTIONAL: Add more providers for maximum redundancy
+# MIGRATION FROM RAINBOWKIT TO PRIVY:
+# 1. REQUIRED: Add NEXT_PUBLIC_PRIVY_APP_ID (create account at https://console.privy.io/)
+# 2. RECOMMENDED: Add Biconomy keys for gasless transactions
+# 3. OPTIONAL: Keep your existing RPC providers (Infura, Alchemy)
 #
-# The enhanced configuration will automatically:
-# - Use premium providers first (Infura, Alchemy)
-# - Fall back to public providers if premium ones fail
-# - Provide emergency fallback for maximum reliability
-# - Batch requests to reduce API calls and improve performance
+# The Privy configuration will automatically:
+# - Handle wallet connections with embedded wallets
+# - Support email/SMS login in addition to wallet connections
+# - Provide better user experience than RainbowKit
+# - Integrate with your existing smart account setup
 #
 # After adding these variables:
 # 1. Restart your development server
-# 2. Run: npm run validate-rpc
-# 3. Check the console for configuration status
+# 2. Test wallet connection with the new Privy interface
+# 3. Verify smart account functionality still works

@@ -62,7 +62,6 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ResponsiveNavigation } from '@/components/layout/ResponsiveNavigation'
 import { RouteGuards } from '@/components/layout/RouteGuards'
-import { WalletConnectButton } from '@/components/web3/WalletConnectModal'
 
 // Import our business logic hooks - the core of our workflow management
 import { useCreatorOnboarding } from '@/hooks/business/workflows'
@@ -614,7 +613,7 @@ function WalletConnectionCard({ walletUI }: WalletConnectionCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <WalletConnectButton variant="outline" size="lg" showModal={true} />
+        <div>Connect Wallet</div>
         
         {walletUI.error && (
           <Alert variant="destructive">

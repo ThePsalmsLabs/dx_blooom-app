@@ -19,7 +19,7 @@ import { useReadContract, useChainId } from 'wagmi'
 import { useMemo, useCallback } from 'react'
 import { type Address } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abi'
+import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abis'
 import { useQueryClient } from '@tanstack/react-query'
 import { subgraphQueryService, useSubgraphQuery } from '@/services/subgraph/SubgraphQueryService'
 

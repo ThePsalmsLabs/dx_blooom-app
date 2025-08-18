@@ -1,23 +1,24 @@
 // src/lib/contracts/miniapp-config.ts
 
-import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { createConfig } from 'wagmi'
 import { cookieStorage, createStorage, http } from 'wagmi'
 import { base, baseSepolia } from 'wagmi/chains'
+import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors'
 
 /**
- * Web3 Configuration
+ * Web3 Configuration for MiniApp
  * 
- * This configuration extends your existing sophisticated wagmi setup to include
- * the Farcaster MiniApp connector while preserving all existing functionality.
+ * This configuration provides wagmi setup for Farcaster MiniApp integration
+ * while being compatible with Privy's authentication system.
  * 
  * Key points:
- * - Maintains default RainbowKit connectors (MetaMask, Coinbase Wallet, WalletConnect)
+ * - Uses standard wagmi connectors (MetaMask, Coinbase Wallet, WalletConnect)
  * - Preserves RPC configuration with Alchemy primary and public fallbacks
  * - Keeps storage configuration and SSR support
  * - Maintains performance optimizations (batching, caching, etc.)
  * 
  * Architecture Decision:
- * Use RainbowKit's default connector set and provide chain transports explicitly.
+ * Use standard wagmi createConfig and provide explicit connectors and transports.
  */
 
 // Environment variables with fallbacks
@@ -81,24 +82,47 @@ const storage = createStorage({
 })
 
 /**
- * Wagmi Configuration
- * 
- * This configuration preserves all your existing settings while adding MiniApp
- * capabilities. It maintains your performance optimizations, error handling,
- * and development-friendly features.
+ * Wallet Connector Configuration for MiniApp
  */
-export const miniAppConfig = getDefaultConfig({
-  // Application identification - preserved from your existing config
-  appName: 'Bloom',
-  appDescription: 'Decentralized content subscription platform on Base',
-  appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
-  appIcon: '/favicon.ico',
+const connectors = [
+  metaMask({
+    dappMetadata: {
+      name: 'Bloom',
+      url: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
+      iconUrl: '/images/miniapp-og-square.png',
+    },
+    extensionOnly: false,
+  }),
   
-  // WalletConnect integration - your existing configuration
-  projectId: WALLETCONNECT_PROJECT_ID,
+  coinbaseWallet({
+    appName: 'Bloom',
+    appLogoUrl: '/images/miniapp-og-square.png',
+    preference: 'smartWalletOnly',
+  }),
   
+  walletConnect({
+    projectId: WALLETCONNECT_PROJECT_ID,
+    metadata: {
+      name: 'Bloom',
+      description: 'Decentralized content subscription platform on Base',
+      url: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
+      icons: ['/images/miniapp-og-square.png'],
+    },
+    showQrModal: true,
+  }),
+]
+
+/**
+ * Wagmi Configuration (Privy-compatible)
+ * 
+ * This configuration preserves all your existing settings while being compatible
+ * with Privy's authentication system. It maintains your performance optimizations,
+ * error handling, and development-friendly features.
+ */
+export const miniAppConfig = createConfig({
   // Blockchain and wallet configuration
   chains: supportedChains,
+  connectors,
   transports: getTransports(),
   
   // Session persistence and SSR support - preserved from your setup
@@ -112,10 +136,6 @@ export const miniAppConfig = getDefaultConfig({
       wait: 200, // Longer batching window to collect more calls
     },
   },
-  
-  // Caching configuration - preserved from your setup
-  cacheTime: 30_000, // Cache results for 30 seconds
-  pollingInterval: undefined, // Disable auto-polling
 })
 
 /**

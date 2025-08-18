@@ -1,37 +1,32 @@
 /**
- * Wallet Connection Components and Hooks
+ * Privy-based Wallet Connection Components and Hooks
  * 
  * This file exports all the plug-and-play wallet connection components and hooks
- * for easy importing throughout the application.
+ * for easy importing throughout the application. Now powered by Privy instead of RainbowKit.
  */
 
-// Components
-export { 
-  WalletConnectModal, 
-  WalletConnectButton, 
-  WalletStatus 
-} from './WalletConnectModal'
+// New Privy-based Components
+export {
+  WalletConnectButton,
+  WalletStatusDisplay,
+  SmartAccountUpgradePrompt
+} from './WalletConnectButton'
 
-// Example components
-export { 
-  WalletConnectExample, 
-  WalletConnectUsageInstructions 
-} from './WalletConnectExample'
+// Example components (if they still exist)
+// export { 
+//   WalletConnectExample, 
+//   WalletConnectUsageInstructions 
+// } from './WalletConnectExample'
 
 // Hooks
 export {
   useWalletConnect,
-  useSimpleWalletConnect,
-  useSmartAccountConnect,
-  useNetworkConnect,
   type UseWalletConnectReturn,
-  type UseWalletConnectOptions,
   type WalletConnectionStatus,
   type NetworkInfo,
   type SmartAccountInfo,
-  type WalletInfo,
-  type TransactionStatus
+  type UserInfo
 } from '@/hooks/web3/useWalletConnect'
 
 // Re-export existing components for backward compatibility
-// export { default as WalletConnect } from './WalletConnect' 
+export { WalletConnectionButton } from './WalletConnect' 

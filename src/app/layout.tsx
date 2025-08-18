@@ -23,8 +23,6 @@ import type { Metadata } from 'next'
 import { Providers } from '@/components/providers/Providers'
 // Root layout is a Server Component; avoid client hooks here
 
-// Import RainbowKit styles before app globals to ensure base modal styles load correctly
-import '@rainbow-me/rainbowkit/styles.css'
 import './globals.css'
 
 // Comprehensive metadata configuration for SEO and social sharing

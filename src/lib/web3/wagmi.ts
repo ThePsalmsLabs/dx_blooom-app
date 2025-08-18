@@ -1,5 +1,5 @@
-// src/lib/web3/config.ts
-import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+// src/lib/web3/wagmi.ts
+import { createConfig } from 'wagmi'
 import { cookieStorage, createStorage, http } from 'wagmi'
 import { base, baseSepolia } from 'wagmi/chains'
 import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors'
@@ -141,26 +141,20 @@ const storage = createStorage({
 })
 
 /**
- * Main Wagmi Configuration
+ * Main Wagmi Configuration (Privy-compatible)
  * 
  * This is the core configuration that ties together all our Web3 infrastructure:
  * - Blockchain connections (Base, Base Sepolia)
  * - Wallet connectors (MetaMask, Coinbase, WalletConnect) 
  * - RPC providers with fallbacks
  * - Persistent storage for sessions
+ * 
+ * Note: This config works with Privy's authentication system
  */
-export const wagmiConfig = getDefaultConfig({
-  // Application identification for wallets and services
-  appName: 'Bloom',
-  appDescription: 'Decentralized content subscription platform on Base',
-  appUrl: typeof window !== 'undefined' ? window.location.origin : 'https://localhost:3000',
-  appIcon: '/favicon.ico',
-  
-  // WalletConnect integration
-  projectId: WALLETCONNECT_PROJECT_ID,
-  
+export const wagmiConfig = createConfig({
   // Blockchain and wallet configuration
   chains: supportedChains,
+  connectors,
   transports: getTransports(),
   
   // Session persistence and SSR support
@@ -174,10 +168,6 @@ export const wagmiConfig = getDefaultConfig({
       wait: 200, // Longer batching window to collect more calls
     },
   },
-  
-  // Add caching configuration to reduce redundant calls
-  cacheTime: 30_000, // Cache results for 30 seconds
-  pollingInterval: undefined, // Disable auto-polling
 })
 
 /**

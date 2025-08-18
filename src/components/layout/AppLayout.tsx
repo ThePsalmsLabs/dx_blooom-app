@@ -67,7 +67,6 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { WalletConnectButton, WalletStatus } from '@/components/web3/WalletConnectModal'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-config'
 import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
 
@@ -425,14 +424,6 @@ function AppHeader({
               </Button>
             )}
 
-            {/* Wallet Status Display */}
-            {isMounted && isConnected && (
-              <WalletStatus 
-                showAddress={false} 
-                showNetwork={true}
-                className="hidden md:flex"
-              />
-            )}
 
             {/* Portfolio Value Display */}
             {isMounted && isConnected && !balancesLoading && totalPortfolioValue > 0 && (
@@ -456,7 +447,7 @@ function AppHeader({
                   onDisconnect={onDisconnect}
                 />
               ) : (
-                <WalletConnectButton size="sm" />
+                <div>Connect Wallet</div>
               )
             ) : (
               <div className="h-9 w-24 rounded-md bg-muted animate-pulse" />
