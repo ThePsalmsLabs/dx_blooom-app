@@ -65,74 +65,79 @@ function isValidAddress(address: unknown): address is Address {
          address.startsWith('0x')
 }
 
-// FIXED: Proper profile data processing based on your actual ABI
+// ENHANCED DEBUGGING: Emergency profile data processing with extensive logging
 function processProfileData(result: unknown): CreatorProfile | null {
-  console.log('🔧 RAW PROFILE DATA:', result)
+  console.log('🚨 EMERGENCY DEBUG - RAW RESULT:', result)
+  console.log('🚨 RESULT TYPE:', typeof result)
+  console.log('🚨 IS ARRAY:', Array.isArray(result))
+  console.log('🚨 RESULT CONSTRUCTOR:', result?.constructor?.name)
   
-  // Handle case where result might be wrapped in additional layers
-  let profileData = result
+  // Try to access the data in different ways
+  let profileArray: any
   
-  // Check if result has a nested structure (some wagmi versions do this)
-  if (result && typeof result === 'object' && 'result' in result) {
-    profileData = (result as any).result
-    console.log('🔧 EXTRACTED NESTED RESULT:', profileData)
+  // Case 1: Direct array
+  if (Array.isArray(result)) {
+    console.log('✅ CASE 1: Direct array')
+    profileArray = result
   }
-  
-  // The ABI shows getCreatorProfile returns a tuple (which becomes an array in JS)
-  if (!profileData || !Array.isArray(profileData)) {
-    console.error('❌ Profile data is not an array:', profileData)
-    return null
+  // Case 2: Object with result property
+  else if (result && typeof result === 'object' && 'result' in result) {
+    console.log('✅ CASE 2: Object with result property')
+    profileArray = (result as any).result
   }
-
-  // Verify we have the correct number of elements according to your ABI
-  if (profileData.length < 9) {
-    console.error('❌ Profile array too short:', profileData.length, 'Expected 9, got:', profileData)
-    return null
-  }
-
-  try {
-    // According to your ABI, the tuple structure is:
-    // [isRegistered, subscriptionPrice, isVerified, totalEarnings, contentCount, subscriberCount, registrationTime, profileData, isSuspended]
-    const [
-      isRegistered,        // bool
-      subscriptionPrice,   // uint256
-      isVerified,         // bool  
-      totalEarnings,      // uint256
-      contentCount,       // uint256
-      subscriberCount,    // uint256
-      registrationTime,   // uint256
-      profileDataString,  // string
-      isSuspended         // bool
-    ] = profileData
-
-    console.log('🔧 PARSING PROFILE ELEMENTS:', {
-      isRegistered,
-      subscriptionPrice,
-      isVerified,
-      totalEarnings,
-      contentCount,
-      subscriberCount,
-      registrationTime,
-      profileDataString,
-      isSuspended
-    })
-
-    const profile: CreatorProfile = {
-      isRegistered: Boolean(isRegistered),
-      subscriptionPrice: BigInt(subscriptionPrice || 0),
-      isVerified: Boolean(isVerified),
-      totalEarnings: BigInt(totalEarnings || 0),
-      contentCount: BigInt(contentCount || 0),
-      subscriberCount: BigInt(subscriberCount || 0),
-      registrationTime: BigInt(registrationTime || 0),
-      profileData: String(profileDataString || ''),
-      isSuspended: Boolean(isSuspended)
+  // Case 3: Object that looks like a tuple (has numbered properties)
+  else if (result && typeof result === 'object') {
+    console.log('✅ CASE 3: Checking for numbered properties')
+    const obj = result as any
+    
+    // Check if it has properties 0, 1, 2, etc. (tuple-like object)
+    if ('0' in obj && '1' in obj) {
+      console.log('Found numbered properties, converting to array')
+      profileArray = []
+      let index = 0
+      while (index.toString() in obj) {
+        profileArray.push(obj[index.toString()])
+        index++
+      }
+      console.log('Converted to array:', profileArray)
     }
-
-    console.log('✅ SUCCESSFULLY PROCESSED PROFILE:', profile)
-    return profile
-  } catch (error) {
-    console.error('❌ ERROR PROCESSING PROFILE:', error, 'Raw data:', profileData)
+  }
+  
+  console.log('🔍 PROFILE ARRAY:', profileArray)
+  console.log('🔍 PROFILE ARRAY TYPE:', typeof profileArray)
+  console.log('🔍 PROFILE ARRAY LENGTH:', profileArray?.length)
+  
+  if (profileArray && profileArray.length >= 9) {
+    console.log('📋 INDIVIDUAL ELEMENTS:')
+    profileArray.forEach((item: any, index: number) => {
+      console.log(`  [${index}]: ${item} (${typeof item})`)
+    })
+    
+    try {
+      const profile: CreatorProfile = {
+        isRegistered: Boolean(profileArray[0]),
+        subscriptionPrice: BigInt(profileArray[1] || 0),
+        isVerified: Boolean(profileArray[2]),
+        totalEarnings: BigInt(profileArray[3] || 0),
+        contentCount: BigInt(profileArray[4] || 0),
+        subscriberCount: BigInt(profileArray[5] || 0),
+        registrationTime: BigInt(profileArray[6] || 0),
+        profileData: String(profileArray[7] || ''),
+        isSuspended: Boolean(profileArray[8])
+      }
+      
+      console.log('🎯 SUCCESSFULLY CREATED PROFILE:', profile)
+      return profile
+    } catch (error) {
+      console.error('❌ ERROR CREATING PROFILE:', error)
+      return null
+    }
+  } else {
+    console.error('❌ INVALID PROFILE ARRAY:', {
+      hasArray: !!profileArray,
+      length: profileArray?.length,
+      expected: 9
+    })
     return null
   }
 }
@@ -350,6 +355,15 @@ export function useAllCreators(pageSize: number = 50): AllCreatorsResult {
     isError,
     error: error?.message
   })
+
+  // TEMPORARILY EXPOSE HOOK DATA FOR DEBUGGING
+  useEffect(() => {
+    (window as any).allCreatorsHookData = {
+      profileQueries,
+      validAddresses,
+      creators
+    }
+  }, [profileQueries.data, validAddresses, creators])
 
   return {
     creators,

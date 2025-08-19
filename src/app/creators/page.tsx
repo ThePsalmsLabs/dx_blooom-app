@@ -318,6 +318,37 @@ export default function CreatorsDirectoryPage() {
               </CardContent>
             </Card>
 
+            {/* LIVE PROFILE DEBUG - Enhanced debugging for profile processing */}
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded mb-4">
+              <h3 className="font-bold text-yellow-800 mb-2">🔧 Live Profile Debug</h3>
+              <button 
+                className="bg-yellow-600 text-white px-3 py-1 rounded text-sm"
+                onClick={() => {
+                  console.log('🔍 MANUAL PROFILE TEST')
+                  
+                  // Get the profile queries data from your useAllCreators hook
+                  const hookData = (window as any).allCreatorsHookData
+                  
+                  if (hookData?.profileQueries?.data) {
+                    console.log('Found profile queries data:', hookData.profileQueries.data)
+                    
+                    hookData.profileQueries.data.forEach((result: any, index: number) => {
+                      console.log(`Profile ${index}:`, result)
+                      if (result.status === 'success') {
+                        console.log(`Processing profile ${index} result:`, result.result)
+                        // Note: processProfileData function is in the hook, not accessible here
+                        console.log(`Profile ${index} raw result:`, result.result)
+                      }
+                    })
+                  } else {
+                    console.log('No profile data found')
+                  }
+                }}
+              >
+                Test Profile Processing
+              </button>
+            </div>
+
             {/* Creators Grid Component */}
             {allCreators.isLoading ? (
               <CreatorsGridSkeleton />
