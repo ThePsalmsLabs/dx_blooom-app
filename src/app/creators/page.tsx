@@ -21,16 +21,17 @@ import {
   RefreshCw
 } from 'lucide-react'
 
-import { useAllCreators } from '@/hooks/contracts/useAllCreators'
+import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { CreatorsFilter, type CreatorFilters } from '@/components/creators/CreatorsFilter'
 import { CreatorsGrid, CreatorsGridSkeleton } from '@/components/creators/CreatorsGrid'
 import { CreatorCard } from '@/components/creators/CreatorCard'
+import { safeStringify } from '@/lib/utils/bigint-serializer'
 
 type ViewMode = 'grid' | 'list' | 'compact'
 
 export default function CreatorsDirectoryPage() {
   const { address: userAddress } = useAccount()
-  const allCreators = useAllCreators()
+  const allCreators = useAllCreators(20) // Start with 20 items per page
   
   // UI State
   const [filters, setFilters] = useState<CreatorFilters>({
@@ -313,7 +314,9 @@ export default function CreatorsDirectoryPage() {
                 {allCreators.error && <div>Error: {allCreators.error.message}</div>}
                 <div>First Creator: {allCreators.creators[0]?.address || 'None'}</div>
                 {allCreators.creators[0] && (
-                  <div>First Creator Profile: {JSON.stringify(allCreators.creators[0].profile, null, 2)}</div>
+                  <div>First Creator Profile: {JSON.stringify(allCreators.creators[0].profile, (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value
+                  , 2)}</div>
                 )}
               </CardContent>
             </Card>
@@ -330,14 +333,14 @@ export default function CreatorsDirectoryPage() {
                   const hookData = (window as any).allCreatorsHookData
                   
                   if (hookData?.profileQueries?.data) {
-                    console.log('Found profile queries data:', hookData.profileQueries.data)
+                    console.log('Found profile queries data:', safeStringify(hookData.profileQueries.data))
                     
                     hookData.profileQueries.data.forEach((result: any, index: number) => {
-                      console.log(`Profile ${index}:`, result)
+                      console.log(`Profile ${index}:`, safeStringify(result))
                       if (result.status === 'success') {
-                        console.log(`Processing profile ${index} result:`, result.result)
+                        console.log(`Processing profile ${index} result:`, safeStringify(result.result))
                         // Note: processProfileData function is in the hook, not accessible here
-                        console.log(`Profile ${index} raw result:`, result.result)
+                        console.log(`Profile ${index} raw result:`, safeStringify(result.result))
                       }
                     })
                   } else {
@@ -359,21 +362,55 @@ export default function CreatorsDirectoryPage() {
                   <p className="text-muted-foreground mb-4">
                     {allCreators.error?.message || 'Failed to load creators'}
                   </p>
-                  <Button onClick={() => window.location.reload()}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={allCreators.retryFailed} variant="outline">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry Failed
+                    </Button>
+                    <Button onClick={() => window.location.reload()}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Full Reload
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
-              <CreatorsGrid
-                creatorAddresses={creatorAddresses}
-                filters={filters}
-                viewMode={viewMode}
-                itemsPerPage={12}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
+              <>
+                <CreatorsGrid
+                  creatorAddresses={creatorAddresses}
+                  filters={filters}
+                  viewMode={viewMode}
+                  itemsPerPage={12}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+                
+                {/* Load More Button */}
+                {allCreators.hasMore && (
+                  <div className="flex justify-center mt-8">
+                    <Button
+                      onClick={allCreators.loadMore}
+                      disabled={allCreators.isLoading}
+                      size="lg"
+                      className="px-8"
+                    >
+                      {allCreators.isLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          Load More Creators
+                          <span className="ml-2 text-sm opacity-70">
+                            ({allCreators.creators.length} of {allCreators.totalCount})
+                          </span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

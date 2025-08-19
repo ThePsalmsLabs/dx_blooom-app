@@ -4,6 +4,7 @@ import { useChainId, useReadContract, useReadContracts } from 'wagmi'
 import { type Address } from 'viem'
 import { getCreatorRegistryContract } from '@/lib/contracts/config'
 import { CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
+import { safeStringify } from '@/lib/utils/bigint-serializer'
 
 // ===== CORRECT TYPE DEFINITIONS MATCHING YOUR ABI =====
 export interface CreatorProfile {
@@ -250,7 +251,7 @@ export function useAllCreators(pageSize: number = 50): AllCreatorsResult {
     console.log('📝 Processing profile data:', {
       profileQueriesLength: profileQueries.data.length,
       validAddressesLength: validAddresses.length,
-      rawProfileData: profileQueries.data
+      rawProfileData: safeStringify(profileQueries.data)
     })
 
     const processedCreators: CreatorWithAddress[] = []
@@ -262,12 +263,12 @@ export function useAllCreators(pageSize: number = 50): AllCreatorsResult {
       console.log(`🔍 Processing creator ${i}:`, {
         address,
         resultStatus: result.status,
-        rawResult: result.result,
+        rawResult: safeStringify(result.result),
         hasResult: !!result.result
       })
 
       if (result.status === 'success' && address && result.result) {
-        console.log(`📊 RAW PROFILE DATA for ${address}:`, result.result)
+        console.log(`📊 RAW PROFILE DATA for ${address}:`, safeStringify(result.result))
         
         const profile = processProfileData(result.result)
         

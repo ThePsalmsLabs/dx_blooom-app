@@ -71,6 +71,7 @@ import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-config'
 import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
 import { WalletConnectButton } from '@/components/web3/WalletConnectButton'
+import { RPCHealthMonitor } from '@/components/debug/RPCHealthMonitor'
 
 /**
  * User Role Types
@@ -317,6 +318,9 @@ export function AppLayout({
 
         {/* Toast Notifications */}
         <ToastViewport />
+        
+        {/* RPC Health Monitor */}
+        <RPCHealthMonitor />
       </div>
     </ToastProvider>
   )
