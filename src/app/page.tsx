@@ -66,6 +66,7 @@ import { useWalletConnect } from '@/hooks/web3/useWalletConnect'
 
 // Import UI components
 import { CreatorCard } from '@/components/creators/CreatorCard'
+import { RealTimePlatformStats } from '@/components/platform/RealTimePlatformStats'
 
 // Import utilities and types
 import { ContentCategory } from '@/types/contracts'
@@ -137,26 +138,9 @@ function CreatorsSection() {
             From educational content to entertainment, find creators that match your interests.
           </p>
 
-          {/* Quick Stats */}
-          <div className="flex justify-center gap-8 mb-8">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {allCreators.totalCount}+
-              </div>
-              <div className="text-sm text-muted-foreground">Active Creators</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {allCreators.creators.filter(c => c.profile.isVerified).length}
-              </div>
-              <div className="text-sm text-muted-foreground">Verified Creators</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {allCreators.creators.reduce((sum, c) => sum + Number(c.profile.contentCount), 0)}+
-              </div>
-              <div className="text-sm text-muted-foreground">Pieces of Content</div>
-            </div>
+          {/* Quick Stats - Now Real-Time from Blockchain */}
+          <div className="mb-8">
+            <RealTimePlatformStats compact />
           </div>
         </div>
 
@@ -273,18 +257,7 @@ interface HomePageState {
   readonly selectedCreatorSpotlight: number
 }
 
-/**
- * Platform Statistics Interface
- * 
- * Defines the key metrics we display to build trust and showcase
- * platform activity and growth.
- */
-interface PlatformStats {
-  readonly totalCreators: string
-  readonly totalContent: string
-  readonly totalEarnings: string
-  readonly monthlyActiveUsers: string
-}
+
 
 /**
  * Featured Creator Interface
@@ -335,13 +308,8 @@ export default function HomePage() {
     [allCreators.creators]
   )
 
-  // Mock data - in production, these would come from your contract hooks
-  const platformStats: PlatformStats = useMemo(() => ({
-    totalCreators: '2.3K',
-    totalContent: '15.7K',
-    totalEarnings: '$2.1M',
-    monthlyActiveUsers: '45.2K'
-  }), [])
+  // Platform stats are now handled by RealTimePlatformStats component
+  // which fetches real data from smart contracts
 
   const featuredCreators: readonly FeaturedCreator[] = useMemo(() => {
     if (!topCreators || topCreators.length === 0) {
@@ -528,35 +496,10 @@ export default function HomePage() {
           {/* ADD THIS NEW CREATORS SECTION */}
           <CreatorsSection />
 
-          {/* Platform Statistics */}
+          {/* Platform Statistics - Now Real-Time from Blockchain */}
           {pageState.showPlatformStats && (
             <section className="py-12 border-y">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                <div className="space-y-2">
-                  <div className="text-3xl font-bold text-primary">
-                    {platformStats.totalCreators}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Creators</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-3xl font-bold text-primary">
-                    {platformStats.totalContent}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Content Pieces</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-3xl font-bold text-green-600">
-                    {platformStats.totalEarnings}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Creator Earnings</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-3xl font-bold text-blue-600">
-                    {platformStats.monthlyActiveUsers}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Monthly Users</div>
-                </div>
-              </div>
+              <RealTimePlatformStats compact className="mb-6" />
             </section>
           )}
 
