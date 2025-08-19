@@ -38,7 +38,8 @@ import {
   Shield,
   Globe,
   ChevronRight,
-  Plus
+  Plus,
+  Users
 } from 'lucide-react'
 
 import {
@@ -63,9 +64,151 @@ import { useAllCreators } from '@/hooks/contracts/useAllCreators'
 import { WalletConnectButton } from '@/components/web3/WalletConnectButton'
 import { useWalletConnect } from '@/hooks/web3/useWalletConnect'
 
+// Import UI components
+import { CreatorCard } from '@/components/creators/CreatorCard'
+
 // Import utilities and types
 import { ContentCategory } from '@/types/contracts'
 import { formatCurrency } from '@/lib/utils'
+
+// ===== CREATORS SECTION COMPONENT =====
+
+/**
+ * Creators Section Component
+ * 
+ * This component showcases the top creators on the platform,
+ * providing social proof and encouraging user engagement.
+ */
+function CreatorsSection() {
+  const allCreators = useAllCreators()
+  const router = useRouter()
+
+  // Get top creators for featured section
+  const featuredCreators = useMemo(() =>
+    [...allCreators.creators]
+      .sort((a, b) => Number(b.profile.totalEarnings) - Number(a.profile.totalEarnings))
+      .slice(0, 6), // Show top 6 creators
+    [allCreators.creators]
+  )
+
+  return (
+    <section className="py-16 bg-gradient-to-br from-background to-muted/50">
+      <div className="container mx-auto px-4">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <Users className="h-4 w-4" />
+            Discover Amazing Creators
+          </div>
+          
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Meet Our Top Creators
+          </h2>
+          
+          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Discover talented creators who are monetizing their content on our platform. 
+            From educational content to entertainment, find creators that match your interests.
+          </p>
+
+          {/* Quick Stats */}
+          <div className="flex justify-center gap-8 mb-8">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">
+                {allCreators.totalCount}+
+              </div>
+              <div className="text-sm text-muted-foreground">Active Creators</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">
+                {allCreators.creators.filter(c => c.profile.isVerified).length}
+              </div>
+              <div className="text-sm text-muted-foreground">Verified Creators</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-primary">
+                {allCreators.creators.reduce((sum, c) => sum + Number(c.profile.contentCount), 0)}+
+              </div>
+              <div className="text-sm text-muted-foreground">Pieces of Content</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Featured Creators Grid */}
+        {allCreators.isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-muted rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                      <div className="h-3 bg-muted rounded w-2/3" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : featuredCreators.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {featuredCreators.map((creator) => (
+              <CreatorCard
+                key={creator.address}
+                creatorAddress={creator.address}
+                variant="featured"
+                showSubscribeButton={true}
+                className="hover:shadow-lg transition-shadow"
+              />
+            ))}
+          </div>
+        ) : (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No Creators Yet</h3>
+              <p className="text-muted-foreground mb-6">
+                Be the first creator to join our platform and start monetizing your content.
+              </p>
+              <Button onClick={() => router.push('/onboard')}>
+                Become a Creator
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Call to Action Buttons */}
+        <div className="text-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg"
+              onClick={() => router.push('/creators')}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Users className="mr-2 h-5 w-5" />
+              View All Creators
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            
+            <Button 
+              size="lg"
+              variant="outline"
+              onClick={() => router.push('/browse')}
+            >
+              <TrendingUp className="mr-2 h-5 w-5" />
+              Browse Content
+            </Button>
+          </div>
+          
+          <p className="text-sm text-muted-foreground mt-4">
+            Discover unique content from verified creators worldwide
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
 
 /**
  * Home Page State Interface
@@ -332,7 +475,8 @@ export default function HomePage() {
             </div>
           </section>
 
-
+          {/* ADD THIS NEW CREATORS SECTION */}
+          <CreatorsSection />
 
           {/* Platform Statistics */}
           {pageState.showPlatformStats && (
@@ -574,6 +718,22 @@ export default function HomePage() {
               )}
             </div>
           </section>
+
+          {/* QUICK TEST: Floating buttons for immediate testing */}
+          <div className="fixed bottom-4 right-4 z-50 space-y-2">
+            <Button 
+              onClick={() => router.push('/creators')}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg block w-full"
+            >
+              🧑‍💼 All Creators
+            </Button>
+            <Button 
+              onClick={() => router.push('/browse')}
+              className="bg-green-600 hover:bg-green-700 text-white shadow-lg block w-full"
+            >
+              🔍 Browse Content
+            </Button>
+          </div>
 
         </div>
       </RouteGuards>
