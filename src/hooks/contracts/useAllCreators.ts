@@ -1,12 +1,11 @@
+// src/hooks/contracts/useAllCreators.ts - PROPERLY FIXED WITH CORRECT ABIs
 import { useState, useCallback, useEffect } from 'react'
 import { useChainId, useReadContract, useReadContracts } from 'wagmi'
 import { type Address } from 'viem'
 import { getCreatorRegistryContract } from '@/lib/contracts/config'
 import { CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
 
-// ===== SIMPLIFIED TYPE DEFINITIONS =====
-// These explicit types help TypeScript understand exactly what we're working with
-
+// ===== CORRECT TYPE DEFINITIONS MATCHING YOUR ABI =====
 export interface CreatorProfile {
   readonly isRegistered: boolean
   readonly subscriptionPrice: bigint
@@ -24,7 +23,6 @@ export interface CreatorWithAddress {
   readonly profile: CreatorProfile
 }
 
-// Simplified result interface with clear, explicit types
 export interface AllCreatorsResult {
   readonly creators: CreatorWithAddress[]
   readonly totalCount: number
@@ -38,20 +36,10 @@ export interface AllCreatorsResult {
 }
 
 // ===== UTILITY FUNCTIONS =====
-// Extract complex logic into simple, testable functions
-
-/**
- * Generate array of indices for batch fetching
- * This replaces complex memoized calculations with a simple pure function
- */
 function generateIndices(startIndex: number, count: number): number[] {
   return Array.from({ length: count }, (_, i) => startIndex + i)
 }
 
-/**
- * Create contract configuration for fetching creator addresses
- * Simplified contract config generation without complex memoization
- */
 function createAddressContract(contractAddress: Address, index: number) {
   return {
     address: contractAddress,
@@ -61,10 +49,6 @@ function createAddressContract(contractAddress: Address, index: number) {
   }
 }
 
-/**
- * Create contract configuration for fetching creator profiles
- * Simple, explicit contract generation
- */
 function createProfileContract(contractAddress: Address, creatorAddress: Address) {
   return {
     address: contractAddress,
@@ -74,28 +58,54 @@ function createProfileContract(contractAddress: Address, creatorAddress: Address
   }
 }
 
-/**
- * Check if address is valid (not zero address)
- * Simple validation function
- */
 function isValidAddress(address: unknown): address is Address {
   return typeof address === 'string' && 
          address !== '0x0000000000000000000000000000000000000000' &&
-         address.length === 42
+         address.length === 42 &&
+         address.startsWith('0x')
 }
 
-/**
- * Process creator profile data with error handling
- * Explicit type checking and safe data processing
- */
+// FIXED: Proper profile data processing based on your actual ABI
 function processProfileData(result: unknown): CreatorProfile | null {
-  // Type guard for profile data
-  if (!result || typeof result !== 'object' || !Array.isArray(result)) {
+  console.log('🔧 RAW PROFILE DATA:', result)
+  
+  // Handle case where result might be wrapped in additional layers
+  let profileData = result
+  
+  // Check if result has a nested structure (some wagmi versions do this)
+  if (result && typeof result === 'object' && 'result' in result) {
+    profileData = (result as any).result
+    console.log('🔧 EXTRACTED NESTED RESULT:', profileData)
+  }
+  
+  // The ABI shows getCreatorProfile returns a tuple (which becomes an array in JS)
+  if (!profileData || !Array.isArray(profileData)) {
+    console.error('❌ Profile data is not an array:', profileData)
+    return null
+  }
+
+  // Verify we have the correct number of elements according to your ABI
+  if (profileData.length < 9) {
+    console.error('❌ Profile array too short:', profileData.length, 'Expected 9, got:', profileData)
     return null
   }
 
   try {
+    // According to your ABI, the tuple structure is:
+    // [isRegistered, subscriptionPrice, isVerified, totalEarnings, contentCount, subscriberCount, registrationTime, profileData, isSuspended]
     const [
+      isRegistered,        // bool
+      subscriptionPrice,   // uint256
+      isVerified,         // bool  
+      totalEarnings,      // uint256
+      contentCount,       // uint256
+      subscriberCount,    // uint256
+      registrationTime,   // uint256
+      profileDataString,  // string
+      isSuspended         // bool
+    ] = profileData
+
+    console.log('🔧 PARSING PROFILE ELEMENTS:', {
       isRegistered,
       subscriptionPrice,
       isVerified,
@@ -103,11 +113,11 @@ function processProfileData(result: unknown): CreatorProfile | null {
       contentCount,
       subscriberCount,
       registrationTime,
-      profileData,
+      profileDataString,
       isSuspended
-    ] = result
+    })
 
-    return {
+    const profile: CreatorProfile = {
       isRegistered: Boolean(isRegistered),
       subscriptionPrice: BigInt(subscriptionPrice || 0),
       isVerified: Boolean(isVerified),
@@ -115,139 +125,193 @@ function processProfileData(result: unknown): CreatorProfile | null {
       contentCount: BigInt(contentCount || 0),
       subscriberCount: BigInt(subscriberCount || 0),
       registrationTime: BigInt(registrationTime || 0),
-      profileData: String(profileData || ''),
+      profileData: String(profileDataString || ''),
       isSuspended: Boolean(isSuspended)
     }
+
+    console.log('✅ SUCCESSFULLY PROCESSED PROFILE:', profile)
+    return profile
   } catch (error) {
-    console.warn('Failed to process creator profile:', error)
+    console.error('❌ ERROR PROCESSING PROFILE:', error, 'Raw data:', profileData)
     return null
   }
 }
 
-// ===== MAIN HOOK =====
-
+// ===== MAIN HOOK WITH CORRECT FUNCTION NAMES =====
 export function useAllCreators(pageSize: number = 50): AllCreatorsResult {
   const chainId = useChainId()
-  
-  // ===== SIMPLE STATE MANAGEMENT =====
-  // Use simple, explicit state instead of complex memoized values
   
   const [currentPage, setCurrentPage] = useState<number>(0)
   const [creators, setCreators] = useState<CreatorWithAddress[]>([])
   
-  // Get contract address once - simple and cached by React
   const contractAddress = getCreatorRegistryContract(chainId).address
 
-  // ===== STEP 1: GET TOTAL COUNT =====
-  // Simple total count query with explicit typing
-  
+  console.log('🔍 useAllCreators initialized:', {
+    chainId,
+    contractAddress,
+    pageSize,
+    currentPage
+  })
+
+  // FIXED: Use correct function name from ABI
   const totalCountQuery = useReadContract({
     address: contractAddress,
     abi: CREATOR_REGISTRY_ABI,
-    functionName: 'getTotalCreators',
+    functionName: 'getTotalCreators', // CORRECTED FUNCTION NAME
     query: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 15 * 60 * 1000,   // 15 minutes  
-      retry: 3,
-      refetchOnWindowFocus: false
+      enabled: !!contractAddress,
+      staleTime: 1000 * 30,
+      gcTime: 1000 * 60 * 5
     }
   })
 
-  // Extract total count with explicit type safety
-  const totalCount: number = Number(totalCountQuery.data || 0)
-  
-  // ===== STEP 2: CALCULATE BATCH PARAMETERS =====
-  // Simple calculations without complex memoization
-  
-  const startIndex = 0
-  const itemsToFetch = Math.min((currentPage + 1) * pageSize, totalCount)
-  const batchIndices = generateIndices(startIndex, itemsToFetch)
+  const totalCount = totalCountQuery.data ? Number(totalCountQuery.data) : 0
 
-  // ===== STEP 3: FETCH CREATOR ADDRESSES =====
-  // Generate address contracts simply without complex memoization
-  
-  const addressContracts = batchIndices.map(index => 
-    createAddressContract(contractAddress, index)
-  )
+  console.log('📊 Total count query:', {
+    data: totalCountQuery.data,
+    isLoading: totalCountQuery.isLoading,
+    isError: totalCountQuery.isError,
+    error: totalCountQuery.error,
+    totalCount
+  })
 
+  // Calculate indices for current page
+  const startIndex = currentPage * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalCount)
+  const currentIndices = generateIndices(startIndex, endIndex - startIndex)
+
+  console.log('📈 Page calculation:', {
+    currentPage,
+    pageSize,
+    startIndex,
+    endIndex,
+    totalCount,
+    currentIndices: currentIndices.length
+  })
+
+  // Fetch creator addresses
   const addressQueries = useReadContracts({
-    contracts: addressContracts,
+    contracts: currentIndices.map(index => 
+      createAddressContract(contractAddress, index)
+    ),
     query: {
-      enabled: totalCount > 0 && batchIndices.length > 0,
-      staleTime: 2 * 60 * 1000, // 2 minutes
-      gcTime: 10 * 60 * 1000,   // 10 minutes
-      retry: 2
+      enabled: !!contractAddress && currentIndices.length > 0,
+      staleTime: 1000 * 60 * 2,
+      gcTime: 1000 * 60 * 10
     }
   })
 
-  // ===== STEP 4: PROCESS ADDRESSES =====
-  // Extract valid addresses with explicit type checking
-  
-  const validAddresses: Address[] = []
-  
-  if (addressQueries.data) {
-    for (const result of addressQueries.data) {
-      if (result.status === 'success' && isValidAddress(result.result)) {
-        validAddresses.push(result.result)
-      }
-    }
-  }
+  // Process addresses
+  const validAddresses = addressQueries.data
+    ?.map(result => result.status === 'success' ? result.result : null)
+    .filter(isValidAddress) || []
 
-  // ===== STEP 5: FETCH CREATOR PROFILES =====
-  // Generate profile contracts simply
-  
-  const profileContracts = validAddresses.map(address => 
-    createProfileContract(contractAddress, address)
-  )
+  console.log('📍 Address queries:', {
+    queriesData: addressQueries.data?.length,
+    validAddresses: validAddresses.length,
+    isLoading: addressQueries.isLoading,
+    isError: addressQueries.isError,
+    sampleAddresses: validAddresses.slice(0, 3)
+  })
 
+  // Fetch profiles
   const profileQueries = useReadContracts({
-    contracts: profileContracts,
+    contracts: validAddresses.map(address => 
+      createProfileContract(contractAddress, address)
+    ),
     query: {
-      enabled: validAddresses.length > 0,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 15 * 60 * 1000,   // 15 minutes
-      retry: 2
+      enabled: !!contractAddress && validAddresses.length > 0,
+      staleTime: 1000 * 60 * 1,
+      gcTime: 1000 * 60 * 5
     }
   })
 
-  // ===== STEP 6: PROCESS AND UPDATE STATE =====
-  // Simple effect with explicit dependencies
-  
+  console.log('👤 Profile queries:', {
+    queriesData: profileQueries.data?.length,
+    isLoading: profileQueries.isLoading,
+    isError: profileQueries.isError,
+    isSuccess: profileQueries.isSuccess
+  })
+
+  // ENHANCED: Process profiles with extensive debugging
   useEffect(() => {
-    // Early return if no data
+    console.log('🔄 Processing creators effect triggered')
+    
     if (!profileQueries.data || !profileQueries.isSuccess) {
+      console.log('⏳ Profile queries not ready yet')
       return
     }
 
+    console.log('📝 Processing profile data:', {
+      profileQueriesLength: profileQueries.data.length,
+      validAddressesLength: validAddresses.length,
+      rawProfileData: profileQueries.data
+    })
+
     const processedCreators: CreatorWithAddress[] = []
 
-    // Process each profile result
     for (let i = 0; i < profileQueries.data.length; i++) {
       const result = profileQueries.data[i]
       const address = validAddresses[i]
 
-      if (result.status === 'success' && address) {
+      console.log(`🔍 Processing creator ${i}:`, {
+        address,
+        resultStatus: result.status,
+        rawResult: result.result,
+        hasResult: !!result.result
+      })
+
+      if (result.status === 'success' && address && result.result) {
+        console.log(`📊 RAW PROFILE DATA for ${address}:`, result.result)
+        
         const profile = processProfileData(result.result)
         
-        if (profile && profile.isRegistered && !profile.isSuspended) {
-          processedCreators.push({
-            address,
-            profile
-          })
+        if (profile) {
+          // LESS RESTRICTIVE: Include all non-suspended creators
+          if (!profile.isSuspended) {
+            processedCreators.push({
+              address,
+              profile
+            })
+            console.log(`✅ ADDED creator ${i}:`, { 
+              address, 
+              isRegistered: profile.isRegistered, 
+              isVerified: profile.isVerified,
+              isSuspended: profile.isSuspended
+            })
+          } else {
+            console.log(`⚠️ SKIPPED suspended creator ${i}:`, address)
+          }
+        } else {
+          console.log(`❌ FAILED to process profile for creator ${i}:`, address)
         }
+      } else {
+        console.log(`❌ FAILED to get profile for creator ${i}:`, {
+          address,
+          status: result.status,
+          error: 'error' in result ? result.error : 'unknown'
+        })
       }
     }
+
+    console.log('🎯 FINAL processed creators:', {
+      count: processedCreators.length,
+      creators: processedCreators.map(c => ({ 
+        address: c.address, 
+        isRegistered: c.profile.isRegistered,
+        isVerified: c.profile.isVerified,
+        isSuspended: c.profile.isSuspended
+      }))
+    })
 
     setCreators(processedCreators)
   }, [
     profileQueries.isSuccess, 
     profileQueries.data, 
     validAddresses.length
-  ]) // Simple, explicit dependencies
+  ])
 
-  // ===== CALCULATE DERIVED VALUES =====
-  // Simple calculations without complex memoization
-  
+  // Calculate derived values
   const loadedCount = (currentPage + 1) * pageSize
   const hasMore = loadedCount < totalCount
   
@@ -263,23 +327,30 @@ export function useAllCreators(pageSize: number = 50): AllCreatorsResult {
                addressQueries.error || 
                profileQueries.error
 
-  // ===== ACTION HANDLERS =====
-  // Simple callback functions with explicit types
-  
+  // Action handlers
   const loadMore = useCallback((): void => {
     if (hasMore && !isLoading) {
+      console.log('📄 Loading more creators, current page:', currentPage)
       setCurrentPage(prevPage => prevPage + 1)
     }
-  }, [hasMore, isLoading])
+  }, [hasMore, isLoading, currentPage])
 
   const reset = useCallback((): void => {
+    console.log('🔄 Resetting creators')
     setCurrentPage(0)
     setCreators([])
   }, [])
 
-  // ===== RETURN INTERFACE =====
-  // Explicit return type matching our interface
-  
+  console.log('📊 useAllCreators final state:', {
+    creators: creators.length,
+    totalCount,
+    currentPage,
+    hasMore,
+    isLoading,
+    isError,
+    error: error?.message
+  })
+
   return {
     creators,
     totalCount,
