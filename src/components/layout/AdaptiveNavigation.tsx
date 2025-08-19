@@ -317,12 +317,15 @@ export function AdaptiveNavigation({
           <div className="space-section-padding border-b">
             {brandContent || (
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Home className="w-4 h-4 text-primary-foreground" />
-                </div>
+                <img 
+                  src="/images/miniapp-og-square.png" 
+                  alt="Bloom - Creator Economy" 
+                  className="w-8 h-8 rounded-lg object-cover shadow-sm"
+                  draggable="false"
+                />
                 {!isCompact && (
                   <div className="flex flex-col">
-                    <span className="font-semibold text-adaptive-base">Platform</span>
+                    <span className="font-semibold text-adaptive-base">Bloom</span>
                     <span className="text-xs text-muted-foreground">Creator Economy</span>
                   </div>
                 )}
@@ -402,11 +405,14 @@ export function AdaptiveNavigation({
           <div className="flex items-center gap-3">
             {brandContent || (
               <>
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Home className="w-4 h-4 text-primary-foreground" />
-                </div>
+                <img 
+                  src="/images/miniapp-og-square.png" 
+                  alt="Bloom - Creator Economy" 
+                  className="w-8 h-8 rounded-lg object-cover shadow-sm"
+                  draggable="false"
+                />
                 {!isCompact && (
-                  <span className="font-semibold text-adaptive-base">Platform</span>
+                  <span className="font-semibold text-adaptive-base">Bloom</span>
                 )}
               </>
             )}

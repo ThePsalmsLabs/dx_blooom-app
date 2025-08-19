@@ -379,7 +379,12 @@ function AppHeader({
             </Button>
             
             <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-primary" />
+              <img 
+                src="/images/miniapp-og-square.png" 
+                alt="Bloom - Creator Economy" 
+                className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg object-cover shadow-sm"
+                draggable="false"
+              />
               <span className="font-bold text-base sm:text-lg hidden sm:inline">Bloom</span>
             </div>
           </div>
