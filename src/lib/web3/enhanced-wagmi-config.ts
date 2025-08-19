@@ -179,8 +179,8 @@ const createBaseMainnetTransport = () => {
     emergencyProvider           // Emergency fallback
   ]
   
-  // If no premium providers are configured, warn the developer
-  if (premiumProviders.length === 0) {
+  // If no premium providers are configured, warn the developer (development only)
+  if (premiumProviders.length === 0 && process.env.NODE_ENV === 'development') {
     console.warn(
       '⚠️  No premium RPC providers configured. Add API keys to environment variables for better performance:\n' +
       '   NEXT_PUBLIC_ALCHEMY_API_KEY\n' +

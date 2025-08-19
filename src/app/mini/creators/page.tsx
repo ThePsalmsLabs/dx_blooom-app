@@ -14,7 +14,7 @@ import {
   List
 } from 'lucide-react'
 
-import { useAllCreators } from '@/hooks/contracts/useAllCreators'
+import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { CreatorCard } from '@/components/creators/CreatorCard'
 
 export default function MiniAppCreatorsPage() {

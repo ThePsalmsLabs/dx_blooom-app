@@ -1,5 +1,5 @@
 // src/hooks/contracts/useAllCreators.optimized.ts
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useChainId, useReadContract, useReadContracts, usePublicClient } from 'wagmi'
 import { type Address } from 'viem'
 import { getCreatorRegistryContract } from '@/lib/contracts/config'
@@ -59,7 +59,9 @@ class DynamicBatchConfig {
     // Gradually increase batch size after consecutive successes
     if (this.successfulRequests > 3 && this.currentBatchSize < this.maxBatchSize) {
       this.currentBatchSize = Math.min(this.currentBatchSize + 2, this.maxBatchSize)
-      console.log(`✅ Increasing batch size to ${this.currentBatchSize}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ Increasing batch size to ${this.currentBatchSize}`)
+      }
     }
   }
 
@@ -72,7 +74,9 @@ class DynamicBatchConfig {
       Math.floor(this.currentBatchSize * 0.5), 
       this.minBatchSize
     )
-    console.warn(`⚠️ Rate limit detected. Reducing batch size to ${this.currentBatchSize}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`⚠️ Rate limit detected. Reducing batch size to ${this.currentBatchSize}`)
+    }
   }
 
   getDelay(): number {
@@ -106,8 +110,12 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
   const batchConfig = useRef(new DynamicBatchConfig())
   const loadingRef = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const processedCreatorsCache = useRef(new Map<string, CreatorWithAddress>())
   
-  const contractAddress = getCreatorRegistryContract(chainId).address
+  // Memoized contract address
+  const contractAddress = useMemo(() => 
+    getCreatorRegistryContract(chainId).address, [chainId]
+  )
 
   // Step 1: Get total count with retry logic
   const totalCountQuery = useReadContract({
@@ -155,7 +163,9 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
           await new Promise(resolve => setTimeout(resolve, delay))
         }
 
-        console.log(`📊 Fetching creators ${i} to ${chunkEnd - 1}...`)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`📊 Fetching creators ${i} to ${chunkEnd - 1}...`)
+        }
 
         try {
           // Step 1: Fetch addresses
@@ -171,11 +181,12 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
             allowFailure: true, // Don't fail entire batch on single error
           })
 
-          // Extract valid addresses
+          // Extract valid addresses with caching
           const validAddresses: Address[] = []
           addressResults.forEach((result, idx) => {
             if (result.status === 'success' && result.result) {
-              validAddresses.push(result.result as Address)
+              const address = result.result as Address
+              validAddresses.push(address)
             } else {
               console.warn(`Failed to fetch address at index ${indices[idx]}`)
               setFailedBatches(prev => [...prev, indices[idx]])
@@ -196,12 +207,21 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
               allowFailure: true,
             })
 
-            // Process profiles
+            // Process profiles with caching and filtering
             profileResults.forEach((result, idx) => {
               if (result.status === 'success' && result.result) {
+                const address = validAddresses[idx]
+                const cacheKey = `${address}-${chainId}`
+                
+                // Check cache first
+                if (processedCreatorsCache.current.has(cacheKey)) {
+                  results.push(processedCreatorsCache.current.get(cacheKey)!)
+                  return
+                }
+                
                 const profileData = result.result as any
-                results.push({
-                  address: validAddresses[idx],
+                const creatorWithAddress: CreatorWithAddress = {
+                  address,
                   profile: {
                     isRegistered: Boolean(profileData[0]),
                     subscriptionPrice: BigInt(profileData[1] || 0),
@@ -213,7 +233,14 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
                     profileData: String(profileData[7] || ''),
                     isSuspended: Boolean(profileData[8])
                   }
-                })
+                }
+                
+                // Only include non-suspended creators
+                if (!creatorWithAddress.profile.isSuspended) {
+                  // Cache the result
+                  processedCreatorsCache.current.set(cacheKey, creatorWithAddress)
+                  results.push(creatorWithAddress)
+                }
               }
             })
           }
@@ -268,7 +295,9 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
       setCreators(prev => [...prev, ...newCreators])
       setCurrentPage(prev => prev + 1)
       
-      console.log(`✅ Loaded ${newCreators.length} creators`)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ Loaded ${newCreators.length} creators`)
+      }
       
     } catch (err: any) {
       console.error('Failed to load creators:', err)
@@ -285,7 +314,9 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
   const retryFailed = useCallback(async () => {
     if (failedBatches.length === 0) return
     
-    console.log(`🔄 Retrying ${failedBatches.length} failed indices...`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 Retrying ${failedBatches.length} failed indices...`)
+    }
     setIsLoadingMore(true)
     
     try {

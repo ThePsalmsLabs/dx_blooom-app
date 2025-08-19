@@ -25,7 +25,6 @@ import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { CreatorsFilter, type CreatorFilters } from '@/components/creators/CreatorsFilter'
 import { CreatorsGrid, CreatorsGridSkeleton } from '@/components/creators/CreatorsGrid'
 import { CreatorCard } from '@/components/creators/CreatorCard'
-import { safeStringify } from '@/lib/utils/bigint-serializer'
 
 type ViewMode = 'grid' | 'list' | 'compact'
 
@@ -43,16 +42,7 @@ export default function CreatorsDirectoryPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [currentPage, setCurrentPage] = useState(1)
 
-  // DEBUG: Add console logging to see what's happening
-  console.log('🔍 Creators Debug Info:', {
-    totalCount: allCreators.totalCount,
-    creatorsArrayLength: allCreators.creators.length,
-    isLoading: allCreators.isLoading,
-    isError: allCreators.isError,
-    error: allCreators.error,
-    sampleCreator: allCreators.creators[0],
-    filters
-  })
+
 
   // Fixed: Derived data with better error handling
   const verifiedCreators = useMemo(() => {
@@ -77,44 +67,36 @@ export default function CreatorsDirectoryPage() {
       .slice(0, 10)
   }, [allCreators.creators])
 
-  // FIXED: Filter and sort creators with better logic
+  // Filter and sort creators
   const filteredCreators = useMemo(() => {
-    console.log('🔧 Starting to filter creators:', allCreators.creators.length)
-    
     if (!allCreators.creators || allCreators.creators.length === 0) {
-      console.log('❌ No creators to filter')
       return []
     }
     
     let filtered = [...allCreators.creators]
     
-    // Search filter - more robust
+    // Search filter
     if (filters.search && filters.search.trim() !== '') {
       const searchLower = filters.search.toLowerCase().trim()
-      const beforeSearchCount = filtered.length
       filtered = filtered.filter(creator => {
         if (!creator?.address) return false
         const addressMatch = creator.address.toLowerCase().includes(searchLower)
         // You could add more search criteria here if needed
         return addressMatch
       })
-      console.log(`🔍 Search filter: ${beforeSearchCount} → ${filtered.length}`)
     }
 
-    // Verification filter - more robust
+    // Verification filter
     if (filters.verified !== null) {
-      const beforeVerifiedCount = filtered.length
       filtered = filtered.filter(creator => {
         if (!creator?.profile) return false
         const isVerified = Boolean(creator.profile.isVerified)
         return isVerified === filters.verified
       })
-      console.log(`✅ Verification filter: ${beforeVerifiedCount} → ${filtered.length}`)
     }
 
-    // Price range filter - fixed logic
+    // Price range filter
     if (filters.minSubscriptionPrice || filters.maxSubscriptionPrice) {
-      const beforePriceCount = filtered.length
       filtered = filtered.filter(creator => {
         if (!creator?.profile?.subscriptionPrice) return true // Include creators without subscription price
         
@@ -124,7 +106,6 @@ export default function CreatorsDirectoryPage() {
         
         return price >= minPrice && price <= maxPrice
       })
-      console.log(`💰 Price filter: ${beforePriceCount} → ${filtered.length}`)
     }
 
     // Sorting
@@ -171,7 +152,6 @@ export default function CreatorsDirectoryPage() {
       })
     }
 
-    console.log(`🎯 Final filtered creators: ${filtered.length}`)
     return filtered
   }, [allCreators.creators, filters])
 
@@ -183,55 +163,55 @@ export default function CreatorsDirectoryPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto py-6 space-y-6">
-        {/* Header Section */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
-            <Users className="h-4 w-4" />
+      <div className="container mx-auto px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        {/* Header Section - Enhanced Mobile Responsiveness */}
+        <div className="text-center space-y-3 sm:space-y-4">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium">
+            <Users className="h-3 w-3 sm:h-4 sm:w-4" />
             Discover Amazing Creators
           </div>
           
-          <h1 className="text-3xl md:text-4xl font-bold">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight px-2">
             Explore our vibrant community of creators building the future of decentralized content.
           </h1>
           
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
             Support your favorites with subscriptions and unlock exclusive access.
           </p>
 
-          {/* Quick Stats */}
-          <div className="flex justify-center gap-8 pt-4">
+          {/* Quick Stats - Mobile Optimized */}
+          <div className="flex justify-center gap-4 sm:gap-8 pt-3 sm:pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{allCreators.totalCount}</div>
-              <div className="text-sm text-muted-foreground">Total Creators</div>
+              <div className="text-xl sm:text-2xl font-bold text-primary">{allCreators.totalCount}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Total Creators</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{verifiedCreators.length}</div>
-              <div className="text-sm text-muted-foreground">Verified</div>
+              <div className="text-xl sm:text-2xl font-bold text-green-600">{verifiedCreators.length}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Verified</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">$2.4M+</div>
-              <div className="text-sm text-muted-foreground">Total Earned</div>
+              <div className="text-xl sm:text-2xl font-bold text-blue-600">$2.4M+</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Total Earned</div>
             </div>
           </div>
         </div>
 
-        {/* Featured Creators Section */}
+        {/* Featured Creators Section - Mobile Optimized */}
         {topCreators.length > 0 && (
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="h-5 w-5 text-yellow-500" />
+            <CardHeader className="pb-3 sm:pb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                  <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
                   Featured Creators
                 </CardTitle>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="self-start sm:self-auto">
                   View All Featured
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {topCreators.slice(0, 6).map((creator) => (
                   <CreatorCard
                     key={creator.address}
@@ -245,112 +225,72 @@ export default function CreatorsDirectoryPage() {
           </Card>
         )}
 
-        {/* Main Content Area */}
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <CreatorsFilter
-              filters={filters}
-              onFiltersChange={setFilters}
-              totalCount={allCreators.totalCount}
-              filteredCount={filteredCreators.length}
-            />
+        {/* Main Content Area - Enhanced Mobile Layout */}
+        <div className="grid lg:grid-cols-4 gap-4 lg:gap-6">
+          {/* Filters Sidebar - Mobile Collapsible */}
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="lg:sticky lg:top-4">
+              <CreatorsFilter
+                filters={filters}
+                onFiltersChange={setFilters}
+                totalCount={allCreators.totalCount}
+                filteredCount={filteredCreators.length}
+              />
+            </div>
           </div>
 
           {/* Creators Grid */}
-          <div className="lg:col-span-3 space-y-4">
-            {/* Tabs and View Controls */}
-            <div className="flex items-center justify-between">
-              <Tabs defaultValue="all" className="w-auto">
-                <TabsList>
-                  <TabsTrigger value="all">All Creators</TabsTrigger>
-                  <TabsTrigger value="verified">
-                    <Star className="h-4 w-4 mr-2" />
-                    Verified
+          <div className="lg:col-span-3 space-y-3 sm:space-y-4 order-1 lg:order-2">
+            {/* Tabs and View Controls - Mobile Responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+              <Tabs defaultValue="all" className="w-full sm:w-auto">
+                <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:grid-cols-none">
+                  <TabsTrigger value="all" className="text-xs sm:text-sm">All Creators</TabsTrigger>
+                  <TabsTrigger value="verified" className="text-xs sm:text-sm">
+                    <Star className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Verified</span>
+                    <span className="sm:hidden">✓</span>
                   </TabsTrigger>
-                  <TabsTrigger value="trending">
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Trending
+                  <TabsTrigger value="trending" className="text-xs sm:text-sm">
+                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Trending</span>
+                    <span className="sm:hidden">📈</span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-end">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
+                  className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
                 >
-                  <Grid3X3 className="h-4 w-4" />
+                  <Grid3X3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline ml-2">Grid</span>
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('list')}
+                  className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline ml-2">List</span>
                 </Button>
                 <Button
                   variant={viewMode === 'compact' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('compact')}
+                  className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
                 >
-                  <Smartphone className="h-4 w-4" />
+                  <Smartphone className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline ml-2">Compact</span>
                 </Button>
               </div>
             </div>
 
-            {/* DEBUG Panel - Remove this in production */}
-            <Card className="bg-yellow-50 border-yellow-200">
-              <CardHeader>
-                <CardTitle className="text-sm text-yellow-800">🐛 Debug Info (Remove in production)</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs text-yellow-700">
-                <div>Total Count: {allCreators.totalCount}</div>
-                <div>Creators Array Length: {allCreators.creators.length}</div>
-                <div>Filtered Count: {filteredCreators.length}</div>
-                <div>Is Loading: {allCreators.isLoading ? 'Yes' : 'No'}</div>
-                <div>Has Error: {allCreators.isError ? 'Yes' : 'No'}</div>
-                {allCreators.error && <div>Error: {allCreators.error.message}</div>}
-                <div>First Creator: {allCreators.creators[0]?.address || 'None'}</div>
-                {allCreators.creators[0] && (
-                  <div>First Creator Profile: {JSON.stringify(allCreators.creators[0].profile, (key, value) =>
-                    typeof value === 'bigint' ? value.toString() : value
-                  , 2)}</div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* LIVE PROFILE DEBUG - Enhanced debugging for profile processing */}
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded mb-4">
-              <h3 className="font-bold text-yellow-800 mb-2">🔧 Live Profile Debug</h3>
-              <button 
-                className="bg-yellow-600 text-white px-3 py-1 rounded text-sm"
-                onClick={() => {
-                  console.log('🔍 MANUAL PROFILE TEST')
-                  
-                  // Get the profile queries data from your useAllCreators hook
-                  const hookData = (window as any).allCreatorsHookData
-                  
-                  if (hookData?.profileQueries?.data) {
-                    console.log('Found profile queries data:', safeStringify(hookData.profileQueries.data))
-                    
-                    hookData.profileQueries.data.forEach((result: any, index: number) => {
-                      console.log(`Profile ${index}:`, safeStringify(result))
-                      if (result.status === 'success') {
-                        console.log(`Processing profile ${index} result:`, safeStringify(result.result))
-                        // Note: processProfileData function is in the hook, not accessible here
-                        console.log(`Profile ${index} raw result:`, safeStringify(result.result))
-                      }
-                    })
-                  } else {
-                    console.log('No profile data found')
-                  }
-                }}
-              >
-                Test Profile Processing
-              </button>
-            </div>
 
             {/* Creators Grid Component */}
             {allCreators.isLoading ? (
@@ -385,24 +325,24 @@ export default function CreatorsDirectoryPage() {
                   onPageChange={setCurrentPage}
                 />
                 
-                {/* Load More Button */}
+                {/* Load More Button - Mobile Optimized */}
                 {allCreators.hasMore && (
-                  <div className="flex justify-center mt-8">
+                  <div className="flex justify-center mt-6 sm:mt-8">
                     <Button
                       onClick={allCreators.loadMore}
                       disabled={allCreators.isLoading}
                       size="lg"
-                      className="px-8"
+                      className="px-6 sm:px-8 w-full sm:w-auto max-w-sm"
                     >
                       {allCreators.isLoading ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Loading...
+                          <span>Loading...</span>
                         </>
                       ) : (
                         <>
-                          Load More Creators
-                          <span className="ml-2 text-sm opacity-70">
+                          <span>Load More Creators</span>
+                          <span className="ml-2 text-xs sm:text-sm opacity-70 hidden sm:inline">
                             ({allCreators.creators.length} of {allCreators.totalCount})
                           </span>
                         </>

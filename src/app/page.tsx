@@ -60,7 +60,7 @@ import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
 
 // Import business logic and UI integration hooks
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
-import { useAllCreators } from '@/hooks/contracts/useAllCreators'
+import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { WalletConnectButton } from '@/components/web3/WalletConnectButton'
 import { useWalletConnect } from '@/hooks/web3/useWalletConnect'
 

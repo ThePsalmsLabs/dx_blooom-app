@@ -71,7 +71,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useContentDiscovery } from '@/hooks/contracts/content/useContentDiscovery'
-import { useAllCreators } from '@/hooks/contracts/useAllCreators'
+import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import { useUnifiedContentPurchaseFlow } from '@/hooks/business/workflows'
