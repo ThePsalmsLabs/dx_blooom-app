@@ -19,7 +19,7 @@ import { useMiniAppErrorHandling, type MiniAppError } from '@/utils/error-handli
 import { useMiniAppCapabilities } from '@/components/miniapp/ProgressiveEnhancement'
 
 // Import Component 5.3's compatibility testing utilities
-import { testMiniAppCompatibility } from '@/utils/miniapp/compatibility'
+import { runCompatibilityTests } from '@/utils/miniapp/compatibility'
 
 // Import existing analytics infrastructure
 import { subgraphQueryService } from '@/services/subgraph/SubgraphQueryService'
@@ -552,7 +552,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
       description: string
       action: string
     }>
-    compatibilityResults: Awaited<ReturnType<typeof testMiniAppCompatibility>>
+    compatibilityResults: Awaited<ReturnType<typeof runCompatibilityTests>>
   }> => {
     const recommendations: Array<{
       type: 'optimization' | 'compatibility' | 'error_handling'
@@ -562,7 +562,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
     }> = []
 
     // Run Component 5.3's compatibility testing for recommendations
-    const compatibilityResults = await testMiniAppCompatibility()
+    const compatibilityResults = await runCompatibilityTests()
     
     // Analyze current metrics for optimization opportunities
     const metrics = performanceCollector.getCurrentMetrics()
@@ -591,8 +591,8 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         recommendations.push({
           type: 'compatibility',
           priority: 'medium',
-          description: `${test.name} compatibility test failed`,
-          action: `Implement fallback: ${test.fallback}`
+          description: `${test.testName} compatibility test failed`,
+          action: `Implement fallback: ${test.fallbackStrategy || 'Use alternative approach'}`
         })
       }
     })

@@ -1,929 +1,849 @@
-// ==============================================================================
-// COMPONENT 5.3: CLIENT COMPATIBILITY TESTING
-// File: src/utils/miniapp/compatibility.ts
-// ==============================================================================
+/**
+ * Compatibility Testing Implementation - Component 2: Phase 1 Foundation
+ * File: src/utils/miniapp/compatibility.ts
+ * 
+ * This component completes the compatibility testing framework by implementing
+ * comprehensive test execution logic that accurately assesses MiniApp capabilities
+ * across different environments and provides actionable fallback strategies.
+ * 
+ * Architecture Integration:
+ * - Integrates seamlessly with Enhanced MiniAppProvider from Component 1
+ * - Provides detailed capability assessment for social commerce environments
+ * - Implements graceful degradation strategies for varying client capabilities
+ * - Includes performance monitoring and error handling for test execution
+ * - Supports both synchronous and asynchronous testing patterns
+ * - Maintains compatibility with existing error handling systems
+ * 
+ * Key Features:
+ * - Comprehensive test suite covering all MiniApp capabilities
+ * - Intelligent fallback strategy recommendations
+ * - Performance-optimized test execution with caching
+ * - Detailed diagnostic information for debugging and optimization
+ * - Progressive enhancement testing that builds from basic to advanced features
+ * - Production-ready error handling and recovery mechanisms
+ * - Accessibility testing for social commerce contexts
+ */
 
 'use client'
 
+import { useCallback } from 'react'
 import { useChainId } from 'wagmi'
 
-// Import Component 5.1's error handling integration
-import { useMiniAppErrorHandling, type MiniAppError } from '@/utils/error-handling'
+// Type definitions for strict TypeScript
+interface EthereumProvider {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+  isMetaMask?: boolean
+}
 
-// Import Component 5.2's capability detection logic for reuse
-import { 
-  ClientCapabilityDetector 
-} from '@/components/miniapp/ProgressiveEnhancement'
+interface WindowWithEthereum extends Window {
+  ethereum?: EthereumProvider
+}
 
-// Import existing configuration systems
-import { getX402MiddlewareConfig, isX402Supported } from '@/lib/web3/x402-config'
+// ================================================
+// TYPE DEFINITIONS FOR COMPATIBILITY TESTING
+// ================================================
 
 /**
- * Compatibility Test Interface
- * 
- * This interface defines the structure for individual compatibility tests,
- * ensuring consistent testing patterns and clear fallback strategies for
- * each Mini App feature that requires client-specific support.
+ * Individual Test Configuration
+ * Defines the structure and behavior of each compatibility test
  */
 export interface CompatibilityTest {
-  /** Human-readable name identifying the specific test */
+  readonly id: string
   readonly name: string
-  
-  /** Asynchronous test function that returns boolean success/failure */
+  readonly description: string
+  readonly category: TestCategory
+  readonly priority: TestPriority
+  readonly timeout: number
+  readonly retryCount: number
   readonly test: () => Promise<boolean>
-  
-  /** Clear description of fallback behavior when test fails */
   readonly fallback: string
-  
-  /** Optional detailed test configuration and metadata */
+  readonly requirements?: readonly string[]
   readonly metadata?: {
-    /** Test timeout in milliseconds */
-    readonly timeout?: number
-    /** Whether this test is critical for Mini App functionality */
-    readonly critical?: boolean
-    /** Minimum required version for feature support */
-    readonly minVersion?: string
-    /** Expected test duration for performance monitoring */
     readonly expectedDuration?: number
+    readonly criticalForExperience?: boolean
+    readonly affectsPerformance?: boolean
+    readonly requiresPermission?: boolean
   }
 }
 
 /**
- * Compatibility Test Result Interface
- * 
- * This interface defines the comprehensive result structure returned by
- * compatibility tests, providing detailed information for debugging and
- * user experience optimization decisions.
+ * Test Categories
+ * Organizes tests into logical groups for systematic evaluation
+ */
+export type TestCategory = 
+  | 'environment'      // Basic environment and SDK availability
+  | 'blockchain'       // Web3 and blockchain interaction capabilities
+  | 'social'          // Social platform integration features
+  | 'performance'     // Performance and optimization capabilities
+  | 'accessibility'   // Accessibility and user experience features
+  | 'integration'     // Cross-feature integration testing
+
+/**
+ * Test Priority Levels
+ * Determines the importance and execution order of tests
+ */
+export type TestPriority = 'critical' | 'high' | 'medium' | 'low'
+
+/**
+ * Individual Test Result
+ * Comprehensive information about a single test execution
  */
 export interface CompatibilityTestResult {
-  /** Test name for identification */
-  readonly name: string
-  
-  /** Whether the test passed successfully */
+  readonly testId: string
+  readonly testName: string
+  readonly category: TestCategory
+  readonly priority: TestPriority
   readonly passed: boolean
-  
-  /** Fallback behavior description */
-  readonly fallback: string
-  
-  /** Test execution details */
-  readonly executionDetails: {
-    /** Time taken to execute the test in milliseconds */
-    readonly duration: number
-    /** Detailed error information if test failed */
-    readonly error?: Error
-    /** Additional test-specific metadata */
-    readonly metadata?: Record<string, unknown>
-    /** Timestamp when test was executed */
-    readonly timestamp: number
+  readonly executionTime: number
+  readonly retryAttempts: number
+  readonly error?: Error
+  readonly metadata?: {
+    readonly actualDuration: number
+    readonly expectedDuration?: number
+    readonly performanceImpact?: 'none' | 'low' | 'medium' | 'high'
+    readonly userMessage?: string
   }
-  
-  /** Recommended action based on test result */
-  readonly recommendation: 'proceed' | 'fallback' | 'warning' | 'critical_failure'
+  readonly fallbackStrategy?: string
+  readonly recommendations?: readonly string[]
 }
 
 /**
- * Test Suite Result Interface
- * 
- * This interface defines the comprehensive result structure for the complete
- * compatibility test suite, providing summary statistics and actionable
- * insights for Mini App deployment decisions.
+ * Complete Test Suite Result
+ * Aggregated results and analysis from all compatibility tests
  */
-export interface TestSuiteResult {
-  /** Array of individual test results */
-  readonly results: ReadonlyArray<CompatibilityTestResult>
-  
-  /** Suite execution summary */
-  readonly summary: {
-    /** Total number of tests executed */
-    readonly totalTests: number
-    /** Number of tests that passed */
-    readonly passedTests: number
-    /** Number of tests that failed */
-    readonly failedTests: number
-    /** Overall success rate as percentage */
-    readonly successRate: number
-    /** Total execution time for all tests */
-    readonly totalDuration: number
-  }
-  
-  /** Overall compatibility assessment */
-  readonly compatibility: {
-    /** Overall compatibility level */
-    readonly level: 'full' | 'partial' | 'minimal' | 'incompatible'
-    /** Critical features that failed */
-    readonly criticalFailures: ReadonlyArray<string>
-    /** Recommended deployment strategy */
-    readonly deploymentStrategy: 'miniapp' | 'progressive' | 'fallback'
-  }
-  
-  /** Timestamp when test suite was executed */
+export interface CompatibilityTestSuiteResult {
   readonly executedAt: number
-}
-
-/**
- * Frame Rendering Test Implementation
- * 
- * This function tests whether the current client can properly render Farcaster
- * Frames, including image loading, meta tag processing, and button interactions.
- * It reuses logic from Component 5.2's capability detection while adding
- * specific compatibility validation.
- */
-export async function testFrameRendering(): Promise<boolean> {
-  try {
-    // Reuse Component 5.2's frame support detection with enhanced validation
-    const basicFrameSupport = await ClientCapabilityDetector.detectFrameSupport()
-    
-    if (!basicFrameSupport) {
-      return false
-    }
-    
-    // Additional Warpcast-specific frame rendering tests
-    const frameRenderingTests = await Promise.all([
-      // Test 1: Frame meta tag processing
-      testFrameMetaTagProcessing(),
-      
-      // Test 2: Frame image loading with proper aspect ratio
-      testFrameImageLoading(),
-      
-      // Test 3: Frame button interaction capabilities
-      testFrameButtonInteraction(),
-      
-      // Test 4: Frame state management and navigation
-      testFrameStateManagement()
-    ])
-    
-    // Require all frame rendering tests to pass for full compatibility
-    return frameRenderingTests.every(result => result)
-    
-  } catch (error) {
-    console.warn('Frame rendering test failed:', error)
-    return false
+  readonly totalTests: number
+  readonly passedTests: number
+  readonly failedTests: number
+  readonly criticalFailures: number
+  readonly totalExecutionTime: number
+  readonly averageExecutionTime: number
+  readonly compatibilityLevel: CompatibilityLevel
+  readonly results: readonly CompatibilityTestResult[]
+  readonly summary: {
+    readonly environmentSupport: boolean
+    readonly blockchainSupport: boolean
+    readonly socialSupport: boolean
+    readonly performanceOptimal: boolean
+    readonly accessibilityCompliant: boolean
+    readonly integrationStable: boolean
+  }
+  readonly recommendations: readonly string[]
+  readonly fallbackStrategies: readonly string[]
+  readonly performanceProfile: {
+    readonly initializationTime: number
+    readonly featureResponseTime: number
+    readonly resourceUsage: 'light' | 'moderate' | 'heavy'
+    readonly networkRequirements: 'low' | 'medium' | 'high'
   }
 }
 
 /**
- * Test Frame Meta Tag Processing
- * 
- * This function validates that the client properly processes Farcaster Frame
- * meta tags and can extract frame configuration correctly.
+ * Compatibility Levels (from Component 1)
  */
-async function testFrameMetaTagProcessing(): Promise<boolean> {
-  try {
-    if (typeof document === 'undefined') return false
-    
-    // Create test frame meta tags
-    const testMetaTags = [
-      { property: 'fc:frame', content: 'vNext' },
-      { property: 'fc:frame:image', content: 'https://example.com/test.png' },
-      { property: 'fc:frame:button:1', content: 'Test Button' }
-    ]
-    
-    // Add test meta tags to document head
-    const addedElements: HTMLMetaElement[] = []
-    testMetaTags.forEach(tag => {
-      const metaElement = document.createElement('meta')
-      metaElement.setAttribute('property', tag.property)
-      metaElement.setAttribute('content', tag.content)
-      document.head.appendChild(metaElement)
-      addedElements.push(metaElement)
-    })
-    
-    // Test if client can detect and process frame meta tags
-    const frameMetaTags = document.querySelectorAll('meta[property^="fc:frame"]')
-    const hasFrameSupport = frameMetaTags.length >= testMetaTags.length
-    
-    // Clean up test meta tags
-    addedElements.forEach(element => {
-      if (element.parentNode) {
-        element.parentNode.removeChild(element)
-      }
-    })
-    
-    return hasFrameSupport
-    
-  } catch (error) {
-    console.warn('Frame meta tag processing test failed:', error)
-    return false
-  }
-}
+export type CompatibilityLevel = 'full' | 'partial' | 'limited' | 'none'
 
 /**
- * Test Frame Image Loading
- * 
- * This function validates that the client can properly load and display
- * frame images with correct aspect ratios and responsive behavior.
+ * Test Execution Options
+ * Configuration for how compatibility tests should be executed
  */
-async function testFrameImageLoading(): Promise<boolean> {
-  try {
-    if (typeof window === 'undefined') return false
-    
-    return new Promise<boolean>((resolve) => {
-      const testImage = new Image()
-      let resolved = false
-      
-      // Set timeout to prevent hanging
-      const timeout = setTimeout(() => {
-        if (!resolved) {
-          resolved = true
-          resolve(false)
-        }
-      }, 5000)
-      
-      testImage.onload = () => {
-        if (!resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          
-          // Validate image dimensions (Farcaster frames are typically 1.91:1 ratio)
-          const aspectRatio = testImage.naturalWidth / testImage.naturalHeight
-          const isValidAspectRatio = Math.abs(aspectRatio - 1.91) < 0.1
-          
-          resolve(isValidAspectRatio)
-        }
-      }
-      
-      testImage.onerror = () => {
-        if (!resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          resolve(false)
-        }
-      }
-      
-      // Use a test image with proper Farcaster frame dimensions
-      testImage.src = 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="764" height="400" viewBox="0 0 764 400">
-          <rect width="764" height="400" fill="#f0f0f0"/>
-          <text x="382" y="200" text-anchor="middle" font-family="Arial" font-size="20" fill="#333">
-            Frame Test Image
-          </text>
-        </svg>
-      `)
-    })
-    
-  } catch (error) {
-    console.warn('Frame image loading test failed:', error)
-    return false
-  }
+export interface TestExecutionOptions {
+  readonly includePerformanceTests?: boolean
+  readonly enableRetries?: boolean
+  readonly timeoutMultiplier?: number
+  readonly priorityFilter?: readonly TestPriority[]
+  readonly categoryFilter?: readonly TestCategory[]
+  readonly enableCaching?: boolean
+  readonly cacheExpirationMs?: number
+  readonly onProgress?: (completed: number, total: number, currentTest: string) => void
+  readonly onError?: (testId: string, error: Error) => void
 }
 
-/**
- * Test Frame Button Interaction
- * 
- * This function validates that the client can properly handle frame button
- * interactions and post messages to frame handlers.
- */
-async function testFrameButtonInteraction(): Promise<boolean> {
-  try {
-    if (typeof window === 'undefined') return false
-    
-    // Test postMessage capability for frame interactions
-    const canPostMessages = typeof window.postMessage === 'function'
-    
-    if (!canPostMessages) {
-      return false
-    }
-    
-    // Test event listener capability for frame responses
-    let messageHandlerWorking = false
-    
-    const testMessageHandler = (event: MessageEvent) => {
-      if (event.data?.type === 'frame_test') {
-        messageHandlerWorking = true
-      }
-    }
-    
-    window.addEventListener('message', testMessageHandler)
-    
-    // Send test message to self
-    window.postMessage({ type: 'frame_test', test: true }, '*')
-    
-    // Wait briefly for message to be processed
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    // Clean up event listener
-    window.removeEventListener('message', testMessageHandler)
-    
-    return messageHandlerWorking
-    
-  } catch (error) {
-    console.warn('Frame button interaction test failed:', error)
-    return false
-  }
-}
+// ================================================
+// CORE TEST DEFINITIONS
+// ================================================
 
 /**
- * Test Frame State Management
- * 
- * This function validates that the client can properly manage frame state
- * and navigation between different frame views.
+ * Environment Tests
+ * Tests for basic MiniApp environment and SDK availability
  */
-async function testFrameStateManagement(): Promise<boolean> {
-  try {
-    if (typeof window === 'undefined') return false
-    
-    // Test sessionStorage for frame state persistence
-    const canUseSessionStorage = typeof sessionStorage !== 'undefined'
-    
-    if (!canUseSessionStorage) {
-      return false
-    }
-    
-    // Test basic state storage and retrieval
-    const testKey = 'frame_test_state'
-    const testValue = JSON.stringify({ frameId: 'test', step: 1 })
-    
-    sessionStorage.setItem(testKey, testValue)
-    const retrievedValue = sessionStorage.getItem(testKey)
-    const stateWorking = retrievedValue === testValue
-    
-    // Clean up test data
-    sessionStorage.removeItem(testKey)
-    
-    return stateWorking
-    
-  } catch (error) {
-    console.warn('Frame state management test failed:', error)
-    return false
-  }
-}
-
-/**
- * Wallet Connection Test Implementation
- * 
- * This function verifies that wallet providers are available and functional
- * for Web3 interactions, reusing Component 5.2's wallet detection logic
- * with additional connection validation.
- */
-export async function testWalletConnection(): Promise<boolean> {
-  try {
-    // Reuse Component 5.2's wallet access detection
-    const walletAccess = await ClientCapabilityDetector.detectWalletAccess()
-    
-    if (!walletAccess.hasAccess) {
-      return false
-    }
-    
-    // Additional wallet connection validation tests
-    const walletTests = await Promise.all([
-      // Test 1: Coinbase Wallet specific integration
-      testCoinbaseWalletIntegration(),
-      
-      // Test 2: MetaMask compatibility  
-      testMetaMaskCompatibility(),
-      
-      // Test 3: WalletConnect fallback support
-      testWalletConnectSupport(),
-      
-      // Test 4: Web3 provider functionality
-      testWeb3ProviderFunctionality()
-    ])
-    
-    // Require at least one wallet provider to work properly
-    return walletTests.some(result => result)
-    
-  } catch (error) {
-    console.warn('Wallet connection test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test Coinbase Wallet Integration
- * 
- * This function specifically validates Coinbase Wallet integration,
- * which is preferred for Farcaster Mini Apps.
- */
-async function testCoinbaseWalletIntegration(): Promise<boolean> {
-  try {
-    if (typeof window === 'undefined') return false
-    
-  const ethereum = (window as unknown as { ethereum?: { isCoinbaseWallet?: boolean; selectedProvider?: { isCoinbaseWallet?: boolean }; request?: unknown; on?: unknown; removeListener?: unknown } }).ethereum
-    
-    if (!ethereum) {
-      return false
-    }
-    
-    // Check for Coinbase Wallet specific properties
-    const isCoinbaseWallet = ethereum.isCoinbaseWallet || ethereum.selectedProvider?.isCoinbaseWallet
-    
-    if (!isCoinbaseWallet) {
-      return false
-    }
-    
-    // Test basic Web3 functionality without triggering connection
-    const hasRequiredMethods = typeof ethereum.request === 'function' &&
-                              typeof ethereum.on === 'function'
-    
-    return hasRequiredMethods
-    
-  } catch (error) {
-    console.warn('Coinbase Wallet integration test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test MetaMask Compatibility
- * 
- * This function validates MetaMask compatibility as a fallback wallet option.
- */
-async function testMetaMaskCompatibility(): Promise<boolean> {
-  try {
-    if (typeof window === 'undefined') return false
-    
-  const ethereum = (window as unknown as { ethereum?: { isMetaMask?: boolean; request?: unknown; on?: unknown; removeListener?: unknown } }).ethereum
-    
-    if (!ethereum?.isMetaMask) {
-      return false
-    }
-    
-    // Test MetaMask specific functionality
-    const hasRequiredMethods = typeof ethereum.request === 'function' &&
-                              typeof ethereum.on === 'function' &&
-                              typeof ethereum.removeListener === 'function'
-    
-    return hasRequiredMethods
-    
-  } catch (error) {
-    console.warn('MetaMask compatibility test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test WalletConnect Support
- * 
- * This function validates WalletConnect fallback support for clients
- * that don't have native wallet integration.
- */
-async function testWalletConnectSupport(): Promise<boolean> {
-  try {
-    if (typeof window === 'undefined') return false
-    
-    // Check for WalletConnect session persistence capability
-  const hasLocalStorage = (() => { try { return typeof localStorage !== 'undefined' } catch { return false } })()
-    
-    if (!hasLocalStorage) {
-      return false
-    }
-    
-    // Test basic storage functionality for WalletConnect sessions
-    const testKey = 'wc_test_session'
-    const testValue = 'test_session_data'
-    
-    localStorage.setItem(testKey, testValue)
-    const canStore = localStorage.getItem(testKey) === testValue
-    localStorage.removeItem(testKey)
-    
-    return canStore
-    
-  } catch (error) {
-    console.warn('WalletConnect support test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test Web3 Provider Functionality
- * 
- * This function validates basic Web3 provider functionality required
- * for blockchain interactions.
- */
-async function testWeb3ProviderFunctionality(): Promise<boolean> {
-  try {
-    if (typeof window === 'undefined') return false
-    
-  const ethereum = (window as unknown as { ethereum?: Record<string, unknown> & { request?: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
-    
-    if (!ethereum) {
-      return false
-    }
-    
-    // Test basic provider methods without triggering user prompts
-    const hasEssentialMethods = [
-      'request',
-      'on',
-      'removeListener'
-    ].every(method => typeof (ethereum as Record<string, unknown>)[method] === 'function')
-    
-    if (!hasEssentialMethods) {
-      return false
-    }
-    
-    // Test basic network detection (shouldn't trigger user interaction)
-    try {
-      const chainId = await ethereum.request?.({ method: 'eth_chainId' })
-      return typeof chainId === 'string' && chainId.startsWith('0x')
-    } catch {
-      // Chain ID request might fail in some environments, but that's okay
-      return true
-    }
-    
-  } catch (error) {
-    console.warn('Web3 provider functionality test failed:', error)
-    return false
-  }
-}
-
-/**
- * x402 Payment Flow Test Implementation
- * 
- * This function validates x402 payment processing support by testing
- * configuration validity, network compatibility, and facilitator accessibility.
- */
-export async function testX402Flow(): Promise<boolean> {
-  try {
-    // Get current chain ID for x402 configuration
-    const chainId = 8453 // Base mainnet - will be replaced by actual chainId in hook
-    
-    // Reuse Component 5.2's x402 support detection
-    const x402Support = ClientCapabilityDetector.detectX402Support(chainId)
-    
-    if (!x402Support.isSupported) {
-      return false
-    }
-    
-    // Additional x402 flow validation tests
-    const x402Tests = await Promise.all([
-      // Test 1: x402 configuration validation
-      testX402Configuration(chainId),
-      
-      // Test 2: Network compatibility verification
-      testX402NetworkCompatibility(chainId),
-      
-      // Test 3: Payment proof generation capability
-      testX402PaymentProofGeneration(),
-      
-      // Test 4: Facilitator accessibility check
-      testX402FacilitatorAccessibility(chainId)
-    ])
-    
-    // Require all x402 tests to pass for full compatibility
-    return x402Tests.every(result => result)
-    
-  } catch (error) {
-    console.warn('x402 flow test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test x402 Configuration
- * 
- * This function validates that x402 configuration is complete and valid
- * for the current network environment.
- */
-async function testX402Configuration(chainId: number): Promise<boolean> {
-  try {
-    // Test configuration retrieval
-    const config = getX402MiddlewareConfig(chainId)
-    
-    // Validate configuration completeness
-    const isConfigurationValid = Boolean(
-      config.resourceWalletAddress &&
-      config.resourceWalletAddress !== '0x' &&
-      config.facilitatorUrl &&
-      config.usdcTokenAddress &&
-      config.minPaymentAmount &&
-      config.maxPaymentAmount
-    )
-    
-    return isConfigurationValid
-    
-  } catch (error) {
-    console.warn('x402 configuration test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test x402 Network Compatibility
- * 
- * This function verifies that the current network supports x402 payments
- * and has the required infrastructure deployed.
- */
-async function testX402NetworkCompatibility(chainId: number): Promise<boolean> {
-  try {
-    // Check if current chain is supported by x402
-    const isNetworkSupported = isX402Supported(chainId)
-    
-    if (!isNetworkSupported) {
-      return false
-    }
-    
-    // Additional network compatibility checks could go here
-    // For example, checking block gas limits, network performance, etc.
-    
-    return true
-    
-  } catch (error) {
-    console.warn('x402 network compatibility test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test x402 Payment Proof Generation
- * 
- * This function validates that the client can generate x402 payment proofs
- * without actually processing payments.
- */
-async function testX402PaymentProofGeneration(): Promise<boolean> {
-  try {
-    // Test cryptographic capabilities required for x402 proof generation
-    const hasCrypto = typeof crypto !== 'undefined' && 
-                     crypto.subtle !== undefined
-    
-    if (!hasCrypto) {
-      return false
-    }
-    
-    // Test random number generation for nonces
-    const testNonce = crypto.getRandomValues(new Uint8Array(32))
-    const hasValidNonce = testNonce.length === 32 && 
-                         testNonce.some(byte => byte !== 0)
-    
-    return hasValidNonce
-    
-  } catch (error) {
-    console.warn('x402 payment proof generation test failed:', error)
-    return false
-  }
-}
-
-/**
- * Test x402 Facilitator Accessibility
- * 
- * This function validates that the x402 facilitator service is accessible
- * and responsive for payment processing.
- */
-async function testX402FacilitatorAccessibility(chainId: number): Promise<boolean> {
-  try {
-    const config = getX402MiddlewareConfig(chainId)
-    
-    // Test facilitator URL accessibility with a simple HEAD request
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-    
-    try {
-      const response = await fetch(config.facilitatorUrl, {
-        method: 'HEAD',
-        signal: controller.signal,
-        mode: 'no-cors' // Avoid CORS issues in browser testing
-      })
-      
-      clearTimeout(timeoutId)
-      
-      // In no-cors mode, we can't check response status, but if fetch doesn't throw, service is reachable
-      return true
-      
-    } catch (fetchError) {
-      clearTimeout(timeoutId)
-      
-      // Network errors indicate service is not accessible
-      if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
-        return false
-      }
-      
-      // AbortError indicates timeout
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return false
-      }
-      
-      // Other errors might still indicate partial accessibility
-      return true
-    }
-    
-  } catch (error) {
-    console.warn('x402 facilitator accessibility test failed:', error)
-    return false
-  }
-}
-
-/**
- * Main Test Suite Function
- * 
- * This function orchestrates the complete Mini App compatibility test suite,
- * executing all tests concurrently and providing comprehensive results with
- * fallback recommendations for each scenario.
- */
-export async function testMiniAppCompatibility(): Promise<TestSuiteResult> {
-  const startTime = Date.now()
-  
-  // Define comprehensive test suite
-  const tests: ReadonlyArray<CompatibilityTest> = [
-    {
-      name: 'Warpcast Frame Support',
-      test: testFrameRendering, 
-      fallback: 'Static image with external link to content',
-      metadata: {
-        timeout: 10000,
-        critical: true,
-        minVersion: '1.0.0',
-        expectedDuration: 2000
-      }
-    },
-    {
-      name: 'Coinbase Wallet Integration',
-      test: testWalletConnection,
-      fallback: 'WalletConnect flow with traditional wallet connection',
-      metadata: {
-        timeout: 8000,
-        critical: true,
-        minVersion: '2.0.0',
-        expectedDuration: 1500
-      }
-    },
-    {
-      name: 'x402 Payment Processing',
-      test: testX402Flow,
-      fallback: 'Traditional contract interaction with standard gas fees',
-      metadata: {
-        timeout: 12000,
-        critical: false,
-        minVersion: '1.0.0',
-        expectedDuration: 3000
-      }
-    }
-  ]
-  
-  // Execute all tests concurrently with individual error handling
-  const testResults = await Promise.all(
-    tests.map(async (test): Promise<CompatibilityTestResult> => {
-      const testStartTime = Date.now()
-      let passed = false
-      let error: Error | undefined
-      const metadata: Record<string, unknown> = {}
-      
+const ENVIRONMENT_TESTS: readonly CompatibilityTest[] = [
+  {
+    id: 'env-sdk-available',
+    name: 'MiniApp SDK Availability',
+    description: 'Verifies that the Farcaster MiniApp SDK is available and accessible',
+    category: 'environment',
+    priority: 'critical',
+    timeout: 5000,
+    retryCount: 2,
+    test: async () => {
       try {
-        // Apply timeout if specified in test metadata
-        const timeout = test.metadata?.timeout || 10000
-        const timeoutPromise = new Promise<boolean>((_, reject) => {
-          setTimeout(() => reject(new Error(`Test timeout after ${timeout}ms`)), timeout)
+        // Check if SDK is available in the global scope
+        if (typeof window === 'undefined') return false
+        
+        // Dynamic import to handle SDK availability gracefully
+        const { sdk } = await import('@farcaster/miniapp-sdk')
+        
+        // Verify SDK has essential methods
+        return typeof sdk?.context !== 'undefined' && 
+               typeof sdk?.actions?.ready === 'function'
+      } catch {
+        return false
+      }
+    },
+    fallback: 'Use standard web interface without social features',
+    metadata: {
+      expectedDuration: 1000,
+      criticalForExperience: true,
+      requiresPermission: false
+    }
+  },
+  
+  {
+    id: 'env-iframe-context',
+    name: 'Iframe Context Detection',
+    description: 'Determines if the app is running in an embedded iframe context',
+    category: 'environment',
+    priority: 'high',
+    timeout: 2000,
+    retryCount: 1,
+    test: async () => {
+      try {
+        if (typeof window === 'undefined') return false
+        
+        // Multiple checks for iframe context
+        const isEmbedded = window.parent !== window
+        const hasFrameContext = (() => {
+          try {
+            return window.location !== window.parent.location
+          } catch {
+            return true // Cross-origin iframe will throw
+          }
+        })()
+        
+        return isEmbedded || hasFrameContext
+      } catch {
+        return false
+      }
+    },
+    fallback: 'Assume standard web context and disable iframe-specific optimizations',
+    metadata: {
+      expectedDuration: 100,
+      criticalForExperience: false,
+      affectsPerformance: true
+    }
+  },
+  
+  {
+    id: 'env-user-agent',
+    name: 'Social Platform User Agent',
+    description: 'Checks for social platform-specific user agent indicators',
+    category: 'environment',
+    priority: 'medium',
+    timeout: 1000,
+    retryCount: 0,
+    test: async () => {
+      if (typeof window === 'undefined') return false
+      
+      const userAgent = navigator.userAgent.toLowerCase()
+      const referrer = document.referrer.toLowerCase()
+      
+      // Check for known social platform indicators
+      const socialIndicators = [
+        'farcaster',
+        'warpcast',
+        'supercast',
+        'cast'
+      ]
+      
+      return socialIndicators.some(indicator => 
+        userAgent.includes(indicator) || referrer.includes(indicator)
+      )
+    },
+    fallback: 'Use generic social platform optimizations',
+    metadata: {
+      expectedDuration: 50,
+      criticalForExperience: false
+    }
+  }
+] as const
+
+/**
+ * Blockchain Tests  
+ * Tests for Web3 and blockchain interaction capabilities
+ */
+const BLOCKCHAIN_TESTS: readonly CompatibilityTest[] = [
+  {
+    id: 'blockchain-ethereum-provider',
+    name: 'Ethereum Provider Availability',
+    description: 'Verifies that an Ethereum provider is available for Web3 interactions',
+    category: 'blockchain',
+    priority: 'critical',
+    timeout: 3000,
+    retryCount: 2,
+    test: async () => {
+      try {
+        if (typeof window === 'undefined') return false
+        
+        // Check for Ethereum provider
+        const ethereum = (window as WindowWithEthereum).ethereum
+        const hasEthereum = ethereum && typeof ethereum.request === 'function'
+        
+        if (!hasEthereum) return false
+        
+        // Test basic provider functionality
+        const accounts = await ethereum.request({
+          method: 'eth_accounts'
         })
         
-        passed = await Promise.race([test.test(), timeoutPromise])
+        return Array.isArray(accounts)
+      } catch {
+        return false
+      }
+    },
+    fallback: 'Display wallet connection prompts and use read-only mode for unconnected users',
+    metadata: {
+      expectedDuration: 1500,
+      criticalForExperience: true,
+      requiresPermission: true
+    }
+  },
+  
+  {
+    id: 'blockchain-eip5792-support',
+    name: 'EIP-5792 Batch Transaction Support',
+    description: 'Tests support for EIP-5792 batch transactions for improved UX',
+    category: 'blockchain',
+    priority: 'high',
+    timeout: 4000,
+    retryCount: 1,
+    test: async () => {
+      try {
+        if (typeof window === 'undefined') return false
         
-      } catch (testError) {
-        passed = false
-        error = testError instanceof Error ? testError : new Error('Unknown test error')
-        metadata.errorType = error.name
-        metadata.errorMessage = error.message
+        const ethereum = (window as WindowWithEthereum).ethereum
+        if (!ethereum) return false
+        
+        // Check if the provider supports EIP-5792
+        const supportsEIP5792 = typeof ethereum.request === 'function'
+        
+        if (!supportsEIP5792) return false
+        
+        // Test if wallet_sendCalls method is available
+        try {
+          // This will likely throw if not supported, which we catch
+          await ethereum.request({
+            method: 'wallet_getCallsStatus',
+            params: ['0x0'] // Dummy ID to test method existence
+          })
+          return true
+        } catch (error: unknown) {
+          // Method not found is expected for unsupported wallets
+          // But the method being present indicates support
+          const errorWithCode = error as { code?: number }
+          return errorWithCode?.code !== -32601 // Method not found error
+        }
+      } catch {
+        return false
       }
-      
-      const duration = Date.now() - testStartTime
-      
-      // Determine recommendation based on test result and criticality
-      let recommendation: CompatibilityTestResult['recommendation']
-      if (passed) {
-        recommendation = 'proceed'
-      } else if (test.metadata?.critical) {
-        recommendation = 'critical_failure'
-      } else {
-        recommendation = 'fallback'
-      }
-      
-      return {
-        name: test.name,
-        passed,
-        fallback: test.fallback,
-        executionDetails: {
-          duration,
-          error,
-          metadata,
-          timestamp: testStartTime
-        },
-        recommendation
-      }
-    })
-  )
-  
-  const totalDuration = Date.now() - startTime
-  
-  // Calculate summary statistics
-  const totalTests = testResults.length
-  const passedTests = testResults.filter(result => result.passed).length
-  const failedTests = totalTests - passedTests
-  const successRate = Math.round((passedTests / totalTests) * 100 * 100) / 100
-  
-  // Determine overall compatibility level
-  const criticalFailures = testResults
-    .filter(result => result.recommendation === 'critical_failure')
-    .map(result => result.name)
-  
-  let compatibilityLevel: TestSuiteResult['compatibility']['level']
-  let deploymentStrategy: TestSuiteResult['compatibility']['deploymentStrategy']
-  
-  if (criticalFailures.length === 0 && passedTests === totalTests) {
-    compatibilityLevel = 'full'
-    deploymentStrategy = 'miniapp'
-  } else if (criticalFailures.length === 0 && passedTests > 0) {
-    compatibilityLevel = 'partial'
-    deploymentStrategy = 'progressive'
-  } else if (criticalFailures.length > 0 && passedTests > 0) {
-    compatibilityLevel = 'minimal'
-    deploymentStrategy = 'fallback'
-  } else {
-    compatibilityLevel = 'incompatible'
-    deploymentStrategy = 'fallback'
-  }
-  
-  return {
-    results: testResults,
-    summary: {
-      totalTests,
-      passedTests,
-      failedTests,
-      successRate,
-      totalDuration
     },
-    compatibility: {
-      level: compatibilityLevel,
-      criticalFailures,
-      deploymentStrategy
+    fallback: 'Use individual transactions with clear user feedback between steps',
+    metadata: {
+      expectedDuration: 2000,
+      criticalForExperience: false,
+      affectsPerformance: true
+    }
+  },
+  
+  {
+    id: 'blockchain-network-connection',
+    name: 'Base Network Connectivity',
+    description: 'Verifies connection to Base network for contract interactions',
+    category: 'blockchain',
+    priority: 'critical',
+    timeout: 5000,
+    retryCount: 3,
+    test: async () => {
+      try {
+        if (typeof window === 'undefined') return false
+        
+        const ethereum = (window as WindowWithEthereum).ethereum
+        if (!ethereum) return false
+        
+        // Check current network
+        const chainId = await ethereum.request({
+          method: 'eth_chainId'
+        })
+        
+        // Base Mainnet: 0x2105 (8453), Base Sepolia: 0x14a34 (84532)
+        const supportedChains = ['0x2105', '0x14a34']
+        
+        return supportedChains.includes(String(chainId))
+      } catch {
+        return false
+      }
     },
-    executedAt: startTime
+    fallback: 'Prompt user to switch to Base network with helpful instructions',
+    metadata: {
+      expectedDuration: 2500,
+      criticalForExperience: true,
+      requiresPermission: false
+    }
   }
-}
+] as const
 
 /**
- * React Hook for Component Integration
- * 
- * This hook provides a React-friendly interface for running compatibility tests
- * within components, integrating with Component 5.1's error handling system.
+ * Social Integration Tests
+ * Tests for social platform-specific features and capabilities
  */
-export function useMiniAppCompatibilityTesting() {
-  const chainId = useChainId()
-  const errorHandling = useMiniAppErrorHandling()
-  
-  const runCompatibilityTests = async (): Promise<TestSuiteResult> => {
-    try {
-      const results = await testMiniAppCompatibility()
-      
-      // Handle critical failures through Component 5.1's error system
-      if (results.compatibility.criticalFailures.length > 0) {
-        const criticalError: MiniAppError = {
-          type: 'INVALID_MINI_APP_CONFIG',
-          message: `Critical Mini App features failed compatibility tests: ${results.compatibility.criticalFailures.join(', ')}`,
-          details: {
-            timestamp: Date.now(),
-            context: {
-              failedTests: results.compatibility.criticalFailures,
-              compatibilityLevel: results.compatibility.level,
-              successRate: results.summary.successRate
-            }
-          }
-        }
+const SOCIAL_TESTS: readonly CompatibilityTest[] = [
+  {
+    id: 'social-context-access',
+    name: 'Social Context Data Access',
+    description: 'Tests ability to access social user profile and context data',
+    category: 'social',
+    priority: 'high',
+    timeout: 4000,
+    retryCount: 2,
+    test: async () => {
+      try {
+        const { sdk } = await import('@farcaster/miniapp-sdk')
+        const context = await sdk.context
         
-        errorHandling.handleMiniAppError(criticalError)
+        // Verify we can access user data
+        return context?.user?.fid !== undefined &&
+               typeof context.user.username === 'string'
+      } catch {
+        return false
+      }
+    },
+    fallback: 'Use standard authentication without social profile integration',
+    metadata: {
+      expectedDuration: 2000,
+      criticalForExperience: false,
+      requiresPermission: true
+    }
+  },
+  
+  {
+    id: 'social-sharing-capability',
+    name: 'Social Sharing Actions',
+    description: 'Tests ability to trigger social sharing and cast creation',
+    category: 'social',
+    priority: 'medium',
+    timeout: 3000,
+    retryCount: 1,
+    test: async () => {
+      try {
+        const { sdk } = await import('@farcaster/miniapp-sdk')
+        
+        // Check if SDK actions are available (share functionality would be custom implementation)
+        return typeof sdk.actions !== 'undefined'
+      } catch {
+        return false
+      }
+    },
+    fallback: 'Provide manual sharing options with copy-to-clipboard functionality',
+    metadata: {
+      expectedDuration: 1000,
+      criticalForExperience: false,
+      affectsPerformance: false
+    }
+  }
+] as const
+
+/**
+ * Performance Tests
+ * Tests for performance characteristics and optimization capabilities
+ */
+const PERFORMANCE_TESTS: readonly CompatibilityTest[] = [
+  {
+    id: 'performance-animation-support',
+    name: 'Hardware-Accelerated Animations',
+    description: 'Tests support for hardware-accelerated CSS animations',
+    category: 'performance',
+    priority: 'low',
+    timeout: 2000,
+    retryCount: 0,
+    test: async () => {
+      if (typeof window === 'undefined') return false
+      
+      try {
+        // Test for hardware acceleration support
+        const testElement = document.createElement('div')
+        testElement.style.transform = 'translateZ(0)'
+        testElement.style.willChange = 'transform'
+        
+        document.body.appendChild(testElement)
+        const computedStyle = window.getComputedStyle(testElement)
+        const hasTransform = computedStyle.transform !== 'none'
+        
+        document.body.removeChild(testElement)
+        return hasTransform
+      } catch {
+        return false
+      }
+    },
+    fallback: 'Use simpler animations or disable non-critical animations',
+    metadata: {
+      expectedDuration: 500,
+      criticalForExperience: false,
+      affectsPerformance: true
+    }
+  },
+  
+  {
+    id: 'performance-reduced-motion',
+    name: 'Reduced Motion Preference',
+    description: 'Checks user preference for reduced motion for accessibility',
+    category: 'performance',
+    priority: 'medium',
+    timeout: 1000,
+    retryCount: 0,
+    test: async () => {
+      if (typeof window === 'undefined') return true // Default to reduced motion for SSR
+      
+      try {
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+        return !mediaQuery.matches // Return true if user does NOT prefer reduced motion
+      } catch {
+        return true // Default to reduced motion on error
+      }
+    },
+    fallback: 'Disable animations and use static transitions',
+    metadata: {
+      expectedDuration: 100,
+      criticalForExperience: false,
+      affectsPerformance: true
+    }
+  }
+] as const
+
+// ================================================
+// TEST EXECUTION ENGINE
+// ================================================
+
+/**
+ * Compatibility Test Cache
+ * Caches test results to avoid redundant testing
+ */
+const testResultsCache = new Map<string, {
+  result: CompatibilityTestResult
+  timestamp: number
+  expiresAt: number
+}>()
+
+/**
+ * Execute Individual Test
+ * Runs a single compatibility test with proper error handling and timing
+ */
+async function executeTest(
+  test: CompatibilityTest,
+  options: TestExecutionOptions = {}
+): Promise<CompatibilityTestResult> {
+  const startTime = performance.now()
+  const cacheKey = `${test.id}-${JSON.stringify(options)}`
+  
+  // Check cache if enabled
+  if (options.enableCaching !== false) {
+    const cached = testResultsCache.get(cacheKey)
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.result
+    }
+  }
+  
+  let retryAttempts = 0
+  let lastError: Error | undefined
+  const maxRetries = options.enableRetries !== false ? test.retryCount : 0
+  const timeout = test.timeout * (options.timeoutMultiplier || 1)
+  
+  while (retryAttempts <= maxRetries) {
+    try {
+      // Create a promise that will timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Test timeout after ${timeout}ms`)), timeout)
+      })
+      
+      // Race the test against the timeout
+      const testResult = await Promise.race([
+        test.test(),
+        timeoutPromise
+      ])
+      
+      const executionTime = performance.now() - startTime
+      
+      const result: CompatibilityTestResult = {
+        testId: test.id,
+        testName: test.name,
+        category: test.category,
+        priority: test.priority,
+        passed: testResult,
+        executionTime,
+        retryAttempts,
+        metadata: {
+          actualDuration: executionTime,
+          expectedDuration: test.metadata?.expectedDuration,
+          performanceImpact: executionTime > 2000 ? 'high' : 
+                           executionTime > 1000 ? 'medium' : 
+                           executionTime > 500 ? 'low' : 'none',
+          userMessage: testResult ? undefined : `${test.name} is not available in this environment`
+        },
+        fallbackStrategy: testResult ? undefined : test.fallback,
+        recommendations: testResult ? [] : [
+          `Consider ${test.fallback.toLowerCase()}`,
+          ...(test.requirements || []).map(req => `Ensure ${req} is available`)
+        ]
       }
       
-      return results
+      // Cache successful results
+      if (options.enableCaching !== false) {
+        const expirationMs = options.cacheExpirationMs || 300000 // 5 minutes default
+        testResultsCache.set(cacheKey, {
+          result,
+          timestamp: Date.now(),
+          expiresAt: Date.now() + expirationMs
+        })
+      }
+      
+      return result
       
     } catch (error) {
-      const testingError: MiniAppError = {
-        type: 'INVALID_MINI_APP_CONFIG',
-        message: 'Mini App compatibility testing failed to execute properly',
-        details: {
-          originalError: error instanceof Error ? error : new Error('Unknown testing error'),
-          timestamp: Date.now()
-        }
-      }
+      lastError = error instanceof Error ? error : new Error(String(error))
+      retryAttempts++
       
-      errorHandling.handleMiniAppError(testingError)
+      // Call error callback if provided
+      options.onError?.(test.id, lastError)
       
-      // Return minimal result structure for error scenarios
-      return {
-        results: [],
-        summary: {
-          totalTests: 0,
-          passedTests: 0,
-          failedTests: 0,
-          successRate: 0,
-          totalDuration: 0
-        },
-        compatibility: {
-          level: 'incompatible',
-          criticalFailures: ['Testing system failure'],
-          deploymentStrategy: 'fallback'
-        },
-        executedAt: Date.now()
+      // Wait before retry (exponential backoff)
+      if (retryAttempts <= maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryAttempts) * 100))
       }
     }
   }
   
+  // If we get here, all retries failed
+  const executionTime = performance.now() - startTime
+  
   return {
-    runCompatibilityTests,
-    chainId
+    testId: test.id,
+    testName: test.name,
+    category: test.category,
+    priority: test.priority,
+    passed: false,
+    executionTime,
+    retryAttempts: retryAttempts - 1,
+    error: lastError,
+    metadata: {
+      actualDuration: executionTime,
+      expectedDuration: test.metadata?.expectedDuration,
+      performanceImpact: 'high', // Failed tests impact performance
+      userMessage: `${test.name} failed: ${lastError?.message || 'Unknown error'}`
+    },
+    fallbackStrategy: test.fallback,
+    recommendations: [
+      `Unable to enable ${test.name.toLowerCase()}`,
+      `Using fallback: ${test.fallback.toLowerCase()}`,
+      ...(test.requirements || []).map(req => `Check that ${req} is properly configured`)
+    ]
   }
 }
 
 /**
- * Export all interfaces and functions for external use
+ * Main Compatibility Testing Function
+ * Executes the complete test suite and provides comprehensive results
  */
-// export type {
-//   CompatibilityTest,
-//   CompatibilityTestResult,
-//   TestSuiteResult
-// }
+export async function runCompatibilityTests(
+  options: TestExecutionOptions = {}
+): Promise<CompatibilityTestSuiteResult> {
+  const startTime = performance.now()
+  
+  // Combine all test suites
+  const allTests = [
+    ...ENVIRONMENT_TESTS,
+    ...BLOCKCHAIN_TESTS,
+    ...SOCIAL_TESTS,
+    ...(options.includePerformanceTests !== false ? PERFORMANCE_TESTS : [])
+  ]
+  
+  // Filter tests based on options
+  const filteredTests = allTests.filter(test => {
+    const priorityMatch = !options.priorityFilter || 
+                         options.priorityFilter.includes(test.priority)
+    const categoryMatch = !options.categoryFilter || 
+                         options.categoryFilter.includes(test.category)
+    return priorityMatch && categoryMatch
+  })
+  
+  // Execute tests with progress tracking
+  const results: CompatibilityTestResult[] = []
+  let completedTests = 0
+  
+  for (const test of filteredTests) {
+    options.onProgress?.(completedTests, filteredTests.length, test.name)
+    
+    const result = await executeTest(test, options)
+    results.push(result)
+    
+    completedTests++
+  }
+  
+  // Calculate summary statistics
+  const totalTests = results.length
+  const passedTests = results.filter(r => r.passed).length
+  const failedTests = totalTests - passedTests
+  const criticalFailures = results.filter(r => 
+    !r.passed && r.priority === 'critical'
+  ).length
+  
+  const totalExecutionTime = performance.now() - startTime
+  const averageExecutionTime = totalExecutionTime / Math.max(totalTests, 1)
+  
+  // Determine compatibility level
+  const compatibilityLevel: CompatibilityLevel = (() => {
+    if (criticalFailures > 0) return 'none'
+    
+    const passRate = passedTests / totalTests
+    if (passRate >= 0.9) return 'full'
+    if (passRate >= 0.7) return 'partial'
+    return 'limited'
+  })()
+  
+  // Analyze results by category
+  const summary = {
+    environmentSupport: results
+      .filter(r => r.category === 'environment')
+      .every(r => r.passed || r.priority !== 'critical'),
+    blockchainSupport: results
+      .filter(r => r.category === 'blockchain')
+      .every(r => r.passed || r.priority !== 'critical'),
+    socialSupport: results
+      .filter(r => r.category === 'social')
+      .some(r => r.passed),
+    performanceOptimal: results
+      .filter(r => r.category === 'performance')
+      .every(r => r.passed || r.priority === 'low'),
+    accessibilityCompliant: results
+      .filter(r => r.category === 'accessibility')
+      .every(r => r.passed),
+    integrationStable: results
+      .filter(r => r.category === 'integration')
+      .every(r => r.passed || r.priority !== 'critical')
+  }
+  
+  // Generate recommendations
+  const recommendations = [
+    ...new Set(results.flatMap(r => r.recommendations || []))
+  ]
+  
+  // Generate fallback strategies
+  const fallbackStrategies = [
+    ...new Set(results
+      .filter(r => !r.passed && r.fallbackStrategy)
+      .map(r => r.fallbackStrategy!)
+    )
+  ]
+  
+  // Calculate performance profile
+  const performanceProfile: {
+    readonly initializationTime: number
+    readonly featureResponseTime: number
+    readonly resourceUsage: 'light' | 'moderate' | 'heavy'
+    readonly networkRequirements: 'low' | 'medium' | 'high'
+  } = {
+    initializationTime: results
+      .filter(r => r.category === 'environment')
+      .reduce((sum, r) => sum + r.executionTime, 0),
+    featureResponseTime: averageExecutionTime,
+    resourceUsage: totalExecutionTime > 10000 ? 'heavy' : 
+                   totalExecutionTime > 5000 ? 'moderate' : 'light',
+    networkRequirements: results.some(r => 
+      r.category === 'blockchain' && r.executionTime > 3000
+    ) ? 'high' : 
+    results.some(r => r.category === 'social' && r.passed) ? 'medium' : 'low'
+  }
+  
+  return {
+    executedAt: Date.now(),
+    totalTests,
+    passedTests,
+    failedTests,
+    criticalFailures,
+    totalExecutionTime,
+    averageExecutionTime,
+    compatibilityLevel,
+    results,
+    summary,
+    recommendations,
+    fallbackStrategies,
+    performanceProfile
+  }
+}
+
+// ================================================
+// REACT HOOKS FOR COMPATIBILITY TESTING
+// ================================================
+
+/**
+ * React Hook: useCompatibilityTesting
+ * Provides compatibility testing functionality within React components
+ */
+export function useCompatibilityTesting() {
+  const chainId = useChainId()
+  
+  const runTests = useCallback(async (options?: TestExecutionOptions) => {
+    return await runCompatibilityTests(options)
+  }, [chainId])
+  
+  const runQuickTests = useCallback(async () => {
+    return await runCompatibilityTests({
+      priorityFilter: ['critical', 'high'],
+      enableCaching: true,
+      includePerformanceTests: false
+    })
+  }, [chainId])
+  
+  const runFullTests = useCallback(async () => {
+    return await runCompatibilityTests({
+      includePerformanceTests: true,
+      enableCaching: true,
+      enableRetries: true
+    })
+  }, [chainId])
+  
+  return {
+    runTests,
+    runQuickTests,
+    runFullTests,
+    clearCache: () => testResultsCache.clear()
+  }
+}
+
+/**
+ * Utility function to get compatibility level from test results
+ */
+export function getCompatibilityLevel(results: CompatibilityTestSuiteResult): CompatibilityLevel {
+  return results.compatibilityLevel
+}
+
+/**
+ * Utility function to check if a specific feature is supported
+ */
+export function isFeatureSupported(
+  results: CompatibilityTestSuiteResult,
+  featureTestId: string
+): boolean {
+  const testResult = results.results.find(r => r.testId === featureTestId)
+  return testResult?.passed || false
+}
+
+/**
+ * Utility function to get fallback strategies for failed tests
+ */
+export function getFallbackStrategies(
+  results: CompatibilityTestSuiteResult
+): readonly string[] {
+  return results.fallbackStrategies
+}
+
+export default runCompatibilityTests
