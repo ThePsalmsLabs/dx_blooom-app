@@ -40,7 +40,8 @@ import {
   Shield,
   AlertCircle,
   CheckCircle,
-  WifiOff
+  WifiOff,
+  Users
 } from 'lucide-react'
 import {
     Button,
@@ -202,6 +203,13 @@ export function AppLayout({
         icon: Compass,
         roles: ['disconnected', 'consumer', 'creator', 'admin'],
         isActive: pathname.startsWith('/browse')
+      },
+      {
+        label: 'Creators',
+        href: '/creators',
+        icon: Users,
+        roles: ['disconnected', 'consumer', 'creator', 'admin'],
+        isActive: pathname.startsWith('/creators')
       }
     ]
 
