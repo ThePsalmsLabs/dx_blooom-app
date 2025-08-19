@@ -89,7 +89,6 @@ export function CreatorCard({
                   creatorAddress={creatorAddress}
                   size="sm"
                   variant="outline"
-                  showPrice={false}
                   className="text-xs h-7 px-2"
                 />
               )}
@@ -229,7 +228,6 @@ export function CreatorCard({
                   <SubscribeButton
                     creatorAddress={creatorAddress}
                     size="sm"
-                    showPrice={false}
                   />
                 )}
               </div>
