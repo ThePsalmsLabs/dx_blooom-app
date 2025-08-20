@@ -31,7 +31,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useAccount } from 'wagmi'
 import type { Address } from 'viem'
 import { formatUnits } from 'viem'
 
@@ -53,7 +53,6 @@ import { Button } from '@/components/ui/button'
 // Import icons from your existing system
 import { 
   ShoppingCart, 
-  Users, 
   TrendingUp, 
   AlertCircle, 
   CheckCircle,
@@ -168,13 +167,12 @@ export function MiniAppContentPurchaseIntegration({
   
   // Wallet and chain information
   const { address, isConnected } = useAccount()
-  const chainId = useChainId()
   
   // MiniApp context and capabilities
   const { 
     isMiniApp, 
     isSDKReady: isMiniAppReady,
-    supportsBatchTransactions 
+    supportsBatchTransactions
   } = useMiniApp()
   
   // Your sophisticated purchase flow integration
@@ -182,7 +180,7 @@ export function MiniAppContentPurchaseIntegration({
   
   // Real-time content and platform data
   const { data: contentData, isLoading: isContentLoading, error: contentError } = useContentById(contentId)
-  const { platformStats, creatorStats, isLoading: isAnalyticsLoading } = usePlatformAnalytics()
+  const { platformStats: analyticsData, isLoading: isAnalyticsLoading } = usePlatformAnalytics()
   
   // ===== STATE MANAGEMENT =====
   
@@ -222,9 +220,9 @@ export function MiniAppContentPurchaseIntegration({
         currency: 'USDC'
       },
       stats: {
-        purchaseCount: 0, // Content interface doesn't have purchaseCount, using default
-        viewCount: 0, // Using default values since these aren't available in Content interface
-        shareCount: 0 // Using default values since these aren't available in Content interface
+        purchaseCount: 0, // This would need to be tracked separately or via analytics
+        viewCount: 0, // This would need to be tracked separately or via analytics
+        shareCount: 0 // This would need to be tracked separately or via analytics
       },
       access: {
         hasAccess: purchaseFlow.hasAccess,
@@ -517,8 +515,7 @@ export function MiniAppContentPurchaseIntegration({
                   title={contentDisplayData.title}
                   className="w-full"
                   onPurchaseSuccess={() => handlePurchaseInitiate()}
-                  showContext={purchaseFlow.canUseBatchTransaction}
-                  fullWidth={true}
+                  showContext={enableSocialFeatures}
                 />
                 
                 {/* Batch transaction indicator */}
@@ -551,7 +548,7 @@ export function MiniAppContentPurchaseIntegration({
       </Card>
       
       {/* Platform Analytics Integration */}
-      {showAnalytics && platformStats && !isAnalyticsLoading && (
+      {showAnalytics && analyticsData && !isAnalyticsLoading && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -562,12 +559,12 @@ export function MiniAppContentPurchaseIntegration({
           <CardContent>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <div className="font-semibold">{platformStats.totalContent || 0}</div>
-                <div className="text-muted-foreground">Total Content</div>
+                <div className="font-semibold">{Number(analyticsData.activeContent)}</div>
+                <div className="text-muted-foreground">Active Content</div>
               </div>
               <div>
-                <div className="font-semibold">{platformStats.activeContent || 0}</div>
-                <div className="text-muted-foreground">Active Content</div>
+                <div className="font-semibold">{Number(analyticsData.totalContent)}</div>
+                <div className="text-muted-foreground">Total Content</div>
               </div>
             </div>
           </CardContent>
