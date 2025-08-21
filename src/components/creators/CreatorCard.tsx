@@ -20,13 +20,15 @@ interface CreatorCardProps {
   variant?: 'default' | 'compact' | 'featured'
   showSubscribeButton?: boolean
   className?: string
+  onClick?: () => void
 }
 
 export function CreatorCard({ 
   creatorAddress, 
   variant = 'default',
   showSubscribeButton = true,
-  className 
+  className,
+  onClick 
 }: CreatorCardProps) {
   const router = useRouter()
   const creatorProfile = useCreatorProfile(creatorAddress)
@@ -48,7 +50,7 @@ export function CreatorCard({
   // Compact variant for mobile/mini app
   if (variant === 'compact') {
     return (
-      <Card className={`hover:shadow-md transition-shadow cursor-pointer ${className}`}>
+      <Card className={`hover:shadow-md transition-shadow cursor-pointer ${className}`} onClick={onClick}>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <Avatar className="w-12 h-12">
@@ -179,7 +181,7 @@ export function CreatorCard({
 
   // Default variant
   return (
-    <Card className={`hover:shadow-lg transition-shadow cursor-pointer ${className}`}>
+    <Card className={`hover:shadow-lg transition-shadow cursor-pointer ${className}`} onClick={onClick}>
       <CardHeader className="pb-4">
         <div className="flex items-start gap-4">
           <Avatar className="w-16 h-16">

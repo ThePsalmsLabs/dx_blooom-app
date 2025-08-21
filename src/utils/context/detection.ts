@@ -1320,20 +1320,34 @@ export function useContextDetection() {
   
   // Monitor for environment changes
   useEffect(() => {
+    let resizeTimeout: NodeJS.Timeout
+    let lastDetectionTime = 0
+    const MIN_DETECTION_INTERVAL = 1000 // Minimum 1 second between detections
+    
     const handleResize = () => {
-      // Re-detect when window size changes significantly
-      if (detectionRef.current) {
-        const oldWidth = detectionRef.current.deviceProfile.screenSize.width
-        const newWidth = window.innerWidth
-        const changePercentage = Math.abs(newWidth - oldWidth) / oldWidth
-        
-        if (changePercentage > 0.2) {
-          // Significant size change, re-detect
-          const newDetection = performCompleteContextDetection()
-          detectionRef.current = newDetection
-          setContextData(newDetection)
+      // Debounce resize events and prevent rapid re-detections
+      clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(() => {
+        const now = Date.now()
+        if (now - lastDetectionTime < MIN_DETECTION_INTERVAL) {
+          return // Skip if too soon since last detection
         }
-      }
+        
+        // Re-detect when window size changes significantly
+        if (detectionRef.current) {
+          const oldWidth = detectionRef.current.deviceProfile.screenSize.width
+          const newWidth = window.innerWidth
+          const changePercentage = Math.abs(newWidth - oldWidth) / oldWidth
+          
+          if (changePercentage > 0.2) {
+            // Significant size change, re-detect
+            const newDetection = performCompleteContextDetection()
+            detectionRef.current = newDetection
+            setContextData(newDetection)
+            lastDetectionTime = now
+          }
+        }
+      }, 250) // 250ms debounce
     }
     
     const handleVisibilityChange = () => {
@@ -1352,6 +1366,7 @@ export function useContextDetection() {
     document.addEventListener('visibilitychange', handleVisibilityChange)
     
     return () => {
+      clearTimeout(resizeTimeout)
       window.removeEventListener('resize', handleResize)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }

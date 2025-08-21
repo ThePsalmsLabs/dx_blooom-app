@@ -110,16 +110,7 @@ interface MiniKitContext {
  * if the AuthProvider isn't available. This makes components more resilient.
  */
 // Importing directly avoids require() and preserves type safety
-import { useAuth as useAuthContext } from '@/components/providers/AuthProvider'
-
-function useOptionalAuth() {
-  try {
-    return useAuthContext()
-  } catch {
-    console.warn('AuthProvider not available - using fallback behavior')
-    return null
-  }
-}
+import { useOptionalAuth } from '@/components/providers/AuthProvider'
 
 /**
  * Enhanced Farcaster Context Hook with Optional Auth

@@ -118,3 +118,9 @@ export function useAuth() {
   }
   return context
 }
+
+// Optional version that returns null instead of throwing
+export function useOptionalAuth() {
+  const context = useContext(AuthContext)
+  return context || null
+}

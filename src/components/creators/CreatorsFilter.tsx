@@ -19,7 +19,7 @@ import {
 export interface CreatorFilters {
   search: string
   verified: boolean | null // null = all, true = verified only, false = unverified only
-  sortBy: 'newest' | 'earnings' | 'subscribers' | 'content' | 'alphabetical'
+  sortBy: 'newest' | 'earnings' | 'subscribers' | 'content' | 'alphabetical' | 'trending'
   sortOrder: 'asc' | 'desc'
   minSubscriptionPrice?: number
   maxSubscriptionPrice?: number

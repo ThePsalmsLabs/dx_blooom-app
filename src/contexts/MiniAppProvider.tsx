@@ -126,6 +126,7 @@ export interface EnhancedMiniAppContextValue {
   // SDK State Management
   readonly readyState: ReadyState
   readonly isSDKReady: boolean
+  readonly isReady: boolean // Add missing isReady property
   readonly sdkContext: Awaited<typeof sdk.context> | null
   
   // User and Social Integration
@@ -550,6 +551,7 @@ export function EnhancedMiniAppProvider({
     // SDK State Management
     readyState,
     isSDKReady: derivedState.isSDKReady,
+    isReady: derivedState.isSDKReady, // Add isReady property mapped to isSDKReady
     sdkContext,
     
     // User and Social Integration
