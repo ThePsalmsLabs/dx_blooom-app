@@ -51,72 +51,21 @@ import { useAccount, useConnect, useDisconnect, useChainId } from 'wagmi'
 import { useQueryClient, QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 
-// Define the missing types inline since they don't exist yet
-export type ApplicationContext = 'web' | 'miniapp' | 'hybrid'
-export type ViewportSize = 'mobile' | 'tablet' | 'desktop'
-export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'reconnecting'
-export type LoadingState = 'idle' | 'loading' | 'success' | 'error'
-export type UserRole = 'disconnected' | 'user' | 'creator' | 'admin'
-
-export interface UnifiedUserProfile {
-  readonly address?: string | null
-  readonly connectionStatus: ConnectionStatus
-  readonly userRole: UserRole
-  readonly isRegisteredCreator: boolean
-  readonly capabilities: {
-    readonly canCreateContent: boolean
-    readonly canPurchaseContent: boolean
-    readonly canShareSocially: boolean
-    readonly canUseBatchTransactions: boolean
-  }
-}
-
-export interface UnifiedApplicationState {
-  readonly context: ApplicationContext
-  readonly viewport: ViewportSize
-  readonly user: UnifiedUserProfile
-  readonly navigation: {
-    readonly sections: readonly any[]
-    readonly currentPath: string
-    readonly isNavigating: boolean
-  }
-  readonly content: {
-    readonly isLoading: LoadingState
-    readonly error: Error | null
-    readonly lastRefresh: Date | null
-  }
-  readonly ui: {
-    readonly theme: 'light' | 'dark' | 'system'
-    readonly isReducedMotion: boolean
-    readonly announcements: readonly string[]
-  }
-  readonly performance: {
-    readonly isOptimizedMode: boolean
-    readonly connectionQuality: 'fast' | 'slow' | 'offline'
-    readonly resourcesLoaded: boolean
-  }
-  readonly errors: {
-    readonly critical: Error | null
-    readonly recoverable: readonly Error[]
-    readonly dismissed: readonly string[]
-  }
-}
-
-export interface UnifiedAppContextValue {
-  readonly state: UnifiedApplicationState
-  readonly actions: any
-  readonly utils: any
-}
-
-export interface UnifiedAppProviderProps {
-  readonly children: React.ReactNode
-  readonly initialTheme?: 'light' | 'dark' | 'system'
-}
-
-export type StateAction = 
-  | { type: 'USER_ROLE_UPDATED'; userRole: UserRole }
-  | { type: 'ERROR_DISMISSED'; errorId: string }
-  | { type: 'ERRORS_CLEARED' }
+// Import unified app provider types
+import type {
+  ApplicationContext,
+  ViewportSize,
+  ConnectionStatus,
+  LoadingState,
+  UserRole,
+  UnifiedUserProfile,
+  UnifiedApplicationState,
+  UnifiedAppContextValue,
+  UnifiedAppProviderProps,
+  StateAction,
+  ApplicationActions,
+  ApplicationUtils
+} from '@/types/unified-app'
 
 import type {
   MiniAppEnvironment,
