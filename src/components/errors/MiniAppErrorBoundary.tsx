@@ -918,6 +918,4 @@ export function useErrorRecovery() {
     recoverFromNetworkError,
     recoverFromSDKError
   }
-}
-
-export default MiniAppErrorBoundary
+}export default MiniAppErrorBoundary

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { Metadata } from 'next'
 import { PlatformInsightsDashboard } from '@/components/analytics/PlatformInsightsDashboard'
 import { RouteGuards } from '@/components/layout/RouteGuards'
@@ -33,7 +33,9 @@ export default function PlatformInsightsPage() {
         </div>
 
         {/* Platform Insights Dashboard */}
-        <PlatformInsightsDashboard />
+        <Suspense fallback={<div>Loading platform insights...</div>}>
+          <PlatformInsightsDashboard />
+        </Suspense>
 
         {/* Strategic Context */}
         <div className="grid md:grid-cols-2 gap-6">

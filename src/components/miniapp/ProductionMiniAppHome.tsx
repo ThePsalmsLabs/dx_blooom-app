@@ -4,9 +4,10 @@
 import React, { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import { ProductionMiniAppLayout } from '@/components/miniapp/ProductionMiniAppLayout'
-import { useMiniApp } from '@/components/providers/EnhancedMiniAppProvider'
+import { useMiniApp } from '@/contexts/MiniAppProvider'
 import { useMiniAppOptimization } from '@/hooks/miniapp/useMiniAppOptimization'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
+import { miniAppAnalytics } from '@/lib/miniapp/analytics'
 
 const ContentBrowser = dynamic(() => import('@/components/miniapp/EnhancedContentBrowser'), {
 	loading: () => <ContentBrowserSkeleton />, 
@@ -79,24 +80,25 @@ class MiniAppErrorBoundary extends React.Component<{ children: React.ReactNode; 
 }
 
 export function ProductionMiniAppHome(): React.ReactElement {
-	const { isMiniApp, isReady, capabilities, track } = useMiniApp()
+	// MiniApp context and state
+	const { isMiniApp, isSDKReady: isReady, compatibilityLevel, socialUser, supportsAdvancedSharing, supportsBatchTransactions } = useMiniApp()
 	const { optimization } = useMiniAppOptimization()
 	const [shareOpen, setShareOpen] = React.useState(false)
 	const [sharePayload, setSharePayload] = React.useState<{ title?: string; url?: string; creator?: string } | null>(null)
 
 	// Map capabilities to match the expected interface
 	const mappedCapabilities = {
-		canShare: capabilities.socialSharing,
-		canSignIn: capabilities.analytics,
-		canSendTransactions: capabilities.payments,
-		hasNotifications: capabilities.hasNotifications || false
+		canShare: supportsAdvancedSharing,
+		canSignIn: compatibilityLevel === 'full',
+		canSendTransactions: supportsBatchTransactions,
+		hasNotifications: compatibilityLevel === 'full'
 	}
 
 	React.useEffect(() => {
 		if (isReady) {
-			track('miniapp_initialized', {
+			miniAppAnalytics.track('miniapp_initialized', {
 				isMiniApp,
-				capabilities,
+				capabilities: mappedCapabilities,
 				optimization: { 
 					connectionType: optimization.connectionType, 
 					dataUsageMode: optimization.dataUsageMode, 
@@ -104,7 +106,7 @@ export function ProductionMiniAppHome(): React.ReactElement {
 				},
 			})
 		}
-	}, [isReady, isMiniApp, capabilities, optimization, track])
+	}, [isReady, isMiniApp, mappedCapabilities, optimization])
 
 	if (!isReady) {
 		return (
@@ -149,7 +151,7 @@ export function ProductionMiniAppHome(): React.ReactElement {
 					<ContentBrowser
 						optimized={optimization}
 						capabilities={mappedCapabilities}
-						onAnalyticsEvent={track}
+						onAnalyticsEvent={(event, properties) => miniAppAnalytics.track(event, properties)}
 						onPurchaseSuccess={handlePurchaseSuccess}
 						onShareIntent={handleShareIntent}
 					/>

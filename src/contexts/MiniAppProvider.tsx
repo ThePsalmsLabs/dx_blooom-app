@@ -41,7 +41,7 @@ import { useAccount, useChainId } from 'wagmi'
 import { sdk } from '@farcaster/miniapp-sdk'
 
 // Import existing hooks and utilities for seamless integration
-import { useAppNavigation } from '@/hooks/miniapp/useAppNavigation'
+// Note: Removed useAppNavigation import to avoid circular dependency
 
 // Type definitions for strict TypeScript
 interface EthereumProvider {
@@ -313,10 +313,9 @@ export function EnhancedMiniAppProvider({
   // HOOKS AND STATE MANAGEMENT
   // ================================================
   
-  // Wallet and navigation integration
+  // Wallet integration
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
-  const { navigate } = useAppNavigation()
   
   // Core state management
   const [context, setContext] = useState<ApplicationContext>(() => 
@@ -387,6 +386,13 @@ export function EnhancedMiniAppProvider({
   
   const clearError = useCallback(() => {
     setError(null)
+  }, [])
+  
+  // Simple navigate function to avoid circular dependency with useAppNavigation
+  const navigate = useCallback((path: string) => {
+    if (typeof window !== 'undefined') {
+      window.location.href = path
+    }
   }, [])
   
   // ================================================

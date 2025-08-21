@@ -2,7 +2,7 @@
 
 // Production-ready layout integrating MiniApp provider and optimization
 import React from 'react'
-import { EnhancedMiniAppProvider } from '@/components/providers/EnhancedMiniAppProvider'
+import { EnhancedMiniAppProvider } from '@/contexts/MiniAppProvider'
 import { useMiniAppOptimization } from '@/hooks/miniapp/useMiniAppOptimization'
 
 interface ProductionMiniAppLayoutProps {

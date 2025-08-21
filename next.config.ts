@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  experimental: {
-    serverComponentsExternalPackages: ['@farcaster/miniapp-sdk'],
-  },
+  // experimental: {
+  //   serverComponentsExternalPackages: ['@farcaster/miniapp-sdk'],
+  // },
 };
 
 export default nextConfig;

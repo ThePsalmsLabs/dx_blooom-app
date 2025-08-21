@@ -1,8 +1,10 @@
+'use client'
+
 // src/app/mini/layout.tsx
 import React from 'react'
 import Link from 'next/link'
 import { AppProviders } from '@/components/providers/MiniKitProvider'
-import { EnhancedMiniAppProvider } from '@/components/providers/EnhancedMiniAppProvider'
+import { EnhancedMiniAppProvider } from '@/contexts/MiniAppProvider'
 import { 
   Home, 
   Search, 
