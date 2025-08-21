@@ -190,7 +190,7 @@ export function useEnhancedContentPurchaseFlow(
   const finalConfig = useMemo(() => ({ ...DEFAULT_ENHANCED_CONFIG, ...config }), [config])
   
   // Phase 1 MiniApp context detection - this leverages your existing provider system
-  const { context: miniAppContext, isMiniApp, isSDKReady: isMiniAppReady, socialUser } = useMiniApp()
+  const { context: miniAppContext, isMiniApp, isReady: isMiniAppReady, socialUser } = useMiniApp()
   
   // Contract addresses for current network
   const contractAddresses = useMemo(() => {
