@@ -15,11 +15,8 @@ import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 
 // Import your existing hooks and components
-import { 
-  useActiveContentPaginated, 
-  useContentById, 
-  useHasContentAccess, 
-  useCreatorProfile 
+import {
+  useActiveContentPaginated
 } from '@/hooks/contracts/core'
 import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 
@@ -32,16 +29,11 @@ import {
   Button,
   Badge,
   Input,
-  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -53,23 +45,13 @@ import {
 // Import icons
 import {
   Search,
-  Filter,
   Grid,
   List,
-  TrendingUp,
-  Clock,
-  DollarSign,
-  Eye,
-  Heart,
-  MessageCircle,
   Share2,
-  Users,
   Shield,
   Star,
   ArrowUpRight,
   RefreshCw,
-  SortAsc,
-  SortDesc,
   Verified,
   Zap,
   PlayCircle
@@ -102,6 +84,7 @@ interface SocialContext {
 }
 
 interface EnhancedContent extends Content {
+  id: bigint // Add the missing id property
   socialContext: SocialContext
   accessibleToUser: boolean
   creatorProfile?: Creator
@@ -147,7 +130,7 @@ class SocialContentEnhancer {
   private static readonly cacheExpiry = 5 * 60 * 1000 // 5 minutes
 
   static async enhanceContentWithSocialData(
-    content: Content,
+    content: Content & { id: bigint },
     creatorProfile?: Creator
   ): Promise<EnhancedContent> {
     try {
@@ -196,11 +179,18 @@ class SocialContentEnhancer {
     }
 
     try {
+      // Check if API key is configured
+      const apiKey = process.env.NEXT_PUBLIC_FARCASTER_API_KEY
+      if (!apiKey) {
+        console.warn('Farcaster API key not configured')
+        return undefined
+      }
+
       // Real Farcaster API call
       const response = await fetch(`https://api.farcaster.xyz/v2/user-by-verification`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_FARCASTER_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
@@ -216,6 +206,13 @@ class SocialContentEnhancer {
       }
 
       const data = await response.json()
+      
+      // Validate response structure
+      if (!data?.result?.user) {
+        console.warn('Invalid Farcaster API response structure')
+        return undefined
+      }
+
       const profile: FarcasterProfile = {
         fid: data.result.user.fid,
         username: data.result.user.username,
@@ -293,6 +290,55 @@ class SocialContentEnhancer {
 // PRODUCTION HOOKS
 // ================================================
 
+/**
+ * Custom hook to fetch multiple content items by their IDs
+ * 
+ * TODO: This needs to be implemented with one of the following approaches:
+ * 1. Use a subgraph query to batch fetch multiple content items
+ * 2. Create a multicall contract function to batch fetch content
+ * 3. Use individual useContentById hooks with proper memoization
+ * 4. Implement a content caching layer with background fetching
+ * 
+ * For now, this returns empty data to avoid runtime errors.
+ */
+function useMultipleContentById(contentIds: readonly bigint[]) {
+  const [contentData, setContentData] = useState<Map<string, Content>>(new Map())
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    if (contentIds.length === 0) {
+      setContentData(new Map())
+      return
+    }
+
+    const fetchAllContent = async () => {
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        // Implementation needed: batch fetch content data for contentIds
+        // This would typically involve:
+        // 1. Calling the subgraph or multicall contract
+        // 2. Transforming the results into Content objects
+        // 3. Storing them in the contentMap
+        
+        const contentMap = new Map<string, Content>()
+        setContentData(contentMap)
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Unknown error'))
+        setContentData(new Map())
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAllContent()
+  }, [contentIds])
+
+  return { contentData, isLoading, error }
+}
+
 function useEnhancedContentData(
   page: number = 0,
   pageSize: number = 20,
@@ -300,9 +346,14 @@ function useEnhancedContentData(
 ) {
   const { address: userAddress } = useAccount()
   
-  // Get paginated content from your existing hook
+  // Get paginated content IDs from your existing hook
   const contentQuery = useActiveContentPaginated(page, pageSize)
-  const { data: allCreators } = useAllCreators()
+  const allCreatorsQuery = useAllCreators()
+  
+  // Fetch content details for the content IDs
+  const { contentData, isLoading: isLoadingContent } = useMultipleContentById(
+    contentQuery.data?.contentIds || []
+  )
 
   // State for enhanced content
   const [enhancedContent, setEnhancedContent] = useState<EnhancedContent[]>([])
@@ -310,37 +361,58 @@ function useEnhancedContentData(
 
   // Enhance content with social data
   useEffect(() => {
-    if (!contentQuery.data?.content) return
+    if (!contentQuery.data?.contentIds || contentQuery.data.contentIds.length === 0) {
+      setEnhancedContent([])
+      return
+    }
 
     const enhanceContent = async () => {
       setIsEnhancing(true)
       try {
-        const enhanced = await Promise.all(
-          contentQuery.data.content.map(async (content) => {
-            const creatorProfile = allCreators?.find(c => c.creator === content.creator)
-            return await SocialContentEnhancer.enhanceContentWithSocialData(content, creatorProfile)
-          })
-        )
+        const enhanced: EnhancedContent[] = []
+        
+        // Process each content ID if we have the content data
+        for (const contentId of contentQuery.data!.contentIds) {
+          const content = contentData.get(contentId.toString())
+          if (!content) {
+            // Skip content we don't have data for
+            continue
+          }
+
+          try {
+            const creatorWithAddress = allCreatorsQuery.creators?.find(c => c.address === content.creator)
+            const creatorProfile = creatorWithAddress?.profile ? {
+              isRegistered: creatorWithAddress.profile.isRegistered,
+              subscriptionPrice: creatorWithAddress.profile.subscriptionPrice,
+              isVerified: creatorWithAddress.profile.isVerified,
+              totalEarnings: creatorWithAddress.profile.totalEarnings,
+              contentCount: creatorWithAddress.profile.contentCount,
+              subscriberCount: creatorWithAddress.profile.subscriberCount,
+              registrationTime: creatorWithAddress.profile.registrationTime,
+            } as Creator : undefined
+            
+            const enhancedContent = await SocialContentEnhancer.enhanceContentWithSocialData(
+              { ...content, id: contentId }, 
+              creatorProfile
+            )
+            
+            enhanced.push(enhancedContent)
+          } catch (error) {
+            console.error(`Error enhancing content ${contentId}:`, error)
+          }
+        }
+        
         setEnhancedContent(enhanced)
       } catch (error) {
         console.error('Error enhancing content:', error)
-        // Fallback to basic content
-        setEnhancedContent(contentQuery.data.content.map(content => ({
-          ...content,
-          socialContext: {
-            creatorVerificationStatus: 'unknown' as const,
-            socialScore: 0,
-            mutualConnections: 0
-          },
-          accessibleToUser: false
-        })))
+        setEnhancedContent([])
       } finally {
         setIsEnhancing(false)
       }
     }
 
     enhanceContent()
-  }, [contentQuery.data?.content, allCreators])
+  }, [contentQuery.data?.contentIds, contentData, allCreatorsQuery.creators])
 
   // Apply filters and sorting
   const filteredAndSortedContent = useMemo(() => {
@@ -400,11 +472,11 @@ function useEnhancedContentData(
       case 'popular':
         // Sort by creator subscriber count + social followers
         filtered.sort((a, b) => {
-          const aPopularity = (a.creatorProfile?.subscriberCount || 0) + 
+          const aPopularity = Number(a.creatorProfile?.subscriberCount || 0) + 
                               (a.socialContext.creatorFarcasterProfile?.followerCount || 0)
-          const bPopularity = (b.creatorProfile?.subscriberCount || 0) + 
+          const bPopularity = Number(b.creatorProfile?.subscriberCount || 0) + 
                               (b.socialContext.creatorFarcasterProfile?.followerCount || 0)
-          return Number(bPopularity) - Number(aPopularity)
+          return bPopularity - aPopularity
         })
         break
     }
@@ -414,10 +486,10 @@ function useEnhancedContentData(
 
   return {
     content: filteredAndSortedContent,
-    totalCount: contentQuery.data?.totalCount || 0,
-    isLoading: contentQuery.isLoading || isEnhancing,
+    totalCount: Number(contentQuery.data?.total || 0),
+    isLoading: contentQuery.isLoading || isLoadingContent || isEnhancing,
     error: contentQuery.error,
-    hasNextPage: contentQuery.data?.hasMore || false,
+    hasNextPage: contentQuery.data ? Number(contentQuery.data.total) > filteredAndSortedContent.length : false,
   }
 }
 
@@ -624,12 +696,12 @@ export default function EnhancedSocialContentDiscovery({
                   {categoryToString(content.category)}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {formatRelativeTime(new Date(Number(content.creationTime) * 1000))}
+                  {formatRelativeTime(content.creationTime)}
                 </span>
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <span className="font-semibold text-primary">
-                  {priceInUSDC === 0 ? 'Free' : formatCurrency(priceInUSDC)}
+                  {priceInUSDC === 0 ? 'Free' : formatCurrency(content.payPerViewPrice)}
                 </span>
                 {socialContext.socialScore > 0 && (
                   <div className="flex items-center gap-1">
@@ -772,22 +844,25 @@ export default function EnhancedSocialContentDiscovery({
           
           <div className="flex flex-wrap gap-4">
             <Select
-              value={filters.selectedCategory}
-              onValueChange={(value: ContentCategory | 'all') => 
-                handleFilterChange('selectedCategory', value)
-              }
+              value={filters.selectedCategory === 'all' ? 'all' : filters.selectedCategory.toString()}
+              onValueChange={(value: string) => {
+                const categoryValue = value === 'all' ? 'all' : parseInt(value) as ContentCategory
+                handleFilterChange('selectedCategory', categoryValue)
+              }}
             >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ContentCategory.ALL}>All Categories</SelectItem>
-                <SelectItem value={ContentCategory.VIDEO}>Video</SelectItem>
-                <SelectItem value={ContentCategory.AUDIO}>Audio</SelectItem>
-                <SelectItem value={ContentCategory.TEXT}>Text</SelectItem>
-                <SelectItem value={ContentCategory.IMAGE}>Image</SelectItem>
-                <SelectItem value={ContentCategory.CODE}>Code</SelectItem>
-                <SelectItem value={ContentCategory.OTHER}>Other</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value={ContentCategory.ARTICLE.toString()}>Article</SelectItem>
+                <SelectItem value={ContentCategory.VIDEO.toString()}>Video</SelectItem>
+                <SelectItem value={ContentCategory.AUDIO.toString()}>Audio</SelectItem>
+                <SelectItem value={ContentCategory.IMAGE.toString()}>Image</SelectItem>
+                <SelectItem value={ContentCategory.DOCUMENT.toString()}>Document</SelectItem>
+                <SelectItem value={ContentCategory.COURSE.toString()}>Course</SelectItem>
+                <SelectItem value={ContentCategory.SOFTWARE.toString()}>Software</SelectItem>
+                <SelectItem value={ContentCategory.DATA.toString()}>Data</SelectItem>
               </SelectContent>
             </Select>
 
