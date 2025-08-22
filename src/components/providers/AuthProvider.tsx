@@ -61,7 +61,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async () => {
     setIsLoading(true)
     try {
-      // The actual wallet connection is handled by RainbowKit
+      // The actual wallet connection is handled by Privy
       // This function can perform additional setup like checking creator status
       console.log('User login initiated')
     } catch (error) {

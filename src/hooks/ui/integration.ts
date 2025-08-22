@@ -369,7 +369,7 @@ export interface EnhancedWalletConnectionUI {
  * the actual connection between your button clicks and the wallet modal system.
  * 
  * The previous version had placeholder logic that just logged to console.
- * This version uses RainbowKit's useConnectModal hook to actually trigger
+ * This version uses Privy's modal system to actually trigger
  * the wallet selection modal when users click "Connect Wallet".
  * 
  * Think of this like the difference between a light switch that's wired to
@@ -384,7 +384,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   const { switchChain } = useSwitchChain()
   const { connectAsync, connectors } = useConnect()
   
-  // Privy modal control - Replaces RainbowKit
+  // Privy modal control
   // This hook provides the login function that actually
   // displays the wallet selection modal to users
   const { login } = useLogin()
@@ -455,11 +455,11 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
    * Connection Action - The Core Fix
    * 
    * This is where the magic happens. Previously, your hook just logged
-   * to console. Now it checks if the RainbowKit modal is available and
-   * actually opens it when users click "Connect Wallet".
-   * 
-   * The conditional check ensures we don't crash if RainbowKit isn't
-   * properly configured, and provides helpful error messages for debugging.
+    * to console. Now it checks if the Privy modal is available and
+ * actually opens it when users click "Connect Wallet".
+ * 
+ * The conditional check ensures we don't crash if Privy isn't
+ * properly configured, and provides helpful error messages for debugging.
    */
   const handleConnect = useCallback(() => {
     console.log('🚀 handleConnect called', {
@@ -471,7 +471,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     try {
       setError(null)
       
-      // Prefer custom modal if WalletConnect project ID is missing to avoid RainbowKit runtime issues
+      // Prefer custom modal if WalletConnect project ID is missing to avoid Privy runtime issues
       if (process.env.NODE_ENV === 'development' && !hasWalletConnectProjectId) {
         console.log('⚠️ Using custom modal due to missing WalletConnect project ID')
         setShowWalletModal(true)
@@ -578,7 +578,7 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     isCorrectNetwork,
     
     // Action functions - these now actually work!
-    connect: handleConnect,        // This opens the RainbowKit modal or custom modal
+          connect: handleConnect,        // This opens the Privy modal or custom modal
     disconnect: () => disconnect(), // This disconnects the wallet
     switchNetwork: handleSwitchNetwork, // This prompts network switching
     

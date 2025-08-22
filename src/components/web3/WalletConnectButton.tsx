@@ -2,12 +2,12 @@
  * Privy-based Wallet Connection Components
  * File: src/components/web3/WalletConnectButton.tsx
  * 
- * These components replace your RainbowKit-based components with Privy's
+ * These components use Privy's authentication system for
  * integrated authentication system. The key insight is that Privy handles
  * much of the modal and UI logic internally, which actually simplifies
  * your component code significantly.
  * 
- * Notable differences from RainbowKit approach:
+ * Notable differences from traditional wallet approach:
  * - No custom modal needed - Privy provides its own
  * - Unified login/logout actions instead of separate wallet connect/disconnect
  * - Built-in support for multiple authentication methods
@@ -113,7 +113,7 @@ export function WalletConnectButton({
   /**
    * Click Handler
    * 
-   * With Privy, the action is much simpler than RainbowKit. If the user
+   * With Privy, the action is much simpler than traditional wallet libraries. If the user
    * is authenticated, we log them out. If not, we open Privy's authentication
    * modal which handles all the complexity of wallet selection, email entry,
    * embedded wallet creation, etc.
@@ -361,7 +361,7 @@ export function SmartAccountUpgradePrompt() {
  * Complete Wallet Connection Example
  * 
  * This component shows how all the pieces work together with Privy.
- * Notice how much simpler this is compared to your RainbowKit setup -
+ * Notice how much simpler this is compared to traditional wallet setups -
  * Privy handles most of the complexity internally.
  */
 export function PrivyWalletExample() {

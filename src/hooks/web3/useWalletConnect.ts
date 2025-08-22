@@ -4,9 +4,9 @@
  * 
  * This is the corrected version that properly integrates with Privy's authentication system.
  * The key insight is that Privy treats wallet connection as part of user authentication,
- * which requires a different approach than traditional wallet-only libraries like RainbowKit.
+ * which requires a different approach than traditional wallet-only libraries like Privy.
  * 
- * Think of this like the difference between a simple door lock (RainbowKit - just connects wallets)
+ * Think of this like the difference between a simple door lock (Privy - just connects wallets)
  * and a modern security system (Privy - handles multiple authentication methods with smart features).
  * 
  * CRITICAL FIXES:
