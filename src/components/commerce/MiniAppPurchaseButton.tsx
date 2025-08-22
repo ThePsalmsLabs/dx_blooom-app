@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 
 // Import enhanced MiniApp hooks from Phase 2
 import { 
-  useMiniAppPurchaseFlow
+  useUnifiedMiniAppPurchaseFlow
 } from '@/hooks/business/miniapp-commerce'
 import { useMiniAppSocial } from '@/hooks/business/miniapp-social'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
@@ -141,7 +141,7 @@ interface PurchaseButtonState {
  * Architecture Integration:
  * - Uses your established Button component with variant system
  * - Follows your design system patterns and Tailwind CSS conventions
- * - Integrates with useMiniAppPurchaseFlow for transaction management
+ * - Integrates with useUnifiedMiniAppPurchaseFlow for transaction management
  * - Leverages useMiniAppSocial for sharing and engagement tracking
  * - Maintains compatibility with existing purchase flow components
  * - Provides extension points for analytics and custom behaviors
@@ -171,7 +171,7 @@ export function MiniAppPurchaseButton({
   // ===== CORE INTEGRATION WITH ENHANCED HOOKS =====
   
   // Enhanced purchase flow with MiniApp batch transaction support
-  const purchaseFlow = useMiniAppPurchaseFlow(contentId, userAddress)
+  const purchaseFlow = useUnifiedMiniAppPurchaseFlow(contentId, userAddress)
   
   // Social sharing and engagement tracking capabilities
   const socialFlow = useMiniAppSocial()
@@ -224,11 +224,11 @@ export function MiniAppPurchaseButton({
       console.group('🚀 MiniApp Purchase Button: Initiating Purchase')
       console.log('Content ID:', contentId.toString())
       console.log('Batch Transaction Available:', purchaseFlow.canUseBatchTransaction)
-      console.log('Estimated Gas Savings:', purchaseFlow.estimatedGasSavings)
+      console.log('Estimated Gas Savings:', purchaseFlow.performanceMetrics.gasSavingsPercentage)
       console.groupEnd()
 
       // Execute the enhanced purchase flow
-      await purchaseFlow.purchaseWithBatch()
+      await purchaseFlow.purchaseWithBatchTransaction()
 
       // Track the purchase for social analytics
       if (socialFlow.socialUser.fid) {
@@ -248,7 +248,7 @@ export function MiniAppPurchaseButton({
       onAccessGranted?.(contentId)
 
       // Track purchase completion
-      const txHash = purchaseFlow.batchTransactionStatus.transactionHash || 'unknown'
+      const txHash = purchaseFlow.unifiedState.batchTransactionHash || 'unknown'
       trackMiniAppEvent.purchaseCompleted(contentId.toString(), formatUsdc(purchaseFlow.requiredAmount), txHash)
 
       console.log('✅ Purchase completed successfully')
@@ -479,7 +479,7 @@ export function MiniAppPurchaseButton({
       contextItems.push(
         <div key="batch-info" className="flex items-center gap-2 text-xs text-blue-600">
           <Zap className="h-3 w-3" />
-          <span>Single-click purchase (saves ~{purchaseFlow.estimatedGasSavings}% gas)</span>
+                          <span>Single-click purchase (saves ~{purchaseFlow.performanceMetrics.gasSavingsPercentage}% gas)</span>
         </div>
       )
     }
