@@ -328,8 +328,9 @@ import {
         // Use viem readContract through wagmi's public client for a one-off read
         const { getPublicClient } = await import('wagmi/actions')
         // getPublicClient requires the wagmi config; import app config
-        const { miniAppConfig } = await import('@/lib/contracts/miniapp-config')
-        const publicClient = getPublicClient(miniAppConfig)
+        const { getEnhancedWagmiConfig } = await import('@/lib/contracts/miniapp-config')
+        const wagmiConfig = await getEnhancedWagmiConfig()
+        const publicClient = getPublicClient(wagmiConfig)
         if (!publicClient) throw new Error('Public client unavailable')
         const result = await publicClient.readContract({
           address: contractAddresses.SUBSCRIPTION_MANAGER,

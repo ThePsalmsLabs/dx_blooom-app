@@ -171,8 +171,8 @@ export function MiniAppContentPurchaseIntegration({
   // MiniApp context and capabilities
   const { 
     isMiniApp, 
-    isSDKReady: isMiniAppReady,
-    supportsBatchTransactions
+    isReady: isMiniAppReady,
+    capabilities
   } = useMiniApp()
   
   // Your sophisticated purchase flow integration
@@ -239,12 +239,12 @@ export function MiniAppContentPurchaseIntegration({
    * enabling batch transactions and social features when appropriate.
    */
   const purchaseFlowConfig = useMemo(() => ({
-    enableBatchTransactions: isMiniApp && supportsBatchTransactions,
+    enableBatchTransactions: isMiniApp && capabilities?.wallet?.canBatchTransactions,
     enableSocialSharing: enableSocialFeatures && isMiniApp,
     optimizeForMobile: true,
     showTransactionDetails: layout !== 'compact',
     autoFocusEnabled: autoFocus
-  }), [isMiniApp, supportsBatchTransactions, enableSocialFeatures, layout, autoFocus])
+  }), [isMiniApp, capabilities, enableSocialFeatures, layout, autoFocus])
   
   // ===== EVENT HANDLERS =====
   

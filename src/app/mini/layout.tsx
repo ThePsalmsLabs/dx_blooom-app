@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Enhanced MiniApp Layout - Complete Social Commerce Layout Foundation
  * File: src/app/mini/layout.tsx

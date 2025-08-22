@@ -81,17 +81,17 @@ class MiniAppErrorBoundary extends React.Component<{ children: React.ReactNode; 
 
 export function ProductionMiniAppHome(): React.ReactElement {
 	// MiniApp context and state
-	const { isMiniApp, isSDKReady: isReady, compatibilityLevel, socialUser, supportsAdvancedSharing, supportsBatchTransactions } = useMiniApp()
+	  const { isMiniApp, isReady, capabilities, socialUser } = useMiniApp()
 	const { optimization } = useMiniAppOptimization()
 	const [shareOpen, setShareOpen] = React.useState(false)
 	const [sharePayload, setSharePayload] = React.useState<{ title?: string; url?: string; creator?: string } | null>(null)
 
 	// Map capabilities to match the expected interface
 	const mappedCapabilities = {
-		canShare: supportsAdvancedSharing,
-		canSignIn: compatibilityLevel === 'full',
-		canSendTransactions: supportsBatchTransactions,
-		hasNotifications: compatibilityLevel === 'full'
+		canShare: capabilities?.social?.canShare || false,
+		canSignIn: capabilities?.wallet?.canConnect || false,
+		canSendTransactions: capabilities?.wallet?.canBatchTransactions || false,
+		hasNotifications: capabilities?.social?.canReceiveNotifications || false
 	}
 
 	React.useEffect(() => {

@@ -232,8 +232,8 @@ export function MiniAppBrowseIntegration({
   // Your sophisticated miniapp context
   const { 
     isMiniApp, 
-    isSDKReady: isMiniAppReady,
-    supportsBatchTransactions,
+    isReady: isMiniAppReady,
+    capabilities,
     socialUser: miniAppUser 
   } = useMiniApp()
   
@@ -308,7 +308,7 @@ export function MiniAppBrowseIntegration({
    * and user experience in the miniapp context.
    */
   const miniAppConfig = useMemo(() => ({
-    enableBatchTransactions: isMiniApp && supportsBatchTransactions,
+    enableBatchTransactions: isMiniApp && capabilities?.wallet?.canBatchTransactions,
     enableSocialFeatures: activeTabConfig.socialFeatures && isMiniApp,
     enableAdvancedFiltering: enableFiltering && !isMiniApp,
     showCreatorInfo: true,
@@ -318,7 +318,7 @@ export function MiniAppBrowseIntegration({
     optimizeForMobile: isMiniApp
   }), [
     isMiniApp, 
-    supportsBatchTransactions, 
+    capabilities, 
     activeTabConfig, 
     enableFiltering, 
     showAnalytics, 

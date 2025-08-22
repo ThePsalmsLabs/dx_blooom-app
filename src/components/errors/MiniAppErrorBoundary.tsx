@@ -192,7 +192,7 @@ function classifyError(
   if (errorMessage.includes('social') ||
       errorMessage.includes('sharing') ||
       errorMessage.includes('cast') ||
-      errorMessage.includes('context') && miniAppContext?.isMiniApp) {
+      errorMessage.includes('context') && miniAppContext?.environment?.isMiniApp) {
     return 'social_integration'
   }
   
@@ -265,14 +265,14 @@ function determineErrorSeverity(
   // Critical errors that completely break the user experience
   if (category === 'system_error' || 
       category === 'render_error' ||
-      (category === 'sdk_initialization' && miniAppContext?.isMiniApp)) {
+      (category === 'sdk_initialization' && miniAppContext?.environment?.isMiniApp)) {
     return 'critical'
   }
   
   // High severity errors that significantly impact functionality
   if (category === 'blockchain_connectivity' ||
       category === 'permission_denied' ||
-      (category === 'social_integration' && miniAppContext?.hasSocialContext)) {
+      (category === 'social_integration' && miniAppContext?.enhancedUser)) {
     return 'high'
   }
   
@@ -362,7 +362,7 @@ function generateRecoveryActions(
   }
   
   // Provide social platform specific options
-  if (category === 'social_integration' && miniAppContext?.isMiniApp) {
+  if (category === 'social_integration' && miniAppContext?.environment?.isMiniApp) {
     actions.push({
       type: 'external_link',
       label: 'Open in Browser',
@@ -406,7 +406,7 @@ function generateUserMessage(
   severity: ErrorSeverity,
   miniAppContext?: EnhancedMiniAppContextValue
 ): string {
-  const contextPrefix = miniAppContext?.isMiniApp ? 'In this social context, ' : ''
+  const contextPrefix = miniAppContext?.environment?.isMiniApp ? 'In this social context, ' : ''
   
   switch (category) {
     case 'sdk_initialization':
@@ -806,7 +806,7 @@ function DefaultErrorUI({
                   <div><span className="font-semibold">Technical:</span> {errorInfo.technicalMessage}</div>
                   <div><span className="font-semibold">Timestamp:</span> {new Date(errorInfo.timestamp).toLocaleString()}</div>
                   {errorInfo.context.miniAppContext && (
-                    <div><span className="font-semibold">Context:</span> {errorInfo.context.miniAppContext.context}</div>
+                    <div><span className="font-semibold">Context:</span> {errorInfo.context.miniAppContext.environment?.isMiniApp ? 'MiniApp' : 'Web'}</div>
                   )}
                 </div>
               </div>
@@ -842,23 +842,120 @@ function DefaultErrorUI({
  */
 export function MiniAppErrorBoundary(props: MiniAppErrorBoundaryProps) {
   // Access context from Components 1 and 2 for intelligent error handling
-  const miniAppContext = useMiniApp()
+  const legacyMiniApp = useMiniApp()
   const { runQuickTests } = useCompatibilityTesting()
   
   // State for compatibility information
   const [compatibilityInfo, setCompatibilityInfo] = useState<CompatibilityTestSuiteResult | undefined>()
   
+  // Create enhanced context from legacy context for compatibility
+  const enhancedContext: EnhancedMiniAppContextValue | undefined = useMemo(() => {
+    if (!legacyMiniApp) return undefined
+    
+    return {
+      state: {
+        context: legacyMiniApp.context,
+        capabilities: legacyMiniApp.capabilities,
+        errors: legacyMiniApp.errors,
+        loadingState: legacyMiniApp.loadingState,
+        socialProfile: null,
+        socialInteractions: [],
+        connectionStatus: 'connected',
+        shareableContent: [],
+        pendingShares: [],
+        shareHistory: [],
+        performanceMetrics: {
+          initializationTime: 0,
+          averageResponseTime: 0,
+          errorRate: 0,
+          lastMetricsUpdate: new Date()
+        },
+        analyticsData: {
+          sessionId: 'session-' + Date.now(),
+          sessionStartTime: new Date(),
+          pageViews: 0,
+          interactions: 0,
+          conversionEvents: []
+        },
+        sdkState: {
+          isInitialized: legacyMiniApp.isReady,
+          isReady: legacyMiniApp.isReady,
+          initializationAttempts: 0,
+          lastError: null,
+          readyCallbackFired: legacyMiniApp.isReady,
+          contextData: null
+        },
+        socialEngagement: {
+          sessionStartTime: new Date(),
+          totalInteractions: 0,
+          shareCount: 0,
+          engagementScore: 0,
+          lastInteractionTime: null,
+          conversionEvents: []
+        },
+        capabilityMonitoring: {
+          lastCapabilityCheck: null,
+          capabilityChanges: 0,
+          degradedCapabilities: [],
+          enhancedCapabilities: []
+        },
+        performance: {
+          loadTime: 0,
+          renderTime: 0,
+          interactionCount: 0,
+          errorCount: 0,
+          lastUpdateTime: new Date()
+        },
+        warnings: []
+      },
+      actions: {
+        initializeSDK: async () => true,
+        signalReady: async () => {},
+        refreshCapabilities: async () => legacyMiniApp.capabilities,
+        shareContent: legacyMiniApp.shareContent,
+        composeCast: async () => ({ success: false }),
+        trackInteraction: legacyMiniApp.trackInteraction,
+        refreshSocialProfile: async () => null,
+        updateSocialVerification: async () => {},
+        handleError: () => {},
+        clearErrors: () => {},
+        retryFailedOperation: async () => false
+      },
+      environment: {
+        detection: { isMiniApp: legacyMiniApp.isMiniApp } as any,
+        isMiniApp: legacyMiniApp.isMiniApp,
+        isEmbedded: legacyMiniApp.isEmbedded,
+        hasSDK: legacyMiniApp.isReady,
+        confidence: legacyMiniApp.isMiniApp ? 1 : 0
+      },
+      enhancedUser: legacyMiniApp.socialUser ? {
+        connectionStatus: 'connected',
+        socialVerification: { isVerified: false, verificationLevel: 'none', lastVerified: null },
+        socialMetrics: { followerCount: 0, followingCount: 0, castCount: 0, socialScore: 0, influenceScore: 0 },
+        platformSocialContext: null,
+        farcasterProfile: legacyMiniApp.socialUser
+      } as any : null,
+      utils: {
+        formatSocialHandle: (username: string) => `@${username}`,
+        getSocialVerificationBadge: () => null,
+        getOptimalShareText: () => '',
+        estimateEngagement: () => 0,
+        canPerformAction: () => false
+      }
+    }
+  }, [legacyMiniApp])
+  
   // Run compatibility tests when context changes
   useEffect(() => {
-    if (miniAppContext.isMiniApp) {
+    if (legacyMiniApp.isMiniApp) {
       runQuickTests().then(setCompatibilityInfo).catch(console.warn)
     }
-  }, [miniAppContext.isMiniApp, runQuickTests])
+  }, [legacyMiniApp.isMiniApp, runQuickTests])
   
   return (
     <MiniAppErrorBoundaryClass
       {...props}
-      miniAppContext={miniAppContext}
+      miniAppContext={enhancedContext}
       compatibilityInfo={compatibilityInfo}
     />
   )
@@ -898,21 +995,23 @@ export function useErrorReporting() {
  * Provides common error recovery functions
  */
 export function useErrorRecovery() {
-  const miniAppContext = useMiniApp()
+  const legacyMiniApp = useMiniApp()
   
   const recoverFromNetworkError = useCallback(async () => {
     // Attempt to refresh network connections
-    if (miniAppContext.isMiniApp) {
-      await miniAppContext.refreshContext()
+    if (legacyMiniApp.isMiniApp) {
+      // For legacy compatibility, we just refresh the page
+      window.location.reload()
     }
-  }, [miniAppContext])
+  }, [legacyMiniApp])
   
   const recoverFromSDKError = useCallback(async () => {
     // Attempt to reinitialize SDK
-    if (miniAppContext.isMiniApp) {
-      await miniAppContext.initializeSDK()
+    if (legacyMiniApp.isMiniApp) {
+      // For legacy compatibility, we refresh the page to reinitialize
+      window.location.reload()
     }
-  }, [miniAppContext])
+  }, [legacyMiniApp])
   
   return {
     recoverFromNetworkError,

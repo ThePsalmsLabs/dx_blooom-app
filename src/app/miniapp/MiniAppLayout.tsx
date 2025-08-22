@@ -472,17 +472,10 @@ export function MiniAppLayout({
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
           <EnhancedMiniAppProvider
-            forceContext={contextDetection?.isMiniApp ? 'miniapp' : 'web'}
+            forceEnvironment={contextDetection?.isMiniApp ? 'farcaster' : 'web'}
             enableAnalytics={layoutConfig?.enablePerformanceTracking || false}
-            enablePerformanceTracking={layoutConfig?.enablePerformanceTracking || false}
-            onError={(error) => {
-              console.error('EnhancedMiniAppProvider Error:', error)
-            }}
-            onReadyStateChange={(state) => {
-              if (enableDebugMode) {
-                console.log('MiniApp Provider Ready State:', state)
-              }
-            }}
+            fallbackToWeb={true}
+            debugMode={false}
           >
             {/* Apply context-specific styling using your design token system */}
             <div 
