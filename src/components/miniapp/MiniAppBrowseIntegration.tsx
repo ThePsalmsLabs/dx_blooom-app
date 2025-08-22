@@ -19,7 +19,7 @@
  * - Orchestrates your existing UnifiedContentBrowser with real data connections
  * - Integrates your sophisticated SmartContentPurchaseCard for purchase flows
  * - Connects to your robust useActiveContentPaginated pagination system
- * - Leverages Component 3 (MiniAppContentPurchaseIntegration) for purchase flows
+ * - Leverages Component 3 (SocialContextIntegration) for purchase flows
  * - Uses your existing design token system for consistent miniapp optimization
  * - Integrates with your error boundary and analytics systems
  * - Enables social features through Farcaster integration
@@ -44,7 +44,7 @@ import { usePlatformAnalytics } from '@/hooks/contracts/analytics/usePlatformAna
 import { useMiniApp } from '@/contexts/MiniAppProvider'
 
 // Import Component 3 for purchase integration
-import { MiniAppContentPurchaseIntegration } from '@/components/miniapp/MiniAppContentPurchaseIntegration'
+import { SocialContextIntegration } from '@/components/miniapp/MiniAppContentPurchaseIntegration'
 
 // Import your existing UI components and utilities
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -404,7 +404,7 @@ export function MiniAppBrowseIntegration({
    * Content Selection Handler
    * 
    * This handles content selection and integrates with Component 3
-   * (MiniAppContentPurchaseIntegration) for purchase flows.
+   * (SocialContextIntegration) for purchase flows.
    */
   const handleContentSelect = useCallback((contentId: bigint) => {
     setIntegrationState(prev => ({
@@ -752,13 +752,13 @@ export function MiniAppBrowseIntegration({
       {integrationState.showPurchaseModal && integrationState.selectedContentId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-background rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <MiniAppContentPurchaseIntegration
+            <SocialContextIntegration
               contentId={integrationState.selectedContentId}
-              showAnalytics={false}
+              showSocialAnalytics={false}
               enableSocialFeatures={miniAppConfig.enableSocialFeatures}
               layout="compact"
               onPurchaseComplete={handlePurchaseComplete}
-              onContentShared={(contentId, platform) => handleSocialShare(contentId, platform)}
+              onContentShared={(contentId: bigint, platform: string) => handleSocialShare(contentId, platform)}
               className="p-6"
             />
             
