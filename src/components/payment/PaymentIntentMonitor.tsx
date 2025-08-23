@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { Address } from 'viem'
 import { AlertTriangle, CheckCircle, Clock, Loader2, XCircle, RefreshCw, DollarSign, Shield } from 'lucide-react'
-import { useSyncedPaymentState, FrontendPaymentState, PaymentIntentStatus, SyncStatus } from '../hooks/web3/payment/useSyncedPaymentState'
-import { usePaymentIntentCleanup, CleanupStrategy } from '../hooks/web3/payment/usePaymentIntentCleanup'
+import { useSyncedPaymentState, FrontendPaymentState, PaymentIntentStatus, SyncStatus } from '../../hooks/web3/payment/useSyncedPaymentState'
+import { usePaymentIntentCleanup, CleanupStrategy, CleanupReason } from '../../hooks/web3/payment/usePaymentIntentCleanup'
 
 /**
  * Props interface for the PaymentIntentMonitor component
@@ -250,11 +250,15 @@ export function PaymentIntentMonitor({
    * This provides users with realistic expectations about how long each step will take
    */
   useEffect(() => {
-    const timeEstimates = {
+    const timeEstimates: Record<FrontendPaymentState, number> = {
+      [FrontendPaymentState.IDLE]: 0,
       [FrontendPaymentState.PRICE_CALCULATING]: 5,     // 5 seconds for price quotes
       [FrontendPaymentState.CREATING_INTENT]: 10,      // 10 seconds for intent creation
       [FrontendPaymentState.WAITING_SIGNATURE]: 30,    // 30 seconds max for signatures
-      [FrontendPaymentState.EXECUTING_PAYMENT]: 45     // 45 seconds for blockchain confirmation
+      [FrontendPaymentState.EXECUTING_PAYMENT]: 45,    // 45 seconds for blockchain confirmation
+      [FrontendPaymentState.COMPLETED]: 0,
+      [FrontendPaymentState.ERROR]: 0,
+      [FrontendPaymentState.CANCELLED]: 0
     }
     
     const estimate = timeEstimates[syncState.frontendState]
@@ -377,7 +381,7 @@ export function PaymentIntentMonitor({
     
     if (action === 'cancel') {
       if (intentId) {
-        await cleanupSystem.softReset('user_cancelled', 'Payment cancelled by user')
+        await cleanupSystem.softReset(CleanupReason.USER_CANCELLED, 'Payment cancelled by user')
       }
       onUserActionRequired?.(action, intentId)
     }
