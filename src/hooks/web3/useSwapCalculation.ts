@@ -389,10 +389,10 @@ import { extractIntentIdFromLogs as extractIntent } from '@/utils/transactions/i
 
 const extractIntentIdFromLogs = (logs: any[]): string => {
   const result = extractIntent(logs)
-  if (result && result.success && result.intentId) {
-    return result.intentId
+  if (result) {
+    return result
   }
-  throw new Error(result?.error || 'Intent ID not found in transaction logs')
+  throw new Error('Intent ID not found in transaction logs')
 }
 
 

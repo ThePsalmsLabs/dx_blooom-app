@@ -510,10 +510,9 @@ export function useEnterpriseSwapExecution() {
     if (isCreateSuccess && createIntentReceipt && executionState.step === 'creating_intent') {
       try {
         // Extract intent ID from transaction logs
-        const extractionResult = extractIntentIdFromLogs(createIntentReceipt.logs);
+        const intentId = extractIntentIdFromLogs(createIntentReceipt.logs);
         
-        if (extractionResult && extractionResult.success && extractionResult.intentId) {
-          const intentId = extractionResult.intentId;
+        if (intentId) {
           
           setExecutionState(prev => ({
             ...prev,
@@ -549,7 +548,7 @@ export function useEnterpriseSwapExecution() {
             });
 
         } else {
-          throw new Error(extractionResult?.error || 'Failed to extract intent ID');
+          throw new Error('Failed to extract intent ID');
         }
       } catch (error) {
         console.error('Failed to process intent creation:', error);
