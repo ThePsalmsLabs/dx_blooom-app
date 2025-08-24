@@ -40,10 +40,10 @@ import {
   IntentExtractionError 
 } from '@/utils/transactions/intentExtraction'
 import { 
-  useSignaturePolling, 
-  SignatureResponse, 
-  SignaturePollingError 
-} from '@/hooks/web3/useSignaturePolling'
+  useIntelligentSignaturePolling, 
+  IntelligentSignatureResponse, 
+  IntelligentSignaturePollingError 
+} from '@/hooks/web3/useIntelligentSignaturePolling'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 
@@ -81,6 +81,7 @@ export interface PaymentIntentFlowState {
     readonly signature: `0x${string}` | null
     readonly isReady: boolean
     readonly receivedAt: number | null
+    readonly intentId: `0x${string}` | null
   }
   
   /** Execution data once completed */
@@ -154,7 +155,13 @@ export interface PaymentIntentFlowConfig {
   readonly signaturePollingConfig?: {
     readonly maxAttempts?: number
     readonly baseInterval?: number
-    readonly enableDebugLogging?: boolean
+    readonly useAdaptiveIntervals?: boolean
+    readonly enableLogging?: boolean
+    readonly fallbackStrategies?: {
+      readonly enableExtendedTimeout?: boolean
+      readonly enableAlternativeEndpoint?: boolean
+      readonly alternativeEndpoint?: string
+    }
   }
   
   /** Gas estimation multiplier for execution transaction (default: 1.2) */
@@ -177,7 +184,13 @@ const DEFAULT_CONFIG: Required<PaymentIntentFlowConfig> = {
   signaturePollingConfig: {
     maxAttempts: 30,
     baseInterval: 1000,
-    enableDebugLogging: false
+    useAdaptiveIntervals: true,
+    enableLogging: false,
+    fallbackStrategies: {
+      enableExtendedTimeout: true,
+      enableAlternativeEndpoint: false,
+      alternativeEndpoint: '/api/commerce/signature-status-fallback'
+    }
   },
   gasMultiplier: 1.2,
   enableDebugLogging: false,
@@ -209,6 +222,18 @@ export interface UsePaymentIntentFlowResult {
   
   /** Get estimated time remaining based on current step */
   readonly estimatedTimeRemaining: number
+  
+  /** Enhanced signature polling capabilities */
+  readonly signaturePolling: {
+    readonly checkBackendHealth: () => Promise<boolean>
+    readonly getNextPollingInterval: () => number
+    readonly checkIntentOnChain: (intentId: `0x${string}`) => Promise<{
+      readonly isCreated: boolean
+      readonly isSigned: boolean
+      readonly isReady: boolean
+      readonly intentHash: `0x${string}` | null
+    }>
+  }
 }
 
 /**
@@ -262,7 +287,7 @@ export function usePaymentIntentFlow(
   const { data: receiptData, error: receiptError, isLoading: isReceiptLoading } = useWaitForTransactionReceipt({
     hash: writeData
   })
-  const signaturePolling = useSignaturePolling(finalConfig.signaturePollingConfig)
+  const signaturePolling = useIntelligentSignaturePolling(finalConfig.signaturePollingConfig)
   
   // Get contract addresses for current chain
   const contractAddresses = getContractAddresses(chainId)
@@ -282,7 +307,8 @@ export function usePaymentIntentFlow(
     signatureData: {
       signature: null,
       isReady: false,
-      receivedAt: null
+      receivedAt: null,
+      intentId: null
     },
     executionData: {
       transactionHash: null,
@@ -365,10 +391,22 @@ export function usePaymentIntentFlow(
     signaturePolling.cancelPolling()
   }, [signaturePolling])
   
-  // Cleanup on unmount
+  // Enhanced: Monitor backend health and provide recovery options
   useEffect(() => {
-    return cleanup
-  }, [cleanup])
+    const healthCheckInterval = setInterval(async () => {
+      if (state.isActive && state.step === 'waiting_signature') {
+        const isHealthy = await signaturePolling.checkBackendHealth()
+        if (!isHealthy && finalConfig.enableDebugLogging) {
+          console.log('⚠️ Backend health degraded during active polling')
+        }
+      }
+    }, 10000) // Check every 10 seconds during active polling
+    
+    return () => {
+      clearInterval(healthCheckInterval)
+      cleanup()
+    }
+  }, [cleanup, state.isActive, state.step, signaturePolling, finalConfig.enableDebugLogging])
   
   /**
    * Step 1: Create Payment Intent - CONTRACT-ALIGNED IMPLEMENTATION
@@ -473,6 +511,8 @@ export function usePaymentIntentFlow(
   const pollForSignature = useCallback(async (intentId: `0x${string}`) => {
     if (finalConfig.enableDebugLogging) {
       console.log('⏳ Step 3: Polling for backend signature')
+      console.log(`📊 Backend health: ${signaturePolling.state.backendHealth.isHealthy ? 'Healthy' : 'Unhealthy'}`)
+      console.log(`⏱️ Next polling interval: ${signaturePolling.getNextPollingInterval()}ms`)
     }
     
     updateState({
@@ -482,6 +522,23 @@ export function usePaymentIntentFlow(
     })
     
     try {
+      // Enhanced: Check backend health before polling
+      if (!signaturePolling.state.backendHealth.isHealthy) {
+        if (finalConfig.enableDebugLogging) {
+          console.log('⚠️ Backend health check failed, attempting recovery...')
+        }
+        
+        // Try to recover backend health
+        const isHealthy = await signaturePolling.checkBackendHealth()
+        if (!isHealthy) {
+          throw new IntelligentSignaturePollingError(
+            'Backend is unavailable and recovery failed',
+            'BACKEND_UNAVAILABLE',
+            intentId
+          )
+        }
+      }
+      
       // Use Component #2 to poll for signature
       const signatureResponse = await signaturePolling.pollForSignature(intentId)
       
@@ -491,7 +548,8 @@ export function usePaymentIntentFlow(
         signatureData: {
           signature: signatureResponse.signature,
           isReady: true,
-          receivedAt: Date.now()
+          receivedAt: Date.now(),
+          intentId: signatureResponse.intentId
         },
         timing: { ...state.timing, signatureReceivedAt: Date.now() }
       })
@@ -503,7 +561,29 @@ export function usePaymentIntentFlow(
       return signatureResponse.signature
       
     } catch (error) {
-      handleFlowError(error, 'waiting_signature', 'SIGNATURE_POLLING_FAILED')
+      // Enhanced error handling for intelligent signature polling
+      if (error instanceof IntelligentSignaturePollingError) {
+        // Map enhanced error codes to flow error codes
+        let flowErrorCode: PaymentIntentFlowError['code'] = 'SIGNATURE_POLLING_FAILED'
+        
+        switch (error.code) {
+          case 'BACKEND_UNAVAILABLE':
+            flowErrorCode = 'SIGNATURE_POLLING_FAILED'
+            break
+          case 'TIMEOUT':
+            flowErrorCode = 'SIGNATURE_POLLING_FAILED'
+            break
+          case 'INVALID_INTENT':
+            flowErrorCode = 'INTENT_EXTRACTION_FAILED'
+            break
+          default:
+            flowErrorCode = 'SIGNATURE_POLLING_FAILED'
+        }
+        
+        handleFlowError(error, 'waiting_signature', flowErrorCode)
+      } else {
+        handleFlowError(error, 'waiting_signature', 'SIGNATURE_POLLING_FAILED')
+      }
     }
   }, [signaturePolling, updateState, state.timing, finalConfig.enableDebugLogging, handleFlowError])
   
@@ -734,7 +814,8 @@ export function usePaymentIntentFlow(
       signatureData: {
         signature: null,
         isReady: false,
-        receivedAt: null
+        receivedAt: null,
+        intentId: null
       },
       executionData: {
         transactionHash: null,
@@ -763,14 +844,43 @@ export function usePaymentIntentFlow(
         isActive: true
       })
       
-      // Retry from the failed step
+      // Enhanced retry with health check and on-chain verification
       try {
+        // Check if we can verify the intent on-chain first
+        if (state.intentData.intentId) {
+          const onChainStatus = await signaturePolling.checkIntentOnChain(state.intentData.intentId)
+          
+          if (finalConfig.enableDebugLogging) {
+            console.log('🔍 On-chain intent status:', onChainStatus)
+          }
+          
+          // If intent is already ready on-chain, skip to execution
+          if (onChainStatus.isReady) {
+            updateState({
+              step: 'executing_payment',
+              progress: 75,
+              message: 'Intent ready on-chain, proceeding to execution...'
+            })
+            
+            // Continue with execution
+            if (currentRequestRef.current) {
+              await executeSignedIntent(
+                state.intentData.intentId!,
+                '0x0000000000000000000000000000000000000000000000000000000000000000', // Placeholder signature
+                currentRequestRef.current.ethAmount
+              )
+            }
+            return
+          }
+        }
+        
+        // Standard retry from the failed step
         await executeETHPayment(currentRequestRef.current)
       } catch (error) {
         // Error handling is done in executeETHPayment
       }
     }
-  }, [state.isActive, state.error, executeETHPayment, updateState])
+  }, [state.isActive, state.error, executeETHPayment, updateState, state.intentData.intentId, signaturePolling, finalConfig.enableDebugLogging, executeSignedIntent])
   
   /**
    * Calculate estimated time remaining based on current step
@@ -781,7 +891,11 @@ export function usePaymentIntentFlow(
       case 'extracting_intent_id':
         return 45 // ~45 seconds remaining
       case 'waiting_signature':
-        return Math.max(5, 30 - signaturePolling.state.attempts) // Based on polling progress
+        // Enhanced: Use intelligent polling metrics for better estimates
+        const baseTime = Math.max(5, 30 - signaturePolling.state.attempt)
+        const healthMultiplier = signaturePolling.state.backendHealth.isHealthy ? 1 : 1.5
+        const adaptiveInterval = signaturePolling.getNextPollingInterval() / 1000 // Convert to seconds
+        return Math.round(baseTime * healthMultiplier + adaptiveInterval)
       case 'executing_payment':
       case 'confirming_execution':
         return 15 // ~15 seconds remaining
@@ -799,6 +913,11 @@ export function usePaymentIntentFlow(
     resetFlow,
     canStartFlow: !state.isActive,
     retryCurrentStep,
-    estimatedTimeRemaining
+    estimatedTimeRemaining,
+    signaturePolling: {
+      checkBackendHealth: signaturePolling.checkBackendHealth,
+      getNextPollingInterval: signaturePolling.getNextPollingInterval,
+      checkIntentOnChain: signaturePolling.checkIntentOnChain
+    }
   }
 }
