@@ -44,3 +44,7 @@ next-env.d.ts
 
 # local smart contracts (do not commit)
 /contracts/
+
+
+
+src/components/content/ContentPurchaseCard.backup.tsx
