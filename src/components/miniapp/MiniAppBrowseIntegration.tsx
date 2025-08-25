@@ -11,13 +11,13 @@
  * 
  * Problem it Solves:
  * Your analysis identified that users encounter empty browse pages and placeholder content instead
- * of leveraging your sophisticated ContentDiscoveryGrid, SmartContentPurchaseCard, and 
+ * of leveraging your sophisticated ContentDiscoveryGrid, OrchestratedContentPurchaseCard, and 
  * useActiveContentPaginated infrastructure. This component fixes that integration gap by ensuring
  * all your advanced systems work together seamlessly in the miniapp context.
  * 
  * Architecture Integration:
  * - Orchestrates your existing UnifiedContentBrowser with real data connections
- * - Integrates your sophisticated SmartContentPurchaseCard for purchase flows
+ * - Integrates your sophisticated OrchestratedContentPurchaseCard for purchase flows
  * - Connects to your robust useActiveContentPaginated pagination system
  * - Leverages Component 3 (SocialContextIntegration) for purchase flows
  * - Uses your existing design token system for consistent miniapp optimization

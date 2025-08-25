@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 
 import { Button } from '@/components/ui/button'
 
@@ -34,14 +34,15 @@ export default function EnhancedUIDemoPage() {
               <h3 className="text-lg font-semibold text-foreground mb-4">
                 Enhanced Card #{index + 1}
               </h3>
-              <SmartContentPurchaseCard
-                contentId={contentId}
-                showBalanceDetails={true}
-                enableSwapIntegration={true}
-                onPurchaseSuccess={() => {
-                  console.log(`Demo purchase successful for content ${contentId}`)
-                }}
-                className="flex-1"
+              <OrchestratedContentPurchaseCard
+                contentId={BigInt(1)}
+                onPurchaseSuccess={() => console.log('Demo purchase success')}
+                variant="full"
+                showCreatorInfo={true}
+                showPurchaseDetails={true}
+                enableMultiPayment={true}
+                showSystemHealth={true}
+                enablePerformanceMetrics={false}
               />
             </div>
           ))}

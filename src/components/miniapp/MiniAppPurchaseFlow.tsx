@@ -7,7 +7,7 @@
 
 import React, { useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { useX402ContentPurchaseFlow } from '@/hooks/business/workflows'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
@@ -227,10 +227,10 @@ export function MiniAppPurchaseFlow({
   className
 }: MiniAppPurchaseFlowProps): React.ReactElement {
   // Get current user address from wallet connection
-  const { address: userAddress } = useAccount()
+  const { address } = useAccount()
   
   // Initialize x402 payment flow with social context integration
-  const purchaseFlow = useX402ContentPurchaseFlow(contentId, userAddress)
+  const purchaseFlow = useX402ContentPurchaseFlow(contentId, address)
   
   // Initialize social sharing capabilities
   const socialContext = useSocialContextWithSharing()
@@ -277,7 +277,7 @@ export function MiniAppPurchaseFlow({
   // Enhanced props for ContentPurchaseCard with Mini App support
   const enhancedPropsForWeb3Card = {
     contentId,
-    userAddress: userAddress,
+    userAddress: address,
     variant: 'compact' as const,
     onPurchaseSuccess: () => { void handlePurchaseSuccess() },
     className
@@ -294,11 +294,16 @@ export function MiniAppPurchaseFlow({
       </div>
       
       {/* Enhanced Content Purchase Card */}
-      <SmartContentPurchaseCard 
+      <OrchestratedContentPurchaseCard
         contentId={contentId}
-        showBalanceDetails={true}
-        enableSwapIntegration={true}
-        className="w-full"
+        userAddress={address}
+        onPurchaseSuccess={handlePurchaseSuccess}
+        variant="full"
+        showCreatorInfo={true}
+        showPurchaseDetails={true}
+        enableMultiPayment={true}
+        showSystemHealth={true}
+        enablePerformanceMetrics={false}
       />
       
       {/* Social Context Information */}

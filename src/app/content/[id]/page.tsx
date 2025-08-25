@@ -60,7 +60,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 
 // Import the enhanced ContentPurchaseCard
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 
 // Import business logic hooks
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
@@ -296,12 +296,19 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
               <div className="sticky top-6 space-y-6">
                 {/* Purchase Card Integration */}
                 {accessState.showPurchaseCard && contentId && (
-                  <SmartContentPurchaseCard
+                  <OrchestratedContentPurchaseCard
                     contentId={contentId}
-                    onPurchaseSuccess={handlePurchaseSuccess}
-                    showBalanceDetails={true}
-                    enableSwapIntegration={true}
-                    className="w-full"
+                    userAddress={userAddress}
+                    onPurchaseSuccess={() => {
+                      toast.success('Content purchased successfully!')
+                      router.push(`/content/${contentId}`)
+                    }}
+                    variant="full"
+                    showCreatorInfo={true}
+                    showPurchaseDetails={true}
+                    enableMultiPayment={true}
+                    showSystemHealth={true}
+                    enablePerformanceMetrics={false}
                   />
                 )}
 

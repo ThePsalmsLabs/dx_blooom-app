@@ -71,8 +71,10 @@ import {
 } from '@/hooks/contracts/core'
 
 import { useAccount } from 'wagmi'
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { categoryToString } from '@/types/contracts'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 /**
  * Content Access Status Types
@@ -143,6 +145,7 @@ export function ContentViewer({
 }: ContentViewerProps) {
   // Wallet connection for access control
   const { address: userAddress } = useAccount()
+  const router = useRouter()
 
   // Content data and access control using our architectural layers
   const contentQuery = useContentById(contentId)
@@ -678,11 +681,18 @@ function AccessDeniedState({
         </div>
         
         <div className="max-w-md mx-auto">
-          <SmartContentPurchaseCard 
+          <OrchestratedContentPurchaseCard
             contentId={contentId}
-            showBalanceDetails={true}
-            enableSwapIntegration={true}
-            className="w-full"
+            userAddress={userAddress as `0x${string}` | undefined}
+            onPurchaseSuccess={() => {
+              toast.success('Content purchased successfully!')
+            }}
+            variant="full"
+            showCreatorInfo={true}
+            showPurchaseDetails={true}
+            enableMultiPayment={true}
+            showSystemHealth={true}
+            enablePerformanceMetrics={false}
           />
         </div>
       </CardContent>

@@ -7,7 +7,7 @@
  * 
  * Integration Showcase:
  * - ContentDiscoveryGrid provides sophisticated filtering and view options
- * - SmartContentPurchaseCard handles complete multi-token purchase workflows
+ * - OrchestratedContentPurchaseCard handles complete multi-token purchase workflows
  * - useActiveContentPaginated manages efficient content loading
  * - useContentPurchaseFlow orchestrates multi-payment transaction logic
  * - SubgraphQueryService enables advanced search capabilities
@@ -78,7 +78,7 @@ import {
 // Import our architectural layers - demonstrating clean separation
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 
 // Import utility functions and types that ensure type safety
 import type { ContentCategory } from '@/types/contracts'
@@ -672,12 +672,18 @@ function BrowsePageClient() {
               </DialogDescription>
             </DialogHeader>
             {interactionState.selectedContentId && (
-              <SmartContentPurchaseCard
+              <OrchestratedContentPurchaseCard
                 contentId={interactionState.selectedContentId}
-                onPurchaseSuccess={() => interactionState.selectedContentId && handlePurchaseSuccess(interactionState.selectedContentId)}
-                showBalanceDetails={true}
-                enableSwapIntegration={true}
-                className="w-full"
+                userAddress={userAddress}
+                onPurchaseSuccess={() => {
+                  handlePurchaseSuccess(interactionState.selectedContentId!)
+                }}
+                variant="full"
+                showCreatorInfo={true}
+                showPurchaseDetails={true}
+                enableMultiPayment={true}
+                showSystemHealth={true}
+                enablePerformanceMetrics={false}
               />
             )}
           </DialogContent>
@@ -776,7 +782,7 @@ export default function BrowsePage() {
 /**
  * Content Grid Component
  * 
- * Renders the actual content items using our fixed SmartContentPurchaseCard component.
+ * Renders the actual content items using our fixed OrchestratedContentPurchaseCard component.
  */
 function ContentGrid({
   contentIds,
@@ -809,14 +815,17 @@ function ContentGrid({
   return (
     <div className={gridClassName}>
       {contentIds.map((contentId) => (
-        <SmartContentPurchaseCard
+        <OrchestratedContentPurchaseCard
           key={contentId.toString()}
           contentId={contentId}
+          userAddress={userAddress}
           onPurchaseSuccess={() => onPurchaseSuccess(contentId)}
-          showBalanceDetails={viewMode === 'list'}
-          enableSwapIntegration={true}
-          compact={viewMode === 'compact'}
-          className={viewMode === 'compact' ? 'max-w-sm' : 'w-full'}
+          variant="full"
+          showCreatorInfo={true}
+          showPurchaseDetails={true}
+          enableMultiPayment={true}
+          showSystemHealth={true}
+          enablePerformanceMetrics={false}
         />
       ))}
     </div>

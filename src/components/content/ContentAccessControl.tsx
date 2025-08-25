@@ -8,7 +8,7 @@ import { Eye } from 'lucide-react'
 import { useContentById } from '@/hooks/contracts/core'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 import { useHasContentAccess } from '@/hooks/contracts/core'
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { SubscriptionPurchaseModal } from '@/components/subscription/SubscriptionPurchaseModal'
 import { formatCurrency } from '@/lib/utils'
 
@@ -61,12 +61,16 @@ export function ContentAccessControl({
         <p className="text-sm text-muted-foreground mb-3">
           One-time purchase for permanent access to this content
         </p>
-        <SmartContentPurchaseCard
+        <OrchestratedContentPurchaseCard
           contentId={contentId}
-          compact={true}
-          showBalanceDetails={false}
-          enableSwapIntegration={true}
-          className="w-full"
+          userAddress={userAddress}
+          onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
+          variant="full"
+          showCreatorInfo={true}
+          showPurchaseDetails={true}
+          enableMultiPayment={true}
+          showSystemHealth={true}
+          enablePerformanceMetrics={false}
         />
       </div>
 

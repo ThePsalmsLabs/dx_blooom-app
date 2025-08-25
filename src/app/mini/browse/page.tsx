@@ -10,7 +10,7 @@
  * Production Features:
  * - Builds on your existing ContentDiscoveryGrid and content discovery infrastructure
  * - Uses your proven useActiveContentPaginated hook for content data
- * - Integrates with your SmartContentPurchaseCard for purchase flows
+ * - Integrates with your OrchestratedContentPurchaseCard for purchase flows
  * - Leverages your UnifiedContentBrowser when appropriate
  * - Adapts your content filtering patterns for mobile social browsing
  * - Integrates with AdaptiveNavigation for seamless routing

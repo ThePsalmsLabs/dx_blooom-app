@@ -2,7 +2,7 @@
  * AdaptiveUIModule - Intelligent Presentation Orchestration System
  * 
  * This module provides sophisticated UI orchestration that unifies the user experience
- * patterns from both SmartContentPurchaseCard and OrchestratedContentPurchaseCard into
+ * patterns from both OrchestratedContentPurchaseCard and OrchestratedContentPurchaseCard into
  * a single, intelligent system. It creates adaptive interfaces that respond dynamically
  * to system health, user capabilities, and contextual complexity requirements.
  * 
@@ -1057,7 +1057,7 @@ export function AdaptiveLoadingState({
 
 /**
  * Hook for Smart Component Integration
- * Provides adaptive UI optimized for the SmartContentPurchaseCard architecture
+ * Provides adaptive UI optimized for the OrchestratedContentPurchaseCard architecture
  */
 export function useSmartCardAdaptiveUI(balanceManager: ReturnType<typeof useUnifiedBalanceManagement>) {
   const adaptiveUI = useAdaptiveUI()

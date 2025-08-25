@@ -358,7 +358,7 @@ class SwapPriceCalculator {
  * Use Unified Swap Integration Hook
  * 
  * This is the main hook that provides complete swap orchestration for both
- * SmartContentPurchaseCard and OrchestratedContentPurchaseCard components.
+ * OrchestratedContentPurchaseCard and OrchestratedContentPurchaseCard components.
  * It unifies your existing swap infrastructure with production-grade reliability.
  */
 export function useUnifiedSwapIntegration(
@@ -931,7 +931,7 @@ export function useUnifiedSwapIntegration(
 // =============================================================================
 
 /**
- * Adapter for SmartContentPurchaseCard Integration
+ * Adapter for OrchestratedContentPurchaseCard Integration
  * Provides swap functionality with emphasis on UX optimization
  */
 export function useSmartCardSwapAdapter(config?: Partial<SwapIntegrationConfig>) {
@@ -943,7 +943,7 @@ export function useSmartCardSwapAdapter(config?: Partial<SwapIntegrationConfig>)
   })
 
   return {
-    // SmartContentPurchaseCard expected interface
+    // OrchestratedContentPurchaseCard expected interface
     calculateSwap: swapManager.calculateSwapAnalysis,
     executeSwap: swapManager.executeSwap,
     swapState: swapManager.executionState,

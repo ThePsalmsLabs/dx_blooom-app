@@ -458,12 +458,13 @@ export function useUnifiedContentPurchaseFlow(
   const lastRefreshAtRef = useRef<number | null>(null)
   const methodChangeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const customTokenDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshPricesRef = useRef<(() => Promise<void>) | null>(null)
 
   const getConfiguredTransport = useCallback((): ReturnType<typeof http> => {
     const transports = (wagmiConfig as { transports?: Record<number, ReturnType<typeof http>> })?.transports
     const transport = transports?.[chainId]
     return transport ?? http()
-  }, [chainId])
+  }, [chainId, wagmiConfig])
 
   /**
    * Available Payment Methods Computation
@@ -633,7 +634,7 @@ export function useUnifiedContentPurchaseFlow(
       console.error(`Price calculation failed for ${paymentMethod}:`, error)
       return null
     }
-  }, [contractAddresses, chainId, getConfiguredTransport])
+  }, [contractAddresses, chainId, getConfiguredTransport, userAddress, contentQuery.data])
 
   /**
    * Enhanced Token Balance and Allowance Fetching with Multi-Token Support
@@ -852,14 +853,17 @@ export function useUnifiedContentPurchaseFlow(
     setPriceUpdateCounter(prev => prev + 1)
     console.log(`💰 Price refresh completed for ${updatedPrices.size} tokens`)
     isRefreshingRef.current = false
-  }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo])
+  }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo, userAddress, chainId])
+
+  // Store the refreshPrices function in a ref to avoid dependency issues
+  refreshPricesRef.current = refreshPrices
 
   // Ensure the refreshing flag is cleared on unmount/errors
   useEffect(() => {
     return () => {
       isRefreshingRef.current = false
     }
-  }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo])
+  }, [])
 
   /**
    * Auto-refresh prices when hook initializes or key dependencies change
@@ -874,10 +878,14 @@ export function useUnifiedContentPurchaseFlow(
     
     if (contractAddresses && contentQuery.data && userAddress && !contentQuery.isLoading) {
       // Debounce the initial refresh slightly to let other queries settle
-      const timer = setTimeout(() => refreshPrices(), 300)
+      const timer = setTimeout(() => {
+        if (refreshPricesRef.current) {
+          refreshPricesRef.current()
+        }
+      }, 300)
       return () => clearTimeout(timer)
     }
-  }, [contractAddresses, contentQuery.data, userAddress, contentQuery.isLoading, refreshPrices])
+  }, [contractAddresses, contentQuery.data, userAddress, contentQuery.isLoading])
 
   /**
    * Payment Method Selection Handler
@@ -895,9 +903,11 @@ export function useUnifiedContentPurchaseFlow(
     // Debounce refresh and avoid returning cleanup from callback (which is ignored)
     if (methodChangeDebounceRef.current) clearTimeout(methodChangeDebounceRef.current)
     methodChangeDebounceRef.current = setTimeout(() => {
-      refreshPrices()
+      if (refreshPricesRef.current) {
+        refreshPricesRef.current()
+      }
     }, 300)
-  }, [refreshPrices])
+  }, [])
 
   /**
    * Custom Token Address Handler
@@ -908,10 +918,12 @@ export function useUnifiedContentPurchaseFlow(
     if (selectedMethod === PaymentMethod.OTHER_TOKEN) {
       if (customTokenDebounceRef.current) clearTimeout(customTokenDebounceRef.current)
       customTokenDebounceRef.current = setTimeout(() => {
-        refreshPrices()
+        if (refreshPricesRef.current) {
+          refreshPricesRef.current()
+        }
       }, 300)
     }
-  }, [customTokenAddress, selectedMethod, refreshPrices])
+  }, [customTokenAddress, selectedMethod])
 
   /**
    * Payment Execution Logic
@@ -1054,7 +1066,9 @@ export function useUnifiedContentPurchaseFlow(
     if (finalConfig.priceUpdateInterval > 0) {
       if (priceUpdateTimerRef.current) clearInterval(priceUpdateTimerRef.current)
       priceUpdateTimerRef.current = setInterval(() => {
-        refreshPrices()
+        if (refreshPricesRef.current) {
+          refreshPricesRef.current()
+        }
       }, finalConfig.priceUpdateInterval)
     }
     return () => {
@@ -1063,16 +1077,20 @@ export function useUnifiedContentPurchaseFlow(
         priceUpdateTimerRef.current = null
       }
     }
-  }, [finalConfig.priceUpdateInterval, refreshPrices])
+  }, [finalConfig.priceUpdateInterval])
 
   /**
    * Effect: Initial Price Loading
    */
   useEffect(() => {
     // Initial load, debounced slightly
-    const t = setTimeout(() => refreshPrices(), 200)
+    const t = setTimeout(() => {
+      if (refreshPricesRef.current) {
+        refreshPricesRef.current()
+      }
+    }, 200)
     return () => clearTimeout(t)
-  }, [refreshPrices])
+  }, [])
 
   /**
    * Effect: Handle Commerce Protocol Transaction Confirmations
@@ -1239,7 +1257,7 @@ export function useUnifiedContentPurchaseFlow(
     // Advanced features
     priceImpact,
     priceAlerts,
-    refreshPrices
+    refreshPrices: () => refreshPricesRef.current?.() || Promise.resolve()
   }
 }
 

@@ -46,7 +46,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
 import { Address, encodeFunctionData, parseEther } from 'viem'
 
 import {
@@ -60,7 +60,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
+import { Separator } from '@/components/ui/seperator'
 import { cn } from '@/lib/utils'
 
 import {
@@ -82,7 +82,7 @@ import {
   Coins,
   Users,
   Target,
-  Lightning,
+  Zap as Lightning,
   Gauge,
   Timer,
   Network,
@@ -92,7 +92,7 @@ import {
 
 import { OrchestratedPaymentFlowState } from '@/hooks/web3/usePaymentFlowOrchestrator'
 import { useMiniApp } from '@/components/social/MiniAppSDKIntegration'
-import { ERC20_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
+import { ERC20_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { getContractAddresses } from '@/lib/contracts/config'
 
 /**
@@ -297,7 +297,7 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
       try {
         // Simulate capability detection
         // In real implementation, this would check wallet capabilities
-        const mockCapability: BatchCapabilityInfo = {
+        let mockCapability: BatchCapabilityInfo = {
           isSupported: true,
           walletCapabilities: {
             supportsBatchCalls: true,
@@ -327,7 +327,11 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
         
         if (!address) {
           mockCapability.limitations.push('Wallet not connected')
-          mockCapability.isSupported = false
+          // Create a new object with updated isSupported value
+          mockCapability = {
+            ...mockCapability,
+            isSupported: false
+          }
         }
         
         setCapability(mockCapability)
@@ -473,7 +477,8 @@ class BatchTransactionBuilder {
     usdcAddress: Address,
     paymentContractAddress: Address,
     amount: bigint,
-    contentId: bigint
+    contentId: bigint,
+    chainId: number
   ): BatchTransactionConfig {
     
     const approveTxData = encodeFunctionData({
@@ -483,9 +488,9 @@ class BatchTransactionBuilder {
     })
     
     const paymentTxData = encodeFunctionData({
-      abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
-      functionName: 'purchaseContent',
-      args: [contentId, amount]
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'purchaseContentDirect',
+      args: [contentId]
     })
     
     const calls: BatchCall[] = [
@@ -499,7 +504,7 @@ class BatchTransactionBuilder {
         isCritical: true
       },
       {
-        to: paymentContractAddress,
+        to: getContractAddresses(chainId).PAY_PER_VIEW,
         value: BigInt(0),
         data: paymentTxData,
         description: 'Purchase content with USDC',
@@ -861,6 +866,7 @@ export function BatchTransactionImplementation({
   
   const { address } = useAccount()
   const { writeContract } = useWriteContract()
+  const chainId = useChainId()
   const executionAbortRef = useRef<AbortController | null>(null)
   
   // Build batch configuration when capabilities are detected
@@ -875,7 +881,8 @@ export function BatchTransactionImplementation({
         paymentConfig.contractAddresses.USDC,
         paymentConfig.contractAddresses.COMMERCE_INTEGRATION,
         paymentConfig.amount,
-        paymentConfig.contentId
+        paymentConfig.contentId,
+        chainId
       )
     } else {
       // ETH payment batch configuration
@@ -1193,7 +1200,7 @@ export function BatchTransactionImplementation({
             {capabilities.isSupported && batchState.phase === 'idle' && (
               <div className="pt-4 border-t">
                 <Button onClick={executeBatchTransaction} className="w-full">
-                  <Lightning className="h-4 w-4 mr-2" />
+                  <Zap className="h-4 w-4 mr-2" />
                   Execute Batch Transaction
                 </Button>
               </div>

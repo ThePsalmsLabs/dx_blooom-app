@@ -13,7 +13,7 @@ import {
   ContentSortBy
 } from '@/hooks/contracts/content/useContentDiscovery'
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
-import { SmartContentPurchaseCard } from './SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from './OrchestratedContentPurchaseCard'
 import { formatCurrency } from '@/lib/utils'
 
 // Import UI components
@@ -259,12 +259,16 @@ function ContentCard({ contentId, width, breakpoint, compact = false }: ContentC
 
           {/* Compact Purchase Component */}
           <div className="space-y-2">
-            <SmartContentPurchaseCard
+            <OrchestratedContentPurchaseCard
               contentId={contentId}
-              compact={true}
-              showBalanceDetails={false}
-              enableSwapIntegration={true}
-              className="w-full"
+              userAddress={address}
+              onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
+              variant="full"
+              showCreatorInfo={true}
+              showPurchaseDetails={true}
+              enableMultiPayment={true}
+              showSystemHealth={true}
+              enablePerformanceMetrics={false}
             />
           </div>
         </CardContent>

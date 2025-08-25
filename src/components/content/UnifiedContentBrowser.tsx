@@ -10,7 +10,7 @@
  * Key Features:
  * - Context-aware feature complexity (web vs miniapp) using design tokens
  * - Unified data fetching using existing hooks (useActiveContentPaginated, useContentById)
- * - Adaptive purchase flow integration (SmartContentPurchaseCard + MiniAppPurchaseButton)
+ * - Adaptive purchase flow integration (OrchestratedContentPurchaseCard + MiniAppPurchaseButton)
  * - Progressive enhancement building on design token and navigation foundations
  * - Consistent responsive design using unified design tokens
  * - Social features integration for mini app context
@@ -20,7 +20,7 @@
  * 
  * Architecture Integration:
  * - Uses existing content hooks (useActiveContentPaginated, useContentById, useHasContentAccess)
- * - Integrates with existing SmartContentPurchaseCard and MiniAppPurchaseButton components
+ * - Integrates with existing OrchestratedContentPurchaseCard and MiniAppPurchaseButton components
  * - Builds on enhanced design tokens for context-aware spacing and sizing
  * - Follows established shadcn/ui component patterns and styling conventions
  * - Maintains compatibility with existing routing and navigation systems
@@ -80,7 +80,7 @@ import { getContractAddresses } from '@/lib/contracts/config'
 import { getSupportedTokens } from '@/hooks/business/workflows'
 import { TokenConfig } from '@/hooks/business/workflows'
 import { useActiveContentPaginated, useContentById, useHasContentAccess, useCreatorProfile } from '@/hooks/contracts/core'
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 import { cn, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 import { ContentCategory, categoryToString } from '@/types/contracts'
@@ -944,12 +944,16 @@ function ContentItemCard({
                 className="w-full button-adaptive"
               />
             ) : (
-              <SmartContentPurchaseCard
+              <OrchestratedContentPurchaseCard
                 contentId={contentId}
-                compact={true}
-                showBalanceDetails={false}
-                enableSwapIntegration={true}
-                className="w-full"
+                userAddress={userAddress}
+                onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
+                variant="full"
+                showCreatorInfo={true}
+                showPurchaseDetails={true}
+                enableMultiPayment={true}
+                showSystemHealth={true}
+                enablePerformanceMetrics={false}
               />
             )}
           </CardFooter>

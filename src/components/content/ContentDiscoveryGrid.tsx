@@ -74,7 +74,7 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 import { useAccount } from 'wagmi'
-import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 
 /**
@@ -713,16 +713,19 @@ function ContentDisplayCard({
       </CardContent>
       
       <CardFooter className="pt-0">
-        <SmartContentPurchaseCard
+        <OrchestratedContentPurchaseCard
           contentId={contentId}
-          compact={true}
-          showBalanceDetails={false}
-          enableSwapIntegration={true}
+          userAddress={userAddress as `0x${string}` | undefined}
           onPurchaseSuccess={() => {
             // Refresh access control data
             accessControl.refetch()
           }}
-          className="w-full"
+          variant="full"
+          showCreatorInfo={true}
+          showPurchaseDetails={true}
+          enableMultiPayment={true}
+          showSystemHealth={true}
+          enablePerformanceMetrics={false}
         />
       </CardFooter>
     </Card>

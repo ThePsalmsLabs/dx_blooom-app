@@ -4,7 +4,7 @@
  * 
  * This module provides the final integration layer that unifies all three previous components
  * into a complete, production-ready migration solution. It orchestrates the safe transition
- * from SmartContentPurchaseCard to OrchestratedContentPurchaseCard while maintaining
+ * from OrchestratedContentPurchaseCard to OrchestratedContentPurchaseCard while maintaining
  * perfect reliability and providing comprehensive monitoring and rollback capabilities.
  * 
  * Key Features:

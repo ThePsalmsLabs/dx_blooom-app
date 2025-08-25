@@ -9,12 +9,10 @@
 
 import { useState, useEffect } from 'react'
 import { Address } from 'viem'
-import { 
-  SmartContentPurchaseCard, 
-  SmartPaymentSelector,
-  TokenInfo,
-  useEnhancedTokenBalances 
-} from '@/components/web3/portfolio'
+import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
+import { SmartPaymentSelector } from '@/components/purchase/SmartPaymentSelector'
+import { useEnhancedTokenBalances } from '@/hooks/web3/useEnhancedTokenBalances'
+import type { TokenInfo } from '@/hooks/web3/useTokenBalances'
 import { PaymentMethod } from '@/hooks/business/workflows'
 
 /**
@@ -35,11 +33,15 @@ export function ContentPageExample({ contentId }: { contentId: bigint }) {
 
   return (
     <div className="max-w-md mx-auto">
-      <SmartContentPurchaseCard
+      <OrchestratedContentPurchaseCard
         contentId={contentId}
         onPurchaseSuccess={handlePurchaseSuccess}
-        onSwapRequested={handleSwapRequested}
-        showBalanceDetails={true}
+        variant="full"
+        showCreatorInfo={true}
+        showPurchaseDetails={true}
+        enableMultiPayment={true}
+        showSystemHealth={true}
+        enablePerformanceMetrics={false}
       />
     </div>
   )
@@ -116,11 +118,14 @@ export function CheckoutFlowExample({ totalAmount }: { totalAmount: bigint }) {
  */
 export function MobileContentPurchaseExample({ contentId }: { contentId: bigint }) {
   return (
-    <SmartContentPurchaseCard
+    <OrchestratedContentPurchaseCard
       contentId={contentId}
-      compact={true}
-      showBalanceDetails={false}
-      className="w-full max-w-sm"
+      variant="compact"
+      showCreatorInfo={false}
+      showPurchaseDetails={true}
+      enableMultiPayment={true}
+      showSystemHealth={false}
+      enablePerformanceMetrics={false}
     />
   )
 }
@@ -300,13 +305,15 @@ export function PWAOptimizedPurchase({ contentId }: { contentId: bigint }) {
   }
 
   return (
-    <SmartContentPurchaseCard
+    <OrchestratedContentPurchaseCard
       contentId={contentId}
-      className="w-full"
-      purchaseConfig={{
-        enabledMethods: [PaymentMethod.USDC, PaymentMethod.ETH], // Limit for PWA
-        defaultMethod: PaymentMethod.USDC
-      }}
+      onPurchaseSuccess={() => console.log('Advanced example purchase success')}
+      variant="full"
+      showCreatorInfo={true}
+      showPurchaseDetails={true}
+      enableMultiPayment={true}
+      showSystemHealth={true}
+      enablePerformanceMetrics={true}
     />
   )
 }
@@ -317,13 +324,13 @@ export function PWAOptimizedPurchase({ contentId }: { contentId: bigint }) {
 export const INTEGRATION_TIPS = {
   // 1. Gradual Migration
   gradualMigration: `
-    // Start by adding the smart components alongside existing ones
+    // Start by adding the orchestrated components alongside existing ones
     // Use feature flags to control rollout
-    const useSmartPurchase = process.env.NEXT_PUBLIC_SMART_PURCHASE === 'enabled'
+    const useOrchestratedPurchase = process.env.NEXT_PUBLIC_ORCHESTRATED_PURCHASE === 'enabled'
     
-    return useSmartPurchase ? 
-      <SmartContentPurchaseCard {...props} /> : 
-      <SmartContentPurchaseCard {...props} /> // Always use smart version now
+    return useOrchestratedPurchase ? 
+      <OrchestratedContentPurchaseCard {...props} /> : 
+      <OrchestratedContentPurchaseCard {...props} /> // Always use orchestrated version now
   `,
 
   // 2. Mobile Optimization
@@ -332,9 +339,9 @@ export const INTEGRATION_TIPS = {
     const isMobile = useMediaQuery('(max-width: 768px)')
     
     return (
-      <SmartContentPurchaseCard
-        compact={isMobile}
-        showBalanceDetails={!isMobile}
+      <OrchestratedContentPurchaseCard
+        variant={isMobile ? 'compact' : 'full'}
+        showCreatorInfo={!isMobile}
         {...props}
       />
     )

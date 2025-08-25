@@ -2,7 +2,7 @@
  * BalanceManagementModule - Unified Balance Management System
  * 
  * This module provides a sophisticated abstraction layer for token balance management
- * that bridges the gap between SmartContentPurchaseCard and OrchestratedContentPurchaseCard.
+ * that bridges the gap between OrchestratedContentPurchaseCard and OrchestratedContentPurchaseCard.
  * It combines the performance-optimized caching strategies from the Smart component
  * with the health-aware, production-hardened approaches of the Orchestrated component.
  * 
@@ -133,7 +133,7 @@ class BalanceCacheManager {
 
   /**
    * Get cached balance with staleness checking
-   * Implements the 30-second TTL strategy from SmartContentPurchaseCard
+   * Implements the 30-second TTL strategy from OrchestratedContentPurchaseCard
    */
   getCachedBalance(tokenAddress: Address, userAddress: Address): BalanceCacheEntry | null {
     const key = `${tokenAddress}-${userAddress}`.toLowerCase()
@@ -232,7 +232,7 @@ class BalanceCacheManager {
 /**
  * Use Unified Balance Management Hook
  * 
- * This is the main hook that both SmartContentPurchaseCard and OrchestratedContentPurchaseCard
+ * This is the main hook that both OrchestratedContentPurchaseCard and OrchestratedContentPurchaseCard
  * will use for balance management. It provides intelligent caching, health-aware fetching,
  * and comprehensive purchase analysis.
  */
@@ -539,7 +539,7 @@ export function useUnifiedBalanceManagement(
 // =============================================================================
 
 /**
- * Adapter function for SmartContentPurchaseCard integration
+ * Adapter function for OrchestratedContentPurchaseCard integration
  * Converts the unified balance management to the expected interface
  */
 export function useSmartCardBalanceAdapter(config?: Partial<BalanceManagementConfig>) {
@@ -550,7 +550,7 @@ export function useSmartCardBalanceAdapter(config?: Partial<BalanceManagementCon
   })
 
   return {
-    // SmartContentPurchaseCard expected interface
+    // OrchestratedContentPurchaseCard expected interface
     tokens: balanceManager.managedTokens,
     isLoading: balanceManager.isLoading,
     refreshBalances: balanceManager.refreshBalances,
