@@ -2,14 +2,13 @@
 
 import React from 'react'
 import { SmartContentPurchaseCard } from '@/components/content/SmartContentPurchaseCard'
-import { ContentPurchaseCardDemo } from '@/components/content/ContentPurchaseCardDemo'
+
 import { Button } from '@/components/ui/button'
 
 /**
  * Enhanced UI Demo Page
  * 
  * This page showcases the enhanced purchase card UI improvements.
- * Visit localhost:3002/demo/enhanced-ui to see the improvements in action.
  */
 export default function EnhancedUIDemoPage() {
   // Use some real content IDs from your platform
