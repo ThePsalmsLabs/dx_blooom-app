@@ -577,7 +577,7 @@ export function OrchestratedContentPurchaseCard({
         hasEnoughBalance: usdcBalance.data ? usdcBalance.data >= contentQuery.data.payPerViewPrice : false,
         allowance: usdcAllowance.data || undefined,
         needsApproval: usdcAllowance.data ? usdcAllowance.data < contentQuery.data.payPerViewPrice : true,
-        isLoading: usdcBalance.isLoading || usdcAllowance.isLoading,
+        isLoading: (usdcBalance.isLoading ?? false) || (usdcAllowance.isLoading ?? false),
         error: usdcBalance.error?.message || usdcAllowance.error?.message
       }
     }
@@ -594,13 +594,54 @@ export function OrchestratedContentPurchaseCard({
         hasEnoughBalance: ethBalance.data.value >= ethPaymentCalculation.ethAmountWithSlippage,
         allowance: BigInt(0), // ETH doesn't need approval
         needsApproval: false,
-        isLoading: ethBalance.isLoading || ethPriceQuery.isLoading,
+        isLoading: (ethBalance.isLoading ?? false) || (ethPriceQuery.isLoading ?? false),
         error: ethBalance.error?.message || ethPriceQuery.error?.message
       }
     }
-    
-    setPaymentState(prev => ({ ...prev, availableTokens: tokens }))
-  }, [contractAddresses, contentQuery.data, usdcBalance, usdcAllowance, ethBalance, ethPaymentCalculation, ethPriceQuery])
+
+    // Only update state if values actually changed to avoid render loops
+    setPaymentState(prev => {
+      const prevTokens = prev.availableTokens
+      let changed = false
+      ;([PaymentMethod.USDC, PaymentMethod.ETH] as const).forEach((m) => {
+        const a = prevTokens[m]
+        const b = tokens[m]
+        if (!a && !b) return
+        if (!a || !b) { changed = true; return }
+        if (
+          a.address !== b.address ||
+          a.symbol !== b.symbol ||
+          a.decimals !== b.decimals ||
+          a.balance !== b.balance ||
+          a.requiredAmount !== b.requiredAmount ||
+          a.hasEnoughBalance !== b.hasEnoughBalance ||
+          a.allowance !== b.allowance ||
+          a.needsApproval !== b.needsApproval ||
+          a.isLoading !== b.isLoading ||
+          a.error !== b.error
+        ) {
+          changed = true
+        }
+      })
+      if (!changed) return prev
+      return { ...prev, availableTokens: tokens }
+    })
+  }, [
+    contractAddresses?.USDC,
+    contentQuery.data?.payPerViewPrice,
+    usdcBalance.data,
+    usdcBalance.isLoading,
+    usdcBalance.error,
+    usdcAllowance.data,
+    usdcAllowance.isLoading,
+    usdcAllowance.error,
+    ethBalance.data?.value,
+    ethBalance.isLoading,
+    ethBalance.error,
+    ethPaymentCalculation?.ethAmountWithSlippage,
+    ethPriceQuery.isLoading,
+    ethPriceQuery.error
+  ])
 
   // FIXED: Add payment duration tracking
   const [paymentStartTime, setPaymentStartTime] = useState<number | null>(null)

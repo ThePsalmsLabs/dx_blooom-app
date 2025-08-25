@@ -95,17 +95,44 @@ function CreatorsSection() {
       .slice(0, 6) // Show top 6 creators
   }, [allCreators.creators])
 
-  // Force load creators if they haven't loaded yet
+  // Enhanced loading logic with proper dependency handling
   useEffect(() => {
-    if (!allCreators.isLoading && allCreators.totalCount > 0 && allCreators.creators.length === 0) {
-      // Try to load more if we have a total count but no creators
-      if (allCreators.loadMore) {
+    // Only trigger load if we have a total count but no creators loaded yet
+    if (
+      allCreators.totalCount > 0 && 
+      allCreators.creators.length === 0 && 
+      !allCreators.isLoading &&
+      allCreators.loadMore
+    ) {
+      // Add a small delay to ensure the hook is fully initialized
+      const timer = setTimeout(() => {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Home page: Triggering manual load of creators...')
+        }
         allCreators.loadMore()
-      }
+      }, 100)
+      
+      return () => clearTimeout(timer)
     }
-  }, [allCreators.totalCount, allCreators.creators.length, allCreators.isLoading])
+  }, [allCreators.totalCount, allCreators.creators.length, allCreators.isLoading, allCreators.loadMore])
 
-  // Debug logging for development
+  // Additional safety check - if we have total count but no creators after a delay, try loading again
+  useEffect(() => {
+    if (allCreators.totalCount > 0 && allCreators.creators.length === 0 && !allCreators.isLoading) {
+      const timer = setTimeout(() => {
+        if (allCreators.totalCount > 0 && allCreators.creators.length === 0 && !allCreators.isLoading && allCreators.loadMore) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Home page: Safety check - triggering load after delay...')
+          }
+          allCreators.loadMore()
+        }
+      }, 2000) // 2 second delay
+      
+      return () => clearTimeout(timer)
+    }
+  }, [allCreators.totalCount, allCreators.creators.length, allCreators.isLoading, allCreators.loadMore])
+
+  // Enhanced debug logging for development
   if (process.env.NODE_ENV === 'development') {
     console.log('🏠 Home page creators state:', {
       isLoading: allCreators.isLoading,
@@ -115,7 +142,9 @@ function CreatorsSection() {
       isError: allCreators.isError,
       error: allCreators.error?.message,
       hasLoadMore: !!allCreators.loadMore,
-      hasMore: allCreators.hasMore
+      hasMore: allCreators.hasMore,
+      currentPage: allCreators.currentPage,
+      shouldAutoLoad: allCreators.totalCount > 0 && allCreators.creators.length === 0 && !allCreators.isLoading
     })
   }
 
@@ -145,7 +174,7 @@ function CreatorsSection() {
         </div>
 
         {/* Featured Creators Grid */}
-        {allCreators.isLoading && featuredCreators.length === 0 ? (
+        {(allCreators.isLoading || (allCreators.totalCount > 0 && featuredCreators.length === 0)) ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }, (_, i) => (
               <Card key={i} className="animate-pulse">
@@ -193,21 +222,51 @@ function CreatorsSection() {
               <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-2">Unable to Load Creators</h3>
               <p className="text-muted-foreground mb-6">
-                There was an issue loading creators. Please try refreshing the page.
+                {allCreators.error?.message || 'There was an issue loading creators.'}
               </p>
-              <Button onClick={() => window.location.reload()}>
-                Refresh Page
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={allCreators.retryFailed} variant="outline">
+                  Retry Failed
+                </Button>
+                <Button onClick={() => window.location.reload()}>
+                  Refresh Page
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
           <Card className="text-center py-12">
             <CardContent>
               <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Loading Creators...</h3>
-              <p className="text-muted-foreground">
-                Please wait while we load the creator profiles.
+              <h3 className="text-xl font-semibold mb-2">
+                {allCreators.totalCount > 0 ? 'Loading Creators...' : 'No Creators Found'}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {allCreators.totalCount > 0 
+                  ? 'Please wait while we load the creator profiles.'
+                  : 'Be the first creator to join our platform!'
+                }
               </p>
+              {allCreators.totalCount > 0 && allCreators.loadMore && (
+                <div className="space-y-2">
+                  <Button 
+                    onClick={allCreators.loadMore}
+                    disabled={allCreators.isLoading}
+                    variant="outline"
+                  >
+                    {allCreators.isLoading ? 'Loading...' : 'Load Creators'}
+                  </Button>
+                  {allCreators.isError && (
+                    <Button 
+                      onClick={allCreators.retryFailed}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Retry Failed
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

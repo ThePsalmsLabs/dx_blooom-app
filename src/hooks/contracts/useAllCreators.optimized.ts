@@ -354,10 +354,10 @@ export function useAllCreators(initialPageSize: number = 20): AllCreatorsResult 
 
   // Auto-load first batch
   useEffect(() => {
-    if (totalCount > 0 && creators.length === 0 && !loadingRef.current) {
+    if (totalCount > 0 && creators.length === 0 && !loadingRef.current && loadMore) {
       loadMore()
     }
-  }, [totalCount]) // Only depend on totalCount to avoid loops
+  }, [totalCount, loadMore]) // Include loadMore in dependencies
 
   const hasMore = creators.length < totalCount
 
