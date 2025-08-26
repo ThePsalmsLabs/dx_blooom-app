@@ -497,7 +497,7 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
           <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
           <p className="font-medium text-green-800 dark:text-green-200">You have access to this content</p>
           <Button
-            onClick={() => router.push(`/content/${contentId}`)}
+            onClick={() => router.push(`/content/${contentId}/view`)}
             className="mt-3"
             variant="default"
           >

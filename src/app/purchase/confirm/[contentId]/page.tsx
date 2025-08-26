@@ -138,7 +138,7 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
   useEffect(() => {
     if (accessQuery.data === true && contentId) {
       // User already has access - redirect to content view
-      router.replace(`/content/${contentId}`)
+      router.replace(`/content/${contentId}/view`)
     }
   }, [accessQuery.data, contentId, router])
 
@@ -161,10 +161,10 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
         confirmationStep: 'completed'
       }))
       
-      // Redirect to content after successful purchase
+      // Redirect to content view after successful purchase
       if (contentId) {
         setTimeout(() => {
-          router.push(`/content/${contentId}`)
+          router.push(`/content/${contentId}/view`)
         }, 2000)
       }
     } else if (purchaseFlow.flowState.step === 'error' && purchaseFlow.flowState.error) {
@@ -340,7 +340,7 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
             onSuccess={() => {
               handleTransactionModalClose()
               if (contentId) {
-                router.push(`/content/${contentId}`)
+                router.push(`/content/${contentId}/view`)
               }
             }}
           />

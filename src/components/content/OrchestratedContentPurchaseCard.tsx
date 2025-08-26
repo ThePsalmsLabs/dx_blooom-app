@@ -893,7 +893,7 @@ export function OrchestratedContentPurchaseCard({
             <span className="font-medium">You have access to this content</span>
           </div>
           <Button 
-            onClick={() => onViewContent?.(contentId)}
+            onClick={() => router.push(`/content/${contentId}/view`)}
             className="w-full"
           >
             <Eye className="h-4 w-4 mr-2" />

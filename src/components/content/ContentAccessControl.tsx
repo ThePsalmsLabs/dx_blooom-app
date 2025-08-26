@@ -34,7 +34,7 @@ export function ContentAccessControl({
 
   if (hasAccess.data) {
     return (
-      <Button className={className} onClick={() => router.push(`/content/${contentId}`)}>
+      <Button className={className} onClick={() => router.push(`/content/${contentId}/view`)}>
         <Eye className="h-4 w-4 mr-2" />
         View Content
       </Button>

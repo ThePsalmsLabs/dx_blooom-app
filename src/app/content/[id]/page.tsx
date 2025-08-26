@@ -70,6 +70,9 @@ import { cn, formatCurrency, formatRelativeTime, formatAddress, formatContentCat
 import type { Content } from '@/types/contracts'
 import { toast } from 'sonner'
 
+// Import the PaymentResult type for proper typing
+import type { PaymentResult } from '@/hooks/web3/usePaymentFlowOrchestrator'
+
 /**
  * Page Props Interface
  * 
@@ -185,7 +188,7 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
    * This function manages the post-purchase experience, updating local state
    * and providing user feedback when a purchase is successfully completed.
    */
-  const handlePurchaseSuccess = React.useCallback(() => {
+  const handlePurchaseSuccess = React.useCallback((contentId: bigint, result: PaymentResult) => {
     setPurchaseCompleted(true)
     
     // Refresh access query to ensure UI reflects new access state
@@ -201,7 +204,7 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
     setTimeout(() => {
       router.push(`/content/${contentId}/view`)
     }, 2000)
-  }, [accessQuery, contentQuery.data?.title, router, contentId])
+  }, [accessQuery, contentQuery.data?.title, router])
 
   /**
    * Content View Handler
@@ -209,12 +212,32 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
    * This function manages navigation to the full content view once users
    * have confirmed access to the content.
    */
-  const handleViewContent = React.useCallback(() => {
-    if (accessState.status === 'accessible') {
-      // Navigate to full content view or unlock content display
+  const handleViewContent = React.useCallback((contentId: bigint) => {
+    // Check if user has access either through query or local state
+    if (accessQuery.data === true || purchaseCompleted) {
+      // Navigate to full content view
       router.push(`/content/${contentId}/view`)
+    } else {
+      // If access is not confirmed, show a message and refresh access
+      toast.info("Verifying access...", {
+        description: "Please wait while we confirm your purchase.",
+        duration: 3000,
+      })
+      
+      // Refresh access query and try again after a short delay
+      accessQuery.refetch()
+      setTimeout(() => {
+        if (accessQuery.data === true) {
+          router.push(`/content/${contentId}/view`)
+        } else {
+          toast.error("Access verification failed", {
+            description: "Please try refreshing the page or contact support if the issue persists.",
+            duration: 5000,
+          })
+        }
+      }, 2000)
     }
-  }, [accessState.status, router, contentId])
+  }, [accessQuery, purchaseCompleted, router])
 
   /**
    * Navigation Handler
@@ -299,10 +322,8 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
                   <OrchestratedContentPurchaseCard
                     contentId={contentId}
                     userAddress={userAddress}
-                    onPurchaseSuccess={() => {
-                      toast.success('Content purchased successfully!')
-                      router.push(`/content/${contentId}`)
-                    }}
+                    onPurchaseSuccess={handlePurchaseSuccess}
+                    onViewContent={handleViewContent}
                     variant="full"
                     showCreatorInfo={true}
                     showPurchaseDetails={true}
@@ -316,7 +337,7 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
                 {!accessState.showPurchaseCard && (
                   <AccessStatusCard
                     accessState={accessState}
-                    onViewContent={handleViewContent}
+                    onViewContent={() => handleViewContent(contentId)}
                     isConnected={isConnected}
                   />
                 )}

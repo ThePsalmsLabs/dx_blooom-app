@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Address } from 'viem'
 import {
   Eye,
@@ -63,6 +64,7 @@ export function ContentPurchaseCard({
   variant = 'full',
   className
 }: ContentPurchaseCardProps) {
+  const router = useRouter()
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.USDC)
 
   const unifiedPurchase = useUnifiedContentPurchase(contentId, userAddress)
@@ -162,8 +164,9 @@ export function ContentPurchaseCard({
   }, [unifiedPurchase, selectedMethod])
 
   const handleViewContent = useCallback(() => {
-    onViewContent?.(contentId)
-  }, [onViewContent, contentId])
+    // Navigate directly to content view page when user has access
+    router.push(`/content/${contentId}/view`)
+  }, [router, contentId])
 
   // Fire success callback only after on-chain confirmation to avoid premature navigation
   React.useEffect(() => {
