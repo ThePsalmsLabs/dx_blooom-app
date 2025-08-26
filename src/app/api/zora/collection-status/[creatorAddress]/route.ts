@@ -106,12 +106,12 @@ export async function POST(
       creatorAddress,
       creatorProfile: {
         isRegistered: true,
-        subscriptionPrice: BigInt(0),
-        isVerified: false,
-        totalEarnings: BigInt(0),
-        contentCount: BigInt(0),
-        subscriberCount: BigInt(0),
-        registrationTime: BigInt(0)
+        subscriptionPrice: BigInt(0), // TODO: Query from CreatorRegistry contract
+        isVerified: false, // TODO: Query from CreatorRegistry contract
+        totalEarnings: BigInt(0), // TODO: Query from CreatorRegistry contract
+        contentCount: BigInt(0), // TODO: Query from ContentRegistry contract
+        subscriberCount: BigInt(0), // TODO: Query from SubscriptionManager contract
+        registrationTime: BigInt(0) // TODO: Query from CreatorRegistry contract
       },
       hasZoraCollection: true,
       zoraCollectionAddress: collectionAddress,

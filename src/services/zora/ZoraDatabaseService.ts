@@ -146,16 +146,16 @@ export class ZoraDatabaseService {
     for (const key of keys) {
       const record = await this.storage.get(key)
       if (record && record.creatorAddress.toLowerCase() === creatorAddress.toLowerCase()) {
-        records.push(record)
+        records.push({
+          ...record,
+          lastUpdated: new Date(record.lastUpdated)
+        })
       }
     }
 
-    return records.sort((a, b) => {
-      // Sort by mint timestamp if available, otherwise by content ID
-      const aTime = a.mintTimestamp ? new Date(a.mintTimestamp).getTime() : Number(a.contentId)
-      const bTime = b.mintTimestamp ? new Date(b.mintTimestamp).getTime() : Number(b.contentId)
-      return bTime - aTime
-    })
+    return records.sort((a, b) => 
+      new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+    )
   }
 
   /**
@@ -172,7 +172,8 @@ export class ZoraDatabaseService {
         nftViews: analytics.totalMints ? Number(analytics.totalMints) : record.nftViews,
         nftMints: analytics.totalMints ? Number(analytics.totalMints) : record.nftMints,
         nftRevenue: analytics.totalVolume || record.nftRevenue,
-        lastMintDate: analytics.totalMints ? new Date() : record.lastMintDate
+        lastMintDate: analytics.totalMints ? new Date() : record.lastMintDate,
+        lastUpdated: new Date()
       }
       await this.storeContentNFTRecord(updatedRecord)
     }
@@ -268,7 +269,10 @@ export class ZoraDatabaseService {
           }
         }
 
-        records.push(record)
+        records.push({
+          ...record,
+          lastUpdated: new Date(record.lastUpdated)
+        })
       }
     }
 
@@ -278,10 +282,7 @@ export class ZoraDatabaseService {
         case 'price':
           return Number((b.nftMintPrice || BigInt(0)) - (a.nftMintPrice || BigInt(0)))
         case 'recent':
-          // Sort by mint timestamp if available, otherwise by content ID
-          const aTime = a.mintTimestamp ? new Date(a.mintTimestamp).getTime() : Number(a.contentId)
-          const bTime = b.mintTimestamp ? new Date(b.mintTimestamp).getTime() : Number(b.contentId)
-          return bTime - aTime
+          return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
         case 'popular':
           return (b.nftMints || 0) - (a.nftMints || 0)
         case 'trending':
@@ -307,13 +308,13 @@ export class ZoraDatabaseService {
     if (!nftRecord) return null
 
     // This would typically fetch subscription data from your existing analytics
-    // For now, we'll return a mock comparison
+    // For now, we'll return a mock comparison - TODO: Integrate with your subscription analytics
     return {
       contentId,
       subscriptionMetrics: {
-        subscribers: BigInt(0), // Would come from your subscription analytics
-        subscriptionRevenue: BigInt(0),
-        averageSubscriptionPrice: BigInt(0)
+        subscribers: BigInt(0), // TODO: Query from CreatorRegistry contract
+        subscriptionRevenue: BigInt(0), // TODO: Query from Commerce Protocol
+        averageSubscriptionPrice: BigInt(0) // TODO: Calculate from subscription data
       },
       nftMetrics: {
         mints: BigInt(nftRecord.nftMints || 0),

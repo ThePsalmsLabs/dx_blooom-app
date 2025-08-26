@@ -372,11 +372,15 @@ export class ZoraIntegrationService {
    * Check if content has been minted as NFT
    */
   async isContentMinted(contentId: string, creatorAddress: Address): Promise<boolean> {
-    // This would typically involve querying your database or subgraph
-    // to check if a specific content piece has been minted as NFT
-    
-    // For now, return false as placeholder
-    return false
+    try {
+      // Import the database service dynamically to avoid circular dependencies
+      const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
+      const dbService = new ZoraDatabaseService()
+      return await dbService.isContentMintedAsNFT(BigInt(contentId))
+    } catch (error) {
+      console.error('Error checking if content is minted:', error)
+      return false
+    }
   }
 
   /**
@@ -385,13 +389,16 @@ export class ZoraIntegrationService {
    * This helps track which collection belongs to which creator
    */
   async getCreatorCollection(creatorAddress: Address): Promise<Address | null> {
-    // This would typically involve:
-    // 1. Querying your database for stored collection addresses
-    // 2. Or querying Zora's subgraph for collections created by the address
-    // 3. Or using Zora's API to find collections
-    
-    // Placeholder implementation
-    return null
+    try {
+      // Import the database service dynamically to avoid circular dependencies
+      const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
+      const dbService = new ZoraDatabaseService()
+      const collection = await dbService.getCreatorCollection(creatorAddress)
+      return collection?.zoraCollectionAddress || null
+    } catch (error) {
+      console.error('Error getting creator collection:', error)
+      return null
+    }
   }
 
   /**

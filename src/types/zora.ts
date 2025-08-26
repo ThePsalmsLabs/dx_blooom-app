@@ -104,6 +104,9 @@ export interface ContentNFTRecord {
   // Status tracking
   nftStatus: 'not_minted' | 'minting' | 'minted' | 'mint_failed'
   nftError?: string
+  
+  // Timestamps
+  lastUpdated: Date
 }
 
 /**

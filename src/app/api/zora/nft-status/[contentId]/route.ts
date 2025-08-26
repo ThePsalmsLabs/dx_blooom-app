@@ -62,19 +62,19 @@ export async function GET(
           totalMints: performanceComparison.nftMetrics.mints,
           totalVolume: performanceComparison.nftMetrics.nftRevenue,
           averagePrice: performanceComparison.nftMetrics.averageMintPrice,
-          uniqueMinters: 0, // Would come from on-chain data
-          mintsLast24h: BigInt(0),
-          volumeLast24h: BigInt(0),
-          mintsLast7d: BigInt(0),
-          volumeLast7d: BigInt(0),
-          mintsLast30d: BigInt(0),
-          volumeLast30d: BigInt(0),
-          mintTrend: 'stable',
-          volumeTrend: 'stable',
-          conversionRate: 0,
-          socialShares: 0,
-          socialEngagement: 0,
-          discoverySource: 'direct_link'
+          uniqueMinters: 0, // TODO: Query from on-chain data
+          mintsLast24h: BigInt(0), // TODO: Calculate from mint timestamps
+          volumeLast24h: BigInt(0), // TODO: Calculate from mint timestamps
+          mintsLast7d: BigInt(0), // TODO: Calculate from mint timestamps
+          volumeLast7d: BigInt(0), // TODO: Calculate from mint timestamps
+          mintsLast30d: BigInt(0), // TODO: Calculate from mint timestamps
+          volumeLast30d: BigInt(0), // TODO: Calculate from mint timestamps
+          mintTrend: 'stable', // TODO: Calculate trend from historical data
+          volumeTrend: 'stable', // TODO: Calculate trend from historical data
+          conversionRate: 0, // TODO: Calculate from views vs mints
+          socialShares: 0, // TODO: Query from social platforms
+          socialEngagement: 0, // TODO: Query from social platforms
+          discoverySource: 'direct_link' // TODO: Track discovery sources
         } : undefined
       }
     })

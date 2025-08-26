@@ -94,8 +94,39 @@ export function useCreatorZoraCollection() {
         // Invalidate queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ['creator-collections'] })
 
-        // TODO: Store collection address in your database
-        // await storeCreatorCollection(userAddress, result.contractAddress)
+        // Store collection address in database
+        try {
+          const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
+          const dbService = new ZoraDatabaseService()
+          await dbService.storeCreatorCollection({
+            creatorAddress: userAddress,
+            creatorProfile: {
+              isRegistered: true,
+              subscriptionPrice: BigInt(0),
+              isVerified: false,
+              totalEarnings: BigInt(0),
+              contentCount: BigInt(0),
+              subscriberCount: BigInt(0),
+              registrationTime: BigInt(0)
+            },
+            hasZoraCollection: true,
+            zoraCollectionAddress: result.contractAddress,
+            zoraCollectionName: config.name,
+            zoraCollectionDescription: config.description,
+            zoraCollectionURI: config.contractURI,
+            royaltyBPS: config.royaltyBPS,
+            defaultMintPrice: config.defaultPrice,
+            maxSupply: config.maxSupply,
+            totalNFTsMinted: 0,
+            totalCollectionVolume: BigInt(0),
+            totalMints: BigInt(0),
+            averageMintPrice: BigInt(0),
+            collectionStatus: 'active',
+            lastUpdated: new Date()
+          })
+        } catch (error) {
+          console.error('Error storing collection in database:', error)
+        }
 
         return result.contractAddress
       } else {
@@ -201,8 +232,7 @@ export function useContentNFTMinting(collectionAddress?: Address) {
         queryClient.invalidateQueries({ queryKey: ['content-nfts'] })
         queryClient.invalidateQueries({ queryKey: ['creator-analytics'] })
 
-        // TODO: Update your database to track the NFT mint
-        // await updateContentNFTStatus(contentData.contentId, mintData)
+        // Database update is already handled in the storeContentNFTRecord call above
 
         return mintData
       } else {
@@ -252,18 +282,29 @@ export function useContentNFTStatus(contentId: string, creatorAddress?: Address)
       const isMinted = await service.isContentMinted(contentId, creatorAddress)
       
       if (isMinted) {
-        // If minted, fetch the NFT details
-        // This would typically involve querying your database or Zora's subgraph
-        // For now, we'll simulate the data structure
-        setNftData({
-          isMinted: true,
-          // These would be fetched from your records
-          contractAddress: '0x...' as Address,
-          tokenId: BigInt(1),
-          mintPrice: parseEther('0.01'),
-          totalMinted: BigInt(5),
-          maxSupply: BigInt(100)
-        })
+        // If minted, fetch the NFT details from database
+        try {
+          const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
+          const dbService = new ZoraDatabaseService()
+          const nftRecord = await dbService.getContentNFTRecord(BigInt(contentId))
+          
+          if (nftRecord) {
+            setNftData({
+              isMinted: true,
+              contractAddress: nftRecord.nftContractAddress!,
+              tokenId: nftRecord.nftTokenId!,
+              mintPrice: nftRecord.nftMintPrice!,
+              totalMinted: nftRecord.nftTotalMinted!,
+              maxSupply: BigInt(nftRecord.nftMaxSupply || 0),
+              metadata: nftRecord.nftMetadata
+            })
+          } else {
+            setNftData({ isMinted: false })
+          }
+        } catch (error) {
+          console.error('Error fetching NFT details:', error)
+          setNftData({ isMinted: false })
+        }
       } else {
         setNftData({ isMinted: false })
       }
@@ -313,22 +354,30 @@ export function useZoraCollectionAnalytics(collectionAddress?: Address) {
     setAnalytics(prev => ({ ...prev, loading: true, error: null }))
 
     try {
-      // This would typically involve:
-      // 1. Querying Zora's subgraph for collection statistics
-      // 2. Aggregating data from your database
-      // 3. Using Zora's API for real-time data
+      // Query real analytics from database
+      try {
+        const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
+        const dbService = new ZoraDatabaseService()
+        const performance = await dbService.getCreatorNFTPerformance(collectionAddress)
+        
+        const realAnalytics = {
+          totalNFTs: performance.totalNFTs,
+          totalMinted: performance.totalMints,
+          totalVolume: performance.totalRevenue,
+          averagePrice: performance.averageMintPrice,
+          loading: false,
+          error: null
+        }
 
-      // Placeholder implementation
-      const mockAnalytics = {
-        totalNFTs: 5,
-        totalMinted: BigInt(23),
-        totalVolume: parseEther('0.15'),
-        averagePrice: parseEther('0.0065'),
-        loading: false,
-        error: null
+        setAnalytics(realAnalytics)
+      } catch (error) {
+        console.error('Error fetching collection analytics:', error)
+        setAnalytics(prev => ({
+          ...prev,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch analytics'
+        }))
       }
-
-      setAnalytics(mockAnalytics)
     } catch (error) {
       setAnalytics(prev => ({
         ...prev,
@@ -420,9 +469,9 @@ export function useIntegratedContentPublishing() {
         }
       }
 
-      // Extract content ID from transaction logs (this would need to be implemented)
-      // For now, we'll use a placeholder
-      const contentId = BigInt(Date.now()) // This should come from the transaction logs
+      // Extract content ID from transaction logs
+      // For now, we'll use a placeholder - in production this should be extracted from ContentRegistry events
+      const contentId = BigInt(Date.now()) // TODO: Extract from ContentRegistry.ContentRegistered event
 
       // Step 2: Optionally mint as NFT
       let nftResult = undefined
@@ -486,7 +535,8 @@ export function useIntegratedContentPublishing() {
             nftMints: 1,
             nftRevenue: nftOptions.mintPrice || BigInt(0),
             lastMintDate: new Date(),
-            nftStatus: 'minted'
+            nftStatus: 'minted',
+            lastUpdated: new Date()
           })
         }
       }
