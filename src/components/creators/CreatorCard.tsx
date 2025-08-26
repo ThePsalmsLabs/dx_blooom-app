@@ -33,7 +33,6 @@ export function CreatorCard({
   const router = useRouter()
   const creatorProfile = useCreatorProfile(creatorAddress)
 
-dd . 
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation()
     router.push(`/creator/${creatorAddress}`)
