@@ -1300,3 +1300,722 @@
     @apply border border-gray-300 bg-transparent text-gray-900;
   }
 }
+
+/* Responsive Design System for Creator Profile Page */
+
+/* Mobile-first responsive container */
+.creator-profile-container {
+  @apply container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8;
+}
+
+/* Responsive grid layouts */
+.creator-profile-grid {
+  @apply grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8;
+}
+
+.creator-main-content {
+  @apply lg:col-span-3 space-y-4 sm:space-y-6 lg:space-8;
+}
+
+.creator-sidebar {
+  @apply lg:col-span-1 space-y-4 sm:space-y-6;
+}
+
+/* Responsive card layouts */
+.creator-card {
+  @apply bg-card border rounded-lg shadow-sm;
+}
+
+.creator-card-mobile {
+  @apply p-4 sm:p-6;
+}
+
+.creator-card-desktop {
+  @apply p-6 lg:p-8;
+}
+
+/* Responsive typography */
+.creator-title-mobile {
+  @apply text-xl sm:text-2xl lg:text-3xl font-bold;
+}
+
+.creator-title-desktop {
+  @apply text-3xl font-bold;
+}
+
+.creator-subtitle {
+  @apply text-sm sm:text-base lg:text-lg;
+}
+
+.creator-text {
+  @apply text-xs sm:text-sm lg:text-base;
+}
+
+.creator-text-small {
+  @apply text-xs sm:text-sm;
+}
+
+/* Responsive spacing */
+.creator-spacing-xs {
+  @apply space-y-2 sm:space-y-3;
+}
+
+.creator-spacing-sm {
+  @apply space-y-3 sm:space-y-4;
+}
+
+.creator-spacing-md {
+  @apply space-y-4 sm:space-y-6;
+}
+
+.creator-spacing-lg {
+  @apply space-y-6 sm:space-y-8;
+}
+
+/* Responsive flex layouts */
+.creator-flex-mobile {
+  @apply flex flex-col sm:flex-row;
+}
+
+.creator-flex-desktop {
+  @apply flex items-start justify-between;
+}
+
+.creator-flex-center {
+  @apply flex items-center justify-center sm:justify-start;
+}
+
+/* Responsive grid for stats */
+.creator-stats-grid {
+  @apply grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4;
+}
+
+.creator-stats-item {
+  @apply flex items-center justify-center sm:justify-start gap-1 text-xs sm:text-sm text-muted-foreground;
+}
+
+/* Responsive icons */
+.creator-icon-xs {
+  @apply h-3 w-3 sm:h-4 sm:w-4;
+}
+
+.creator-icon-sm {
+  @apply h-4 w-4 sm:h-5 sm:w-5;
+}
+
+.creator-icon-md {
+  @apply h-5 w-5 sm:h-6 sm:w-6;
+}
+
+.creator-icon-lg {
+  @apply h-6 w-6 sm:h-8 sm:w-8;
+}
+
+/* Responsive badges */
+.creator-badge {
+  @apply text-xs sm:text-sm;
+}
+
+.creator-badge-icon {
+  @apply h-3 w-3 sm:h-4 sm:w-4 mr-1;
+}
+
+/* Responsive buttons */
+.creator-button-mobile {
+  @apply w-full sm:w-auto;
+}
+
+.creator-button-compact {
+  @apply flex flex-col sm:flex-row items-start sm:items-center gap-3;
+}
+
+/* Responsive subscription card */
+.creator-subscription-card {
+  @apply sticky top-4 lg:top-6;
+}
+
+.creator-subscription-content {
+  @apply p-4 sm:p-6 space-y-4 sm:space-y-6;
+}
+
+.creator-subscription-header {
+  @apply p-4 sm:p-6;
+}
+
+.creator-subscription-title {
+  @apply flex items-center gap-2 text-base sm:text-lg;
+}
+
+/* Responsive subscription details */
+.creator-subscription-details {
+  @apply space-y-3 sm:space-y-4;
+}
+
+.creator-subscription-item {
+  @apply flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-2 sm:gap-0;
+}
+
+.creator-subscription-info {
+  @apply flex items-center gap-2 sm:gap-3;
+}
+
+.creator-subscription-price {
+  @apply text-lg sm:text-xl font-bold;
+}
+
+/* Responsive creator info */
+.creator-info-mobile {
+  @apply text-center sm:text-left;
+}
+
+.creator-info-desktop {
+  @apply flex-1;
+}
+
+.creator-info-header {
+  @apply flex items-center justify-center sm:justify-start gap-2 mb-2 sm:mb-3;
+}
+
+.creator-info-stats {
+  @apply grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-4;
+}
+
+/* Responsive loading states */
+.creator-loading-skeleton {
+  @apply animate-pulse;
+}
+
+.creator-loading-title {
+  @apply h-6 sm:h-8 bg-gray-200 rounded w-2/3 sm:w-1/3 mb-3 sm:mb-4;
+}
+
+.creator-loading-text {
+  @apply h-3 sm:h-4 bg-gray-200 rounded w-1/2 sm:w-1/4;
+}
+
+.creator-loading-text-long {
+  @apply h-3 sm:h-4 bg-gray-200 rounded w-2/3 sm:w-1/3;
+}
+
+/* Responsive alerts */
+.creator-alert {
+  @apply text-xs sm:text-sm;
+}
+
+/* Responsive margins and padding */
+.creator-margin-xs {
+  @apply mb-2 sm:mb-3;
+}
+
+.creator-margin-sm {
+  @apply mb-3 sm:mb-4;
+}
+
+.creator-margin-md {
+  @apply mb-4 sm:mb-6;
+}
+
+.creator-padding-xs {
+  @apply p-2 sm:p-3;
+}
+
+.creator-padding-sm {
+  @apply p-3 sm:p-4;
+}
+
+.creator-padding-md {
+  @apply p-4 sm:p-6;
+}
+
+.creator-padding-lg {
+  @apply p-6 sm:p-8;
+}
+
+/* Responsive gaps */
+.creator-gap-xs {
+  @apply gap-1 sm:gap-2;
+}
+
+.creator-gap-sm {
+  @apply gap-2 sm:gap-3;
+}
+
+.creator-gap-md {
+  @apply gap-3 sm:gap-4;
+}
+
+.creator-gap-lg {
+  @apply gap-4 sm:gap-6;
+}
+
+/* Responsive borders */
+.creator-border-mobile {
+  @apply border-t border-green-200 dark:border-green-800;
+}
+
+.creator-border-desktop {
+  @apply border-t;
+}
+
+/* Responsive min-width utilities */
+.creator-min-w-0 {
+  @apply min-w-0;
+}
+
+.creator-min-w-full {
+  @apply min-w-full;
+}
+
+/* Responsive truncation */
+.creator-truncate {
+  @apply truncate;
+}
+
+.creator-line-clamp-2 {
+  @apply line-clamp-2;
+}
+
+.creator-line-clamp-3 {
+  @apply line-clamp-3;
+}
+
+/* Responsive visibility */
+.creator-mobile-only {
+  @apply lg:hidden;
+}
+
+.creator-desktop-only {
+  @apply hidden lg:flex;
+}
+
+.creator-tablet-up {
+  @apply hidden sm:block;
+}
+
+.creator-mobile-down {
+  @apply sm:hidden;
+}
+
+/* Responsive sticky positioning */
+.creator-sticky-mobile {
+  @apply sticky top-4;
+}
+
+.creator-sticky-desktop {
+  @apply sticky top-6;
+}
+
+/* Responsive background colors */
+.creator-bg-muted {
+  @apply bg-muted;
+}
+
+.creator-bg-green-50 {
+  @apply bg-green-50 dark:bg-green-950/30;
+}
+
+.creator-bg-yellow-50 {
+  @apply bg-yellow-50;
+}
+
+/* Responsive text colors */
+.creator-text-green {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.creator-text-yellow {
+  @apply text-yellow-600;
+}
+
+.creator-text-muted {
+  @apply text-muted-foreground;
+}
+
+/* Responsive border colors */
+.creator-border-green {
+  @apply border-green-200 dark:border-green-800;
+}
+
+.creator-border-yellow {
+  @apply border-yellow-200;
+}
+
+/* Responsive shadow */
+.creator-shadow {
+  @apply shadow-sm;
+}
+
+/* Responsive rounded corners */
+.creator-rounded {
+  @apply rounded-lg;
+}
+
+/* Responsive transitions */
+.creator-transition {
+  @apply transition-all duration-200;
+}
+
+/* Responsive hover states */
+.creator-hover {
+  @apply hover:bg-muted/50;
+}
+
+/* Responsive focus states */
+.creator-focus {
+  @apply focus:ring-2 focus:ring-primary focus:ring-offset-2;
+}
+
+/* Responsive disabled states */
+.creator-disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Responsive animation */
+.creator-animate-spin {
+  @apply animate-spin;
+}
+
+.creator-animate-pulse {
+  @apply animate-pulse;
+}
+
+/* Responsive backdrop */
+.creator-backdrop {
+  @apply backdrop-blur-sm;
+}
+
+/* Responsive z-index */
+.creator-z-sticky {
+  @apply z-10;
+}
+
+.creator-z-dropdown {
+  @apply z-20;
+}
+
+.creator-z-modal {
+  @apply z-30;
+}
+
+.creator-z-tooltip {
+  @apply z-40;
+}
+
+.creator-z-popover {
+  @apply z-50;
+}
+
+/* Responsive overflow */
+.creator-overflow-hidden {
+  @apply overflow-hidden;
+}
+
+.creator-overflow-auto {
+  @apply overflow-auto;
+}
+
+.creator-overflow-scroll {
+  @apply overflow-scroll;
+}
+
+/* Responsive position */
+.creator-relative {
+  @apply relative;
+}
+
+.creator-absolute {
+  @apply absolute;
+}
+
+.creator-fixed {
+  @apply fixed;
+}
+
+.creator-sticky {
+  @apply sticky;
+}
+
+/* Responsive display */
+.creator-block {
+  @apply block;
+}
+
+.creator-inline-block {
+  @apply inline-block;
+}
+
+.creator-inline {
+  @apply inline;
+}
+
+.creator-flex {
+  @apply flex;
+}
+
+.creator-inline-flex {
+  @apply inline-flex;
+}
+
+.creator-grid {
+  @apply grid;
+}
+
+.creator-inline-grid {
+  @apply inline-grid;
+}
+
+.creator-hidden {
+  @apply hidden;
+}
+
+/* Responsive width */
+.creator-w-full {
+  @apply w-full;
+}
+
+.creator-w-auto {
+  @apply w-auto;
+}
+
+.creator-w-fit {
+  @apply w-fit;
+}
+
+.creator-w-max {
+  @apply w-max;
+}
+
+.creator-w-min {
+  @apply w-min;
+}
+
+/* Responsive height */
+.creator-h-full {
+  @apply h-full;
+}
+
+.creator-h-auto {
+  @apply h-auto;
+}
+
+.creator-h-fit {
+  @apply h-fit;
+}
+
+.creator-h-max {
+  @apply h-max;
+}
+
+.creator-h-min {
+  @apply h-min;
+}
+
+/* Responsive max-width */
+.creator-max-w-none {
+  @apply max-w-none;
+}
+
+.creator-max-w-xs {
+  @apply max-w-xs;
+}
+
+.creator-max-w-sm {
+  @apply max-w-sm;
+}
+
+.creator-max-w-md {
+  @apply max-w-md;
+}
+
+.creator-max-w-lg {
+  @apply max-w-lg;
+}
+
+.creator-max-w-xl {
+  @apply max-w-xl;
+}
+
+.creator-max-w-2xl {
+  @apply max-w-2xl;
+}
+
+.creator-max-w-3xl {
+  @apply max-w-3xl;
+}
+
+.creator-max-w-4xl {
+  @apply max-w-4xl;
+}
+
+.creator-max-w-5xl {
+  @apply max-w-5xl;
+}
+
+.creator-max-w-6xl {
+  @apply max-w-6xl;
+}
+
+.creator-max-w-7xl {
+  @apply max-w-7xl;
+}
+
+.creator-max-w-full {
+  @apply max-w-full;
+}
+
+/* Responsive min-width */
+.creator-min-w-0 {
+  @apply min-w-0;
+}
+
+.creator-min-w-full {
+  @apply min-w-full;
+}
+
+.creator-min-w-fit {
+  @apply min-w-fit;
+}
+
+.creator-min-w-max {
+  @apply min-w-max;
+}
+
+.creator-min-w-min {
+  @apply min-w-min;
+}
+
+/* Responsive aspect ratio */
+.creator-aspect-square {
+  @apply aspect-square;
+}
+
+.creator-aspect-video {
+  @apply aspect-video;
+}
+
+.creator-aspect-auto {
+  @apply aspect-auto;
+}
+
+/* Responsive object fit */
+.creator-object-cover {
+  @apply object-cover;
+}
+
+.creator-object-contain {
+  @apply object-contain;
+}
+
+.creator-object-fill {
+  @apply object-fill;
+}
+
+.creator-object-none {
+  @apply object-none;
+}
+
+.creator-object-scale-down {
+  @apply object-scale-down;
+}
+
+/* Responsive object position */
+.creator-object-center {
+  @apply object-center;
+}
+
+.creator-object-top {
+  @apply object-top;
+}
+
+.creator-object-bottom {
+  @apply object-bottom;
+}
+
+.creator-object-left {
+  @apply object-left;
+}
+
+.creator-object-right {
+  @apply object-right;
+}
+
+.creator-object-left-top {
+  @apply object-left-top;
+}
+
+.creator-object-right-top {
+  @apply object-right-top;
+}
+
+.creator-object-left-bottom {
+  @apply object-left-bottom;
+}
+
+.creator-object-right-bottom {
+  @apply object-right-bottom;
+}
+
+/* Responsive breakpoint utilities */
+@media (max-width: 640px) {
+  .creator-mobile-optimized {
+    @apply text-sm;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1024px) {
+  .creator-tablet-optimized {
+    @apply text-base;
+  }
+}
+
+@media (min-width: 1024px) {
+  .creator-desktop-optimized {
+    @apply text-lg;
+  }
+}
+
+/* Responsive print styles */
+@media print {
+  .creator-print-hidden {
+    @apply hidden;
+  }
+  
+  .creator-print-visible {
+    @apply block;
+  }
+}
+
+/* Responsive dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .creator-dark-optimized {
+    @apply bg-gray-900 text-gray-100;
+  }
+}
+
+/* Responsive reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .creator-reduced-motion {
+    @apply transition-none;
+  }
+}
+
+/* Responsive high contrast */
+@media (prefers-contrast: high) {
+  .creator-high-contrast {
+    @apply border-2;
+  }
+}
+
+/* Responsive landscape orientation */
+@media (orientation: landscape) and (max-height: 500px) {
+  .creator-landscape-optimized {
+    @apply py-2;
+  }
+}
+
+/* Responsive portrait orientation */
+@media (orientation: portrait) and (max-width: 500px) {
+  .creator-portrait-optimized {
+    @apply px-2;
+  }
+}

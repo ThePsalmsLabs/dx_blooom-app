@@ -114,9 +114,9 @@ export function CreatorSubscriptionPurchase({
   if (creatorProfile.isLoading) {
     return (
       <Card className={className}>
-        <CardContent className="p-6 text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading creator information...</p>
+        <CardContent className="p-4 sm:p-6 text-center">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto mb-3 sm:mb-4" />
+          <p className="text-sm sm:text-base text-muted-foreground">Loading creator information...</p>
         </CardContent>
       </Card>
     )
@@ -126,9 +126,9 @@ export function CreatorSubscriptionPurchase({
   if (creatorProfile.error || !creatorProfile.data) {
     return (
       <Card className={className}>
-        <CardContent className="p-6 text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-          <p className="text-muted-foreground">Failed to load creator information</p>
+        <CardContent className="p-4 sm:p-6 text-center">
+          <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-500 mx-auto mb-3 sm:mb-4" />
+          <p className="text-sm sm:text-base text-muted-foreground">Failed to load creator information</p>
         </CardContent>
       </Card>
     )
@@ -141,13 +141,13 @@ export function CreatorSubscriptionPurchase({
   if (isSubscribed) {
     return (
       <Card className={className}>
-        <CardContent className="p-6 text-center">
-          <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">You're Subscribed!</h3>
-          <p className="text-muted-foreground mb-4">
+        <CardContent className="p-4 sm:p-6 text-center">
+          <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 mx-auto mb-3 sm:mb-4" />
+          <h3 className="text-base sm:text-lg font-semibold mb-2">You're Subscribed!</h3>
+          <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4">
             You have access to all of this creator's content.
           </p>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs sm:text-sm text-muted-foreground">
             Expires: {existingSubscription?.expiryTime ? 
               new Date(Number(existingSubscription.expiryTime) * 1000).toLocaleDateString() : 
               'Unknown'}
@@ -160,12 +160,12 @@ export function CreatorSubscriptionPurchase({
   // Compact variant for integration into other components
   if (variant === 'compact') {
     return (
-      <div className={`flex items-center gap-3 ${className}`}>
-        <div className="flex-1">
-          <div className="text-sm font-medium">
+      <div className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 ${className}`}>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm sm:text-base font-medium">
             {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}/month
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs sm:text-sm text-muted-foreground">
             {creator.subscriberCount} subscribers
           </div>
         </div>
@@ -173,6 +173,7 @@ export function CreatorSubscriptionPurchase({
           onClick={handleSubscribe}
           disabled={!isConnected || !canAfford || subscriptionManagement.isLoading}
           size="sm"
+          className="w-full sm:w-auto"
         >
           {subscriptionManagement.isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -187,18 +188,18 @@ export function CreatorSubscriptionPurchase({
   // Full subscription purchase card
   return (
     <Card className={className}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Star className="h-5 w-5 text-yellow-500" />
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
           Subscribe to Creator
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Creator Information */}
         {showCreatorInfo && (
-          <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-            <div className="flex-1">
-              <div className="font-medium">
+          <div className="flex items-center gap-3 p-3 sm:p-4 bg-muted rounded-lg">
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm sm:text-base">
                 {formatAddress(creatorAddress)}
                 {creator.isVerified && (
                   <Badge variant="secondary" className="ml-2 text-xs">
@@ -206,7 +207,7 @@ export function CreatorSubscriptionPurchase({
                   </Badge>
                 )}
               </div>
-              <div className="text-sm text-muted-foreground flex items-center gap-4 mt-1">
+              <div className="text-xs sm:text-sm text-muted-foreground flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1">
                 <span className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
                   {creator.subscriberCount} subscribers
@@ -221,29 +222,29 @@ export function CreatorSubscriptionPurchase({
         )}
 
         {/* Subscription Details */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-5 w-5 text-green-600" />
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 border rounded-lg gap-2 sm:gap-0">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
               <div>
-                <div className="font-medium">Monthly Subscription</div>
-                <div className="text-sm text-muted-foreground">
+                <div className="font-medium text-sm sm:text-base">Monthly Subscription</div>
+                <div className="text-xs sm:text-sm text-muted-foreground">
                   Access to all creator content for 30 days
                 </div>
               </div>
             </div>
-            <div className="text-xl font-bold">
+            <div className="text-lg sm:text-xl font-bold">
               {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Subscription renews monthly</span>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>Cancel anytime</span>
           </div>
         </div>
@@ -252,7 +253,7 @@ export function CreatorSubscriptionPurchase({
         {!canAfford && isConnected && (
           <Alert className="border-yellow-200 bg-yellow-50">
             <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800">
+            <AlertDescription className="text-yellow-800 text-xs sm:text-sm">
               Insufficient USDC balance. You need {formatCurrency(creator.subscriptionPrice, 6, 'USDC')} but have {formatCurrency(usdcBalance.data || BigInt(0), 6, 'USDC')}.
             </AlertDescription>
           </Alert>
@@ -263,7 +264,7 @@ export function CreatorSubscriptionPurchase({
           onClick={handleSubscribe}
           disabled={!isConnected || !canAfford || subscriptionManagement.isLoading}
           className="w-full"
-          size="lg"
+          size="default"
         >
           {!isConnected ? (
             'Connect Wallet to Subscribe'
