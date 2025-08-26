@@ -10,7 +10,7 @@ import React, {
   type ReactNode 
 } from 'react'
 import { PrivyProvider } from '@privy-io/react-auth'
-import { WagmiProvider, createConfig, http } from 'wagmi'
+import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { usePrivyWagmi } from '@privy-io/wagmi'
 import { base, baseSepolia } from 'viem/chains'
@@ -131,18 +131,16 @@ const privyConfig = {
  * The previous version was creating wagmi config manually, which broke the integration
  */
 function PrivyWagmiProvider({ children }: { children: ReactNode }) {
-  // Create a proper wagmi config using createConfig
-  const wagmiConfig = createConfig({
-    chains: [base, baseSepolia],
-    transports: {
-      [base.id]: http(),
-      [baseSepolia.id]: http(),
-    },
-  })
-  
+  // Import the enhanced wagmi configuration with multi-tier RPC providers
+  const { enhancedWagmiConfig } = useMemo(() => {
+    // Dynamic import to avoid circular dependencies
+    const { enhancedWagmiConfig } = require('@/lib/web3/enhanced-wagmi-config')
+    return { enhancedWagmiConfig }
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={wagmiConfig}>
+      <WagmiProvider config={enhancedWagmiConfig}>
         {children}
       </WagmiProvider>
     </QueryClientProvider>
