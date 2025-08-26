@@ -161,17 +161,19 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
   const [smartAccountAddress, setSmartAccountAddress] = useState<Address | null>(null)
   const [isSmartAccountDeployed, setIsSmartAccountDeployed] = useState(false)
 
-  // Debug logging to help identify issues
+  // Debug logging to help identify issues (disabled for production)
   useEffect(() => {
-    console.log('🔍 Privy State Debug:', {
-      ready,
-      authenticated,
-      hasUser: Boolean(user),
-      userWallet: user?.wallet?.address,
-      wagmiConnected: isConnected,
-      wagmiAddress: address,
-      chainId
-    })
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
+      console.log('🔍 Privy State Debug:', {
+        ready,
+        authenticated,
+        hasUser: Boolean(user),
+        userWallet: user?.wallet?.address,
+        wagmiConnected: isConnected,
+        wagmiAddress: address,
+        chainId
+      })
+    }
   }, [ready, authenticated, user, isConnected, address, chainId])
 
   /**

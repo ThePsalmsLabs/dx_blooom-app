@@ -389,15 +389,17 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   // displays the wallet selection modal to users
   const { login } = useLogin()
   
-  // Debug logging to help identify the issue
-  console.log('🔍 useWalletConnectionUI Debug:', {
-    login: !!login,
-    loginType: typeof login,
-    connectors: connectors?.length,
-    isConnected,
-    isConnecting,
-    address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null
-  })
+  // Debug logging to help identify the issue (disabled for production)
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
+    console.log('🔍 useWalletConnectionUI Debug:', {
+      login: !!login,
+      loginType: typeof login,
+      connectors: connectors?.length,
+      isConnected,
+      isConnecting,
+      address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null
+    })
+  }
   
   const hasWalletConnectProjectId = Boolean(
     (process.env.NEXT_PUBLIC_REOWN_PROJECT_ID && process.env.NEXT_PUBLIC_REOWN_PROJECT_ID.length > 0) ||
@@ -462,29 +464,37 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
  * properly configured, and provides helpful error messages for debugging.
    */
   const handleConnect = useCallback(() => {
-    console.log('🚀 handleConnect called', {
-      login: !!login,
-      hasWalletConnectProjectId,
-      environment: process.env.NODE_ENV
-    })
+    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
+      console.log('🚀 handleConnect called', {
+        login: !!login,
+        hasWalletConnectProjectId,
+        environment: process.env.NODE_ENV
+      })
+    }
     
     try {
       setError(null)
       
       // Prefer custom modal if WalletConnect project ID is missing to avoid Privy runtime issues
       if (process.env.NODE_ENV === 'development' && !hasWalletConnectProjectId) {
-        console.log('⚠️ Using custom modal due to missing WalletConnect project ID')
+        if (process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
+          console.log('⚠️ Using custom modal due to missing WalletConnect project ID')
+        }
         setShowWalletModal(true)
         return
       }
 
       // Check if Privy login is available
       if (login) {
-        console.log('✅ Privy login available, opening...')
+        if (process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
+          console.log('✅ Privy login available, opening...')
+        }
         // This actually opens the wallet selection modal!
         login()
       } else {
-        console.log('❌ Privy login not available, falling back to custom modal')
+        if (process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
+          console.log('❌ Privy login not available, falling back to custom modal')
+        }
         // If login isn't available, fall back to custom modal
         if (process.env.NODE_ENV === 'development') {
           setShowWalletModal(true)

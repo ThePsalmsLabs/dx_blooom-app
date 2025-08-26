@@ -101,3 +101,42 @@ body:has([data-state="open"][data-slot="dialog-overlay"]) {
   border: 3px solid blue !important;
 }
 */
+
+/* Sheet Component Fixes */
+[data-radix-dialog-overlay] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9998 !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(4px) !important;
+  pointer-events: auto !important;
+}
+
+[data-radix-dialog-content] {
+  position: fixed !important;
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure sheet content is visible */
+.navigation-sheet-content {
+  z-index: 9999 !important;
+  position: fixed !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Fix for sheet overlay */
+.navigation-sheet-overlay {
+  z-index: 9998 !important;
+  position: fixed !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}

@@ -39,11 +39,11 @@ export function CreatorsGrid({
   if (creatorAddresses.length === 0) {
     return (
       <Card className={className}>
-        <CardContent className="p-8 text-center">
-          <div className="space-y-4">
-            <div className="text-4xl">🔍</div>
-            <h3 className="text-lg font-semibold">No Creators Found</h3>
-            <p className="text-muted-foreground">
+        <CardContent className="p-6 sm:p-8 text-center">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="text-3xl sm:text-4xl">🔍</div>
+            <h3 className="text-base sm:text-lg font-semibold">No Creators Found</h3>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Try adjusting your filters or search terms to discover more creators.
             </p>
           </div>
@@ -56,7 +56,7 @@ export function CreatorsGrid({
   if (viewMode === 'grid') {
     return (
       <div className={className}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {currentCreators.map((creatorAddress) => (
             <CreatorCard
               key={creatorAddress}
@@ -69,29 +69,41 @@ export function CreatorsGrid({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8">
+          <div className="flex items-center justify-center gap-1 sm:gap-2 mt-6 sm:mt-8">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage <= 1}
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
             >
-              <ChevronLeft className="h-4 w-4" />
-              Previous
+              <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              <span className="hidden sm:inline">Previous</span>
+              <span className="sm:hidden">Prev</span>
             </Button>
             
             <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={page === currentPage ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handlePageChange(page)}
-                  className="w-8 h-8 p-0"
-                >
-                  {page}
-                </Button>
-              ))}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                // Show first page, last page, current page, and pages around current
+                const page = i + 1
+                if (totalPages <= 5 || page === 1 || page === totalPages || 
+                    (page >= currentPage - 1 && page <= currentPage + 1)) {
+                  return (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(page)}
+                      className="w-8 h-8 sm:w-9 sm:h-9 p-0 text-xs sm:text-sm"
+                    >
+                      {page}
+                    </Button>
+                  )
+                } else if (page === currentPage - 2 || page === currentPage + 2) {
+                  return <span key={page} className="px-2 text-muted-foreground">...</span>
+                }
+                return null
+              })}
             </div>
 
             <Button
@@ -99,15 +111,17 @@ export function CreatorsGrid({
               size="sm"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage >= totalPages}
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
             >
-              Next
-              <ChevronRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Next</span>
+              <span className="sm:hidden">Next</span>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
             </Button>
           </div>
         )}
 
         {/* Results Summary */}
-        <div className="text-center text-sm text-muted-foreground mt-4">
+        <div className="text-center text-xs sm:text-sm text-muted-foreground mt-3 sm:mt-4">
           Showing {startIndex + 1}-{Math.min(endIndex, creatorAddresses.length)} of {creatorAddresses.length} creators
         </div>
       </div>
@@ -118,7 +132,7 @@ export function CreatorsGrid({
   if (viewMode === 'list') {
     return (
       <div className={className}>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {currentCreators.map((creatorAddress) => (
             <CreatorCard
               key={creatorAddress}
@@ -131,29 +145,40 @@ export function CreatorsGrid({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8">
+          <div className="flex items-center justify-center gap-1 sm:gap-2 mt-6 sm:mt-8">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage <= 1}
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
             >
-              <ChevronLeft className="h-4 w-4" />
-              Previous
+              <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              <span className="hidden sm:inline">Previous</span>
+              <span className="sm:hidden">Prev</span>
             </Button>
             
             <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={page === currentPage ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handlePageChange(page)}
-                  className="w-8 h-8 p-0"
-                >
-                  {page}
-                </Button>
-              ))}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                const page = i + 1
+                if (totalPages <= 5 || page === 1 || page === totalPages || 
+                    (page >= currentPage - 1 && page <= currentPage + 1)) {
+                  return (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(page)}
+                      className="w-8 h-8 sm:w-9 sm:h-9 p-0 text-xs sm:text-sm"
+                    >
+                      {page}
+                    </Button>
+                  )
+                } else if (page === currentPage - 2 || page === currentPage + 2) {
+                  return <span key={page} className="px-2 text-muted-foreground">...</span>
+                }
+                return null
+              })}
             </div>
 
             <Button
@@ -161,15 +186,17 @@ export function CreatorsGrid({
               size="sm"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage >= totalPages}
+              className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
             >
-              Next
-              <ChevronRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Next</span>
+              <span className="sm:hidden">Next</span>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
             </Button>
           </div>
         )}
 
         {/* Results Summary */}
-        <div className="text-center text-sm text-muted-foreground mt-4">
+        <div className="text-center text-xs sm:text-sm text-muted-foreground mt-3 sm:mt-4">
           Showing {startIndex + 1}-{Math.min(endIndex, creatorAddresses.length)} of {creatorAddresses.length} creators
         </div>
       </div>
@@ -179,7 +206,7 @@ export function CreatorsGrid({
   // Compact view for mobile/mini app
   return (
     <div className={className}>
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {currentCreators.map((creatorAddress) => (
           <CreatorCard
             key={creatorAddress}
@@ -192,10 +219,10 @@ export function CreatorsGrid({
 
       {/* Load More for compact view */}
       {endIndex < creatorAddresses.length && (
-        <div className="text-center mt-6">
+        <div className="text-center mt-4 sm:mt-6">
           <Button 
             variant="outline" 
-            className="w-full"
+            className="w-full max-w-sm text-xs sm:text-sm h-8 sm:h-9"
             onClick={() => handlePageChange(currentPage + 1)}
           >
             Load More Creators
@@ -204,7 +231,7 @@ export function CreatorsGrid({
       )}
 
       {/* Results Summary */}
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      <div className="text-center text-xs sm:text-sm text-muted-foreground mt-3 sm:mt-4">
         Showing {Math.min(endIndex, creatorAddresses.length)} of {creatorAddresses.length} creators
       </div>
     </div>
@@ -213,16 +240,16 @@ export function CreatorsGrid({
 
 export function CreatorsGridSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
       {Array.from({ length: 6 }, (_, i) => (
         <Card key={i} className="animate-pulse">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-muted rounded-full" />
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex items-start gap-2 sm:gap-4">
+              <div className="w-10 h-10 sm:w-16 sm:h-16 bg-muted rounded-full flex-shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 bg-muted rounded w-3/4" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-                <div className="h-3 bg-muted rounded w-2/3" />
+                <div className="h-3 sm:h-4 bg-muted rounded w-3/4" />
+                <div className="h-2 sm:h-3 bg-muted rounded w-1/2" />
+                <div className="h-2 sm:h-3 bg-muted rounded w-2/3" />
               </div>
             </div>
           </CardContent>
