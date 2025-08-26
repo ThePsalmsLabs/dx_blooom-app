@@ -236,7 +236,15 @@ export default function CreatorsDirectoryPage() {
           <div className="flex lg:hidden items-center justify-between">
             <Sheet open={showFilters} onOpenChange={setShowFilters}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    console.log('🔍 Filter button clicked, current state:', showFilters)
+                    setShowFilters(!showFilters)
+                  }}
+                >
                   <Filter className="h-4 w-4" />
                   Filters
                   {filters.search || filters.verified !== null ? (
