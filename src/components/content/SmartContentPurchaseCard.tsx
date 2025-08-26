@@ -30,7 +30,9 @@ import {
   Zap,
   DollarSign,
   Coins,
-  ArrowUpDown
+  ArrowUpDown,
+  Share2,
+  Bookmark
 } from 'lucide-react'
 
 import {
@@ -50,6 +52,8 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { formatAddress } from '@/lib/utils'
 
 // Import real business logic and token balance system
 import { useEnhancedTokenBalances, formatUSDValue, type TokenInfo } from '@/hooks/web3/useEnhancedTokenBalances'
@@ -493,17 +497,124 @@ export const SmartContentPurchaseCard: React.FC<SmartContentPurchaseCardProps> =
   if (hasAccess) {
     return (
       <Card className={cn("w-full max-w-md border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30", className)}>
-        <CardContent className="text-center py-8">
-          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
-          <p className="font-medium text-green-800 dark:text-green-200">You have access to this content</p>
-          <Button
-            onClick={() => router.push(`/content/${contentId}/view`)}
-            className="mt-3"
-            variant="default"
-          >
-            <ArrowRight className="h-4 w-4 mr-2" />
-            View Content
-          </Button>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Content Access</CardTitle>
+              <CardDescription>
+                You have successfully purchased this content
+              </CardDescription>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  Access Granted
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Content Information */}
+          <div className="space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="font-semibold text-base mb-1">
+                  {content.title}
+                </h3>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {content.description}
+                </p>
+              </div>
+              <div className="ml-4 text-right">
+                <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                  ${(Number(content.payPerViewPrice) / 1e6).toFixed(2)} USDC
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Paid
+                </div>
+              </div>
+            </div>
+
+            {/* Creator Information */}
+            <div className="flex items-center gap-2 pt-2 border-t border-green-200 dark:border-green-800">
+              <Avatar className="w-6 h-6">
+                <AvatarFallback className="text-xs">
+                  {formatAddress(content.creator).slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">
+                  by {formatAddress(content.creator)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Creator
+                </div>
+              </div>
+            </div>
+
+            {/* Content Category */}
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {content.category}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                Content Type
+              </span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-4 border-t border-green-200 dark:border-green-800">
+            <Button
+              onClick={() => router.push(`/content/${contentId}/view`)}
+              className="w-full"
+              variant="default"
+            >
+              <ArrowRight className="h-4 w-4 mr-2" />
+              View Full Content
+            </Button>
+            
+            {/* Additional Actions */}
+            <div className="flex gap-2 mt-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => {
+                  // Share content functionality
+                  if (navigator.share) {
+                    navigator.share({
+                      title: content.title,
+                      text: content.description,
+                      url: window.location.href
+                    })
+                  } else {
+                    // Fallback to copying URL
+                    navigator.clipboard.writeText(window.location.href)
+                  }
+                }}
+              >
+                <Share2 className="h-4 w-4 mr-1" />
+                Share
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => {
+                  // Download or save functionality
+                  console.log('Save content functionality')
+                }}
+              >
+                <Bookmark className="h-4 w-4 mr-1" />
+                Save
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     )

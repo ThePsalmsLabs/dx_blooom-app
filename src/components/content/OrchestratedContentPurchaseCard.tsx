@@ -56,7 +56,9 @@ import {
   Shield,
   Gauge,
   Timer,
-  RotateCcw
+  RotateCcw,
+  Share2,
+  Bookmark
 } from 'lucide-react'
 
 import {
@@ -887,18 +889,158 @@ export function OrchestratedContentPurchaseCard({
   if (accessQuery.data) {
     return (
       <Card className={className}>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span className="font-medium">You have access to this content</span>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl">Content Access</CardTitle>
+              <CardDescription>
+                You have successfully purchased this content
+              </CardDescription>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  Access Granted
+                </Badge>
+              </div>
+            </div>
           </div>
-          <Button 
-            onClick={() => router.push(`/content/${contentId}/view`)}
-            className="w-full"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            View Content
-          </Button>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Content Information */}
+          {contentQuery.data && (
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg mb-1">
+                    {contentQuery.data.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {contentQuery.data.description}
+                  </p>
+                </div>
+                <div className="ml-4 text-right">
+                  <div className="text-sm font-medium text-green-600">
+                    {formatCurrency(contentQuery.data.payPerViewPrice, 6)} USDC
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Paid
+                  </div>
+                </div>
+              </div>
+
+              {/* Creator Information */}
+              {showCreatorInfo && (
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <Avatar className="w-6 h-6">
+                    <AvatarFallback className="text-xs">
+                      {formatAddress(contentQuery.data.creator).slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      by {formatAddress(contentQuery.data.creator)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Creator
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Content Category */}
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {contentQuery.data.category}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Content Type
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Purchase Details */}
+          {showPurchaseDetails && paymentState.lastPaymentResult && (
+            <div className="pt-3 border-t">
+              <div className="text-sm font-medium mb-2">Purchase Details</div>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Payment Method:</span>
+                  <span className="font-medium">
+                    {paymentState.selectedMethod === PaymentMethod.USDC ? 'USDC Direct' : 'ETH Swap'}
+                  </span>
+                </div>
+                {paymentState.lastPaymentResult.totalDuration && (
+                  <div className="flex justify-between">
+                    <span>Processing Time:</span>
+                    <span className="font-medium">
+                      {(paymentState.lastPaymentResult.totalDuration / 1000).toFixed(1)}s
+                    </span>
+                  </div>
+                )}
+                {paymentState.lastPaymentResult.transactionHash && (
+                  <div className="flex justify-between">
+                    <span>Transaction:</span>
+                    <span className="font-medium truncate ml-2">
+                      {paymentState.lastPaymentResult.transactionHash.slice(0, 8)}...
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="pt-4 border-t">
+            <Button 
+              onClick={() => router.push(`/content/${contentId}/view`)}
+              className="w-full"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Full Content
+            </Button>
+            
+            {/* Additional Actions */}
+            <div className="flex gap-2 mt-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => {
+                  // Share content functionality
+                  if (navigator.share && contentQuery.data) {
+                    navigator.share({
+                      title: contentQuery.data.title,
+                      text: contentQuery.data.description,
+                      url: window.location.href
+                    })
+                  } else {
+                    // Fallback to copying URL
+                    navigator.clipboard.writeText(window.location.href)
+                  }
+                }}
+              >
+                <Share2 className="h-4 w-4 mr-1" />
+                Share
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1"
+                onClick={() => {
+                  // Download or save functionality
+                  console.log('Save content functionality')
+                }}
+              >
+                <Bookmark className="h-4 w-4 mr-1" />
+                Save
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     )
