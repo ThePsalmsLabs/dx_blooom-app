@@ -1039,3 +1039,264 @@
       padding: 0 !important;
     }
   }
+
+/* Responsive Design Tokens and Utilities */
+
+/* Container queries for better responsive behavior */
+@container (min-width: 640px) {
+  .creator-card-sm {
+    @apply text-sm;
+  }
+}
+
+@container (min-width: 768px) {
+  .creator-card-md {
+    @apply text-base;
+  }
+}
+
+@container (min-width: 1024px) {
+  .creator-card-lg {
+    @apply text-lg;
+  }
+}
+
+/* Progressive scaling utilities */
+.scale-progressive {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.scale-progressive:hover {
+  @apply transform scale-[1.02];
+}
+
+/* Card height consistency */
+.card-height-equal {
+  @apply h-full flex flex-col;
+}
+
+.card-content-flex {
+  @apply flex-1 flex flex-col;
+}
+
+/* Avatar scaling */
+.avatar-responsive {
+  @apply ring-2 ring-background transition-all duration-200;
+}
+
+.avatar-responsive:hover {
+  @apply ring-primary/20;
+}
+
+/* Button sizing consistency */
+.btn-responsive-sm {
+  @apply h-7 px-2.5 text-xs;
+}
+
+.btn-responsive-md {
+  @apply h-8 px-3 text-sm;
+}
+
+.btn-responsive-lg {
+  @apply h-9 px-4 text-sm;
+}
+
+/* Grid layout improvements */
+.grid-responsive {
+  @apply grid gap-4;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    @apply gap-4;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .grid-responsive {
+    @apply gap-6;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid-responsive {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  }
+}
+
+/* Text scaling utilities */
+.text-scale-xs {
+  @apply text-xs;
+}
+
+.text-scale-sm {
+  @apply text-sm;
+}
+
+.text-scale-base {
+  @apply text-base;
+}
+
+.text-scale-lg {
+  @apply text-lg;
+}
+
+/* Spacing utilities */
+.space-responsive-xs {
+  @apply space-y-1;
+}
+
+.space-responsive-sm {
+  @apply space-y-2;
+}
+
+.space-responsive-md {
+  @apply space-y-3;
+}
+
+.space-responsive-lg {
+  @apply space-y-4;
+}
+
+/* Gap utilities */
+.gap-responsive-xs {
+  @apply gap-1;
+}
+
+.gap-responsive-sm {
+  @apply gap-2;
+}
+
+.gap-responsive-md {
+  @apply gap-3;
+}
+
+.gap-responsive-lg {
+  @apply gap-4;
+}
+
+/* Padding utilities */
+.p-responsive-xs {
+  @apply p-2;
+}
+
+.p-responsive-sm {
+  @apply p-3;
+}
+
+.p-responsive-md {
+  @apply p-4;
+}
+
+.p-responsive-lg {
+  @apply p-6;
+}
+
+/* Margin utilities */
+.m-responsive-xs {
+  @apply m-2;
+}
+
+.m-responsive-sm {
+  @apply m-3;
+}
+
+.m-responsive-md {
+  @apply m-4;
+}
+
+.m-responsive-lg {
+  @apply m-6;
+}
+
+/* Hover effects */
+.hover-lift {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.hover-lift:hover {
+  @apply transform -translate-y-1 shadow-lg;
+}
+
+.hover-glow {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.hover-glow:hover {
+  @apply shadow-lg ring-2 ring-primary/20;
+}
+
+/* Focus states */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2;
+}
+
+/* Loading states */
+.loading-pulse {
+  @apply animate-pulse bg-muted;
+}
+
+/* Accessibility improvements */
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .creator-card {
+    @apply border-2;
+  }
+  
+  .avatar-responsive {
+    @apply ring-4;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .scale-progressive,
+  .hover-lift,
+  .hover-glow {
+    @apply transition-none;
+  }
+  
+  .scale-progressive:hover,
+  .hover-lift:hover {
+    @apply transform-none;
+  }
+}
+
+/* Dark mode enhancements */
+.dark .creator-card {
+  @apply border-border/50;
+}
+
+.dark .avatar-responsive {
+  @apply ring-border/50;
+}
+
+.dark .hover-glow:hover {
+  @apply ring-primary/30;
+}
+
+/* Print styles */
+@media print {
+  .creator-card {
+    @apply border border-gray-300 shadow-none;
+  }
+  
+  .btn-responsive-sm,
+  .btn-responsive-md,
+  .btn-responsive-lg {
+    @apply border border-gray-300 bg-transparent text-gray-900;
+  }
+}
