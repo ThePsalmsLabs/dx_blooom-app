@@ -67,7 +67,7 @@ import { CreatorDashboard } from '@/components/creator/CreatorDashBoard'
 
 // Import business logic hooks that power the creator experience
 import { useCreatorDashboardUI } from '@/hooks/ui/integration'
-import { useCreatorProfile, useCreatorContent, useCreatorPendingEarnings } from '@/hooks/contracts/core'
+import { useCreatorProfile, useCreatorContent, useCreatorPendingEarnings, useWithdrawEarnings } from '@/hooks/contracts/core'
 
 // Import utility functions and types
 import { formatCurrency, formatNumber } from '@/lib/utils'
@@ -121,6 +121,9 @@ export default function SubscriptionManagementPage() {
   const creatorContent = useCreatorContent(userAddress as `0x${string}` | undefined)
   const pendingEarnings = useCreatorPendingEarnings(userAddress as `0x${string}` | undefined)
   const dashboardUI = useCreatorDashboardUI(userAddress as `0x${string}` | undefined)
+  
+  // Withdraw earnings functionality
+  const withdrawEarnings = useWithdrawEarnings()
   
 
 
@@ -238,6 +241,34 @@ export default function SubscriptionManagementPage() {
   }, [creatorProfile, creatorContent, pendingEarnings])
 
   /**
+   * Withdraw Earnings Handler
+   * 
+   * This function handles the withdrawal of creator earnings with proper
+   * validation, error handling, and user feedback.
+   */
+  const handleWithdrawEarnings = useCallback(() => {
+    const pending = pendingEarnings.data || BigInt(0)
+    
+    if (pending <= BigInt(0)) {
+      console.log('❌ No earnings available to withdraw')
+      return
+    }
+    
+    if (withdrawEarnings.isLoading || withdrawEarnings.isConfirming) {
+      console.log('⏳ Withdrawal already in progress')
+      return
+    }
+    
+    try {
+      console.log('🚀 Initiating earnings withdrawal...')
+      console.log(`💰 Amount: ${formatCurrency(pending, 6, 'USDC')}`)
+      withdrawEarnings.write()
+    } catch (error) {
+      console.error('❌ Failed to initiate withdrawal:', error)
+    }
+  }, [pendingEarnings.data, withdrawEarnings])
+
+  /**
    * Quick Metrics Summary
    * 
    * This computed value provides key performance indicators that creators
@@ -263,7 +294,7 @@ export default function SubscriptionManagementPage() {
       pendingEarnings: {
         value: formatCurrency(pending, 6, 'USDC'),
         canWithdraw: pending > BigInt(0),
-        withdrawAction: () => console.log('Withdraw earnings')
+        withdrawAction: handleWithdrawEarnings
       },
       subscriberCount: {
         value: formatNumber(Number(profile.subscriberCount)),
@@ -281,7 +312,33 @@ export default function SubscriptionManagementPage() {
         trend: 'up' as const
       }
     }
-  }, [creatorProfile.data, pendingEarnings.data])
+  }, [creatorProfile.data, pendingEarnings.data, handleWithdrawEarnings])
+
+  // Handle withdrawal success and refresh data
+  useEffect(() => {
+    if (withdrawEarnings.isConfirmed) {
+      console.log('✅ Earnings withdrawal confirmed! Refreshing data...')
+      console.log('🎉 Your earnings have been successfully withdrawn to your wallet!')
+      
+      // Refresh earnings data after successful withdrawal
+      pendingEarnings.refetch()
+      creatorProfile.refetch()
+      
+      // Reset withdrawal state
+      withdrawEarnings.reset()
+    }
+  }, [withdrawEarnings.isConfirmed, pendingEarnings, creatorProfile, withdrawEarnings])
+
+  // Handle withdrawal errors
+  useEffect(() => {
+    if (withdrawEarnings.isError && withdrawEarnings.error) {
+      console.error('❌ Earnings withdrawal failed:', withdrawEarnings.error)
+      console.error('💡 Please check your wallet connection and try again')
+      
+      // Reset withdrawal state on error
+      withdrawEarnings.reset()
+    }
+  }, [withdrawEarnings.isError, withdrawEarnings.error, withdrawEarnings])
 
   // Show loading state while creator data loads
   if (!isConnected || !userAddress) {
@@ -346,7 +403,10 @@ export default function SubscriptionManagementPage() {
 
           {/* Quick Metrics Cards */}
           {quickMetrics && (
-            <QuickMetricsGrid metrics={quickMetrics} />
+            <QuickMetricsGrid 
+              metrics={quickMetrics} 
+              withdrawEarnings={withdrawEarnings}
+            />
           )}
 
           {/* Main Dashboard Tabs */}
@@ -615,9 +675,10 @@ interface QuickMetrics {
  */
 interface QuickMetricsGridProps {
     readonly metrics: QuickMetrics
+    readonly withdrawEarnings: ReturnType<typeof useWithdrawEarnings>
   }
 
-function QuickMetricsGrid({ metrics }: QuickMetricsGridProps) {
+function QuickMetricsGrid({ metrics, withdrawEarnings }: QuickMetricsGridProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Total Earnings Card */}
@@ -645,11 +706,20 @@ function QuickMetricsGrid({ metrics }: QuickMetricsGridProps) {
           <div className="mt-2">
             <Button 
               size="sm" 
-              disabled={!metrics.pendingEarnings.canWithdraw}
+              disabled={!metrics.pendingEarnings.canWithdraw || withdrawEarnings.isLoading || withdrawEarnings.isConfirming}
               onClick={metrics.pendingEarnings.withdrawAction}
             >
-              <Download className="h-3 w-3 mr-1" />
-              Withdraw
+              {withdrawEarnings.isLoading || withdrawEarnings.isConfirming ? (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Download className="h-3 w-3 mr-1" />
+                  Withdraw
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
