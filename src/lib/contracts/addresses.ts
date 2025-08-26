@@ -32,3 +32,39 @@ export function getContractAddresses(chainId: number) {
     }
     return addresses
 }
+
+export const ZORA_ADDRESSES = {
+  // Base Mainnet (8453)
+  8453: {
+    // Core Contracts
+    ZORA_CREATOR_1155_FACTORY_IMPL: '0x777777E8850d8D6d98De2d777C5c3c7d45261788' as const,
+    ZORA_CREATOR_1155_IMPL: '0x777777C338d93e2C7adf08D102d45CA7CC4Ed021' as const,
+    
+    // Minter Contracts
+    FIXED_PRICE_SALE_STRATEGY: '0x7c74dfe39976dc395529c14e54a597809980e01c' as const,
+    MERKLE_MINT_SALE_STRATEGY: '0xf48172ca3b6068b20eeb8abbbbaa5c2252c0e800' as const,
+    
+    // Rewards & Protocol
+    PROTOCOL_REWARDS: '0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B' as const,
+    
+    // Premint Contracts
+    ZORA_CREATOR_1155_PREMINT_EXECUTOR: '0x7777773606e7e46C8Ba8B98C08f5cD218F335941' as const,
+  },
+  
+  // Base Sepolia (84532)  
+  84532: {
+    // Core Contracts
+    ZORA_CREATOR_1155_FACTORY_IMPL: '0x777777E8850d8D6d98De2d777C5c3c7d45261788' as const,
+    ZORA_CREATOR_1155_IMPL: '0x777777C338d93e2C7adf08D102d45CA7CC4Ed021' as const,
+    
+    // Minter Contracts
+    FIXED_PRICE_SALE_STRATEGY: '0x7c74dfe39976dc395529c14e54a597809980e01c' as const,
+    MERKLE_MINT_SALE_STRATEGY: '0xf48172ca3b6068b20eeb8abbbbaa5c2252c0e800' as const,
+    
+    // Rewards & Protocol
+    PROTOCOL_REWARDS: '0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B' as const,
+    
+    // Premint Contracts
+    ZORA_CREATOR_1155_PREMINT_EXECUTOR: '0x7777773606e7e46C8Ba8B98C08f5cD218F335941' as const,
+  }
+} as const

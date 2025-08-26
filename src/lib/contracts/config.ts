@@ -13,6 +13,9 @@ import {
   PRICE_ORACLE_ABI
 } from './abis'
 
+import { PROTOCOL_REWARDS_ABI, ZORA_CREATOR_1155_IMPL_ABI, ZORA_CREATOR_1155_FACTORY_ABI, ZORA_FIXED_PRICE_SALE_STRATEGY_ABI } from './abis/zora'
+import { ZORA_ADDRESSES } from './addresses'
+
 // ===== NETWORK CONTRACT ADDRESSES =====
 // These are the actual deployed contract addresses for each supported network
 
@@ -234,3 +237,44 @@ export const PAYMENT_TYPE_LABELS = {
   [0]: 'Pay-per-view',
   [1]: 'Subscription',
 } as const
+
+
+
+export function getZoraAddresses(chainId: number) {
+  const addresses = ZORA_ADDRESSES[chainId as keyof typeof ZORA_ADDRESSES]
+  if (!addresses) {
+    throw new Error(`Zora Protocol not supported on chain ${chainId}`)
+  }
+  return addresses
+}
+
+export function getZoraFactoryContract(chainId: number) {
+  const addresses = getZoraAddresses(chainId)
+  return {
+    address: addresses.ZORA_CREATOR_1155_FACTORY_IMPL,
+    abi: ZORA_CREATOR_1155_FACTORY_ABI
+  } as const
+}
+
+export function getZoraCreator1155Contract(contractAddress: Address) {
+  return {
+    address: contractAddress,
+    abi: ZORA_CREATOR_1155_IMPL_ABI
+  } as const
+}
+
+export function getFixedPriceSaleStrategyContract(chainId: number) {
+  const addresses = getZoraAddresses(chainId)
+  return {
+    address: addresses.FIXED_PRICE_SALE_STRATEGY,
+    abi: ZORA_FIXED_PRICE_SALE_STRATEGY_ABI
+  } as const
+}
+
+export function getProtocolRewardsContract(chainId: number) {
+  const addresses = getZoraAddresses(chainId)
+  return {
+    address: addresses.PROTOCOL_REWARDS,
+    abi: PROTOCOL_REWARDS_ABI
+  } as const
+}
