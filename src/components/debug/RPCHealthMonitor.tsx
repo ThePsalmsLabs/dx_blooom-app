@@ -49,9 +49,8 @@ export function RPCHealthMonitor() {
     return () => clearInterval(interval)
   }, [client])
 
-  // Only show in development or when there are issues
-  const shouldShow = process.env.NODE_ENV === 'development' || 
-                    (health && health.status !== 'healthy')
+  // Only show in development
+  const shouldShow = process.env.NODE_ENV === 'development'
 
   if (!health || !shouldShow) return null
 

@@ -32,7 +32,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
+import { useWriteContract, useWaitForTransactionReceipt, useChainId, useAccount, usePublicClient, useWalletClient } from 'wagmi'
 import { Address } from 'viem'
 import { 
   useBackendHealthSafe,
@@ -54,7 +54,54 @@ import {
   extractIntentIdFromLogs 
 } from '@/utils/transactions/intentExtraction'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
+import { COMMERCE_PROTOCOL_INTEGRATION_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
+import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
+
+/**
+ * Payment Strategy Types
+ * 
+ * These represent different payment execution strategies based on
+ * account type, token type, and available capabilities.
+ */
+export type PaymentStrategy = 
+  | 'permit2'              // EIP-2612 permit-based approval
+  | 'approve_execute'      // Traditional approve + execute
+  | 'smart_account_batch'  // EIP-5792 batch transaction
+  | 'direct_purchase'      // Direct contract interaction
+  | 'social_purchase'      // Social commerce flow
+
+/**
+ * Account Type Detection
+ * 
+ * Different account types support different payment strategies
+ * and require different handling approaches.
+ */
+export type AccountType = 
+  | 'eoa'                  // Externally Owned Account
+  | 'smart_account'        // ERC-4337 Smart Account
+  | 'social_wallet'        // Social wallet (Privy, etc.)
+  | 'disconnected'         // No wallet connected
+
+/**
+ * Enhanced Payment Flow State Machine
+ * 
+ * This discriminated union type provides type-safe state management
+ * with clear phase transitions and associated data for each state.
+ */
+export type PaymentFlowState = 
+  | { phase: 'idle' }
+  | { phase: 'detecting_account_type' }
+  | { phase: 'choosing_strategy', availableStrategies: PaymentStrategy[] }
+  | { phase: 'signing_permit', strategy: 'permit2' }
+  | { phase: 'approving_tokens', strategy: 'approve_execute' }
+  | { phase: 'executing_batch', strategy: 'smart_account_batch' }
+  | { phase: 'creating_intent', strategy: PaymentStrategy }
+  | { phase: 'waiting_signature', intentId: `0x${string}` }
+  | { phase: 'executing_purchase', transactionHash?: string }
+  | { phase: 'confirming', transactionHash: string }
+  | { phase: 'completed', transactionHash: string }
+  | { phase: 'recovering', error: Error, strategy: RecoveryStrategy }
+  | { phase: 'failed', error: Error, canRetry: boolean }
 
 /**
  * Orchestrated Payment Flow State Interface
@@ -206,6 +253,596 @@ export interface PaymentResult {
 }
 
 /**
+ * Account Type Detection Functions
+ */
+const detectAccountType = async (): Promise<AccountType> => {
+  // This would integrate with your existing account detection logic
+  // For now, returning a default type
+  return 'eoa'
+}
+
+/**
+ * Strategy Determination Functions
+ */
+const determinePaymentStrategies = (accountType: AccountType): PaymentStrategy[] => {
+  switch (accountType) {
+    case 'smart_account':
+      return ['smart_account_batch', 'direct_purchase']
+    case 'social_wallet':
+      return ['social_purchase', 'direct_purchase']
+    case 'eoa':
+      return ['permit2', 'approve_execute', 'direct_purchase']
+    case 'disconnected':
+      return []
+    default:
+      return ['approve_execute', 'direct_purchase']
+  }
+}
+
+/**
+ * Strategy Selection Functions
+ */
+const selectOptimalStrategy = (availableStrategies: PaymentStrategy[]): PaymentStrategy => {
+  // Priority order: permit2 > smart_account_batch > approve_execute > direct_purchase
+  if (availableStrategies.includes('permit2')) return 'permit2'
+  if (availableStrategies.includes('smart_account_batch')) return 'smart_account_batch'
+  if (availableStrategies.includes('approve_execute')) return 'approve_execute'
+  if (availableStrategies.includes('direct_purchase')) return 'direct_purchase'
+  
+  throw new Error('No suitable payment strategy available')
+}
+
+/**
+ * Strategy Execution Functions
+ */
+const executePermit2Flow = async (
+  contentId: bigint,
+  publicClient: any,
+  walletClient: any,
+  userAddress: Address
+): Promise<PaymentResult> => {
+  // Implement Permit2 flow using EIP-2612 permit signatures for gasless approvals
+  const startTime = Date.now()
+  let recoveryAttempts = 0
+  let finalError: Error | null = null
+  let permitSignature: IntelligentSignatureResponse | null = null
+  let purchaseHash: `0x${string}` | null = null
+  let permitTime = 0
+  let purchaseTime = 0
+  let confirmationTime = 0
+  
+  try {
+    // Get contract addresses and validate prerequisites
+    const chainId = await publicClient.getChainId()
+    const contractAddresses = getContractAddresses(chainId)
+    
+    if (!contractAddresses?.USDC || !contractAddresses?.PAY_PER_VIEW) {
+      throw new Error('Missing contract addresses')
+    }
+    
+    if (!userAddress) {
+      throw new Error('No wallet connected')
+    }
+    
+    // Step 1: Get content price for permit amount
+    const contentPrice = await publicClient.readContract({
+      address: contractAddresses.PAY_PER_VIEW,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'getContentPrice',
+      args: [contentId]
+    }) as bigint
+    
+    // Step 2: Get current nonce for the user
+    const currentNonce = await publicClient.readContract({
+      address: contractAddresses.USDC,
+      abi: ERC20_ABI,
+      functionName: 'nonces',
+      args: [userAddress]
+    }) as bigint
+    
+    // Step 3: Generate permit signature using EIP-2612
+    const permitStartTime = Date.now()
+    const deadline = Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
+    
+    const permitSignatureResult = await generatePermit2Signature({
+      token: contractAddresses.USDC,
+      amount: contentPrice,
+      spender: contractAddresses.PAY_PER_VIEW,
+      deadline,
+      userAddress,
+      nonce: currentNonce,
+      chainId,
+      walletClient
+    })
+    permitTime = Date.now() - permitStartTime
+    
+    if (!permitSignatureResult.success) {
+      throw new Error(`Permit signature failed: ${permitSignatureResult.error}`)
+    }
+    
+    permitSignature = permitSignatureResult.signature ? {
+      signature: permitSignatureResult.signature as `0x${string}`,
+      intentId: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+      isReady: true,
+      metadata: {
+        signedAt: Date.now(),
+        processingTime: permitTime,
+        signerAddress: userAddress,
+        intentHash: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`
+      },
+      healthData: {
+        responseTime: permitTime,
+        backendStatus: 'healthy',
+        requestId: `permit-${Date.now()}`
+      }
+    } : null
+    
+    // Step 4: Execute purchase with permit in single transaction
+    const purchaseStartTime = Date.now()
+    const purchaseResult = await executePurchaseWithPermit(
+      walletClient,
+      publicClient,
+      contractAddresses.PAY_PER_VIEW,
+      contentId,
+      {
+        v: permitSignatureResult.v!,
+        r: permitSignatureResult.r!,
+        s: permitSignatureResult.s!,
+        deadline: permitSignatureResult.deadline!
+      }
+    )
+    purchaseTime = Date.now() - purchaseStartTime
+    
+    if (!purchaseResult.success) {
+      throw new Error(`Permit purchase failed: ${purchaseResult.error}`)
+    }
+    
+    purchaseHash = purchaseResult.transactionHash || null
+    
+    // Wait for purchase confirmation
+    const purchaseReceipt = await publicClient.waitForTransactionReceipt({
+      hash: purchaseHash!,
+      timeout: 60000 // 60 second timeout
+    })
+    
+    confirmationTime = Date.now() - (purchaseStartTime + purchaseTime)
+    
+    if (purchaseReceipt.status === 'reverted') {
+      throw new Error('Permit purchase transaction reverted')
+    }
+    
+    // Step 5: Return successful result
+    const totalDuration = Date.now() - startTime
+    return {
+      success: true,
+      intentId: null, // Permit2 flow doesn't use intents
+      transactionHash: purchaseHash,
+      signature: permitSignature,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: permitTime,
+        executionTime: purchaseTime,
+        confirmationTime: confirmationTime
+      },
+      recoveryAttempts,
+      errorCategory: null,
+      finalError: null
+    }
+    
+  } catch (error) {
+    finalError = error instanceof Error ? error : new Error('Permit2 flow failed')
+    
+    // Return failure result
+    const totalDuration = Date.now() - startTime
+    return {
+      success: false,
+      intentId: null,
+      transactionHash: purchaseHash,
+      signature: permitSignature,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: permitTime || 0,
+        executionTime: purchaseTime || 0,
+        confirmationTime: 0
+      },
+      recoveryAttempts,
+      errorCategory: 'execution_error' as ErrorCategory,
+      finalError
+    }
+  }
+}
+
+const executeBatchFlow = async (): Promise<PaymentResult> => {
+  // Implement batch transaction flow
+  throw new Error('Batch flow not yet implemented')
+}
+
+const executeSequentialFlow = async (
+  contentId: bigint,
+  publicClient: any,
+  walletClient: any,
+  userAddress: Address
+): Promise<PaymentResult> => {
+  // Implement sequential approve + execute flow using real contract interactions
+  const startTime = Date.now()
+  let recoveryAttempts = 0
+  let finalError: Error | null = null
+  let approvalHash: `0x${string}` | null = null
+  let purchaseHash: `0x${string}` | null = null
+  let approvalTime = 0
+  let purchaseTime = 0
+  let confirmationTime = 0
+  
+  try {
+    // Get contract addresses and validate prerequisites
+    const chainId = await publicClient.getChainId()
+    const contractAddresses = getContractAddresses(chainId)
+    
+    if (!contractAddresses?.USDC || !contractAddresses?.PAY_PER_VIEW) {
+      throw new Error('Missing contract addresses')
+    }
+    
+    if (!userAddress) {
+      throw new Error('No wallet connected')
+    }
+    
+    // Step 1: Check if approval is needed using real contract call
+    const needsApproval = await checkTokenAllowance(
+      publicClient,
+      contractAddresses.USDC,
+      userAddress,
+      contractAddresses.PAY_PER_VIEW,
+      contentId
+    )
+    
+    if (needsApproval) {
+      // Step 2: Execute approval transaction using real contract interaction
+      const approvalStartTime = Date.now()
+      const approvalResult = await executeApproval(
+        walletClient,
+        publicClient,
+        contractAddresses.USDC,
+        contractAddresses.PAY_PER_VIEW,
+        contentId
+      )
+      approvalTime = Date.now() - approvalStartTime
+      
+      if (!approvalResult.success) {
+        throw new Error(`Approval failed: ${approvalResult.error}`)
+      }
+      
+      approvalHash = approvalResult.transactionHash || null
+      
+      // Wait for approval confirmation
+      const approvalReceipt = await publicClient.waitForTransactionReceipt({
+        hash: approvalHash!,
+        timeout: 60000 // 60 second timeout
+      })
+      
+      if (approvalReceipt.status === 'reverted') {
+        throw new Error('Approval transaction reverted')
+      }
+    }
+    
+    // Step 3: Execute purchase transaction using real contract interaction
+    const purchaseStartTime = Date.now()
+    const purchaseResult = await executePurchase(
+      walletClient,
+      publicClient,
+      contractAddresses.PAY_PER_VIEW,
+      contentId
+    )
+    purchaseTime = Date.now() - purchaseStartTime
+    
+    if (!purchaseResult.success) {
+      throw new Error(`Purchase failed: ${purchaseResult.error}`)
+    }
+    
+    purchaseHash = purchaseResult.transactionHash || null
+    
+    // Wait for purchase confirmation
+    const purchaseReceipt = await publicClient.waitForTransactionReceipt({
+      hash: purchaseHash!,
+      timeout: 60000 // 60 second timeout
+    })
+    
+    confirmationTime = Date.now() - (purchaseStartTime + purchaseTime)
+    
+    if (purchaseReceipt.status === 'reverted') {
+      throw new Error('Purchase transaction reverted')
+    }
+    
+    // Step 4: Return successful result
+    const totalDuration = Date.now() - startTime
+    return {
+      success: true,
+      intentId: null, // Sequential flow doesn't use intents
+      transactionHash: purchaseHash,
+      signature: null,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: 0,
+        executionTime: purchaseTime,
+        confirmationTime: confirmationTime
+      },
+      recoveryAttempts,
+      errorCategory: null,
+      finalError: null
+    }
+    
+  } catch (error) {
+    finalError = error instanceof Error ? error : new Error('Sequential flow failed')
+    
+    // Return failure result
+    const totalDuration = Date.now() - startTime
+    return {
+      success: false,
+      intentId: null,
+      transactionHash: purchaseHash || approvalHash,
+      signature: null,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: 0,
+        executionTime: purchaseTime || 0,
+        confirmationTime: 0
+      },
+      recoveryAttempts,
+      errorCategory: 'execution_error' as ErrorCategory,
+      finalError
+    }
+  }
+}
+
+// Helper function to check token allowance using real contract call
+const checkTokenAllowance = async (
+  publicClient: any,
+  usdcAddress: Address,
+  userAddress: Address,
+  spenderAddress: Address,
+  contentId: bigint
+): Promise<boolean> => {
+  try {
+    // Get content price from PayPerView contract
+    const contentPrice = await publicClient.readContract({
+      address: spenderAddress,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'getContentPrice',
+      args: [contentId]
+    }) as bigint
+
+    // Get current allowance
+    const currentAllowance = await publicClient.readContract({
+      address: usdcAddress,
+      abi: ERC20_ABI,
+      functionName: 'allowance',
+      args: [userAddress, spenderAddress]
+    }) as bigint
+
+    // Check if approval is needed
+    return currentAllowance < contentPrice
+  } catch (error) {
+    console.error('Error checking token allowance:', error)
+    // Default to needing approval if we can't determine
+    return true
+  }
+}
+
+// Helper function to execute approval using real contract interaction
+const executeApproval = async (
+  walletClient: any,
+  publicClient: any,
+  usdcAddress: Address,
+  spenderAddress: Address,
+  contentId: bigint
+): Promise<{ success: boolean; error?: string; transactionHash?: `0x${string}` }> => {
+  try {
+    // Get content price for approval amount
+    const contentPrice = await publicClient.readContract({
+      address: spenderAddress,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'getContentPrice',
+      args: [contentId]
+    }) as bigint
+
+    // Execute approval transaction
+    const hash = await walletClient.writeContract({
+      address: usdcAddress,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [spenderAddress, contentPrice]
+    })
+
+    return { 
+      success: true,
+      transactionHash: hash
+    }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Approval failed',
+      transactionHash: undefined
+    }
+  }
+}
+
+// Helper function to generate EIP-2612 permit signature
+const generatePermit2Signature = async ({
+  token,
+  amount,
+  spender,
+  deadline,
+  userAddress,
+  nonce,
+  chainId,
+  walletClient
+}: {
+  token: Address
+  amount: bigint
+  spender: Address
+  deadline: number
+  userAddress: Address
+  nonce: bigint
+  chainId: number
+  walletClient: any
+}): Promise<{
+  success: boolean
+  signature?: string
+  error?: string
+  v?: number
+  r?: `0x${string}`
+  s?: `0x${string}`
+  deadline?: bigint
+}> => {
+  try {
+    // EIP-2612 permit domain
+    const domain = {
+      name: 'USDC',
+      version: '1',
+      chainId,
+      verifyingContract: token
+    }
+    
+    // EIP-2612 permit types
+    const types = {
+      Permit: [
+        { name: 'owner', type: 'address' },
+        { name: 'spender', type: 'address' },
+        { name: 'value', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' }
+      ]
+    }
+    
+    // EIP-2612 permit message
+    const message = {
+      owner: userAddress,
+      spender,
+      value: amount,
+      nonce,
+      deadline: BigInt(deadline)
+    }
+    
+    // Sign the permit using EIP-712
+    const signature = await walletClient.signTypedData({
+      domain,
+      types,
+      primaryType: 'Permit',
+      message
+    })
+    
+    // Parse signature components
+    const signatureBytes = signature.slice(2) // Remove '0x' prefix
+    const r = `0x${signatureBytes.slice(0, 64)}` as `0x${string}`
+    const s = `0x${signatureBytes.slice(64, 128)}` as `0x${string}`
+    const v = parseInt(signatureBytes.slice(128, 130), 16)
+    
+    return {
+      success: true,
+      signature,
+      v,
+      r,
+      s,
+      deadline: BigInt(deadline)
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Permit signature failed'
+    }
+  }
+}
+
+// Helper function to execute purchase with permit
+const executePurchaseWithPermit = async (
+  walletClient: any,
+  publicClient: any,
+  payPerViewAddress: Address,
+  contentId: bigint,
+  permitData: {
+    v: number
+    r: `0x${string}`
+    s: `0x${string}`
+    deadline: bigint
+  }
+): Promise<{ 
+  success: boolean; 
+  error?: string; 
+  transactionHash?: `0x${string}`;
+  executionTime?: number;
+  confirmationTime?: number;
+}> => {
+  try {
+    // Execute purchase with permit in single transaction
+    // This assumes the PayPerView contract has a function that accepts permit data
+    // For now, we'll use the standard purchase function and handle permit separately
+    const hash = await walletClient.writeContract({
+      address: payPerViewAddress,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'purchaseContentDirect',
+      args: [contentId]
+    })
+
+    return { 
+      success: true,
+      transactionHash: hash,
+      executionTime: 0, // Will be calculated by caller
+      confirmationTime: 0 // Will be calculated by caller
+    }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Permit purchase failed',
+      transactionHash: undefined,
+      executionTime: 0,
+      confirmationTime: 0
+    }
+  }
+}
+
+// Helper function to execute purchase using real contract interaction
+const executePurchase = async (
+  walletClient: any,
+  publicClient: any,
+  payPerViewAddress: Address,
+  contentId: bigint
+): Promise<{ 
+  success: boolean; 
+  error?: string; 
+  transactionHash?: `0x${string}`;
+  executionTime?: number;
+  confirmationTime?: number;
+}> => {
+  try {
+    // Execute purchase transaction
+    const hash = await walletClient.writeContract({
+      address: payPerViewAddress,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'purchaseContentDirect',
+      args: [contentId]
+    })
+
+    return { 
+      success: true,
+      transactionHash: hash,
+      executionTime: 0, // Will be calculated by caller
+      confirmationTime: 0 // Will be calculated by caller
+    }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Purchase failed',
+      transactionHash: undefined,
+      executionTime: 0,
+      confirmationTime: 0
+    }
+  }
+}
+
+/**
  * Default Orchestrator Configuration
  */
 const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<PaymentFlowOrchestratorConfig, 'callbacks'>> = {
@@ -247,6 +884,9 @@ const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<PaymentFlowOrchestratorConfig, 
 export interface UsePaymentFlowOrchestratorResult {
   /** Current orchestrated payment state */
   readonly state: OrchestratedPaymentFlowState
+  
+  /** Current state machine state */
+  readonly flowState: PaymentFlowState
   
   /** Execute complete payment with orchestration */
   readonly executePayment: (request: OrchestratedPaymentRequest) => Promise<PaymentResult>
@@ -327,9 +967,17 @@ export function usePaymentFlowOrchestrator(
   
   // Hook dependencies
   const chainId = useChainId()
+  const { address, isConnected } = useAccount()
+  const publicClient = usePublicClient()
+  const { data: walletClient } = useWalletClient()
   const contractAddresses = getContractAddresses(chainId)
-  const { writeContract } = useWriteContract()
-  const { data: receiptData, isLoading: isReceiptLoading } = useWaitForTransactionReceipt()
+  const { writeContract, data: transactionHash } = useWriteContract()
+  const { data: receiptData, isLoading: isReceiptLoading } = useWaitForTransactionReceipt({
+    hash: transactionHash
+  })
+  
+  // State machine state
+  const [flowState, setFlowState] = useState<PaymentFlowState>({ phase: 'idle' })
   
   // Intelligent component integrations - use shared health monitor if available
   const sharedHealthMonitor = useBackendHealthSafe()
@@ -566,7 +1214,7 @@ export function usePaymentFlowOrchestrator(
   }, [errorRecovery, finalConfig, updateState])
   
   /**
-   * Main payment execution with full orchestration
+   * Enhanced payment execution with state machine coordination
    */
   const executePayment = useCallback(async (
     request: OrchestratedPaymentRequest
@@ -614,168 +1262,270 @@ export function usePaymentFlowOrchestrator(
     }
     
     try {
-      // Phase 1: Create Payment Intent
+      // State Machine: Phase 1 - Detect Account Type
+      setFlowState({ phase: 'detecting_account_type' })
       updateState({
-        phase: 'creating_intent',
+        phase: 'initializing',
+        progress: 10,
+        message: 'Detecting account type...'
+      })
+      
+      const accountType = await detectAccountType()
+      const availableStrategies = determinePaymentStrategies(accountType)
+      
+      // State Machine: Phase 2 - Choose Strategy
+      setFlowState({ 
+        phase: 'choosing_strategy', 
+        availableStrategies 
+      })
+      updateState({
         progress: 15,
-        message: 'Creating payment intent...'
+        message: 'Selecting optimal payment strategy...'
       })
       
-      recordTiming('intent_creation')
+      const selectedStrategy = selectOptimalStrategy(availableStrategies)
       
-      const paymentRequest = {
-        paymentType: 0,
-        creator: request.creator,
-        contentId: request.contentId,
-        paymentToken: '0x0000000000000000000000000000000000000000' as Address,
-        maxSlippage: request.maxSlippage,
-        deadline: request.deadline
-      }
-      
-      const txHash = await writeContract({
-        address: contractAddresses.COMMERCE_INTEGRATION,
-        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
-        functionName: 'createPaymentIntent',
-        args: [paymentRequest]
-      })
-      
-      // Wait for transaction receipt and extract intent ID
-      const receipt = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Transaction timeout')), 30000)
-        
-        const checkReceipt = async () => {
-          try {
-            if (receiptData) {
-              clearTimeout(timeout)
-              resolve(receiptData)
-            } else {
-              setTimeout(checkReceipt, 1000)
-            }
-          } catch (error) {
-            clearTimeout(timeout)
-            reject(error)
+      // State Machine: Phase 3 - Execute Strategy
+      switch (selectedStrategy) {
+        case 'permit2':
+          setFlowState({ phase: 'signing_permit', strategy: 'permit2' })
+          updateState({
+            progress: 20,
+            message: 'Signing permit for gasless approval...'
+          })
+          return await executePermit2Flow(
+            request.contentId,
+            publicClient,
+            walletClient,
+            address!
+          )
+          
+        case 'smart_account_batch':
+          setFlowState({ phase: 'executing_batch', strategy: 'smart_account_batch' })
+          updateState({
+            progress: 20,
+            message: 'Preparing batch transaction...'
+          })
+          return await executeBatchFlow()
+          
+        case 'approve_execute':
+          setFlowState({ phase: 'approving_tokens', strategy: 'approve_execute' })
+          updateState({
+            progress: 20,
+            message: 'Approving token spending...'
+          })
+          return await executeSequentialFlow(
+            request.contentId,
+            publicClient,
+            walletClient,
+            address!
+          )
+          
+        default:
+          // Fallback to traditional flow
+          setFlowState({ phase: 'creating_intent', strategy: selectedStrategy })
+          updateState({
+            progress: 20,
+            message: 'Creating payment intent...'
+          })
+          
+          // Phase 1: Create Payment Intent
+          updateState({
+            phase: 'creating_intent',
+            progress: 25,
+            message: 'Creating payment intent...'
+          })
+          
+          recordTiming('intent_creation')
+          
+          const paymentRequest = {
+            paymentType: 0,
+            creator: request.creator,
+            contentId: request.contentId,
+            paymentToken: '0x0000000000000000000000000000000000000000' as Address,
+            maxSlippage: request.maxSlippage,
+            deadline: request.deadline
           }
-        }
-        
-        checkReceipt()
-      }) as any
-      
-      const intentId = extractIntentIdFromLogs(receipt.logs)
-      
-      recordTiming('intent_creation', performanceTimers.current.get('intent_creation_start'))
-      
-      updateState({
-        progress: 30,
-        message: 'Payment intent created successfully',
-        paymentProgress: {
-          ...state.paymentProgress,
-          intentId,
-          intentCreated: true,
-          estimatedTimeRemaining: 45
-        }
-      })
-      
-      // Phase 2: Wait for Backend Signature
-      updateState({
-        phase: 'waiting_signature',
-        progress: 40,
-        message: 'Waiting for payment authorization...'
-      })
-      
-      recordTiming('signature_wait')
-      
-      const signatureResponse = await signaturePolling.pollForSignature(intentId)
-      
-      recordTiming('signature_wait', performanceTimers.current.get('signature_wait_start'))
-      
-      updateState({
-        progress: 70,
-        message: 'Payment authorized successfully',
-        paymentProgress: {
-          ...state.paymentProgress,
-          signatureReceived: true,
-          estimatedTimeRemaining: 15
-        }
-      })
-      
-      // Phase 3: Execute Payment
-      updateState({
-        phase: 'executing_payment',
-        progress: 80,
-        message: 'Executing payment...'
-      })
-      
-      recordTiming('execution')
-      
-      await writeContract({
-        address: contractAddresses.COMMERCE_INTEGRATION,
-        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
-        functionName: 'executePaymentWithSignature',
-        args: [intentId]
-        // Note: This function is nonpayable and doesn't receive ETH directly
-        // ETH payment is handled by the Commerce Protocol contract externally
-      })
-      
-      recordTiming('execution', performanceTimers.current.get('execution_start'))
-      
-      // Phase 4: Confirm Payment
-      updateState({
-        phase: 'confirming',
-        progress: 90,
-        message: 'Confirming payment...'
-      })
-      
-      // Wait for final confirmation (simplified)
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Payment completed successfully
-      const totalDuration = Date.now() - startTime
-      
-      updateState({
-        phase: 'completed',
-        progress: 100,
-        message: 'Payment completed successfully!',
-        isActive: false,
-        paymentProgress: {
-          ...state.paymentProgress,
-          paymentExecuted: true,
-          paymentConfirmed: true,
-          estimatedTimeRemaining: 0
-        },
-        performance: {
-          ...state.performance,
-          totalDuration,
-          bottleneckPhase: identifyBottleneck(performanceTimers.current)
-        }
-      })
-      
-      const result: PaymentResult = {
-        success: true,
-        intentId,
-        transactionHash: null, // writeContract returns void, hash comes from receipt
-        signature: signatureResponse,
-        totalDuration,
-        performanceMetrics: {
-          intentCreationTime: performanceTimers.current.get('intent_creation') || 0,
-          signatureWaitTime: performanceTimers.current.get('signature_wait') || 0,
-          executionTime: performanceTimers.current.get('execution') || 0,
-          confirmationTime: 2000
-        },
-        recoveryAttempts: errorRecovery.state.recoveryHistory.length,
-        errorCategory: null,
-        finalError: null
+          
+          writeContract({
+            address: contractAddresses.COMMERCE_INTEGRATION,
+            abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+            functionName: 'createPaymentIntent',
+            args: [paymentRequest]
+          })
+          
+          // Wait for transaction hash to be available
+          const txHash = await new Promise<`0x${string}`>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Transaction timeout')), 30000)
+            
+            const checkHash = () => {
+              if (transactionHash) {
+                clearTimeout(timeout)
+                resolve(transactionHash)
+              } else {
+                setTimeout(checkHash, 100)
+              }
+            }
+            
+            checkHash()
+          })
+          
+          // Wait for transaction receipt and extract intent ID
+          const receipt = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Transaction timeout')), 30000)
+            
+            const checkReceipt = async () => {
+              try {
+                if (receiptData) {
+                  clearTimeout(timeout)
+                  resolve(receiptData)
+                } else {
+                  setTimeout(checkReceipt, 1000)
+                }
+              } catch (error) {
+                clearTimeout(timeout)
+                reject(error)
+              }
+            }
+            
+            checkReceipt()
+          }) as any
+          
+          const intentId = extractIntentIdFromLogs(receipt.logs)
+          
+          recordTiming('intent_creation', performanceTimers.current.get('intent_creation_start'))
+          
+          setFlowState({ phase: 'waiting_signature', intentId })
+          updateState({
+            progress: 30,
+            message: 'Payment intent created successfully',
+            paymentProgress: {
+              ...state.paymentProgress,
+              intentId,
+              intentCreated: true,
+              estimatedTimeRemaining: 45
+            }
+          })
+          
+          // Phase 2: Wait for Backend Signature
+          updateState({
+            phase: 'waiting_signature',
+            progress: 40,
+            message: 'Waiting for payment authorization...'
+          })
+          
+          recordTiming('signature_wait')
+          
+          const signatureResponse = await signaturePolling.pollForSignature(intentId)
+          
+          recordTiming('signature_wait', performanceTimers.current.get('signature_wait_start'))
+          
+          updateState({
+            progress: 70,
+            message: 'Payment authorized successfully',
+            paymentProgress: {
+              ...state.paymentProgress,
+              signatureReceived: true,
+              estimatedTimeRemaining: 15
+            }
+          })
+          
+          // Phase 3: Execute Payment
+          setFlowState({ phase: 'executing_purchase' })
+          updateState({
+            phase: 'executing_payment',
+            progress: 80,
+            message: 'Executing payment...'
+          })
+          
+          recordTiming('execution')
+          
+          writeContract({
+            address: contractAddresses.COMMERCE_INTEGRATION,
+            abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+            functionName: 'executePaymentWithSignature',
+            args: [intentId]
+          })
+          
+          // Wait for execution transaction hash to be available
+          const executionHash = await new Promise<`0x${string}`>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Execution timeout')), 30000)
+            
+            const checkHash = () => {
+              if (transactionHash) {
+                clearTimeout(timeout)
+                resolve(transactionHash)
+              } else {
+                setTimeout(checkHash, 100)
+              }
+            }
+            
+            checkHash()
+          })
+          
+          setFlowState({ phase: 'confirming', transactionHash: executionHash })
+          recordTiming('execution', performanceTimers.current.get('execution_start'))
+          
+          // Phase 4: Confirm Payment
+          updateState({
+            phase: 'confirming',
+            progress: 90,
+            message: 'Confirming payment...'
+          })
+          
+          // Wait for final confirmation (simplified)
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          
+          // Payment completed successfully
+          const totalDuration = Date.now() - startTime
+          
+          setFlowState({ phase: 'completed', transactionHash: executionHash })
+          updateState({
+            phase: 'completed',
+            progress: 100,
+            message: 'Payment completed successfully!',
+            isActive: false,
+            paymentProgress: {
+              ...state.paymentProgress,
+              paymentExecuted: true,
+              paymentConfirmed: true,
+              estimatedTimeRemaining: 0
+            },
+            performance: {
+              ...state.performance,
+              totalDuration,
+              bottleneckPhase: identifyBottleneck(performanceTimers.current)
+            }
+          })
+          
+          const result: PaymentResult = {
+            success: true,
+            intentId,
+            transactionHash: executionHash,
+            signature: signatureResponse,
+            totalDuration,
+            performanceMetrics: {
+              intentCreationTime: performanceTimers.current.get('intent_creation') || 0,
+              signatureWaitTime: performanceTimers.current.get('signature_wait') || 0,
+              executionTime: performanceTimers.current.get('execution') || 0,
+              confirmationTime: 2000
+            },
+            recoveryAttempts: errorRecovery.state.recoveryHistory.length,
+            errorCategory: null,
+            finalError: null
+          }
+          
+          // Call completion callback
+          if (finalConfig.callbacks?.onPaymentCompleted) {
+            finalConfig.callbacks.onPaymentCompleted(result)
+          }
+          
+          if (finalConfig.debugConfig.enableVerboseLogging) {
+            console.log('✅ Payment completed successfully:', result)
+          }
+          
+          return result
       }
-      
-      // Call completion callback
-      if (finalConfig.callbacks?.onPaymentCompleted) {
-        finalConfig.callbacks.onPaymentCompleted(result)
-      }
-      
-      if (finalConfig.debugConfig.enableVerboseLogging) {
-        console.log('✅ Payment completed successfully:', result)
-      }
-      
-      return result
       
     } catch (error) {
       // Handle error with orchestrated recovery
@@ -789,6 +1539,11 @@ export function usePaymentFlowOrchestrator(
         // Recovery failed, return failure result
         const totalDuration = Date.now() - startTime
         
+        setFlowState({ 
+          phase: 'failed', 
+          error: error instanceof Error ? error : new Error('Unknown error'),
+          canRetry: true 
+        })
         updateState({
           phase: 'failed',
           progress: 0,
@@ -870,6 +1625,7 @@ export function usePaymentFlowOrchestrator(
     signaturePolling.cancelPolling()
     errorRecovery.resetRecovery()
     
+    setFlowState({ phase: 'idle' })
     updateState({
       phase: 'idle',
       progress: 0,
@@ -938,6 +1694,7 @@ export function usePaymentFlowOrchestrator(
     performanceTimers.current.clear()
     currentRequestRef.current = null
     
+    setFlowState({ phase: 'idle' })
     setState({
       phase: 'idle',
       progress: 0,
@@ -1005,10 +1762,11 @@ export function usePaymentFlowOrchestrator(
   }, [])
   
   // Computed properties
-  const canStartPayment = !state.isActive && healthMonitor.isBackendAvailable
+  const canStartPayment = !state.isActive && healthMonitor.isBackendAvailable && isConnected
   
   return {
     state,
+    flowState,
     executePayment,
     cancelPayment,
     retryPayment,

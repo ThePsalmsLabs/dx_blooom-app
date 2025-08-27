@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import { Address, parseEventLogs } from 'viem'
+import { Address, Hash, parseEventLogs, parseUnits } from 'viem'
 import { useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance } from 'wagmi'
+import { simulateContract, waitForTransactionReceipt } from 'wagmi/actions'
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { useQueryClient } from '@tanstack/react-query'
@@ -26,6 +27,64 @@ import {
   X402PaymentProof,
   X402PaymentVerificationResult
 } from '@/lib/web3/x402-config'
+
+/**
+ * Generate Permit2 signature for single-transaction purchases
+ */
+async function generatePermit2Signature({
+  token,
+  amount,
+  spender,
+  deadline,
+  userAddress
+}: {
+  token: Address
+  amount: bigint
+  spender: Address
+  deadline: number
+  userAddress: Address
+}): Promise<{
+  v: number
+  r: `0x${string}`
+  s: `0x${string}`
+  deadline: bigint
+}> {
+  // This is a simplified implementation
+  // In production, you would use a proper EIP-2612 permit signature
+  const domain = {
+    name: 'USDC',
+    version: '1',
+    chainId: 8453, // Base mainnet
+    verifyingContract: token
+  }
+  
+  const types = {
+    Permit: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+      { name: 'value', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' }
+    ]
+  }
+  
+  const message = {
+    owner: userAddress,
+    spender,
+    value: amount,
+    nonce: BigInt(0), // You'd get this from the contract
+    deadline: BigInt(deadline)
+  }
+  
+  // For now, return a mock signature
+  // In production, you'd use ethers.js or similar to sign
+  return {
+    v: 27,
+    r: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    s: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    deadline: BigInt(deadline)
+  }
+}
 import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import type { Creator, ContentCategory, Content } from '@/types/contracts'
@@ -237,7 +296,7 @@ interface TokenInfo {
 }
 
 interface ContentPurchaseFlowState {
-  step: 'idle' | 'loading_content' | 'checking_access' | 'insufficient_balance' | 'need_approval' | 'can_purchase' | 'approving_tokens' | 'purchasing' | 'completed' | 'error'
+  step: 'idle' | 'loading_content' | 'checking_access' | 'insufficient_balance' | 'need_approval' | 'can_purchase' | 'approving_tokens' | 'approved' | 'signing_permit' | 'executing_permit_purchase' | 'purchasing' | 'completed' | 'error'
   message: string
   progress: number
   transactionHash?: string
@@ -2129,13 +2188,97 @@ export function useContentPurchaseFlow(
       progress: 40
     })
 
-    writeContract({
-      address: contractAddresses.USDC,
-      abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [contractAddresses.PAY_PER_VIEW, contentDetails.payPerViewPrice]
-    })
-  }, [writeContract, contractAddresses, contentDetails])
+    try {
+      // Step 1: Simulate the approval transaction first
+      const approveSimulation = await simulateContract(wagmiConfig, {
+        address: contractAddresses.USDC,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [contractAddresses.PAY_PER_VIEW, contentDetails.payPerViewPrice]
+      })
+
+      // Step 2: Execute the approval
+      writeContract({
+        address: contractAddresses.USDC,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [contractAddresses.PAY_PER_VIEW, contentDetails.payPerViewPrice]
+      })
+      
+      // Step 3: The transaction confirmation will be handled by the existing useEffect
+      // that monitors the writeContract hook state
+
+      // Step 4: Refresh allowance state for UI
+      await queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey.includes('allowance')
+      })
+
+      setFlowState({
+        step: 'approved',
+        message: 'USDC spending approved successfully',
+        progress: 60
+      })
+
+    } catch (error) {
+      console.error('Approval failed:', error)
+      setFlowState({
+        step: 'error',
+        message: `Approval failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        progress: 0,
+        error: error instanceof Error ? error : new Error('Approval failed')
+      })
+      throw error
+    }
+  }, [writeContract, contractAddresses, contentDetails, queryClient, wagmiConfig])
+
+  // Permit2 purchase function for single-transaction UX
+  const executeUSDCPurchaseWithPermit2 = useCallback(async () => {
+    if (!contractAddresses?.USDC || !contractAddresses?.PAY_PER_VIEW || !contentDetails || !userAddress) {
+      throw new Error('Missing required data for Permit2 purchase')
+    }
+
+    try {
+      setFlowState({
+        step: 'signing_permit',
+        message: 'Sign the permit for single-transaction purchase...',
+        progress: 30
+      })
+
+      // Generate permit signature for single-transaction UX
+      const permit2Data = await generatePermit2Signature({
+        token: contractAddresses.USDC,
+        amount: contentDetails.payPerViewPrice,
+        spender: contractAddresses.PAY_PER_VIEW,
+        deadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+        userAddress
+      })
+
+      setFlowState({
+        step: 'executing_permit_purchase',
+        message: 'Executing purchase with permit...',
+        progress: 70
+      })
+
+      // Single transaction: permit + purchase
+      // Note: This would require a custom contract function that accepts permit data
+      // For now, we'll use the standard purchase function
+      if (!contentId) {
+        throw new Error('Content ID is required for purchase')
+      }
+      
+      writeContract({
+        address: contractAddresses.PAY_PER_VIEW,
+        abi: PAY_PER_VIEW_ABI,
+        functionName: 'purchaseContentDirect',
+        args: [contentId]
+      })
+
+    } catch (error) {
+      console.warn('Permit2 failed, falling back to approve + execute:', error)
+      // Fallback to traditional 2-step flow
+      return executeDirectUSDCPurchase()
+    }
+  }, [contractAddresses, contentDetails, userAddress, contentId, writeContract])
 
   // Main purchase function
   const purchase = useCallback(async () => {

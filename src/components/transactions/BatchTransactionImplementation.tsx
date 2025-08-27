@@ -46,7 +46,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { useAccount, useWriteContract, useChainId } from 'wagmi'
+import { useAccount, useWriteContract, useChainId, usePublicClient } from 'wagmi'
 import { Address, encodeFunctionData, parseEther } from 'viem'
 
 import {
@@ -275,26 +275,47 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
   const [isDetecting, setIsDetecting] = useState(true)
   const { address, connector } = useAccount()
   const miniApp = useMiniApp()
+  const publicClient = usePublicClient()
+  
+  // Account type detection function
+  const detectAccountType = useCallback(async (accountAddress: Address): Promise<'eoa' | 'smart_account'> => {
+    try {
+      if (!publicClient) {
+        console.warn('Public client not available, defaulting to EOA')
+        return 'eoa'
+      }
+      const code = await publicClient.getBytecode({ address: accountAddress })
+      return code && code !== '0x' ? 'smart_account' : 'eoa'
+    } catch {
+      return 'eoa' // Default to EOA on detection failure
+    }
+  }, [publicClient])
   
   useEffect(() => {
     const detectCapabilities = async () => {
       setIsDetecting(true)
       
       try {
+        // Detect account type first
+        let accountType: 'eoa' | 'smart_account' = 'eoa'
+        if (address) {
+          accountType = await detectAccountType(address)
+        }
+        
         // Simulate capability detection
         // In real implementation, this would check wallet capabilities
         let mockCapability: BatchCapabilityInfo = {
-          isSupported: true,
+          isSupported: accountType === 'smart_account', // Only support batch for smart accounts
           walletCapabilities: {
-            supportsBatchCalls: true,
-            maxBatchSize: 10,
+            supportsBatchCalls: accountType === 'smart_account',
+            maxBatchSize: accountType === 'smart_account' ? 10 : 0,
             supportsSimulation: true,
             supportsGasEstimation: true
           },
           environmentCapabilities: {
             clientSupport: miniApp.environment?.client === 'warpcast',
             sdkVersion: miniApp.environment?.sdkInfo.version || '1.0.0',
-            hasNativeIntegration: true
+            hasNativeIntegration: accountType === 'smart_account'
           },
           limitations: [],
           recommendedConfig: {
@@ -306,6 +327,15 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
           }
         }
         
+        // Add account type specific limitations
+        if (accountType === 'eoa') {
+          mockCapability.limitations.push('Batch transactions require smart account - EOA detected')
+          mockCapability = {
+            ...mockCapability,
+            isSupported: false
+          }
+        }
+        
         // Add limitations based on detected issues
         if (!miniApp.environment?.sdkInfo.supportsBatchTransactions) {
           mockCapability.limitations.push('MiniApp SDK version may not support batch transactions')
@@ -313,7 +343,6 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
         
         if (!address) {
           mockCapability.limitations.push('Wallet not connected')
-          // Create a new object with updated isSupported value
           mockCapability = {
             ...mockCapability,
             isSupported: false
@@ -408,15 +437,18 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
           {capability.isSupported ? (
             <div className="text-sm space-y-2">
               <div className="text-green-700">
-                ✓ Your wallet and environment support single-signature payments
+                ✓ Smart account detected - batch transactions supported
               </div>
               <div className="text-sm text-muted-foreground">
-                Transactions will be faster and require fewer user interactions
+                Single-signature payments will be faster and require fewer user interactions
               </div>
             </div>
           ) : (
             <div className="text-sm text-yellow-700">
-              Batch transactions not supported. Using traditional approve → pay flow.
+              {capability.limitations.some(l => l.includes('EOA detected')) 
+                ? 'EOA detected - batch transactions require smart account. Using traditional approve → pay flow.'
+                : 'Batch transactions not supported. Using traditional approve → pay flow.'
+              }
             </div>
           )}
           
@@ -431,15 +463,29 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
             </div>
           )}
           
-          {showDetails && capability.walletCapabilities.maxBatchSize && (
+          {showDetails && (
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
-                <span className="font-medium">Max Batch Size:</span>
-                <span className="ml-1">{capability.walletCapabilities.maxBatchSize}</span>
+                <span className="font-medium">Account Type:</span>
+                <span className="ml-1">
+                  {capability.isSupported ? 'Smart Account' : 'EOA'}
+                </span>
               </div>
               <div>
                 <span className="font-medium">SDK Version:</span>
                 <span className="ml-1">{capability.environmentCapabilities.sdkVersion}</span>
+              </div>
+              {(capability.walletCapabilities.maxBatchSize || 0) > 0 && (
+                <div>
+                  <span className="font-medium">Max Batch Size:</span>
+                  <span className="ml-1">{capability.walletCapabilities.maxBatchSize}</span>
+                </div>
+              )}
+              <div>
+                <span className="font-medium">Native Integration:</span>
+                <span className="ml-1">
+                  {capability.environmentCapabilities.hasNativeIntegration ? 'Yes' : 'No'}
+                </span>
               </div>
             </div>
           )}
@@ -853,7 +899,24 @@ export function BatchTransactionImplementation({
   const { address } = useAccount()
   const { writeContract } = useWriteContract()
   const chainId = useChainId()
+  const publicClient = usePublicClient()
   const executionAbortRef = useRef<AbortController | null>(null)
+  
+  /**
+   * Detect account type (EOA vs Smart Account)
+   */
+  const detectAccountType = useCallback(async (accountAddress: Address): Promise<'eoa' | 'smart_account'> => {
+    try {
+      if (!publicClient) {
+        console.warn('Public client not available, defaulting to EOA')
+        return 'eoa'
+      }
+      const code = await publicClient.getBytecode({ address: accountAddress })
+      return code && code !== '0x' ? 'smart_account' : 'eoa'
+    } catch {
+      return 'eoa' // Default to EOA on detection failure
+    }
+  }, [publicClient])
   
   // Build batch configuration when capabilities are detected
   useEffect(() => {
@@ -910,15 +973,21 @@ export function BatchTransactionImplementation({
   
   // Execute batch transaction
   const executeBatchTransaction = useCallback(async () => {
-    if (!batchConfig || !capabilities) return
+    if (!batchConfig || !capabilities || !address) {
+      throw new Error('Missing required configuration or wallet not connected')
+    }
     
-    // Check if batch transactions are supported
-    if (!capabilities.isSupported) {
+    // Detect account type first
+    const accountType = await detectAccountType(address)
+    
+    // Check if batch transactions are supported and account type is compatible
+    if (!capabilities.isSupported || accountType === 'eoa') {
+      console.warn(`Batch transactions not supported for ${accountType} accounts, falling back to sequential execution`)
       setBatchState(prev => ({
         ...prev,
         phase: 'fallback',
         progress: 10,
-        message: 'Falling back to sequential execution...'
+        message: `Falling back to sequential execution (${accountType} detected)...`
       }))
       
       // Implement sequential fallback
@@ -1036,15 +1105,50 @@ export function BatchTransactionImplementation({
   
   // Execute the actual batch transaction
   const executeBatch = useCallback(async (): Promise<`0x${string}`> => {
-    if (!batchConfig) throw new Error('No batch configuration')
+    if (!batchConfig || !address) throw new Error('No batch configuration or wallet not connected')
     
-    // Simulate batch execution
-    // In real implementation, this would use EIP-5792 wallet_sendCalls
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    // Check if we have batch transaction capability
+    if (!capabilities?.isSupported) {
+      throw new Error('Batch transaction capability not available')
+    }
     
-    // Mock transaction hash
-    return '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12'
-  }, [batchConfig])
+    // Verify account type again before execution
+    const accountType = await detectAccountType(address)
+    if (accountType === 'eoa') {
+      throw new Error('Batch transactions require smart account - EOA detected')
+    }
+    
+    // Prepare batch calls for EIP-5792
+    const batchCalls = batchConfig.calls.map(call => ({
+      to: call.to,
+      value: call.value,
+      data: call.data
+    }))
+    
+    // Execute batch transaction using EIP-5792
+    // In real implementation, this would use wallet_sendCalls or similar
+    try {
+      // Simulate batch execution with proper error handling
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Batch transaction timeout'))
+        }, batchConfig.timeoutMs)
+        
+        // Simulate successful batch execution
+        setTimeout(() => {
+          clearTimeout(timeout)
+          resolve(true)
+        }, 3000)
+      })
+      
+      // Mock transaction hash for successful batch
+      return '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef12'
+      
+    } catch (error) {
+      console.error('Batch execution failed:', error)
+      throw new Error(`Batch transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }, [batchConfig, address, capabilities, detectAccountType])
   
   // Confirm batch transaction on blockchain
   const confirmBatchTransaction = useCallback(async (txHash: `0x${string}`): Promise<void> => {
