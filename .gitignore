@@ -50,3 +50,4 @@ next-env.d.ts
 src/components/content/ContentPurchaseCard.backup.tsx
 src/components/examples
 src/lib/utils/zora-events-production.ts
+src/components/debug
