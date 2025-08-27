@@ -97,7 +97,7 @@ function buildFarcasterManifest(): FarcasterManifest {
       name: "Bloom",
       homeUrl: `${normalizedBaseUrl}/mini`,
       iconUrl: `${normalizedBaseUrl}/images/miniapp-icon-192.png`,
-      splashImageUrl: `${normalizedBaseUrl}/images/miniapp-splash.png`,
+      splashImageUrl: `${normalizedBaseUrl}/images/miniapp-og-square.png`,
       splashBackgroundColor: "#FF6B35",
       webhookUrl: `${normalizedBaseUrl}/api/farcaster/webhook`,
       subtitle: "Premium content, pay with USDC",
