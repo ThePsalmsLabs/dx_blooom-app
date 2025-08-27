@@ -90,49 +90,60 @@ import type {
    * This function provides comprehensive MiniApp environment detection that builds
    * upon your existing detection infrastructure. It follows your established patterns
    * of multi-dimensional analysis and confidence scoring.
+   * 
+   * Optimized with timeout to prevent hanging during initialization.
    */
-    async function detectMiniAppEnvironment(): Promise<MiniAppEnvironmentDetection> {
+  async function detectMiniAppEnvironment(): Promise<MiniAppEnvironmentDetection> {
     const detectionStartTime = Date.now()
     
     try {
-      // Use your existing platform detection as the foundation
-      const basePlatformDetection = await detectBasePlatform()
-      const deviceProfile = await createEnhancedDeviceProfile()
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Detection timeout')), 3000)
+      )
       
-      // Perform MiniApp-specific detection
-      const farcasterContext = await detectFarcasterContext()
-      const sdkAvailability = await assessSDKAvailability()
-      const capabilities = await assessMiniAppCapabilities(farcasterContext, deviceProfile)
+      const detectionPromise = (async () => {
+        // Use your existing platform detection as the foundation
+        const basePlatformDetection = await detectBasePlatform()
+        const deviceProfile = await createEnhancedDeviceProfile()
+        
+        // Perform MiniApp-specific detection
+        const farcasterContext = await detectFarcasterContext()
+        const sdkAvailability = await assessSDKAvailability()
+        const capabilities = await assessMiniAppCapabilities(farcasterContext, deviceProfile)
+        
+        // Determine primary environment classification
+        const environment = classifyMiniAppEnvironment(farcasterContext, basePlatformDetection)
+        
+        // Calculate confidence using your existing confidence system
+        const confidence = calculateDetectionConfidence({
+          farcasterContext,
+          sdkAvailability,
+          capabilities,
+          basePlatformDetection,
+          detectionTime: Date.now() - detectionStartTime
+        })
+        
+        // Generate integration recommendations
+        const integrationRecommendations = generateIntegrationRecommendations({
+          environment,
+          capabilities,
+          confidence,
+          deviceProfile
+        })
+        
+        return {
+          environment,
+          detectedPlatform: basePlatformDetection,
+          farcasterContext,
+          sdkAvailability,
+          capabilities,
+          confidence,
+          integrationRecommendations
+        }
+      })()
       
-      // Determine primary environment classification
-      const environment = classifyMiniAppEnvironment(farcasterContext, basePlatformDetection)
-      
-      // Calculate confidence using your existing confidence system
-      const confidence = calculateDetectionConfidence({
-        farcasterContext,
-        sdkAvailability,
-        capabilities,
-        basePlatformDetection,
-        detectionTime: Date.now() - detectionStartTime
-      })
-      
-      // Generate integration recommendations
-      const integrationRecommendations = generateIntegrationRecommendations({
-        environment,
-        capabilities,
-        confidence,
-        deviceProfile
-      })
-      
-      return {
-        environment,
-        detectedPlatform: basePlatformDetection,
-        farcasterContext,
-        sdkAvailability,
-        capabilities,
-        confidence,
-        integrationRecommendations
-      }
+      return await Promise.race([detectionPromise, timeoutPromise])
       
     } catch (error) {
       // Graceful fallback following your error handling patterns
@@ -335,13 +346,24 @@ import type {
                       typeof window !== 'undefined' && 'ethereum' in window
     
     // Check for batch transaction support (EIP-5792)
-    const canBatchTransactions = farcasterContext.isInFarcasterClient && (
-      typeof window !== 'undefined' && 
-      window.ethereum && 
-      'request' in window.ethereum &&
-      // Check if wallet_sendCalls is supported
-      await checkMethodSupport('wallet_sendCalls')
-    )
+    // Use a timeout to prevent blocking wallet detection
+    let canBatchTransactions = false
+    if (farcasterContext.isInFarcasterClient && 
+        typeof window !== 'undefined' && 
+        window.ethereum && 
+        'request' in window.ethereum) {
+      
+      try {
+        const batchCheckPromise = checkMethodSupport('wallet_sendCalls')
+        const timeoutPromise = new Promise<boolean>((resolve) => 
+          setTimeout(() => resolve(false), 2000)
+        )
+        
+        canBatchTransactions = await Promise.race([batchCheckPromise, timeoutPromise])
+      } catch (error) {
+        canBatchTransactions = false
+      }
+    }
     
     // Base network is our primary supported chain
     const supportedChains = [8453, 84532] // Base mainnet and testnet
@@ -659,16 +681,23 @@ import type {
    * Check Method Support
    * 
    * Utility to check if a specific wallet method is supported.
+   * Optimized to avoid blocking calls that can cause timeouts.
    */
   async function checkMethodSupport(method: string): Promise<boolean> {
     if (typeof window === 'undefined' || !window.ethereum) return false
     
     try {
-      // Try to call the method with test parameters
-      await window.ethereum.request({ method, params: [] })
+      // Use a timeout to prevent blocking calls
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Method check timeout')), 1000)
+      )
+      
+      const methodCheckPromise = window.ethereum.request({ method, params: [] })
+      
+      await Promise.race([methodCheckPromise, timeoutPromise])
       return true
     } catch (error) {
-      // Method not supported or requires different parameters
+      // Method not supported or timeout occurred
       return false
     }
   }

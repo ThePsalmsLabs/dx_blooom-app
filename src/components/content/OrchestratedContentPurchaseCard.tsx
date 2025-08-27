@@ -582,7 +582,7 @@ export function OrchestratedContentPurchaseCard({
 
   // ===== CONDITIONAL PAYMENT DATA HOOKS (Only Active After Intent) =====
   // These hooks are only enabled after user expresses purchase intent
-  const paymentDataEnabled = paymentState.intentPhase !== PaymentIntentPhase.BROWSING
+  const paymentDataEnabled = paymentState.intentPhase !== PaymentIntentPhase.BROWSING || paymentState.showMethodSelector
   
   // ===== TRANSACTION RECEIPT HANDLING =====
   // Track transaction receipts for proper confirmation
@@ -1193,11 +1193,22 @@ export function OrchestratedContentPurchaseCard({
       isProcessing: paymentState.isProcessing,
       hasContractAddresses: !!contractAddresses,
       intentPhase: paymentState.intentPhase,
-      selectedMethod: paymentState.selectedMethod
+      selectedMethod: paymentState.selectedMethod,
+      paymentDataEnabled,
+      showMethodSelector: paymentState.showMethodSelector,
+      ethPriceQueryData: !!ethPriceQuery.data,
+      contentPrice: contentQuery.data?.payPerViewPrice
     })
 
     if (!contentQuery.data || !ethPaymentCalculation || paymentState.isProcessing || !contractAddresses) {
-      console.error('❌ ETH purchase prerequisites not met')
+      console.error('❌ ETH purchase prerequisites not met', {
+        hasContentData: !!contentQuery.data,
+        hasEthCalculation: !!ethPaymentCalculation,
+        isProcessing: paymentState.isProcessing,
+        hasContractAddresses: !!contractAddresses,
+        paymentDataEnabled,
+        ethPriceQueryData: !!ethPriceQuery.data
+      })
       return
     }
 
@@ -1406,7 +1417,7 @@ export function OrchestratedContentPurchaseCard({
 
   return (
     <>
-      <Card className={className}>
+      <Card className={`${className} overflow-visible`}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -1585,7 +1596,7 @@ export function OrchestratedContentPurchaseCard({
           </div>
         )}
 
-        <CardFooter className="space-y-3 w-full">
+        <CardFooter className="space-y-3 w-full pb-4">
           {/* Main Action Button - Changes based on intent phase */}
           {paymentState.intentPhase === PaymentIntentPhase.BROWSING && (
             <Button 
@@ -1722,18 +1733,22 @@ export function OrchestratedContentPurchaseCard({
 
           {/* Back to method selection */}
           {paymentState.selectedMethod && paymentState.intentPhase === PaymentIntentPhase.SELECTING_METHOD && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setPaymentState(prev => ({ 
-                ...prev, 
-                selectedMethod: null, 
-                showMethodSelector: true,
-                intentPhase: PaymentIntentPhase.INTENT_EXPRESSED
-              }))}
-            >
-              Choose Different Method
-            </Button>
+            <div className="w-full space-y-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="w-full"
+                onClick={() => setPaymentState(prev => ({ 
+                  ...prev, 
+                  selectedMethod: null, 
+                  showMethodSelector: true,
+                  intentPhase: PaymentIntentPhase.INTENT_EXPRESSED
+                }))}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Choose Different Method
+              </Button>
+            </div>
           )}
         </CardFooter>
       </Card>

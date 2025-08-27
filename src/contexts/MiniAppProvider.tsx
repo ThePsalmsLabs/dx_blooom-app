@@ -1081,9 +1081,23 @@ function EnhancedMiniAppProvider({
     utils
   }), [state, actions, environmentDetection, enhancedUser, utils])
   
-  // Don't render until detection is complete to prevent hydration issues
+  // Show loading skeleton while detection is in progress
   if (!isDetectionComplete) {
-    return null
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          <div className="text-center space-y-3">
+            <div className="h-8 w-48 mx-auto bg-muted animate-pulse rounded" />
+            <div className="h-4 w-64 mx-auto bg-muted animate-pulse rounded" />
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 w-full bg-muted animate-pulse rounded" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
   
   return (

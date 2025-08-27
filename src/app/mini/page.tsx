@@ -64,6 +64,7 @@ import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 // Import your existing sophisticated components
 import { UnifiedContentBrowser } from '@/components/content/UnifiedContentBrowser'
 import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
 
 // ================================================
 // PRODUCTION TYPE DEFINITIONS
@@ -473,29 +474,37 @@ function MiniAppHomeCore() {
       </div>
       
       <div className="miniapp-content-browser">
-        <UnifiedContentBrowser
-          context="miniapp"
-          showCreatorInfo={true}
-          showSocialFeatures={true}
-          enableAdvancedFiltering={false}
-          itemsPerPage={6}
-          onContentSelect={(contentId: bigint) => handleContentSelect(contentId.toString())}
-          key={homeState.refreshTrigger} // Use key instead of refreshTrigger prop
-          className="w-full"
-          emptyStateContent={
-            <div className="text-center py-8">
-              <Eye className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-              <h3 className="font-medium mb-2">No Content Available</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Check back soon for amazing content from creators
-              </p>
-              <Button onClick={handleRefresh} variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
-          }
-        />
+        <Suspense fallback={
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-32 w-full bg-muted animate-pulse rounded" />
+            ))}
+          </div>
+        }>
+          <UnifiedContentBrowser
+            context="miniapp"
+            showCreatorInfo={true}
+            showSocialFeatures={true}
+            enableAdvancedFiltering={false}
+            itemsPerPage={6}
+            onContentSelect={(contentId: bigint) => handleContentSelect(contentId.toString())}
+            key={homeState.refreshTrigger} // Use key instead of refreshTrigger prop
+            className="w-full"
+            emptyStateContent={
+              <div className="text-center py-8">
+                <Eye className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-medium mb-2">No Content Available</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Check back soon for amazing content from creators
+                </p>
+                <Button onClick={handleRefresh} variant="outline" size="sm">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            }
+          />
+        </Suspense>
       </div>
     </div>
   ))
@@ -536,7 +545,8 @@ function MiniAppHomeCore() {
   // PRODUCTION MAIN RENDER
   // ================================================
   
-  if (!isReady || creatorLoading) {
+  // Show loading skeleton while core data is loading
+  if (!isReady) {
     return <MiniAppHomeLoadingSkeleton />
   }
   
@@ -566,6 +576,9 @@ function MiniAppHomeCore() {
         <FeaturedContent />
         <SocialCommerceFooter />
       </main>
+      
+      {/* Performance Monitor (Development Only) */}
+      <PerformanceMonitor />
     </div>
   )
 }
