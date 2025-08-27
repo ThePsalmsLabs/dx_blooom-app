@@ -1534,7 +1534,7 @@ export function OrchestratedContentPurchaseCard({
           )}
         </CardContent>
 
-        <CardFooter className="space-y-3">
+        <CardFooter className="space-y-3 w-full">
           {/* Main Action Button - Changes based on intent phase */}
           {paymentState.intentPhase === PaymentIntentPhase.BROWSING && (
             <Button 

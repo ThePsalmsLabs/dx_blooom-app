@@ -944,17 +944,20 @@ function ContentItemCard({
                 className="w-full button-adaptive"
               />
             ) : (
-              <OrchestratedContentPurchaseCard
-                contentId={contentId}
-                userAddress={userAddress}
-                onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
-                variant="full"
-                showCreatorInfo={true}
-                showPurchaseDetails={true}
-                enableMultiPayment={true}
-                showSystemHealth={true}
-                enablePerformanceMetrics={false}
-              />
+              <div className="w-full">
+                <OrchestratedContentPurchaseCard
+                  contentId={contentId}
+                  userAddress={userAddress}
+                  onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
+                  variant="full"
+                  showCreatorInfo={true}
+                  showPurchaseDetails={true}
+                  enableMultiPayment={true}
+                  showSystemHealth={true}
+                  enablePerformanceMetrics={false}
+                  className="w-full"
+                />
+              </div>
             )}
           </CardFooter>
         )}

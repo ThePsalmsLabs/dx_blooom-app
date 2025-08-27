@@ -71,6 +71,7 @@ export function ContentAccessControl({
           enableMultiPayment={true}
           showSystemHealth={true}
           enablePerformanceMetrics={false}
+          className="w-full"
         />
       </div>
 

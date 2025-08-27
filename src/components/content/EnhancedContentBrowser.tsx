@@ -258,7 +258,7 @@ function ContentCard({ contentId, width, breakpoint, compact = false }: ContentC
           </p>
 
           {/* Compact Purchase Component */}
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             <OrchestratedContentPurchaseCard
               contentId={contentId}
               userAddress={address}
@@ -269,6 +269,7 @@ function ContentCard({ contentId, width, breakpoint, compact = false }: ContentC
               enableMultiPayment={true}
               showSystemHealth={true}
               enablePerformanceMetrics={false}
+              className="w-full"
             />
           </div>
         </CardContent>

@@ -713,20 +713,23 @@ function ContentDisplayCard({
       </CardContent>
       
       <CardFooter className="pt-0">
-        <OrchestratedContentPurchaseCard
-          contentId={contentId}
-          userAddress={userAddress as `0x${string}` | undefined}
-          onPurchaseSuccess={() => {
-            // Refresh access control data
-            accessControl.refetch()
-          }}
-          variant="full"
-          showCreatorInfo={true}
-          showPurchaseDetails={true}
-          enableMultiPayment={true}
-          showSystemHealth={true}
-          enablePerformanceMetrics={false}
-        />
+        <div className="w-full">
+          <OrchestratedContentPurchaseCard
+            contentId={contentId}
+            userAddress={userAddress as `0x${string}` | undefined}
+            onPurchaseSuccess={() => {
+              // Refresh access control data
+              accessControl.refetch()
+            }}
+            variant="full"
+            showCreatorInfo={true}
+            showPurchaseDetails={true}
+            enableMultiPayment={true}
+            showSystemHealth={true}
+            enablePerformanceMetrics={false}
+            className="w-full"
+          />
+        </div>
       </CardFooter>
     </Card>
   )
