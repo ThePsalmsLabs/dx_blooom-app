@@ -37,10 +37,19 @@ export default function MiniAppSharePage() {
 
   const getShareText = () => {
     const baseText = "Check out this amazing content platform on Base! 🚀"
+    const platformText = "Premium content with instant USDC payments on @dxbloom"
+    
     switch (shareType) {
-      case 'content': return `Just discovered this premium content on @dxbloom! ${baseText}`
-      case 'creator': return `Supporting this amazing creator on @dxbloom! ${baseText}`
-      default: return `${baseText} Premium content with instant USDC payments. Join the future of content monetization! 💎`
+      case 'content': 
+        return contentId 
+          ? `Just discovered this premium content on @dxbloom! ${platformText}`
+          : `Discovering amazing content on @dxbloom! ${platformText}`
+      case 'creator': 
+        return creatorAddress 
+          ? `Supporting this amazing creator on @dxbloom! ${platformText}`
+          : `Supporting creators on @dxbloom! ${platformText}`
+      default: 
+        return `${platformText}. Join the future of content monetization! 💎`
     }
   }
 
@@ -51,12 +60,40 @@ export default function MiniAppSharePage() {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       } else if (platform === 'farcaster') {
-        window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(getShareText())}&embeds[]=${encodeURIComponent(shareUrl)}`, '_blank')
+        // Use Farcaster's native sharing if available, otherwise fallback to Warpcast
+        const shareText = getShareText()
+        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(shareUrl)}`
+        window.open(farcasterUrl, '_blank')
       } else if (platform === 'twitter') {
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(getShareText())}&url=${encodeURIComponent(shareUrl)}`, '_blank')
+        const shareText = getShareText()
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`
+        window.open(twitterUrl, '_blank')
       }
       
+      // Track share analytics
       setShareCount(prev => prev + 1)
+      
+      // Send analytics to your backend
+      try {
+        await fetch('/api/analytics/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            platform,
+            contentId,
+            creatorAddress,
+            shareType,
+            referralCode,
+            userAddress,
+            farcasterFid: farcasterContext?.user?.fid,
+            shareUrl,
+            timestamp: Date.now()
+          })
+        })
+      } catch (analyticsError) {
+        console.warn('Analytics tracking failed:', analyticsError)
+      }
+      
       console.log('Share tracked:', { platform, contentId, creatorAddress, shareType, referralCode, userAddress, farcasterContext: farcasterContext?.user?.fid })
     } catch (error) {
       console.error('Share failed:', error)
@@ -112,6 +149,14 @@ export default function MiniAppSharePage() {
                 readOnly
                 className="w-full text-xs bg-transparent border-none outline-none text-gray-600"
               />
+            </div>
+            
+            {/* Share Preview */}
+            <div className="p-3 bg-orange-50 rounded-md border border-orange-200">
+              <p className="text-xs font-medium text-orange-800 mb-2">Preview:</p>
+              <p className="text-xs text-orange-700 leading-relaxed">
+                {getShareText()}
+              </p>
             </div>
           </CardContent>
         </Card>
