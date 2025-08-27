@@ -103,10 +103,10 @@ function buildFarcasterManifest(): FarcasterManifest {
     // happens - users can discover, preview, and purchase content without leaving
     // their social experience
     frame: {
-      version: "1.0.0",
-      name: "Premium Content Platform",
-      iconUrl: `${normalizedBaseUrl}/icons/farcaster-frame-icon.png`,
-      homeUrl: normalizedBaseUrl,
+      version: "vNext",
+      name: "Bloom",
+      iconUrl: `${normalizedBaseUrl}/images/miniapp-icon-192.png`,
+      homeUrl: `${normalizedBaseUrl}/mini`,
       
       // This webhook URL is where Farcaster will send frame interaction events
       // When users click buttons in your frames, Farcaster sends the interaction
@@ -114,8 +114,8 @@ function buildFarcasterManifest(): FarcasterManifest {
       webhookUrl: `${normalizedBaseUrl}/api/farcaster/webhook`,
       
       // Optional splash screen configuration for enhanced frame presentation
-      splashImageUrl: `${normalizedBaseUrl}/images/platform-splash.png`,
-      splashBackgroundColor: "#1a1a1a"
+      splashImageUrl: `${normalizedBaseUrl}/images/miniapp-splash.png`,
+      splashBackgroundColor: "#FF6B35"
     },
 
     // Mini App configuration enables your platform to run as an embedded application
