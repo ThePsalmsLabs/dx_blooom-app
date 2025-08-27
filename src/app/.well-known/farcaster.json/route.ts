@@ -36,6 +36,7 @@ interface FarcasterManifest {
     readonly ogTitle?: string
     readonly ogDescription?: string
     readonly ogImageUrl?: string
+    readonly castShareUrl?: string
     readonly noindex?: boolean
     readonly requiredChains?: readonly string[]
     readonly requiredCapabilities?: readonly string[]
@@ -99,7 +100,7 @@ function buildFarcasterManifest(): FarcasterManifest {
       splashImageUrl: `${normalizedBaseUrl}/images/miniapp-splash.png`,
       splashBackgroundColor: "#FF6B35",
       webhookUrl: `${normalizedBaseUrl}/api/farcaster/webhook`,
-      subtitle: "Premium content with instant USDC payments",
+      subtitle: "Premium content, pay with USDC",
       description: "Discover premium content from top creators. Purchase with instant USDC payments on Base. Support creators directly through subscriptions and one-time purchases.",
       primaryCategory: "social",
       tags: ["content", "social", "subscription", "onchain", "premium"],
@@ -108,6 +109,7 @@ function buildFarcasterManifest(): FarcasterManifest {
       ogTitle: "Bloom - Create, Share and Earn",
       ogDescription: "Discover premium content from top creators. Purchase with instant USDC payments on Base.",
       ogImageUrl: `${normalizedBaseUrl}/images/miniapp-og-image.png`,
+      castShareUrl: `${normalizedBaseUrl}/mini/share`,
       requiredChains: ["eip155:8453"], // Base mainnet
       requiredCapabilities: [
         "actions.signIn",
