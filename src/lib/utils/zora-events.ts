@@ -1,11 +1,33 @@
 /**
- * Zora Event Parsing Utilities
+ * Zora Event Parsing Utilities - PRODUCTION ENHANCED
  * 
  * This module provides strict TypeScript implementations for parsing
  * Zora protocol events with proper validation and error handling.
+ * 
+ * ENHANCEMENTS FROM PRODUCTION VERSION:
+ * - Custom error handling with ZoraEventParsingError class
+ * - Enhanced validation functions for event integrity
+ * - Safe parsing with error recovery capabilities
+ * - Multiple parsing strategies (manual and decodeEventLog)
+ * - Comprehensive error logging and recovery
+ * - Type-safe event filtering and validation
+ * 
+ * USAGE:
+ * - Use parseSetupNewContractEvent() for collection creation events
+ * - Use parseUpdatedTokenEvent() for token setup events
+ * - Use safeParseZoraEvents() for production-safe parsing
+ * - Use parseZoraEventsWithDecodeEventLog() for maximum reliability
  */
 
-import { type Address, type Hash, type Log, type TransactionReceipt } from 'viem'
+import { 
+  type Address, 
+  type Hash, 
+  type Log, 
+  type TransactionReceipt, 
+  decodeAbiParameters, 
+  parseAbiParameters,
+  decodeEventLog
+} from 'viem'
 
 // ===== EVENT SIGNATURES =====
 
@@ -32,6 +54,25 @@ export const ZORA_EVENT_SIGNATURES = {
   MINTED: keccak256(
     toHex('Minted(address,uint256,uint256,uint256)')
   )
+} as const
+
+// ===== ABI PARAMETERS FOR DECODING =====
+
+/**
+ * ABI parameters for decoding event data
+ */
+const EVENT_ABI_PARAMETERS = {
+  // SetupNewContract(address indexed newContract, address indexed creator, string contractURI, string name)
+  SETUP_NEW_CONTRACT: parseAbiParameters('string contractURI, string name'),
+  
+  // UpdatedToken(address indexed sender, uint256 indexed tokenId, tuple tokenData)
+  UPDATED_TOKEN: parseAbiParameters('(string uri, uint256 maxSupply, uint256 totalMinted)'),
+  
+  // Purchased(address indexed sender, address indexed minterModule, uint256 indexed tokenId, uint256 quantity, uint256 value)
+  PURCHASED: parseAbiParameters('uint256 quantity, uint256 value'),
+  
+  // Minted(address indexed minter, uint256 indexed tokenId, uint256 quantity, uint256 value)
+  MINTED: parseAbiParameters('uint256 quantity, uint256 value')
 } as const
 
 // ===== EVENT TYPES =====
@@ -128,6 +169,7 @@ export function parseSetupNewContractEvent(
       }
     } catch (error) {
       console.error('Failed to parse SetupNewContract event:', error)
+      // Continue processing other logs instead of failing completely
     }
   }
 
@@ -227,15 +269,15 @@ function parseSetupNewContractLog(
 ): SetupNewContractEvent | null {
   try {
     // Validate topics
-    if (log.topics.length < 4) {
+    if (log.topics.length < 3) {
       console.warn('SetupNewContract event has insufficient topics')
       return null
     }
 
-    // Parse indexed parameters
-    const creator = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
-    const contractAddress = `0x${log.topics[2]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
-    const defaultAdmin = `0x${log.topics[3]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
+    // Parse indexed parameters from topics
+    // SetupNewContract(address indexed newContract, address indexed creator, string contractURI, string name)
+    const newContract = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
+    const creator = `0x${log.topics[2]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
 
     // Parse non-indexed parameters from data
     const data = log.data
@@ -244,18 +286,17 @@ function parseSetupNewContractLog(
       return null
     }
 
-    // TODO: Decode contractURI and name from data
-    // For now, use placeholders
-    const contractURI = '' // Would be decoded from data
-    const name = '' // Would be decoded from data
+    // Decode contractURI and name from data
+    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.SETUP_NEW_CONTRACT, data)
+    const [contractURI, name] = decodedData
 
     return {
       eventName: 'SetupNewContract',
-      contractAddress,
+      contractAddress: newContract,
       creator,
       contractURI,
       name,
-      defaultAdmin,
+      defaultAdmin: creator, // In Zora V3, creator is typically the default admin
       blockNumber,
       transactionHash,
       logIndex: log.logIndex || 0
@@ -281,7 +322,8 @@ function parseUpdatedTokenLog(
       return null
     }
 
-    // Parse indexed parameters
+    // Parse indexed parameters from topics
+    // UpdatedToken(address indexed sender, uint256 indexed tokenId, tuple tokenData)
     const sender = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
     const tokenId = BigInt(log.topics[2] || '0')
 
@@ -292,12 +334,13 @@ function parseUpdatedTokenLog(
       return null
     }
 
-    // TODO: Decode tokenData from data
-    // For now, use placeholders
+    // Decode tokenData from data
+    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.UPDATED_TOKEN, data)
+    const [tokenDataTuple] = decodedData
     const tokenData = {
-      uri: '', // Would be decoded from data
-      maxSupply: BigInt(0), // Would be decoded from data
-      totalMinted: BigInt(0) // Would be decoded from data
+      uri: tokenDataTuple.uri,
+      maxSupply: tokenDataTuple.maxSupply,
+      totalMinted: tokenDataTuple.totalMinted
     }
 
     return {
@@ -331,7 +374,8 @@ function parsePurchasedLog(
       return null
     }
 
-    // Parse indexed parameters
+    // Parse indexed parameters from topics
+    // Purchased(address indexed sender, address indexed minterModule, uint256 indexed tokenId, uint256 quantity, uint256 value)
     const sender = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
     const minterModule = `0x${log.topics[2]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
     const tokenId = BigInt(log.topics[3] || '0')
@@ -343,10 +387,9 @@ function parsePurchasedLog(
       return null
     }
 
-    // TODO: Decode quantity and value from data
-    // For now, use placeholders
-    const quantity = BigInt(0) // Would be decoded from data
-    const value = BigInt(0) // Would be decoded from data
+    // Decode quantity and value from data
+    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.PURCHASED, data)
+    const [quantity, value] = decodedData
 
     return {
       eventName: 'Purchased',
@@ -381,7 +424,8 @@ function parseMintedLog(
       return null
     }
 
-    // Parse indexed parameters
+    // Parse indexed parameters from topics
+    // Minted(address indexed minter, uint256 indexed tokenId, uint256 quantity, uint256 value)
     const minter = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
     const tokenId = BigInt(log.topics[2] || '0')
 
@@ -392,10 +436,9 @@ function parseMintedLog(
       return null
     }
 
-    // TODO: Decode quantity and value from data
-    // For now, use placeholders
-    const quantity = BigInt(0) // Would be decoded from data
-    const value = BigInt(0) // Would be decoded from data
+    // Decode quantity and value from data
+    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.MINTED, data)
+    const [quantity, value] = decodedData
 
     return {
       eventName: 'Minted',
@@ -411,6 +454,22 @@ function parseMintedLog(
   } catch (error) {
     console.error('Failed to parse Minted log:', error)
     return null
+  }
+}
+
+// ===== ERROR HANDLING =====
+
+/**
+ * Custom error class for Zora event parsing errors
+ */
+export class ZoraEventParsingError extends Error {
+  constructor(
+    message: string,
+    public readonly log: Log,
+    public readonly originalError?: Error
+  ) {
+    super(`Zora event parsing failed: ${message}`)
+    this.name = 'ZoraEventParsingError'
   }
 }
 
@@ -442,6 +501,18 @@ export function validateEventLog(log: Log): boolean {
     log.topics !== undefined &&
     log.topics.length > 0 &&
     log.data !== undefined
+  )
+}
+
+/**
+ * Validate Zora event integrity
+ */
+export function validateZoraEvent(event: ZoraEvent): boolean {
+  return (
+    event.contractAddress !== '0x0000000000000000000000000000000000000000' &&
+    event.transactionHash.length === 66 &&
+    event.blockNumber > BigInt(0) &&
+    event.logIndex >= 0
   )
 }
 
@@ -498,4 +569,151 @@ export function filterEventsByType<T extends ZoraEvent['eventName']>(
   eventName: T
 ): Extract<ZoraEvent, { eventName: T }>[] {
   return events.filter(event => event.eventName === eventName) as Extract<ZoraEvent, { eventName: T }>[]
+}
+
+/**
+ * Safe event parsing with error recovery
+ */
+export function safeParseZoraEvents(
+  receipt: TransactionReceipt,
+  factoryAddress: Address,
+  contractAddresses: Address[] = []
+): { events: ZoraEvent[]; errors: ZoraEventParsingError[] } {
+  const events: ZoraEvent[] = []
+  const errors: ZoraEventParsingError[] = []
+
+  try {
+    const parsedEvents = getAllZoraEvents(receipt, factoryAddress, contractAddresses[0] || '0x0000000000000000000000000000000000000000' as Address)
+    
+    for (const event of parsedEvents) {
+      if (validateZoraEvent(event)) {
+        events.push(event)
+      } else {
+        errors.push(new ZoraEventParsingError('Invalid event structure', {} as Log))
+      }
+    }
+  } catch (error) {
+    errors.push(new ZoraEventParsingError(
+      'Failed to parse events',
+      {} as Log,
+      error instanceof Error ? error : new Error('Unknown error')
+    ))
+  }
+
+  return { events, errors }
+}
+
+/**
+ * Enhanced event parsing using decodeEventLog for better reliability
+ */
+export function parseZoraEventsWithDecodeEventLog(
+  receipt: TransactionReceipt,
+  factoryAddress: Address,
+  contractAddress: Address
+): { events: ZoraEvent[]; errors: ZoraEventParsingError[] } {
+  const events: ZoraEvent[] = []
+  const errors: ZoraEventParsingError[] = []
+
+  // Define the ABI items for each event
+  const setupNewContractAbi = {
+    type: 'event',
+    name: 'SetupNewContract',
+    inputs: [
+      { type: 'address', name: 'newContract', indexed: true },
+      { type: 'address', name: 'creator', indexed: true },
+      { type: 'string', name: 'contractURI', indexed: false },
+      { type: 'string', name: 'name', indexed: false }
+    ]
+  } as const
+
+  const updatedTokenAbi = {
+    type: 'event',
+    name: 'UpdatedToken',
+    inputs: [
+      { type: 'address', name: 'sender', indexed: true },
+      { type: 'uint256', name: 'tokenId', indexed: true },
+      { 
+        type: 'tuple', 
+        name: 'tokenData', 
+        indexed: false,
+        components: [
+          { type: 'string', name: 'uri' },
+          { type: 'uint256', name: 'maxSupply' },
+          { type: 'uint256', name: 'totalMinted' }
+        ]
+      }
+    ]
+  } as const
+
+  for (const log of receipt.logs) {
+    try {
+      // Try to decode as SetupNewContract event
+      if (log.address.toLowerCase() === factoryAddress.toLowerCase()) {
+        try {
+          const decoded = decodeEventLog({
+            abi: [setupNewContractAbi],
+            data: log.data,
+            topics: log.topics
+          })
+          
+          if (decoded.eventName === 'SetupNewContract') {
+            events.push({
+              eventName: 'SetupNewContract',
+              contractAddress: decoded.args.newContract,
+              creator: decoded.args.creator,
+              contractURI: decoded.args.contractURI,
+              name: decoded.args.name,
+              defaultAdmin: decoded.args.creator, // Creator is typically the default admin
+              blockNumber: receipt.blockNumber,
+              transactionHash: receipt.transactionHash,
+              logIndex: log.logIndex || 0
+            })
+            continue
+          }
+        } catch (decodeError) {
+          // Not a SetupNewContract event, continue to next check
+        }
+      }
+
+      // Try to decode as UpdatedToken event
+      if (log.address.toLowerCase() === contractAddress.toLowerCase()) {
+        try {
+          const decoded = decodeEventLog({
+            abi: [updatedTokenAbi],
+            data: log.data,
+            topics: log.topics
+          })
+          
+          if (decoded.eventName === 'UpdatedToken') {
+            events.push({
+              eventName: 'UpdatedToken',
+              contractAddress: log.address as Address,
+              tokenId: decoded.args.tokenId,
+              sender: decoded.args.sender,
+              tokenData: {
+                uri: decoded.args.tokenData.uri,
+                maxSupply: decoded.args.tokenData.maxSupply,
+                totalMinted: decoded.args.tokenData.totalMinted
+              },
+              blockNumber: receipt.blockNumber,
+              transactionHash: receipt.transactionHash,
+              logIndex: log.logIndex || 0
+            })
+            continue
+          }
+        } catch (decodeError) {
+          // Not an UpdatedToken event, continue to next check
+        }
+      }
+
+    } catch (error) {
+      errors.push(new ZoraEventParsingError(
+        'Failed to decode event log',
+        log,
+        error instanceof Error ? error : new Error('Unknown error')
+      ))
+    }
+  }
+
+  return { events, errors }
 }
