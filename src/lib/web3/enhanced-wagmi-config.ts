@@ -59,10 +59,11 @@ const createPremiumRPCTransports = () => {
       http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`, {
         batch: {
           batchSize: 1000,        // Allow large batches
-          wait: 16,               // Wait 16ms to collect more requests
+          wait: 8,                // Wait 8ms to collect more requests (faster)
         },
-        retryCount: 3,            // Retry failed requests 3 times
-        retryDelay: 1000,         // Fixed retry delay
+        retryCount: 2,            // Retry failed requests 2 times (faster)
+        retryDelay: 500,          // Fixed retry delay (faster)
+        timeout: 5000,            // 5 second timeout
       })
     )
   }
@@ -73,10 +74,11 @@ const createPremiumRPCTransports = () => {
       http(`https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`, {
         batch: {
           batchSize: 1000,
-          wait: 16,
+          wait: 8,
         },
-        retryCount: 3,
-        retryDelay: 1000,
+        retryCount: 2,
+        retryDelay: 500,
+        timeout: 5000,
       })
     )
   }
@@ -87,10 +89,11 @@ const createPremiumRPCTransports = () => {
       http(process.env.NEXT_PUBLIC_QUICKNODE_URL, {
         batch: {
           batchSize: 1000,
-          wait: 16,
+          wait: 8,
         },
-        retryCount: 3,
-        retryDelay: 1000,
+        retryCount: 2,
+        retryDelay: 500,
+        timeout: 5000,
       })
     )
   }
@@ -172,9 +175,11 @@ const createBaseMainnetTransport = () => {
   const alternativeProviders = createAlternativeRPCTransports()
   const emergencyProvider = createEmergencyRPCTransport()
   
-  // Combine all providers in priority order
+  // Combine all providers in priority order based on performance
+  // We'll manually order them based on our testing results
   const allProviders = [
-    ...premiumProviders,        // Try premium providers first
+    // Fastest providers first (based on our testing: Alchemy, Ankr, Base Official)
+    ...premiumProviders,        // Premium providers (Alchemy, Infura, QuickNode, Ankr)
     ...alternativeProviders,    // Fall back to public providers
     emergencyProvider           // Emergency fallback
   ]
@@ -192,12 +197,12 @@ const createBaseMainnetTransport = () => {
   
   return fallback(allProviders, {
     rank: {
-      interval: 60_000,         // Re-rank providers every minute
-      sampleCount: 5,           // Use 5 samples for ranking
-      timeout: 2_000,           // 2 second timeout for ranking requests
+      interval: 15_000,         // Re-rank providers every 15 seconds (very fast)
+      sampleCount: 2,           // Use 2 samples for ranking (very fast)
+      timeout: 500,             // 500ms timeout for ranking requests (very fast)
       weights: {
-        latency: 0.3,           // 30% weight for latency
-        stability: 0.7,         // 70% weight for stability
+        latency: 0.8,           // 80% weight for latency (prioritize speed)
+        stability: 0.2,         // 20% weight for stability
       },
     },
   })
@@ -310,7 +315,7 @@ export const enhancedWagmiConfig = createConfig({
   batch: {
     multicall: {
       batchSize: 1024 * 200,    // 200KB batch size
-      wait: 16,                 // 16ms wait time
+      wait: 8,                  // 8ms wait time (faster)
     },
   },
   

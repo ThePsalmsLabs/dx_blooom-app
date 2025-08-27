@@ -95,6 +95,7 @@ import React, {
   import { 
 	getEnhancedWagmiConfig 
   } from '@/lib/contracts/miniapp-config'
+  import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
   
   // Import your existing hooks for seamless integration
   import { useIsCreatorRegistered } from '@/hooks/contracts/core'
@@ -1007,19 +1008,21 @@ import React, {
 	  >
 		<WagmiProvider config={wagmiConfig}>
 		  <QueryClientProvider client={queryClient}>
-			<EnhancedMiniAppProvider
-			  enableAnalytics={enableAnalytics}
-			  fallbackToWeb={fallbackToWeb}
-			  debugMode={showDebugInfo}
-			>
-				<Suspense fallback={<LoadingComponent progress={90} />}>
-				  <div className={cn('enhanced-miniapp-layout', className)}>
-					<MiniAppLayoutContent>
-					  {children}
-					</MiniAppLayoutContent>
-				  </div>
-				</Suspense>
-			</EnhancedMiniAppProvider>
+			<FastRPCProvider>
+			  <EnhancedMiniAppProvider
+				enableAnalytics={enableAnalytics}
+				fallbackToWeb={fallbackToWeb}
+				debugMode={showDebugInfo}
+			  >
+					<Suspense fallback={<LoadingComponent progress={90} />}>
+					  <div className={cn('enhanced-miniapp-layout', className)}>
+						<MiniAppLayoutContent>
+						  {children}
+						</MiniAppLayoutContent>
+					  </div>
+					</Suspense>
+				</EnhancedMiniAppProvider>
+			</FastRPCProvider>
 		  </QueryClientProvider>
 		</WagmiProvider>
 	  </ErrorBoundaryComponent>
