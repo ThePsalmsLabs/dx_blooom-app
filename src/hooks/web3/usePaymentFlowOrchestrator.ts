@@ -32,8 +32,8 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useWriteContract, useWaitForTransactionReceipt, useChainId, useAccount, usePublicClient, useWalletClient } from 'wagmi'
-import { Address } from 'viem'
+import { useWriteContract, useWaitForTransactionReceipt, useChainId, useAccount, usePublicClient, useWalletClient, useSendCalls } from 'wagmi'
+import { Address, encodeFunctionData, type PublicClient, type WalletClient, type SendCallsParameters, type SendCallsReturnType } from 'viem'
 import { 
   useBackendHealthSafe,
   BackendHealthConfig,
@@ -54,7 +54,7 @@ import {
   extractIntentIdFromLogs 
 } from '@/utils/transactions/intentExtraction'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { COMMERCE_PROTOCOL_INTEGRATION_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
+import { COMMERCE_PROTOCOL_INTEGRATION_ABI, CONTENT_REGISTRY_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
 
 /**
@@ -388,13 +388,14 @@ const executePermit2Flow = async (
         v: permitSignatureResult.v!,
         r: permitSignatureResult.r!,
         s: permitSignatureResult.s!,
-        deadline: permitSignatureResult.deadline!
+        deadline: permitSignatureResult.deadline!,
+        amount: permitSignatureResult.amount!
       }
     )
     purchaseTime = Date.now() - purchaseStartTime
     
     if (!purchaseResult.success) {
-      throw new Error(`Permit purchase failed: ${purchaseResult.error}`)
+      throw new Error(`Permit purchase failed: ${purchaseResult.finalError?.message || 'Unknown error'}`)
     }
     
     purchaseHash = purchaseResult.transactionHash || null
@@ -454,9 +455,160 @@ const executePermit2Flow = async (
   }
 }
 
-const executeBatchFlow = async (): Promise<PaymentResult> => {
-  // Implement batch transaction flow
-  throw new Error('Batch flow not yet implemented')
+const executeBatchFlow = async (
+  contentId: bigint,
+  publicClient: any,
+  walletClient: any,
+  userAddress: Address,
+  sendCalls?: any
+): Promise<PaymentResult> => {
+  // Implement batch transaction flow using EIP-5792 for smart accounts
+  const startTime = Date.now()
+  let recoveryAttempts = 0
+  let finalError: Error | null = null
+  let batchHash: `0x${string}` | null = null
+  let batchTime = 0
+  let confirmationTime = 0
+  
+  try {
+    // Get contract addresses and validate prerequisites
+    const chainId = await publicClient.getChainId()
+    const contractAddresses = getContractAddresses(chainId)
+    
+    if (!contractAddresses?.USDC || !contractAddresses?.PAY_PER_VIEW) {
+      throw new Error('Missing contract addresses')
+    }
+    
+    if (!userAddress) {
+      throw new Error('No wallet connected')
+    }
+    
+    if (!sendCalls) {
+      throw new Error('Batch transaction capability not available')
+    }
+    
+    // Step 1: Get content price for batch operations
+    const contentPrice = await publicClient.readContract({
+      address: contractAddresses.PAY_PER_VIEW,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'getContentPrice',
+      args: [contentId]
+    }) as bigint
+    
+    // Step 2: Check if approval is needed
+    const needsApproval = await checkTokenAllowance(
+      publicClient,
+      contractAddresses.USDC,
+      userAddress,
+      contractAddresses.PAY_PER_VIEW,
+      contentId
+    )
+    
+    // Step 3: Prepare batch transaction calls
+    const batchStartTime = Date.now()
+    const batchCalls = []
+    
+    // Add approval call if needed
+    if (needsApproval) {
+      const approvalCallData = encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [contractAddresses.PAY_PER_VIEW, contentPrice]
+      })
+      
+      batchCalls.push({
+        to: contractAddresses.USDC,
+        data: approvalCallData,
+        value: BigInt(0)
+      })
+    }
+    
+    // Add purchase call
+    const purchaseCallData = encodeFunctionData({
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'purchaseContentDirect',
+      args: [contentId]
+    })
+    
+    batchCalls.push({
+      to: contractAddresses.PAY_PER_VIEW,
+      data: purchaseCallData,
+      value: BigInt(0)
+    })
+    
+    // Step 4: Execute batch transaction using EIP-5792
+    const batchResult = await sendCalls({
+      calls: batchCalls,
+      capabilities: {
+        // Specify batch transaction capabilities for optimal UX
+        paymasterService: process.env.NEXT_PUBLIC_PAYMASTER_URL ? {
+          url: process.env.NEXT_PUBLIC_PAYMASTER_URL
+        } : undefined
+      }
+    })
+    
+    batchTime = Date.now() - batchStartTime
+    
+    if (!batchResult) {
+      throw new Error('Batch transaction failed to execute')
+    }
+    
+    // The batch result should contain the transaction hash
+    batchHash = batchResult as `0x${string}`
+    
+    // Step 5: Wait for batch transaction confirmation
+    const batchReceipt = await publicClient.waitForTransactionReceipt({
+      hash: batchHash,
+      timeout: 60000 // 60 second timeout
+    })
+    
+    confirmationTime = Date.now() - (batchStartTime + batchTime)
+    
+    if (batchReceipt.status === 'reverted') {
+      throw new Error('Batch transaction reverted')
+    }
+    
+    // Step 6: Return successful result
+    const totalDuration = Date.now() - startTime
+    return {
+      success: true,
+      intentId: null, // Batch flow doesn't use intents
+      transactionHash: batchHash,
+      signature: null,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: 0,
+        executionTime: batchTime,
+        confirmationTime: confirmationTime
+      },
+      recoveryAttempts,
+      errorCategory: null,
+      finalError: null
+    }
+    
+  } catch (error) {
+    finalError = error instanceof Error ? error : new Error('Batch flow failed')
+    
+    // Return failure result
+    const totalDuration = Date.now() - startTime
+    return {
+      success: false,
+      intentId: null,
+      transactionHash: batchHash,
+      signature: null,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: 0,
+        executionTime: batchTime || 0,
+        confirmationTime: 0
+      },
+      recoveryAttempts,
+      errorCategory: 'execution_error' as ErrorCategory,
+      finalError
+    }
+  }
 }
 
 const executeSequentialFlow = async (
@@ -599,20 +751,36 @@ const executeSequentialFlow = async (
 
 // Helper function to check token allowance using real contract call
 const checkTokenAllowance = async (
-  publicClient: any,
+  publicClient: PublicClient,
   usdcAddress: Address,
   userAddress: Address,
   spenderAddress: Address,
   contentId: bigint
 ): Promise<boolean> => {
   try {
-    // Get content price from PayPerView contract
-    const contentPrice = await publicClient.readContract({
-      address: spenderAddress,
-      abi: PAY_PER_VIEW_ABI,
-      functionName: 'getContentPrice',
+    // Get content price from ContentRegistry contract
+    const contractAddresses = getContractAddresses(await publicClient.getChainId())
+    const contentData = await publicClient.readContract({
+      address: contractAddresses.CONTENT_REGISTRY,
+      abi: CONTENT_REGISTRY_ABI,
+      functionName: 'getContent',
       args: [contentId]
-    }) as bigint
+    }) as {
+      readonly creator: Address
+      readonly ipfsHash: string
+      readonly title: string
+      readonly description: string
+      readonly category: number
+      readonly payPerViewPrice: bigint
+      readonly isActive: boolean
+      readonly createdAt: bigint
+      readonly purchaseCount: bigint
+      readonly tags: readonly string[]
+      readonly isReported: boolean
+      readonly reportCount: bigint
+    }
+    
+    const contentPrice = contentData.payPerViewPrice
 
     // Get current allowance
     const currentAllowance = await publicClient.readContract({
@@ -633,27 +801,45 @@ const checkTokenAllowance = async (
 
 // Helper function to execute approval using real contract interaction
 const executeApproval = async (
-  walletClient: any,
-  publicClient: any,
+  walletClient: WalletClient,
+  publicClient: PublicClient,
   usdcAddress: Address,
   spenderAddress: Address,
   contentId: bigint
 ): Promise<{ success: boolean; error?: string; transactionHash?: `0x${string}` }> => {
   try {
-    // Get content price for approval amount
-    const contentPrice = await publicClient.readContract({
-      address: spenderAddress,
-      abi: PAY_PER_VIEW_ABI,
-      functionName: 'getContentPrice',
+    // Get content price for approval amount from ContentRegistry
+    const contractAddresses = getContractAddresses(await publicClient.getChainId())
+    const contentData = await publicClient.readContract({
+      address: contractAddresses.CONTENT_REGISTRY,
+      abi: CONTENT_REGISTRY_ABI,
+      functionName: 'getContent',
       args: [contentId]
-    }) as bigint
+    }) as {
+      readonly creator: Address
+      readonly ipfsHash: string
+      readonly title: string
+      readonly description: string
+      readonly category: number
+      readonly payPerViewPrice: bigint
+      readonly isActive: boolean
+      readonly createdAt: bigint
+      readonly purchaseCount: bigint
+      readonly tags: readonly string[]
+      readonly isReported: boolean
+      readonly reportCount: bigint
+    }
+    
+    const contentPrice = contentData.payPerViewPrice
 
     // Execute approval transaction
     const hash = await walletClient.writeContract({
       address: usdcAddress,
       abi: ERC20_ABI,
       functionName: 'approve',
-      args: [spenderAddress, contentPrice]
+      args: [spenderAddress, contentPrice],
+      chain: null,
+      account: walletClient.account?.address || null
     })
 
     return { 
@@ -696,6 +882,7 @@ const generatePermit2Signature = async ({
   r?: `0x${string}`
   s?: `0x${string}`
   deadline?: bigint
+  amount?: bigint
 }> => {
   try {
     // EIP-2612 permit domain
@@ -746,7 +933,8 @@ const generatePermit2Signature = async ({
       v,
       r,
       s,
-      deadline: BigInt(deadline)
+      deadline: BigInt(deadline),
+      amount
     }
   } catch (error) {
     return {
@@ -756,10 +944,30 @@ const generatePermit2Signature = async ({
   }
 }
 
+// Helper function to check if token supports permit
+const checkPermitSupport = async (
+  publicClient: PublicClient,
+  tokenAddress: Address
+): Promise<boolean> => {
+  try {
+    // Try to read the DOMAIN_SEPARATOR function - if it exists, the token likely supports permit
+    await publicClient.readContract({
+      address: tokenAddress,
+      abi: ERC20_ABI,
+      functionName: 'DOMAIN_SEPARATOR',
+      args: []
+    })
+    return true
+  } catch (error) {
+    // If DOMAIN_SEPARATOR doesn't exist, the token doesn't support permit
+    return false
+  }
+}
+
 // Helper function to execute purchase with permit
 const executePurchaseWithPermit = async (
-  walletClient: any,
-  publicClient: any,
+  walletClient: WalletClient,
+  publicClient: PublicClient,
   payPerViewAddress: Address,
   contentId: bigint,
   permitData: {
@@ -767,46 +975,125 @@ const executePurchaseWithPermit = async (
     r: `0x${string}`
     s: `0x${string}`
     deadline: bigint
+    amount: bigint // Add amount to permit data
   }
-): Promise<{ 
-  success: boolean; 
-  error?: string; 
-  transactionHash?: `0x${string}`;
-  executionTime?: number;
-  confirmationTime?: number;
-}> => {
+): Promise<PaymentResult> => {
+  const startTime = Date.now()
   try {
-    // Execute purchase with permit in single transaction
-    // This assumes the PayPerView contract has a function that accepts permit data
-    // For now, we'll use the standard purchase function and handle permit separately
-    const hash = await walletClient.writeContract({
+    // Get contract addresses
+    const chainId = await publicClient.getChainId()
+    const contractAddresses = getContractAddresses(chainId)
+    
+    if (!contractAddresses?.USDC) {
+      throw new Error('USDC contract address not found')
+    }
+    
+    // Check if USDC supports permit
+    const supportsPermit = await checkPermitSupport(publicClient, contractAddresses.USDC)
+    
+    if (!supportsPermit) {
+      // Fallback to traditional approval + purchase flow
+      console.warn('USDC token does not support permit, falling back to traditional approval')
+      return await executeSequentialFlow(contentId, publicClient, walletClient, walletClient.account?.address || '0x0000000000000000000000000000000000000000' as Address)
+    }
+    
+    // Step 1: Execute permit on USDC token to approve PayPerView contract
+    const permitStartTime = Date.now()
+    const permitHash = await walletClient.writeContract({
+      address: contractAddresses.USDC,
+      abi: ERC20_ABI,
+      functionName: 'permit',
+      args: [
+        walletClient.account?.address || '0x0000000000000000000000000000000000000000', // owner
+        payPerViewAddress, // spender
+        permitData.amount, // value (amount to approve)
+        permitData.deadline, // deadline
+        permitData.v, // v
+        permitData.r, // r
+        permitData.s  // s
+      ],
+      chain: null,
+      account: walletClient.account?.address || null
+    })
+    
+    // Wait for permit transaction confirmation
+    const permitReceipt = await publicClient.waitForTransactionReceipt({
+      hash: permitHash,
+      timeout: 60000
+    })
+    
+    if (permitReceipt.status === 'reverted') {
+      throw new Error('Permit transaction reverted')
+    }
+    
+    const permitTime = Date.now() - permitStartTime
+    
+    // Step 2: Execute purchase using the approved allowance
+    const purchaseStartTime = Date.now()
+    const purchaseHash = await walletClient.writeContract({
       address: payPerViewAddress,
       abi: PAY_PER_VIEW_ABI,
       functionName: 'purchaseContentDirect',
-      args: [contentId]
+      args: [contentId],
+      chain: null,
+      account: walletClient.account?.address || null
     })
+    
+    // Wait for purchase transaction confirmation
+    const purchaseReceipt = await publicClient.waitForTransactionReceipt({
+      hash: purchaseHash,
+      timeout: 60000
+    })
+    
+    if (purchaseReceipt.status === 'reverted') {
+      throw new Error('Purchase transaction reverted')
+    }
+    
+    const purchaseTime = Date.now() - purchaseStartTime
+    const confirmationTime = Date.now() - (permitStartTime + permitTime + purchaseTime)
 
+    const totalDuration = Date.now() - startTime
     return { 
       success: true,
-      transactionHash: hash,
-      executionTime: 0, // Will be calculated by caller
-      confirmationTime: 0 // Will be calculated by caller
+      intentId: null,
+      transactionHash: purchaseHash,
+      signature: null,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: permitTime,
+        executionTime: purchaseTime,
+        confirmationTime: confirmationTime
+      },
+      recoveryAttempts: 0,
+      errorCategory: null,
+      finalError: null
     }
   } catch (error) {
+    const totalDuration = Date.now() - startTime
     return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Permit purchase failed',
-      transactionHash: undefined,
-      executionTime: 0,
-      confirmationTime: 0
+      success: false,
+      intentId: null,
+      transactionHash: null,
+      signature: null,
+      totalDuration,
+      performanceMetrics: {
+        intentCreationTime: 0,
+        signatureWaitTime: 0,
+        executionTime: 0,
+        confirmationTime: 0
+      },
+      recoveryAttempts: 0,
+      errorCategory: 'execution_error' as ErrorCategory,
+      finalError: error instanceof Error ? error : new Error('Permit purchase failed')
     }
   }
 }
 
 // Helper function to execute purchase using real contract interaction
 const executePurchase = async (
-  walletClient: any,
-  publicClient: any,
+  walletClient: WalletClient,
+  publicClient: PublicClient,
   payPerViewAddress: Address,
   contentId: bigint
 ): Promise<{ 
@@ -822,7 +1109,9 @@ const executePurchase = async (
       address: payPerViewAddress,
       abi: PAY_PER_VIEW_ABI,
       functionName: 'purchaseContentDirect',
-      args: [contentId]
+      args: [contentId],
+      chain: null,
+      account: walletClient.account?.address || null
     })
 
     return { 
@@ -975,6 +1264,7 @@ export function usePaymentFlowOrchestrator(
   const { data: receiptData, isLoading: isReceiptLoading } = useWaitForTransactionReceipt({
     hash: transactionHash
   })
+  const { sendCalls } = useSendCalls()
   
   // State machine state
   const [flowState, setFlowState] = useState<PaymentFlowState>({ phase: 'idle' })
@@ -1306,7 +1596,13 @@ export function usePaymentFlowOrchestrator(
             progress: 20,
             message: 'Preparing batch transaction...'
           })
-          return await executeBatchFlow()
+          return await executeBatchFlow(
+            request.contentId,
+            publicClient,
+            walletClient,
+            address!,
+            sendCalls
+          )
           
         case 'approve_execute':
           setFlowState({ phase: 'approving_tokens', strategy: 'approve_execute' })
