@@ -34,7 +34,6 @@ import {
  * NFT Creation Parameters
  */
 interface ZoraNFTParams {
-  readonly collectionAddress: Address
   readonly name: string
   readonly description: string
   readonly imageUrl: string
@@ -64,7 +63,7 @@ interface ZoraNFTCreationResult {
   readonly reset: () => void
 }
 
-export function useZoraNFTCreation(): ZoraNFTCreationResult {
+export function useZoraNFTCreation(collectionAddress?: Address): ZoraNFTCreationResult {
   const [tokenId, setTokenId] = useState<bigint | undefined>()
   const queryClient = useQueryClient()
 
@@ -87,14 +86,11 @@ export function useZoraNFTCreation(): ZoraNFTCreationResult {
 
   // Extract token ID from transaction receipt using proper event parsing
   const extractedTokenId = useMemo(() => {
-    if (!isSuccess || !receipt) return undefined
+    if (!isSuccess || !receipt || !collectionAddress) return undefined
     
     try {
-      // For now, we'll use a placeholder approach since we don't have the collection address in scope
-      // In a full implementation, we would store the collection address when creating the NFT
-      
-      // Look for any UpdatedToken events in the receipt
-      const updatedEvents = parseUpdatedTokenEvent(receipt, '0x0000000000000000000000000000000000000000' as Address)
+      // Use the provided collection address to parse UpdatedToken events
+      const updatedEvents = parseUpdatedTokenEvent(receipt, collectionAddress)
       if (updatedEvents.length > 0) {
         console.log('Found UpdatedToken events:', updatedEvents.length)
         return updatedEvents[0].tokenId
@@ -106,7 +102,7 @@ export function useZoraNFTCreation(): ZoraNFTCreationResult {
       console.error('Failed to extract token ID from receipt:', error)
       return undefined
     }
-  }, [isSuccess, receipt])
+  }, [isSuccess, receipt, collectionAddress])
 
   // Update token ID when extraction completes
   useMemo(() => {
@@ -117,10 +113,19 @@ export function useZoraNFTCreation(): ZoraNFTCreationResult {
   }, [extractedTokenId, tokenId, queryClient])
 
   const createNFT = useCallback(async (params: ZoraNFTParams) => {
+    // Validate collection address is provided
+    if (!collectionAddress) {
+      throw createValidationError(
+        'Collection address is required for NFT creation',
+        ZORA_ERROR_CODES.INVALID_PARAMETERS,
+        { operation: 'nft_creation' }
+      )
+    }
+
     // Create error context
     const errorContext: ZoraErrorContext = {
       operation: 'nft_creation',
-      contractAddress: params.collectionAddress,
+      contractAddress: collectionAddress,
       metadata: {
         nftName: params.name,
         maxSupply: params.maxSupply.toString(),
@@ -206,7 +211,7 @@ export function useZoraNFTCreation(): ZoraNFTCreationResult {
       try {
         if (params.createReferral) {
           await writeContract({
-            address: params.collectionAddress,
+            address: collectionAddress,
             abi: ZORA_CREATOR_1155_IMPL_ABI,
             functionName: 'setupNewTokenWithCreateReferral',
             args: [
@@ -217,7 +222,7 @@ export function useZoraNFTCreation(): ZoraNFTCreationResult {
           })
         } else {
           await writeContract({
-            address: params.collectionAddress,
+            address: collectionAddress,
             abi: ZORA_CREATOR_1155_IMPL_ABI,
             functionName: 'setupNewToken',
             args: [

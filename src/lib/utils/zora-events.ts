@@ -9,15 +9,29 @@ import { type Address, type Hash, type Log, type TransactionReceipt } from 'viem
 
 // ===== EVENT SIGNATURES =====
 
+import { keccak256, toHex } from 'viem'
+
 /**
  * Zora Event Signatures
- * These are the keccak256 hashes of the event signatures
+ * These are the keccak256 hashes of the actual Zora V3 event signatures
  */
 export const ZORA_EVENT_SIGNATURES = {
-  SETUP_NEW_CONTRACT: '0x7a05a596cb0ce7fdea8a1e1ec73bf300cb2b63d2c8b3c3c3c3c3c3c3c3c3c3c3' as const,
-  UPDATED_TOKEN: '0x7a05a596cb0ce7fdea8a1e1ec73bf300cb2b63d2c8b3c3c3c3c3c3c3c3c3c3c4' as const,
-  PURCHASED: '0x7a05a596cb0ce7fdea8a1e1ec73bf300cb2b63d2c8b3c3c3c3c3c3c3c3c3c3c5' as const,
-  MINTED: '0x7a05a596cb0ce7fdea8a1e1ec73bf300cb2b63d2c8b3c3c3c3c3c3c3c3c3c3c6' as const
+  // SetupNewContract(address indexed newContract, address indexed creator, string contractURI, string name)
+  SETUP_NEW_CONTRACT: keccak256(
+    toHex('SetupNewContract(address,address,string,string)')
+  ),
+  // UpdatedToken(address indexed sender, uint256 indexed tokenId, tuple tokenData)
+  UPDATED_TOKEN: keccak256(
+    toHex('UpdatedToken(address,uint256,(string,uint256,uint256))')
+  ),
+  // Purchased(address indexed sender, address indexed minterModule, uint256 indexed tokenId, uint256 quantity, uint256 value)
+  PURCHASED: keccak256(
+    toHex('Purchased(address,address,uint256,uint256,uint256)')
+  ),
+  // Minted(address indexed minter, uint256 indexed tokenId, uint256 quantity, uint256 value)
+  MINTED: keccak256(
+    toHex('Minted(address,uint256,uint256,uint256)')
+  )
 } as const
 
 // ===== EVENT TYPES =====

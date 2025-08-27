@@ -13,10 +13,16 @@
  */
 
 import { useState, useCallback } from 'react'
-import { PublicClient, WalletClient, Address, parseEther, formatEther } from 'viem'
+import { PublicClient, WalletClient, Address, parseEther, formatEther, parseEventLogs } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { ZORA_CREATOR_1155_FACTORY_ABI, ZORA_CREATOR_1155_IMPL_ABI } from '@/lib/contracts/abis/zora'
 import { ZORA_ADDRESSES } from '@/lib/contracts/addresses'
+import { 
+  extractContractAddressFromSetupEvent,
+  extractTokenIdFromUpdatedEvent,
+  parseSetupNewContractEvent,
+  parseUpdatedTokenEvent
+} from '@/lib/utils/zora-events'
 
 // Get Zora addresses from the centralized configuration
 function getZoraAddresses(chainId: number) {
@@ -157,13 +163,21 @@ export class ZoraIntegrationService {
       // Wait for transaction confirmation
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
       
-      if (receipt.status === 'success' && receipt.logs.length > 0) {
-        // Extract contract address from SetupNewContract event
-        const contractAddress = receipt.logs[0].address as Address
+      if (receipt.status === 'success') {
+        // Extract contract address from SetupNewContract event using proper parsing
+        const addresses = getZoraAddresses(this.chainId)
+        const contractAddress = extractContractAddressFromSetupEvent(receipt, addresses.ZORA_CREATOR_1155_FACTORY_IMPL)
         
-        return {
-          success: true,
-          contractAddress
+        if (contractAddress) {
+          return {
+            success: true,
+            contractAddress
+          }
+        } else {
+          return {
+            success: false,
+            error: 'Failed to extract contract address from transaction logs'
+          }
         }
       } else {
         return {
@@ -222,9 +236,12 @@ export class ZoraIntegrationService {
         return { success: false, error: 'Failed to setup token' }
       }
 
-      // Extract token ID from logs or use sequential numbering
-      // For Zora 1155, token IDs are typically sequential starting from 1
-      const tokenId = BigInt(1) // In production, you'd extract this from the setup transaction logs
+      // Extract token ID from UpdatedToken event using proper parsing
+      const tokenId = extractTokenIdFromUpdatedEvent(setupReceipt, collectionAddress)
+      
+      if (!tokenId) {
+        return { success: false, error: 'Failed to extract token ID from transaction logs' }
+      }
       
       // Mint the first NFT to the creator using correct Zora V3 ABI
       const mintHash = await this.walletClient.writeContract({
