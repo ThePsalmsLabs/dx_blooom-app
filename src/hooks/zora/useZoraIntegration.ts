@@ -17,11 +17,13 @@ import {
   useWaitForTransactionReceipt,
   useReadContract
 } from 'wagmi'
-import { Address, parseEther, formatEther } from 'viem'
+import { Address, parseEther, formatEther, createPublicClient, http, parseEventLogs } from 'viem'
+import { base, baseSepolia } from 'viem/chains'
 import { useQueryClient } from '@tanstack/react-query'
 import { ZoraIntegrationService, ZoraNFTMetadata, ZoraCollectionConfig } from '@/lib/services/zora-integration'
 import { useRegisterContent } from '@/hooks/contracts/core'
 import { ZoraDatabaseService } from '@/services/zora/ZoraDatabaseService'
+import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abis/content-registry'
 import type { ContentUploadParams } from '@/types/contracts'
 
 /**
@@ -69,8 +71,27 @@ export function useCreatorZoraCollection() {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Track creator's collection address (you'd store this in your database)
+  // Track creator's collection address from database
   const [collectionAddress, setCollectionAddress] = useState<Address | null>(null)
+
+  // Load existing collection address on mount
+  useEffect(() => {
+    const loadCollectionAddress = async () => {
+      if (!userAddress) return
+      
+      try {
+        const dbService = new ZoraDatabaseService()
+        const collection = await dbService.getCreatorCollection(userAddress)
+        if (collection?.zoraCollectionAddress) {
+          setCollectionAddress(collection.zoraCollectionAddress)
+        }
+      } catch (error) {
+        console.error('Error loading collection address:', error)
+      }
+    }
+
+    loadCollectionAddress()
+  }, [userAddress])
 
   const createCollection = useCallback(async (config: Omit<ZoraCollectionConfig, 'creator'>) => {
     if (!service || !userAddress) {
@@ -96,7 +117,6 @@ export function useCreatorZoraCollection() {
 
         // Store collection address in database
         try {
-          const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
           const dbService = new ZoraDatabaseService()
           await dbService.storeCreatorCollection({
             creatorAddress: userAddress,
@@ -126,6 +146,7 @@ export function useCreatorZoraCollection() {
           })
         } catch (error) {
           console.error('Error storing collection in database:', error)
+          // Don't throw here as the collection was created successfully
         }
 
         return result.contractAddress
@@ -193,7 +214,7 @@ export function useContentNFTMinting(collectionAddress?: Address) {
     setMintResult(null)
 
     try {
-      // Format content as NFT metadata
+      // Upload NFT metadata to IPFS
       const metadata = service.formatContentAsNFTMetadata(
         contentData.contentId,
         contentData.title,
@@ -205,6 +226,18 @@ export function useContentNFTMinting(collectionAddress?: Address) {
         contentData.subscriptionTier
       )
 
+      // Upload metadata to IPFS using the existing IPFS service
+      const ipfsResult = await uploadMetadataToIPFS(metadata)
+      if (!ipfsResult.success) {
+        throw new Error(`Failed to upload metadata to IPFS: ${ipfsResult.error}`)
+      }
+
+      // Create metadata with IPFS URI
+      const metadataWithURI = {
+        ...metadata,
+        tokenURI: `ipfs://${ipfsResult.hash}`
+      }
+
       // Calculate optimal mint price if not provided
       const mintPrice = options.mintPrice || service.calculateMintPrice(
         parseEther('0.01'), // Base subscription price equivalent
@@ -214,7 +247,7 @@ export function useContentNFTMinting(collectionAddress?: Address) {
 
       const result = await service.mintContentAsNFT(
         collectionAddress,
-        metadata,
+        metadataWithURI,
         mintPrice,
         options.maxSupply
       )
@@ -228,11 +261,46 @@ export function useContentNFTMinting(collectionAddress?: Address) {
         
         setMintResult(mintData)
 
+        // Store NFT record in database
+        try {
+          const dbService = new ZoraDatabaseService()
+          await dbService.storeContentNFTRecord({
+            contentId: BigInt(contentData.contentId),
+            creatorAddress: contentData.creatorAddress,
+            originalContent: {
+              creator: contentData.creatorAddress,
+              ipfsHash: contentData.contentId, // Using contentId as IPFS hash for now
+              title: contentData.title,
+              description: contentData.description,
+              category: contentData.category as any,
+              payPerViewPrice: mintPrice,
+              creationTime: BigInt(Date.now()),
+              isActive: true
+            },
+            isMintedAsNFT: true,
+            nftContractAddress: result.contractAddress,
+            nftTokenId: result.tokenId,
+            nftMintPrice: mintPrice,
+            nftMaxSupply: options.maxSupply || 100,
+            nftTotalMinted: BigInt(1),
+            nftMetadata: metadata,
+            mintTransactionHash: result.transactionHash,
+            mintTimestamp: new Date(),
+            nftViews: 0,
+            nftMints: 1,
+            nftRevenue: mintPrice,
+            lastMintDate: new Date(),
+            nftStatus: 'minted',
+            lastUpdated: new Date()
+          })
+        } catch (dbError) {
+          console.error('Error storing NFT record in database:', dbError)
+          // Don't throw here as the NFT was minted successfully
+        }
+
         // Invalidate relevant queries
         queryClient.invalidateQueries({ queryKey: ['content-nfts'] })
         queryClient.invalidateQueries({ queryKey: ['creator-analytics'] })
-
-        // Database update is already handled in the storeContentNFTRecord call above
 
         return mintData
       } else {
@@ -278,14 +346,13 @@ export function useContentNFTStatus(contentId: string, creatorAddress?: Address)
     if (!service || !creatorAddress) return
 
     try {
-      // Check if content is minted (you'd implement this with your database/subgraph)
-      const isMinted = await service.isContentMinted(contentId, creatorAddress)
+      // Check if content is minted using database service
+      const dbService = new ZoraDatabaseService()
+      const isMinted = await dbService.isContentMintedAsNFT(BigInt(contentId))
       
       if (isMinted) {
         // If minted, fetch the NFT details from database
         try {
-          const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
-          const dbService = new ZoraDatabaseService()
           const nftRecord = await dbService.getContentNFTRecord(BigInt(contentId))
           
           if (nftRecord) {
@@ -355,30 +422,21 @@ export function useZoraCollectionAnalytics(collectionAddress?: Address) {
 
     try {
       // Query real analytics from database
-      try {
-        const { ZoraDatabaseService } = await import('@/services/zora/ZoraDatabaseService')
-        const dbService = new ZoraDatabaseService()
-        const performance = await dbService.getCreatorNFTPerformance(collectionAddress)
-        
-        const realAnalytics = {
-          totalNFTs: performance.totalNFTs,
-          totalMinted: performance.totalMints,
-          totalVolume: performance.totalRevenue,
-          averagePrice: performance.averageMintPrice,
-          loading: false,
-          error: null
-        }
-
-        setAnalytics(realAnalytics)
-      } catch (error) {
-        console.error('Error fetching collection analytics:', error)
-        setAnalytics(prev => ({
-          ...prev,
-          loading: false,
-          error: error instanceof Error ? error.message : 'Failed to fetch analytics'
-        }))
+      const dbService = new ZoraDatabaseService()
+      const performance = await dbService.getCreatorNFTPerformance(collectionAddress)
+      
+      const realAnalytics = {
+        totalNFTs: performance.totalNFTs,
+        totalMinted: performance.totalMints,
+        totalVolume: performance.totalRevenue,
+        averagePrice: performance.averageMintPrice,
+        loading: false,
+        error: null
       }
+
+      setAnalytics(realAnalytics)
     } catch (error) {
+      console.error('Error fetching collection analytics:', error)
       setAnalytics(prev => ({
         ...prev,
         loading: false,
@@ -410,6 +468,7 @@ export function useIntegratedContentPublishing() {
   const { collectionAddress } = useCreatorZoraCollection()
   const { mintContentAsNFT } = useContentNFTMinting(collectionAddress || undefined)
   const registerContent = useRegisterContent()
+  const chainId = useChainId()
   const queryClient = useQueryClient()
   const dbService = useMemo(() => new ZoraDatabaseService(), [])
   
@@ -469,10 +528,34 @@ export function useIntegratedContentPublishing() {
         }
       }
 
-      // Extract content ID from transaction logs
-          // TODO: Extract content ID from ContentRegistry.ContentRegistered event
-    // For now, use a deterministic ID based on content hash and timestamp
-    const contentId = BigInt(Date.now()) // Placeholder - needs proper ContentRegistry integration
+      // Extract content ID from transaction logs using proper event parsing
+      let contentId: bigint
+      try {
+        const publicClient = createPublicClient({
+          chain: chainId === 8453 ? base : baseSepolia,
+          transport: http()
+        })
+        
+        const receipt = await publicClient.getTransactionReceipt({
+          hash: registerContent.hash as `0x${string}`
+        })
+        
+        const contentRegisteredLogs = parseEventLogs({
+          abi: CONTENT_REGISTRY_ABI,
+          eventName: 'ContentRegistered',
+          logs: receipt.logs
+        })
+        
+        if (contentRegisteredLogs.length > 0) {
+          contentId = contentRegisteredLogs[0].args.contentId
+          console.log('Successfully extracted content ID:', contentId)
+        } else {
+          throw new Error('Content ID not found in transaction receipt')
+        }
+      } catch (extractError) {
+        console.error('Error extracting content ID:', extractError)
+        throw new Error('Failed to extract content ID from transaction')
+      }
 
       // Step 2: Optionally mint as NFT
       let nftResult = undefined
@@ -483,7 +566,7 @@ export function useIntegratedContentPublishing() {
           contentId 
         })
 
-        // Format content as NFT metadata
+        // Upload NFT metadata to IPFS
         const metadata = service.formatContentAsNFTMetadata(
           contentId.toString(),
           contentData.title,
@@ -495,10 +578,21 @@ export function useIntegratedContentPublishing() {
           contentData.subscriptionTier
         )
 
+        const ipfsResult = await uploadMetadataToIPFS(metadata)
+        if (!ipfsResult.success) {
+          throw new Error(`Failed to upload metadata to IPFS: ${ipfsResult.error}`)
+        }
+
+        // Create metadata with IPFS URI
+        const metadataWithURI = {
+          ...metadata,
+          tokenURI: `ipfs://${ipfsResult.hash}`
+        }
+
         // Mint NFT
         const mintResult = await service.mintContentAsNFT(
           collectionAddress,
-          metadata,
+          metadataWithURI,
           nftOptions.mintPrice,
           nftOptions.maxSupply
         )
@@ -618,5 +712,49 @@ export function useZoraPriceCalculator() {
   return {
     calculateRecommendedPrice,
     getPriceRecommendations
+  }
+}
+
+/**
+ * Helper function to upload metadata to IPFS
+ * Uses the existing IPFS upload service - follows the same pattern as CreatorProfileEditor
+ */
+async function uploadMetadataToIPFS(metadata: ZoraNFTMetadata): Promise<{ success: boolean; hash?: string; error?: string }> {
+  try {
+    // Create a blob from the metadata JSON
+    const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
+      type: 'application/json'
+    })
+
+    // Create a File object from the blob
+    const metadataFile = new File([metadataBlob], 'metadata.json', {
+      type: 'application/json'
+    })
+
+    // Upload to IPFS using the existing API endpoint - same pattern as CreatorProfileEditor
+    const formData = new FormData()
+    formData.append('file', metadataFile)
+
+    const response = await fetch('/api/ipfs/upload', { 
+      method: 'POST', 
+      body: formData 
+    })
+    
+    const result = await response.json() as { success?: boolean; hash?: string; error?: string }
+    
+    if (!response.ok || !result?.hash) {
+      throw new Error(result?.error || 'IPFS upload failed')
+    }
+
+    return {
+      success: true,
+      hash: result.hash
+    }
+  } catch (error) {
+    console.error('Error uploading metadata to IPFS:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Upload failed'
+    }
   }
 }

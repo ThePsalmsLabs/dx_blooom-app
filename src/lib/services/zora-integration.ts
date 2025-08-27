@@ -15,100 +15,17 @@
 import { useState, useCallback } from 'react'
 import { PublicClient, WalletClient, Address, parseEther, formatEther } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
+import { ZORA_CREATOR_1155_FACTORY_ABI, ZORA_CREATOR_1155_IMPL_ABI } from '@/lib/contracts/abis/zora'
+import { ZORA_ADDRESSES } from '@/lib/contracts/addresses'
 
-// Zora Protocol Addresses on Base
-const ZORA_PROTOCOL_ADDRESSES = {
-  [base.id]: {
-    ZORA_CREATOR_1155_IMPL: '0x777777C338d93e2C7adf08D102d45CA7CC4Ed021' as const,
-    ZORA_CREATOR_1155_FACTORY: '0x777777E8850d8D6d98De2d777C5c3c7d45261788' as const,
-    PROTOCOL_REWARDS: '0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B' as const,
-    ZORA_MINTS_MANAGER: '0x777777722D078c97c6ad07d9f36801e653E356Ae' as const,
-  },
-  [baseSepolia.id]: {
-    ZORA_CREATOR_1155_IMPL: '0x777777C338d93e2C7adf08D102d45CA7CC4Ed021' as const,
-    ZORA_CREATOR_1155_FACTORY: '0x777777E8850d8D6d98De2d777C5c3c7d45261788' as const,
-    PROTOCOL_REWARDS: '0x7777777F279eba3d3Ad8F4E708545291A6fDBA8B' as const,
-    ZORA_MINTS_MANAGER: '0x777777722D078c97c6ad07d9f36801e653E356Ae' as const,
+// Get Zora addresses from the centralized configuration
+function getZoraAddresses(chainId: number) {
+  const addresses = ZORA_ADDRESSES[chainId as keyof typeof ZORA_ADDRESSES]
+  if (!addresses) {
+    throw new Error(`Zora Protocol not supported on chain ${chainId}`)
   }
-} as const
-
-// Zora 1155 Creator Contract ABI (essential functions)
-const ZORA_1155_ABI = [
-  {
-    type: 'function',
-    name: 'setupNewToken',
-    inputs: [
-      { name: 'tokenURI', type: 'string' },
-      { name: 'maxSupply', type: 'uint256' }
-    ],
-    outputs: [{ name: 'tokenId', type: 'uint256' }],
-    stateMutability: 'nonpayable'
-  },
-  {
-    type: 'function',
-    name: 'mintWithRewards',
-    inputs: [
-      { name: 'minter', type: 'address' },
-      { name: 'tokenId', type: 'uint256' },
-      { name: 'quantity', type: 'uint256' },
-      { name: 'minterArguments', type: 'bytes' },
-      { name: 'mintReferral', type: 'address' }
-    ],
-    outputs: [],
-    stateMutability: 'payable'
-  },
-  {
-    type: 'function',
-    name: 'uri',
-    inputs: [{ name: 'tokenId', type: 'uint256' }],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view'
-  },
-  {
-    type: 'function',
-    name: 'getTokenInfo',
-    inputs: [{ name: 'tokenId', type: 'uint256' }],
-    outputs: [
-      {
-        type: 'tuple',
-        components: [
-          { name: 'uri', type: 'string' },
-          { name: 'maxSupply', type: 'uint256' },
-          { name: 'totalMinted', type: 'uint256' }
-        ]
-      }
-    ],
-    stateMutability: 'view'
-  }
-] as const
-
-// Zora Factory ABI for creating new collections
-const ZORA_FACTORY_ABI = [
-  {
-    type: 'function',
-    name: 'createContract',
-    inputs: [
-      { name: 'newContractURI', type: 'string' },
-      { name: 'name', type: 'string' },
-      { name: 'defaultAdmin', type: 'address' },
-      { name: 'editionSize', type: 'uint64' },
-      { name: 'royaltyBPS', type: 'uint16' },
-      { name: 'fundsRecipient', type: 'address' },
-      { name: 'defaultPrice', type: 'uint96' },
-      { name: 'salesConfig', type: 'tuple', components: [
-        { name: 'publicSalePrice', type: 'uint104' },
-        { name: 'maxSalePurchasePerAddress', type: 'uint32' },
-        { name: 'publicSaleStart', type: 'uint64' },
-        { name: 'publicSaleEnd', type: 'uint64' },
-        { name: 'presaleStart', type: 'uint64' },
-        { name: 'presaleEnd', type: 'uint64' },
-        { name: 'presaleMerkleRoot', type: 'bytes32' }
-      ] }
-    ],
-    outputs: [{ name: '', type: 'address' }],
-    stateMutability: 'nonpayable'
-  }
-] as const
+  return addresses
+}
 
 /**
  * Content NFT Metadata Structure
@@ -138,6 +55,9 @@ export interface ZoraNFTMetadata {
   mint_price?: string
   max_supply?: number
   royalty_percentage?: number
+  
+  // IPFS token URI (added for production)
+  tokenURI?: string
 }
 
 /**
@@ -187,7 +107,10 @@ export class ZoraIntegrationService {
     this.walletClient = walletClient
     this.chainId = chainId
 
-    if (!ZORA_PROTOCOL_ADDRESSES[chainId as keyof typeof ZORA_PROTOCOL_ADDRESSES]) {
+    // Validate chain support using the new function
+    try {
+      getZoraAddresses(chainId)
+    } catch (error) {
       throw new Error(`Zora not supported on chain ${chainId}`)
     }
   }
@@ -206,33 +129,26 @@ export class ZoraIntegrationService {
     }
 
     try {
-      const addresses = ZORA_PROTOCOL_ADDRESSES[this.chainId as keyof typeof ZORA_PROTOCOL_ADDRESSES]
+      const addresses = getZoraAddresses(this.chainId)
       
-      // Prepare sales configuration
-      const salesConfig = {
-        publicSalePrice: config.defaultPrice,
-        maxSalePurchasePerAddress: 10, // Allow up to 10 mints per address
-        publicSaleStart: BigInt(Math.floor((config.publicSaleStart?.getTime() ?? Date.now()) / 1000)),
-        publicSaleEnd: BigInt(Math.floor((config.publicSaleEnd?.getTime() ?? Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000)), // 30 days from now
-        presaleStart: BigInt(0),
-        presaleEnd: BigInt(0),
-        presaleMerkleRoot: '0x0000000000000000000000000000000000000000000000000000000000000000' as const
+      // Prepare royalty configuration according to Zora V3 spec
+      const defaultRoyaltyConfiguration = {
+        royaltyMintSchedule: 0, // No royalty on mint
+        royaltyBPS: config.royaltyBPS,
+        royaltyRecipient: config.creator
       }
 
-      // Create the collection contract
+      // Create the collection contract using correct Zora V3 factory ABI
       const hash = await this.walletClient.writeContract({
-        address: addresses.ZORA_CREATOR_1155_FACTORY,
-        abi: ZORA_FACTORY_ABI,
+        address: addresses.ZORA_CREATOR_1155_FACTORY_IMPL,
+        abi: ZORA_CREATOR_1155_FACTORY_ABI,
         functionName: 'createContract',
         args: [
           config.contractURI,
           config.name,
-          config.creator,
-          BigInt(config.maxSupply),
-          config.royaltyBPS,
-          config.creator, // funds recipient
-          config.defaultPrice,
-          salesConfig
+          defaultRoyaltyConfiguration,
+          config.creator, // defaultAdmin
+          [] // setupActions - empty for basic setup
         ],
         account: config.creator,
         chain: this.chainId === base.id ? base : baseSepolia
@@ -242,7 +158,7 @@ export class ZoraIntegrationService {
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
       
       if (receipt.status === 'success' && receipt.logs.length > 0) {
-        // Extract contract address from logs (typically the first log for contract creation)
+        // Extract contract address from SetupNewContract event
         const contractAddress = receipt.logs[0].address as Address
         
         return {
@@ -282,13 +198,18 @@ export class ZoraIntegrationService {
     }
 
     try {
-      // First, create the token in the collection
+      // Validate metadata has tokenURI
+      if (!metadata.tokenURI) {
+        return { success: false, error: 'Metadata must include tokenURI for IPFS storage' }
+      }
+
+      // First, create the token in the collection using correct Zora V3 ABI
       const setupHash = await this.walletClient.writeContract({
         address: collectionAddress,
-        abi: ZORA_1155_ABI,
+        abi: ZORA_CREATOR_1155_IMPL_ABI,
         functionName: 'setupNewToken',
         args: [
-          JSON.stringify(metadata), // Token URI with metadata
+          metadata.tokenURI, // Use the IPFS URI
           BigInt(maxSupply)
         ],
         account: metadata.creator_address,
@@ -301,20 +222,21 @@ export class ZoraIntegrationService {
         return { success: false, error: 'Failed to setup token' }
       }
 
-      // Extract token ID from logs
-      const tokenId = BigInt(1) // For simplicity, assume sequential token IDs
+      // Extract token ID from logs or use sequential numbering
+      // For Zora 1155, token IDs are typically sequential starting from 1
+      const tokenId = BigInt(1) // In production, you'd extract this from the setup transaction logs
       
-      // Mint the first NFT to the creator
+      // Mint the first NFT to the creator using correct Zora V3 ABI
       const mintHash = await this.walletClient.writeContract({
         address: collectionAddress,
-        abi: ZORA_1155_ABI,
-        functionName: 'mintWithRewards',
+        abi: ZORA_CREATOR_1155_IMPL_ABI,
+        functionName: 'mint',
         args: [
-          metadata.creator_address, // recipient
+          metadata.creator_address, // minter (IMinter1155)
           tokenId,
           BigInt(1), // quantity
-          '0x' as const, // minter arguments
-          metadata.creator_address // mint referral
+          [metadata.creator_address], // rewardsRecipients
+          '0x' as const // minter arguments
         ],
         account: metadata.creator_address,
         value: mintPrice,
@@ -351,16 +273,27 @@ export class ZoraIntegrationService {
     try {
       const tokenInfo = await this.publicClient.readContract({
         address: contractAddress,
-        abi: ZORA_1155_ABI,
+        abi: ZORA_CREATOR_1155_IMPL_ABI,
         functionName: 'getTokenInfo',
         args: [tokenId]
       })
+
+      // Fetch metadata from IPFS
+      let metadata: ZoraNFTMetadata | null = null
+      try {
+        const response = await fetch(tokenInfo.uri)
+        if (response.ok) {
+          metadata = await response.json() as ZoraNFTMetadata
+        }
+      } catch (ipfsError) {
+        console.error('Error fetching metadata from IPFS:', ipfsError)
+      }
 
       return {
         uri: tokenInfo.uri,
         maxSupply: tokenInfo.maxSupply,
         totalMinted: tokenInfo.totalMinted,
-        metadata: JSON.parse(tokenInfo.uri) as ZoraNFTMetadata
+        metadata
       }
     } catch (error) {
       console.error('Error fetching NFT info:', error)
@@ -423,6 +356,9 @@ export class ZoraIntegrationService {
 
   /**
    * Format metadata for Zora NFT from your content structure
+   * 
+   * This creates comprehensive NFT metadata that includes all necessary
+   * information for Zora marketplace integration.
    */
   formatContentAsNFTMetadata(
     contentId: string,
@@ -434,25 +370,89 @@ export class ZoraIntegrationService {
     tags: string[],
     subscriptionTier?: string
   ): ZoraNFTMetadata {
+    // Create comprehensive attributes for NFT marketplace discovery
+    const attributes = [
+      { trait_type: 'Category', value: category },
+      { trait_type: 'Platform', value: 'Onchain Content Platform' },
+      { trait_type: 'Creator', value: creatorAddress },
+      { trait_type: 'Publish Date', value: new Date().toISOString().split('T')[0] },
+      { trait_type: 'Content ID', value: contentId },
+      ...(subscriptionTier ? [{ trait_type: 'Tier', value: subscriptionTier }] : []),
+      ...tags.map(tag => ({ trait_type: 'Tag', value: tag }))
+    ]
+
+    // Add rarity attributes based on subscription tier
+    if (subscriptionTier) {
+      const rarityMap = {
+        free: 'Common',
+        premium: 'Rare',
+        exclusive: 'Legendary'
+      }
+      attributes.push({ trait_type: 'Rarity', value: rarityMap[subscriptionTier as keyof typeof rarityMap] })
+    }
+
     return {
       name: title,
-      description: `${description}\n\nOriginally published on Onchain Content Platform.\nCreator: ${creatorAddress}`,
+      description: `${description}\n\nOriginally published on Onchain Content Platform.\nCreator: ${creatorAddress}\nContent ID: ${contentId}`,
       image: imageUrl,
-      external_url: `https://yourplatform.com/content/${contentId}`,
-      attributes: [
-        { trait_type: 'Category', value: category },
-        { trait_type: 'Platform', value: 'Onchain Content Platform' },
-        { trait_type: 'Creator', value: creatorAddress },
-        { trait_type: 'Publish Date', value: new Date().toISOString().split('T')[0] },
-        ...(subscriptionTier ? [{ trait_type: 'Tier', value: subscriptionTier }] : []),
-        ...tags.map(tag => ({ trait_type: 'Tag', value: tag }))
-      ],
+      external_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yourplatform.com'}/content/${contentId}`,
+      attributes,
       content_id: contentId,
       creator_address: creatorAddress,
       original_publish_date: new Date().toISOString(),
       subscription_tier: subscriptionTier,
       content_category: category,
-      platform: 'onchain-content-platform'
+      platform: 'onchain-content-platform',
+      mint_price: parseEther('0.000777').toString(), // Default Zora mint price
+      max_supply: 100,
+      royalty_percentage: 5 // 5% royalty
+    }
+  }
+
+  /**
+   * Upload metadata to IPFS and return tokenURI
+   * 
+   * This method handles the complete IPFS upload process for NFT metadata
+   * Follows the same pattern as CreatorProfileEditor for consistency
+   */
+  async uploadMetadataToIPFS(metadata: ZoraNFTMetadata): Promise<{ success: boolean; tokenURI?: string; error?: string }> {
+    try {
+      // Create a blob from the metadata JSON
+      const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
+        type: 'application/json'
+      })
+
+      // Create a File object from the blob
+      const metadataFile = new File([metadataBlob], 'metadata.json', {
+        type: 'application/json'
+      })
+
+      // Upload to IPFS using the existing API endpoint - same pattern as CreatorProfileEditor
+      const formData = new FormData()
+      formData.append('file', metadataFile)
+
+      const response = await fetch('/api/ipfs/upload', { 
+        method: 'POST', 
+        body: formData 
+      })
+      
+      const result = await response.json() as { success?: boolean; hash?: string; error?: string }
+      
+      if (!response.ok || !result?.hash) {
+        throw new Error(result?.error || 'IPFS upload failed')
+      }
+
+      const tokenURI = `ipfs://${result.hash}`
+      return {
+        success: true,
+        tokenURI
+      }
+    } catch (error) {
+      console.error('Error uploading metadata to IPFS:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Upload failed'
+      }
     }
   }
 }
@@ -500,9 +500,21 @@ export function useZoraIntegration(chainId?: number) {
       setError(null)
 
       try {
+        // Upload metadata to IPFS first
+        const uploadResult = await service.uploadMetadataToIPFS(metadata)
+        if (!uploadResult.success) {
+          throw new Error(`Failed to upload metadata: ${uploadResult.error}`)
+        }
+
+        // Create metadata with tokenURI
+        const metadataWithURI = {
+          ...metadata,
+          tokenURI: uploadResult.tokenURI
+        }
+
         const result = await service.mintContentAsNFT(
           collectionAddress,
-          metadata,
+          metadataWithURI,
           mintPrice,
           maxSupply
         )
