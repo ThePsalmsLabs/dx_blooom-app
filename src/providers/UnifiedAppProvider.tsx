@@ -667,7 +667,7 @@ export function UnifiedAppProvider({
   forceViewport,
   initialTheme = 'system',
   errorFallback,
-  debugMode = false
+  debugMode = process.env.NODE_ENV === 'development'
 }: UnifiedAppProviderProps) {
   // ===== CORE STATE MANAGEMENT =====
   

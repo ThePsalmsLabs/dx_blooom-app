@@ -399,7 +399,7 @@ function EnhancedMiniAppProvider({
   forceEnvironment,
   enableAnalytics = true,
   fallbackToWeb = true,
-  debugMode = false
+  debugMode = process.env.NODE_ENV === 'development'
 }: EnhancedMiniAppProviderProps) {
   
   // Integration with your existing wagmi and authentication systems

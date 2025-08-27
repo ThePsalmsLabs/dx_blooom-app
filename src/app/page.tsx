@@ -771,21 +771,23 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* QUICK TEST: Floating buttons for immediate testing */}
-          <div className="fixed bottom-4 right-4 z-50 space-y-2">
-            <Button 
-              onClick={() => router.push('/creators')}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg block w-full"
-            >
-              🧑‍💼 All Creators
-            </Button>
-            <Button 
-              onClick={() => router.push('/browse')}
-              className="bg-green-600 hover:bg-green-700 text-white shadow-lg block w-full"
-            >
-              🔍 Browse Content
-            </Button>
-          </div>
+          {/* Debug buttons - only shown in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="fixed bottom-4 right-4 z-50 space-y-2">
+              <Button 
+                onClick={() => router.push('/creators')}
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg block w-full"
+              >
+                🧑‍💼 All Creators
+              </Button>
+              <Button 
+                onClick={() => router.push('/browse')}
+                className="bg-green-600 hover:bg-green-700 text-white shadow-lg block w-full"
+              >
+                🔍 Browse Content
+              </Button>
+            </div>
+          )}
 
         </div>
       </RouteGuards>

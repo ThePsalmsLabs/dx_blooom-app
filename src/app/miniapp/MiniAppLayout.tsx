@@ -327,7 +327,7 @@ function LayoutLoading({ message = "Initializing application..." }: { message?: 
 export function MiniAppLayout({ 
   children, 
   forceContext, 
-  enableDebugMode = false,
+  enableDebugMode = process.env.NODE_ENV === 'development',
   errorFallback: CustomErrorFallback 
 }: MiniAppLayoutProps) {
   
@@ -474,7 +474,7 @@ export function MiniAppLayout({
             forceEnvironment={contextDetection?.isMiniApp ? 'farcaster' : 'web'}
             enableAnalytics={layoutConfig?.enablePerformanceTracking || false}
             fallbackToWeb={true}
-            debugMode={false}
+            debugMode={process.env.NODE_ENV === 'development'}
           >
             {/* Apply context-specific styling using your design token system */}
             <div 
@@ -494,9 +494,9 @@ export function MiniAppLayout({
             {/* Toast notifications using your existing system */}
             <Toaster />
             
-            {/* Debug information in development */}
-            {enableDebugMode && process.env.NODE_ENV === 'development' && (
-              <div className="fixed bottom-4 right-4 bg-black/80 text-white text-xs p-2 rounded font-mono">
+            {/* Debug information - only shown in development */}
+            {process.env.NODE_ENV === 'development' && enableDebugMode && (
+              <div className="fixed bottom-4 right-4 bg-black/80 text-white text-xs p-2 rounded font-mono z-50">
                 Context: {contextDetection?.isMiniApp ? 'MiniApp' : 'Web'} | 
                 Viewport: {contextDetection?.viewport} | 
                 Platform: {contextDetection?.platform} |
