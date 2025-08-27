@@ -12,6 +12,7 @@
  * - Progressive Enhancement - Show content info first, payment options second
  * - Payment Method Selection Modal - Dedicated interface for payment methods
  * - Enhanced Error Handling - Comprehensive error recovery with user-friendly options
+ * - Transaction Receipt Validation - Proper blockchain confirmation before showing success
  * 
  * INTEGRATION ARCHITECTURE:
  * - Replaces usePaymentIntentFlow with usePaymentFlowOrchestrator
@@ -20,6 +21,7 @@
  * - Adds intelligent error recovery with user-friendly messaging
  * - Provides real-time backend health monitoring and adaptive behavior
  * - Implements comprehensive performance tracking and bottleneck identification
+ * - Validates transaction receipts to prevent false success states
  * 
  * PRODUCTION-READY FEATURES:
  * - Zero RPC calls until user expresses purchase intent
@@ -29,6 +31,8 @@
  * - Real-time progress tracking with accurate time estimates
  * - Comprehensive error handling with graceful degradation
  * - Performance monitoring with detailed timing metrics
+ * - Transaction receipt validation prevents false success states
+ * - Proper handling of user cancellations in wallet
  * 
  * File: src/components/content/OrchestratedContentPurchaseCard.tsx
  */
@@ -40,7 +44,12 @@ import { useRouter } from 'next/navigation'
 import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance } from 'wagmi'
 import { type Address, parseEther } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, ERC20_ABI } from '@/lib/contracts/abis'
+import { 
+  PRICE_ORACLE_ABI, 
+  COMMERCE_PROTOCOL_INTEGRATION_ABI, 
+  ERC20_ABI, 
+  PAY_PER_VIEW_ABI 
+} from '@/lib/contracts/abis'
 import {
   ShoppingCart,
   Lock,
@@ -84,13 +93,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+
 import { cn } from '@/lib/utils'
 
 // Import business logic hooks and utilities
@@ -119,7 +122,22 @@ enum PaymentIntentPhase {
   INTENT_EXPRESSED = 'intent_expressed', // User clicked "Purchase Content"
   SELECTING_METHOD = 'selecting_method', // User is choosing payment method
   PAYMENT_ACTIVE = 'payment_active',     // Payment is being processed
-  COMPLETED = 'completed'               // Purchase completed
+  WAITING_CONFIRMATION = 'waiting_confirmation', // Waiting for blockchain confirmation
+  COMPLETED = 'completed',               // Purchase completed and confirmed
+  CANCELLED = 'cancelled',               // User cancelled transaction
+  FAILED = 'failed'                      // Transaction failed
+}
+
+/**
+ * Transaction Status Tracking
+ * Tracks the actual blockchain transaction status
+ */
+interface TransactionStatus {
+  readonly hash: `0x${string}` | null
+  readonly status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | null
+  readonly confirmedAt: number | null
+  readonly error: Error | null
+  readonly receipt: any | null
 }
 
 /**
@@ -155,7 +173,7 @@ interface TokenInfo {
 }
 
 /**
- * Enhanced Payment State with Intent Tracking
+ * Enhanced Payment State with Intent Tracking and Transaction Validation
  */
 interface EnhancedPaymentState {
   readonly intentPhase: PaymentIntentPhase
@@ -163,6 +181,7 @@ interface EnhancedPaymentState {
   readonly showMethodSelector: boolean
   readonly isProcessing: boolean
   readonly lastPaymentResult: PaymentResult | null
+  readonly transactionStatus: TransactionStatus
   readonly errorRecoveryOptions: Array<{
     readonly action: string
     readonly label: string
@@ -189,52 +208,100 @@ function PaymentMethodSelector({
   availableMethods,
   onMethodSelect
 }: PaymentMethodSelectorProps) {
+  // Add ref to access the modal element
+  const modalRef = React.useRef<HTMLDivElement>(null)
+  
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Select Payment Method</DialogTitle>
-          <DialogDescription>
-            Choose how you'd like to pay for this content
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-3">
-          {availableMethods.map(method => (
-            <div
-              key={method.id}
-              className="border rounded-lg p-4 cursor-pointer transition-colors hover:bg-muted/50"
-              onClick={() => {
-                onMethodSelect(method.id)
-                onClose()
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <method.icon className="h-5 w-5" />
-                  <div>
-                    <div className="font-medium">{method.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {method.description}
+    <>
+      {/* Custom Modal Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Custom Modal Content */}
+      {isOpen && (
+        <div 
+          ref={modalRef}
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10000,
+            background: 'hsl(var(--background))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: '0.5rem',
+            padding: '1.5rem',
+            maxWidth: 'min(90vw, 500px)',
+            maxHeight: 'min(80vh, 600px)',
+            width: '90vw',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          }}
+        >
+          {/* Header */}
+          <div className="flex-shrink-0 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Select Payment Method</h2>
+                <p className="text-sm text-muted-foreground">
+                  Choose how you'd like to pay for this content
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Content */}
+          <div className="space-y-3 flex-1 overflow-y-auto min-h-0">
+            {availableMethods.map(method => (
+              <div
+                key={method.id}
+                className="border rounded-lg p-3 sm:p-4 cursor-pointer transition-colors hover:bg-muted/50"
+                onClick={() => {
+                  onMethodSelect(method.id)
+                  onClose()
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <method.icon className="h-5 w-5 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{method.name}</div>
+                      <div className="text-sm text-muted-foreground truncate">
+                        {method.description}
+                      </div>
                     </div>
                   </div>
+                  <div className="text-right text-sm flex-shrink-0">
+                    <div className="text-muted-foreground">{method.estimatedTime}</div>
+                    <div className="text-xs">Gas: {method.gasEstimate}</div>
+                  </div>
                 </div>
-                <div className="text-right text-sm">
-                  <div className="text-muted-foreground">{method.estimatedTime}</div>
-                  <div className="text-xs">Gas: {method.gasEstimate}</div>
-                </div>
+                
+                {method.requiresApproval && (
+                  <div className="mt-2 text-xs text-amber-600">
+                    Requires token approval
+                  </div>
+                )}
               </div>
-              
-              {method.requiresApproval && (
-                <div className="mt-2 text-xs text-amber-600">
-                  Requires token approval
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   )
 }
 
@@ -491,12 +558,173 @@ export function OrchestratedContentPurchaseCard({
     showMethodSelector: false,
     isProcessing: false,
     lastPaymentResult: null,
+    transactionStatus: { hash: null, status: null, confirmedAt: null, error: null, receipt: null },
     errorRecoveryOptions: []
   })
 
   // ===== CONDITIONAL PAYMENT DATA HOOKS (Only Active After Intent) =====
   // These hooks are only enabled after user expresses purchase intent
   const paymentDataEnabled = paymentState.intentPhase !== PaymentIntentPhase.BROWSING
+  
+  // ===== TRANSACTION RECEIPT HANDLING =====
+  // Track transaction receipts for proper confirmation
+  const [pendingTransactionHash, setPendingTransactionHash] = useState<`0x${string}` | null>(null)
+  
+  // Wait for transaction receipt when we have a pending transaction
+  const { data: transactionReceipt, error: receiptError, isLoading: isReceiptLoading } = useWaitForTransactionReceipt({
+    hash: pendingTransactionHash || undefined,
+    confirmations: 1, // Wait for 1 confirmation
+    timeout: 300000 // 5 minute timeout
+  })
+  
+  // Monitor transaction receipt status
+  useEffect(() => {
+    if (pendingTransactionHash && transactionReceipt) {
+      // Transaction confirmed on blockchain
+      setPaymentState(prev => ({
+        ...prev,
+        intentPhase: PaymentIntentPhase.COMPLETED,
+        transactionStatus: {
+          hash: pendingTransactionHash,
+          status: 'confirmed',
+          confirmedAt: Date.now(),
+          error: null,
+          receipt: transactionReceipt
+        }
+      }))
+      
+      // Clear pending transaction
+      setPendingTransactionHash(null)
+      
+      // Refresh access status
+      accessQuery.refetch()
+      
+    } else if (pendingTransactionHash && receiptError) {
+      // Transaction failed or was cancelled
+      const isCancelled = receiptError.message.includes('User rejected') || 
+                         receiptError.message.includes('User denied') ||
+                         receiptError.message.includes('cancelled')
+      
+      setPaymentState(prev => ({
+        ...prev,
+        intentPhase: isCancelled ? PaymentIntentPhase.CANCELLED : PaymentIntentPhase.FAILED,
+        transactionStatus: {
+          hash: pendingTransactionHash,
+          status: isCancelled ? 'cancelled' : 'failed',
+          confirmedAt: null,
+          error: receiptError,
+          receipt: null
+        }
+      }))
+      
+      // Clear pending transaction
+      setPendingTransactionHash(null)
+    }
+  }, [pendingTransactionHash, transactionReceipt, receiptError, accessQuery])
+  
+  // ===== DIRECT CONTRACT INTERACTION FOR PAYMENTS =====
+  // Use direct writeContract for payments to get immediate error feedback
+  const { 
+    writeContract: writeEthContract, 
+    data: ethTransactionHash, 
+    error: ethWriteError, 
+    isPending: isEthWritePending 
+  } = useWriteContract()
+  
+  const { 
+    writeContract: writeUsdcContract, 
+    data: usdcTransactionHash, 
+    error: usdcWriteError, 
+    isPending: isUsdcWritePending 
+  } = useWriteContract()
+  
+  // Monitor ETH write contract errors (immediate cancellation detection)
+  useEffect(() => {
+    if (ethWriteError) {
+      console.log('❌ ETH write contract error:', ethWriteError)
+      
+      const isCancelled = ethWriteError.message.includes('User rejected') || 
+                         ethWriteError.message.includes('User denied') ||
+                         ethWriteError.message.includes('cancelled') ||
+                         ethWriteError.message.includes('rejected')
+      
+      setPaymentState(prev => ({
+        ...prev,
+        isProcessing: false,
+        intentPhase: isCancelled ? PaymentIntentPhase.CANCELLED : PaymentIntentPhase.FAILED,
+        transactionStatus: {
+          hash: null,
+          status: isCancelled ? 'cancelled' : 'failed',
+          confirmedAt: null,
+          error: ethWriteError,
+          receipt: null
+        }
+      }))
+    }
+  }, [ethWriteError])
+  
+  // Monitor USDC write contract errors (immediate cancellation detection)
+  useEffect(() => {
+    if (usdcWriteError) {
+      console.log('❌ USDC write contract error:', usdcWriteError)
+      
+      const isCancelled = usdcWriteError.message.includes('User rejected') || 
+                         usdcWriteError.message.includes('User denied') ||
+                         usdcWriteError.message.includes('cancelled') ||
+                         usdcWriteError.message.includes('rejected')
+      
+      setPaymentState(prev => ({
+        ...prev,
+        isProcessing: false,
+        intentPhase: isCancelled ? PaymentIntentPhase.CANCELLED : PaymentIntentPhase.FAILED,
+        transactionStatus: {
+          hash: null,
+          status: isCancelled ? 'cancelled' : 'failed',
+          confirmedAt: null,
+          error: usdcWriteError,
+          receipt: null
+        }
+      }))
+    }
+  }, [usdcWriteError])
+  
+  // Monitor ETH transaction hash (when user approves)
+  useEffect(() => {
+    if (ethTransactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
+      console.log('✅ ETH transaction hash received:', ethTransactionHash)
+      setPendingTransactionHash(ethTransactionHash)
+      setPaymentState(prev => ({
+        ...prev,
+        intentPhase: PaymentIntentPhase.WAITING_CONFIRMATION,
+        transactionStatus: {
+          hash: ethTransactionHash,
+          status: 'pending',
+          confirmedAt: null,
+          error: null,
+          receipt: null
+        }
+      }))
+    }
+  }, [ethTransactionHash, paymentState.intentPhase])
+  
+  // Monitor USDC transaction hash (when user approves)
+  useEffect(() => {
+    if (usdcTransactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
+      console.log('✅ USDC transaction hash received:', usdcTransactionHash)
+      setPendingTransactionHash(usdcTransactionHash)
+      setPaymentState(prev => ({
+        ...prev,
+        intentPhase: PaymentIntentPhase.WAITING_CONFIRMATION,
+        transactionStatus: {
+          hash: usdcTransactionHash,
+          status: 'pending',
+          confirmedAt: null,
+          error: null,
+          receipt: null
+        }
+      }))
+    }
+  }, [usdcTransactionHash, paymentState.intentPhase])
   
   // Legacy USDC purchase flow (still used for USDC direct payments)
   // Only initialize when needed to prevent unnecessary RPC calls
@@ -759,16 +987,16 @@ export function OrchestratedContentPurchaseCard({
   }, [contentId, enableMultiPayment])
 
   /**
-   * Handle Payment Method Selection
+   * Handle Modal Close - Reset to browsing state
    */
-  const handleMethodSelect = useCallback((method: PaymentMethod) => {
-    console.log('🎯 User selected payment method:', method)
+  const handleModalClose = useCallback(() => {
+    console.log('🔒 Modal closed, resetting to browsing state')
     
     setPaymentState(prev => ({
       ...prev,
-      selectedMethod: method,
-      intentPhase: PaymentIntentPhase.SELECTING_METHOD,
-      showMethodSelector: false
+      showMethodSelector: false,
+      selectedMethod: null,
+      intentPhase: PaymentIntentPhase.BROWSING
     }))
   }, [])
 
@@ -779,104 +1007,197 @@ export function OrchestratedContentPurchaseCard({
    * Handle USDC Purchase Execution
    */
   const handleUSDCPurchase = useCallback(async () => {
-    if (!contentQuery.data || paymentState.isProcessing) return
+    if (!contentQuery.data || paymentState.isProcessing || !contractAddresses) return
 
     const startTime = Date.now()
     setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
 
     try {
-      console.log('💳 Starting USDC purchase via legacy flow')
+      console.log('💳 Starting direct USDC purchase...')
       
-      await usdcPurchaseFlow.executePayment()
+      // Check if approval is needed first
+      const selectedToken = calculatedTokens[PaymentMethod.USDC]
+      if (selectedToken?.needsApproval) {
+        console.log('🔐 Approving USDC spending...')
+        
+        await writeUsdcContract({
+          address: contractAddresses.USDC,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [contractAddresses.PAY_PER_VIEW, contentQuery.data.payPerViewPrice]
+        })
+        
+        // Wait for approval transaction to complete before proceeding
+        // The transaction hash and error handling will be managed by the useEffect hooks above
+        return
+      }
       
-      console.log('✅ USDC purchase completed successfully')
+      // Direct purchase without approval needed
+      console.log('💰 Purchasing content with USDC...')
       
-      setPaymentState(prev => ({ 
-        ...prev, 
-        isProcessing: false,
-        intentPhase: PaymentIntentPhase.COMPLETED
-      }))
-
-      // Refresh access status
-      await accessQuery.refetch()
+      await writeUsdcContract({
+        address: contractAddresses.PAY_PER_VIEW,
+        abi: PAY_PER_VIEW_ABI,
+        functionName: 'purchaseContentDirect',
+        args: [contentId]
+      })
+      
+      // The transaction hash and error handling will be managed by the useEffect hooks above
+      console.log('✅ USDC purchase transaction submitted')
 
     } catch (error) {
       console.error('❌ USDC purchase failed:', error)
       
+      const isCancelled = error instanceof Error && (
+        error.message.includes('User rejected') || 
+        error.message.includes('User denied') ||
+        error.message.includes('cancelled')
+      )
+      
       setPaymentState(prev => ({ 
         ...prev, 
         isProcessing: false,
-        intentPhase: PaymentIntentPhase.SELECTING_METHOD
+        intentPhase: isCancelled ? PaymentIntentPhase.CANCELLED : PaymentIntentPhase.FAILED,
+        transactionStatus: {
+          hash: null,
+          status: isCancelled ? 'cancelled' : 'failed',
+          confirmedAt: null,
+          error: error as Error,
+          receipt: null
+        }
       }))
     }
-  }, [contentQuery.data, paymentState.isProcessing, usdcPurchaseFlow, accessQuery])
+  }, [contentQuery.data, paymentState.isProcessing, contractAddresses, calculatedTokens, contentId, writeUsdcContract])
 
   /**
    * Handle ETH Purchase Execution
    */
   const handleETHPurchase = useCallback(async () => {
-    if (!contentQuery.data || !ethPaymentCalculation || paymentState.isProcessing) return
+    if (!contentQuery.data || !ethPaymentCalculation || paymentState.isProcessing || !contractAddresses) return
 
     const startTime = Date.now()
     setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
 
     try {
-      const paymentRequest: OrchestratedPaymentRequest = {
-        contentId: contentId,
+      console.log('⚡ Starting direct ETH payment...')
+      
+      // Create payment intent directly using contract
+      const paymentRequest = {
+        paymentType: 0, // ETH payment
         creator: contentQuery.data.creator,
-        ethAmount: ethPaymentCalculation.ethAmountWithSlippage,
+        contentId: contentId,
+        paymentToken: '0x0000000000000000000000000000000000000000' as Address,
         maxSlippage: BigInt(200), // 2%
-        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), // 1 hour
-        userAddress: effectiveUserAddress!,
-        sessionId: `purchase_${contentId}_${Date.now()}`,
-        metadata: {
-          source: 'enhanced_content_purchase_card',
-          referrer: window.location.href
-        }
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour
       }
 
-      console.log('⚡ Starting orchestrated ETH payment:', paymentRequest)
+      console.log('📝 Creating payment intent:', paymentRequest)
       
-      const result = await orchestrator.executePayment(paymentRequest)
+      // This will trigger the writeContract hook and we'll get immediate feedback
+      await writeEthContract({
+        address: contractAddresses.COMMERCE_INTEGRATION,
+        abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
+        functionName: 'createPaymentIntent',
+        args: [paymentRequest]
+      })
       
-      console.log('✅ ETH payment completed:', result)
-      
-      setPaymentState(prev => ({ 
-        ...prev, 
-        isProcessing: false,
-        intentPhase: PaymentIntentPhase.COMPLETED,
-        lastPaymentResult: result
-      }))
-
-      // Refresh data to show updated access status
-      if (result.success) {
-        await Promise.allSettled([
-          accessQuery.refetch(),
-          ethBalance.refetch()
-        ])
-      }
+      // The transaction hash and error handling will be managed by the useEffect hooks above
+      console.log('✅ ETH payment intent created successfully')
 
     } catch (error) {
       console.error('❌ ETH purchase failed:', error)
       
+      const isCancelled = error instanceof Error && (
+        error.message.includes('User rejected') || 
+        error.message.includes('User denied') ||
+        error.message.includes('cancelled')
+      )
+      
       setPaymentState(prev => ({ 
         ...prev, 
         isProcessing: false,
-        intentPhase: PaymentIntentPhase.SELECTING_METHOD
+        intentPhase: isCancelled ? PaymentIntentPhase.CANCELLED : PaymentIntentPhase.FAILED,
+        transactionStatus: {
+          hash: null,
+          status: isCancelled ? 'cancelled' : 'failed',
+          confirmedAt: null,
+          error: error as Error,
+          receipt: null
+        }
       }))
     }
   }, [
     contentQuery.data, 
     ethPaymentCalculation, 
     paymentState.isProcessing, 
+    contractAddresses,
     contentId, 
-    effectiveUserAddress,
-    orchestrator, 
-    accessQuery, 
-    ethBalance
+    writeEthContract
   ])
 
+  /**
+   * Handle Payment Method Selection
+   */
+  const handleMethodSelect = useCallback(async (method: PaymentMethod) => {
+    console.log('🎯 User selected payment method:', method)
+    
+    // Set the selected method and close modal
+    setPaymentState(prev => ({
+      ...prev,
+      selectedMethod: method,
+      intentPhase: PaymentIntentPhase.SELECTING_METHOD,
+      showMethodSelector: false
+    }))
 
+    // Execute payment based on selected method
+    try {
+      if (method === PaymentMethod.USDC) {
+        await handleUSDCPurchase()
+      } else if (method === PaymentMethod.ETH) {
+        await handleETHPurchase()
+      }
+    } catch (error) {
+      console.error('❌ Payment execution failed:', error)
+      // Reset to method selection on error
+      setPaymentState(prev => ({
+        ...prev,
+        intentPhase: PaymentIntentPhase.SELECTING_METHOD,
+        isProcessing: false
+      }))
+    }
+  }, [handleUSDCPurchase, handleETHPurchase])
+
+  /**
+   * Handle Payment Retry
+   */
+  const handleRetryPayment = useCallback(() => {
+    console.log('🔄 Retrying payment...')
+    
+    // Reset to method selection to allow retry
+    setPaymentState(prev => ({
+      ...prev,
+      intentPhase: PaymentIntentPhase.SELECTING_METHOD,
+      isProcessing: false,
+      transactionStatus: { hash: null, status: null, confirmedAt: null, error: null, receipt: null }
+    }))
+  }, [])
+
+  /**
+   * Handle Payment Reset
+   */
+  const handleResetPayment = useCallback(() => {
+    console.log('🔄 Resetting payment flow...')
+    
+    // Reset to browsing state
+    setPaymentState(prev => ({
+      ...prev,
+      intentPhase: PaymentIntentPhase.BROWSING,
+      selectedMethod: null,
+      showMethodSelector: false,
+      isProcessing: false,
+      transactionStatus: { hash: null, status: null, confirmedAt: null, error: null, receipt: null }
+    }))
+  }, [])
 
   // ===== RENDER LOGIC =====
 
@@ -1001,6 +1322,33 @@ export function OrchestratedContentPurchaseCard({
                 </div>
               )}
             </div>
+          )}
+
+          {/* Transaction Status - Show during confirmation */}
+          {paymentState.intentPhase === PaymentIntentPhase.WAITING_CONFIRMATION && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Confirming transaction...</span>
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+              <Progress value={75} />
+              
+              {paymentState.transactionStatus.hash && (
+                <div className="text-xs text-muted-foreground text-center">
+                  Transaction: {paymentState.transactionStatus.hash.slice(0, 10)}...{paymentState.transactionStatus.hash.slice(-8)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Transaction Error - Show when transaction fails */}
+          {paymentState.intentPhase === PaymentIntentPhase.FAILED && paymentState.transactionStatus.error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Transaction failed: {paymentState.transactionStatus.error.message}
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Selected Payment Method Details - Only show after method selected */}
@@ -1148,11 +1496,60 @@ export function OrchestratedContentPurchaseCard({
             </Button>
           )}
 
-          {paymentState.intentPhase === PaymentIntentPhase.COMPLETED && (
-            <Button className="w-full bg-green-600 hover:bg-green-700" disabled>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Purchase Complete!
+          {paymentState.intentPhase === PaymentIntentPhase.WAITING_CONFIRMATION && (
+            <Button className="w-full bg-blue-600 hover:bg-blue-700" disabled>
+              <Clock className="h-4 w-4 mr-2" />
+              Waiting for Confirmation...
             </Button>
+          )}
+
+          {paymentState.intentPhase === PaymentIntentPhase.COMPLETED && (
+            <div className="space-y-2 w-full">
+              <Button className="w-full bg-green-600 hover:bg-green-700" disabled>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Purchase Complete!
+              </Button>
+              {paymentState.transactionStatus.hash && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    const baseUrl = 'https://basescan.org/tx/'
+                    window.open(`${baseUrl}${paymentState.transactionStatus.hash}`, '_blank')
+                  }}
+                  className="w-full"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Transaction
+                </Button>
+              )}
+            </div>
+          )}
+
+          {paymentState.intentPhase === PaymentIntentPhase.CANCELLED && (
+            <div className="space-y-2 w-full">
+              <Button className="w-full bg-gray-600 hover:bg-gray-700" disabled>
+                <X className="h-4 w-4 mr-2" />
+                Purchase Cancelled
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleResetPayment} className="w-full">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {paymentState.intentPhase === PaymentIntentPhase.FAILED && (
+            <div className="space-y-2 w-full">
+              <Button className="w-full bg-red-600 hover:bg-red-700" disabled>
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Purchase Failed
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleRetryPayment} className="w-full">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Retry Payment
+              </Button>
+            </div>
           )}
 
           {/* Connection Required */}
@@ -1184,7 +1581,7 @@ export function OrchestratedContentPurchaseCard({
       {/* Payment Method Selection Modal */}
       <PaymentMethodSelector
         isOpen={paymentState.showMethodSelector}
-        onClose={() => setPaymentState(prev => ({ ...prev, showMethodSelector: false }))}
+        onClose={handleModalClose}
         contentPrice={content.payPerViewPrice}
         availableMethods={availablePaymentMethods}
         onMethodSelect={handleMethodSelect}
