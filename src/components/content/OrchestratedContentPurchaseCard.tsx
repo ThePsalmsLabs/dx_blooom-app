@@ -41,8 +41,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance } from 'wagmi'
-import { type Address, parseEther } from 'viem'
+import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance, useSendCalls } from 'wagmi'
+import { type Address, parseEther, encodeFunctionData } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { 
   PRICE_ORACLE_ABI, 
@@ -638,6 +638,69 @@ export function OrchestratedContentPurchaseCard({
     isPending: isUsdcWritePending 
   } = useWriteContract()
   
+  // ===== EIP-5792 BATCH TRANSACTION SUPPORT =====
+  // Use sendCalls for batch transactions (approve + purchase in one)
+  const { 
+    sendCalls, 
+    data: batchTransactionHash, 
+    error: batchError, 
+    isPending: isBatchPending 
+  } = useSendCalls()
+  
+  // Check if batch transactions are supported
+  const canUseBatchTransactions = useMemo(() => {
+    return !!sendCalls && !isBatchPending
+  }, [sendCalls, isBatchPending])
+  
+  // Monitor batch transaction errors (immediate cancellation detection)
+  useEffect(() => {
+    if (batchError) {
+      console.log('❌ Batch transaction error:', batchError)
+      
+      const isCancelled = batchError.message.includes('User rejected') || 
+                         batchError.message.includes('User denied') ||
+                         batchError.message.includes('cancelled') ||
+                         batchError.message.includes('rejected')
+      
+      setPaymentState(prev => ({
+        ...prev,
+        isProcessing: false,
+        intentPhase: isCancelled ? PaymentIntentPhase.CANCELLED : PaymentIntentPhase.FAILED,
+        transactionStatus: {
+          hash: null,
+          status: isCancelled ? 'cancelled' : 'failed',
+          confirmedAt: null,
+          error: batchError,
+          receipt: null
+        }
+      }))
+    }
+  }, [batchError])
+  
+  // Monitor batch transaction hash (when user approves)
+  useEffect(() => {
+    if (batchTransactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
+      console.log('✅ Batch transaction hash received:', batchTransactionHash)
+      // Extract the actual transaction hash from the batch result
+      const txHash = (batchTransactionHash as any)?.id || batchTransactionHash
+      
+      if (txHash && typeof txHash === 'string') {
+        setPendingTransactionHash(txHash as `0x${string}`)
+        setPaymentState(prev => ({
+          ...prev,
+          intentPhase: PaymentIntentPhase.WAITING_CONFIRMATION,
+          transactionStatus: {
+            hash: txHash as `0x${string}`,
+            status: 'pending',
+            confirmedAt: null,
+            error: null,
+            receipt: null
+          }
+        }))
+      }
+    }
+  }, [batchTransactionHash, paymentState.intentPhase])
+  
   // Monitor ETH write contract errors (immediate cancellation detection)
   useEffect(() => {
     if (ethWriteError) {
@@ -860,9 +923,11 @@ export function OrchestratedContentPurchaseCard({
       {
         id: PaymentMethod.USDC,
         name: 'USDC',
-        description: 'Direct USDC payment',
-        estimatedTime: '~30 seconds',
-        gasEstimate: 'Low',
+        description: canUseBatchTransactions ? 
+          'Single confirmation (approve + purchase)' : 
+          'Direct USDC payment',
+        estimatedTime: canUseBatchTransactions ? '~15 seconds' : '~30 seconds',
+        gasEstimate: canUseBatchTransactions ? 'Low' : 'Low',
         requiresApproval: true,
         icon: DollarSign,
         isAvailable: true,
@@ -880,7 +945,7 @@ export function OrchestratedContentPurchaseCard({
         healthStatus: 'healthy'
       }
     ]
-  }, [paymentDataEnabled, orchestratorState.canStartPayment])
+  }, [paymentDataEnabled, orchestratorState.canStartPayment, canUseBatchTransactions])
 
 
 
@@ -1013,12 +1078,45 @@ export function OrchestratedContentPurchaseCard({
     setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
 
     try {
-      console.log('💳 Starting direct USDC purchase...')
+      console.log('💳 Starting USDC purchase...')
       
-      // Check if approval is needed first
+      // Check if approval is needed
       const selectedToken = calculatedTokens[PaymentMethod.USDC]
-      if (selectedToken?.needsApproval) {
-        console.log('🔐 Approving USDC spending...')
+      const needsApproval = selectedToken?.needsApproval
+      
+      // Try batch transaction first if supported and approval is needed
+      if (needsApproval && canUseBatchTransactions) {
+        console.log('🚀 Using EIP-5792 batch transaction (approve + purchase)...')
+        
+        const calls = [
+          // Call 1: Approve USDC spending
+          {
+            to: contractAddresses.USDC,
+            data: encodeFunctionData({
+              abi: ERC20_ABI,
+              functionName: 'approve',
+              args: [contractAddresses.PAY_PER_VIEW, contentQuery.data.payPerViewPrice]
+            })
+          },
+          // Call 2: Purchase content
+          {
+            to: contractAddresses.PAY_PER_VIEW,
+            data: encodeFunctionData({
+              abi: PAY_PER_VIEW_ABI,
+              functionName: 'purchaseContentDirect',
+              args: [contentId]
+            })
+          }
+        ]
+        
+        await sendCalls({ calls })
+        console.log('✅ Batch transaction submitted successfully')
+        return
+      }
+      
+      // Fallback to sequential transactions
+      if (needsApproval) {
+        console.log('🔐 Approving USDC spending (sequential)...')
         
         await writeUsdcContract({
           address: contractAddresses.USDC,
@@ -1067,7 +1165,7 @@ export function OrchestratedContentPurchaseCard({
         }
       }))
     }
-  }, [contentQuery.data, paymentState.isProcessing, contractAddresses, calculatedTokens, contentId, writeUsdcContract])
+  }, [contentQuery.data, paymentState.isProcessing, contractAddresses, calculatedTokens, contentId, writeUsdcContract, canUseBatchTransactions, sendCalls])
 
   /**
    * Handle ETH Purchase Execution
@@ -1305,6 +1403,17 @@ export function OrchestratedContentPurchaseCard({
           {/* System Health Indicator - Only show during payment flow */}
           {showSystemHealth && paymentDataEnabled && (
             <SystemHealthIndicator health={orchestratorState.systemHealth} />
+          )}
+
+          {/* Batch Transaction Capability Indicator */}
+          {paymentDataEnabled && canUseBatchTransactions && (
+            <Alert className="border-green-200 bg-green-50">
+              <Zap className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <strong>Enhanced Experience:</strong> Your wallet supports batch transactions. 
+                Approval and purchase will be combined into a single confirmation.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Payment Progress - Only show during active payment */}
