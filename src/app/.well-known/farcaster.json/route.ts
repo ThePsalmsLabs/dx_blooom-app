@@ -7,9 +7,7 @@ import { getContractAddresses } from '../../../lib/contracts/config'
  * 
  * This interface defines the complete structure of a Farcaster manifest according
  * to the official Farcaster protocol specifications. Each field serves a specific
- * purpose in enabling Frame functionality and Mini App integration within the
- * Farcaster ecosystem. Think of this as the contract between your platform and
- * Farcaster clients about how they should interact with your content.
+ * purpose in enabling Mini App functionality within the Farcaster ecosystem.
  */
 interface FarcasterManifest {
   /** Account association verification for domain ownership */
@@ -19,38 +17,29 @@ interface FarcasterManifest {
     readonly signature: string
   }
   
-  /** Frame configuration for content preview and interaction */
-  readonly frame: {
+  /** Mini App configuration for embedded application functionality */
+  readonly miniapp: {
     readonly version: string
     readonly name: string
-    readonly iconUrl: string
     readonly homeUrl: string
-    readonly webhookUrl: string
+    readonly iconUrl: string
     readonly splashImageUrl?: string
     readonly splashBackgroundColor?: string
-  }
-  
-  /** Mini App configuration for embedded application functionality */
-  readonly miniApp: {
-    readonly url: string
-    readonly name: string
-    readonly description: string
-    readonly iconUrl: string
-    readonly categories: readonly string[]
-    readonly socialLinks?: {
-      readonly twitter?: string
-      readonly github?: string
-      readonly website?: string
-    }
-  }
-  
-  /** Platform-specific configuration and capabilities */
-  readonly platform: {
-    readonly contentDiscoveryEndpoint: string
-    readonly paymentProcessingEndpoint: string
-    readonly subscriptionEndpoint: string
-    readonly supportedPaymentMethods: readonly string[]
-    readonly supportedNetworks: readonly string[]
+    readonly webhookUrl?: string
+    readonly subtitle?: string
+    readonly description?: string
+    readonly screenshotUrls?: readonly string[]
+    readonly primaryCategory?: string
+    readonly tags?: readonly string[]
+    readonly heroImageUrl?: string
+    readonly tagline?: string
+    readonly ogTitle?: string
+    readonly ogDescription?: string
+    readonly ogImageUrl?: string
+    readonly noindex?: boolean
+    readonly requiredChains?: readonly string[]
+    readonly requiredCapabilities?: readonly string[]
+    readonly canonicalDomain?: string
   }
 }
 
@@ -91,82 +80,41 @@ function buildFarcasterManifest(): FarcasterManifest {
   const manifest: FarcasterManifest = {
     // Account association proves you own the domain serving this manifest
     // This prevents impersonation and ensures that Farcaster clients can trust
-    // that frames and mini apps are actually served by your legitimate platform
+    // that mini apps are actually served by your legitimate platform
     accountAssociation: {
       header: "eyJmaWQiOjg3Mjg2MiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEFDNzNkZTEzN0NiZjQ4MTgxMzY2RWI4MjVjNGYzNTNiMzFkODI5NzYifQ",
       payload: "eyJkb21haW4iOiJkeGJsb29tLmNvbSJ9",
       signature: "MHhlNGI5NmQ2ZTBjZDM0OGE0NjdhZDYxYTAxOGIxY2UwZmRmOTdkZjhkYjYwNzI0YTgxYThiNmMyMTI2NjU4ZGRmM2ZmYmI1ZTJmNzQ5NTMwMzllOWEzZDlkZTVkNzI3ZTU2ZWU1OTlmZTNmMWZlNmFmMWY2YjcyNmQxMDY0NmUxMTFj"
     },
 
-    // Frame configuration enables your content to be previewed and interacted with
-    // directly within Farcaster feeds. This is where the magic of social commerce
-    // happens - users can discover, preview, and purchase content without leaving
-    // their social experience
-    frame: {
-      version: "vNext",
-      name: "Bloom",
-      iconUrl: `${normalizedBaseUrl}/images/miniapp-icon-192.png`,
-      homeUrl: `${normalizedBaseUrl}/mini`,
-      
-      // This webhook URL is where Farcaster will send frame interaction events
-      // When users click buttons in your frames, Farcaster sends the interaction
-      // details to this endpoint so your platform can respond appropriately
-      webhookUrl: `${normalizedBaseUrl}/api/farcaster/webhook`,
-      
-      // Optional splash screen configuration for enhanced frame presentation
-      splashImageUrl: `${normalizedBaseUrl}/images/miniapp-splash.png`,
-      splashBackgroundColor: "#FF6B35"
-    },
-
     // Mini App configuration enables your platform to run as an embedded application
-    // within Farcaster clients. This provides a more comprehensive experience than
-    // frames alone, allowing for complex interactions and full application functionality
-    // within the social environment
-    miniApp: {
-      url: `${normalizedBaseUrl}/mini`,
+    // within Farcaster clients. This provides a comprehensive experience for
+    // social commerce, allowing users to discover, preview, and purchase content
+    // directly within the Farcaster ecosystem
+    miniapp: {
+      version: "1",
       name: "Bloom",
-      description: "Discover and purchase premium content with instant USDC payments. Support creators through direct purchases and subscriptions.",
-      iconUrl: `${normalizedBaseUrl}/icons/miniapp-icon.png`,
-      
-      // Categories help Farcaster clients organize and discover your mini app
-      // These categories should accurately reflect your platform's primary functions
-      categories: ["social", "payments", "content", "creator-tools"] as const,
-      
-      // Social links provide additional context and credibility for your platform
-      // These links appear in mini app discovery interfaces within Farcaster clients
-      socialLinks: {
-        website: normalizedBaseUrl,
-        // Add your actual social links when available
-        // twitter: "https://twitter.com/yourplatform",
-        // github: "https://github.com/yourorg/platform"
-      }
-    },
-
-    // Platform-specific configuration describes your unique capabilities and
-    // integration points. This section enables Farcaster clients to understand
-    // exactly how to interact with your platform's API endpoints and what
-    // functionality is available through social commerce interfaces
-    platform: {
-      // These endpoints leverage the Phase 1 infrastructure we built
-      // Notice how they map directly to the API routes we implemented
-      contentDiscoveryEndpoint: `${normalizedBaseUrl}/api/content`,
-      paymentProcessingEndpoint: `${normalizedBaseUrl}/api/protected/content`,
-      subscriptionEndpoint: `${normalizedBaseUrl}/api/subscription`,
-      
-      // Supported payment methods reflect your platform's USDC-based architecture
-      // This tells Farcaster clients what payment options users have when
-      // purchasing content through social interfaces
-      supportedPaymentMethods: [
-        "usdc", 
-        "base-usdc", 
-        "x402-payment-proof",
-        "commerce-protocol"
-      ] as const,
-      
-      // Supported networks align with your contract deployment strategy
-      // This ensures that social commerce transactions use the same networks
-      // and contracts as your main platform
-      supportedNetworks
+      homeUrl: `${normalizedBaseUrl}/mini`,
+      iconUrl: `${normalizedBaseUrl}/images/miniapp-icon-192.png`,
+      splashImageUrl: `${normalizedBaseUrl}/images/miniapp-splash.png`,
+      splashBackgroundColor: "#FF6B35",
+      webhookUrl: `${normalizedBaseUrl}/api/farcaster/webhook`,
+      subtitle: "Premium content with instant USDC payments",
+      description: "Discover premium content from top creators. Purchase with instant USDC payments on Base. Support creators directly through subscriptions and one-time purchases.",
+      primaryCategory: "social",
+      tags: ["content", "social", "subscription", "onchain", "premium"],
+      heroImageUrl: `${normalizedBaseUrl}/images/miniapp-og-image.png`,
+      tagline: "Premium Content, pay with USDC",
+      ogTitle: "Bloom - Create, Share and Earn",
+      ogDescription: "Discover premium content from top creators. Purchase with instant USDC payments on Base.",
+      ogImageUrl: `${normalizedBaseUrl}/images/miniapp-og-image.png`,
+      requiredChains: ["eip155:8453"], // Base mainnet
+      requiredCapabilities: [
+        "actions.signIn",
+        "wallet.getEthereumProvider",
+        "actions.swapToken"
+      ],
+      canonicalDomain: "dxbloom.com"
     }
   }
 
@@ -199,12 +147,11 @@ export async function GET(): Promise<NextResponse> {
     const requiredFields = [
       manifest.accountAssociation?.header,
       manifest.accountAssociation?.payload,
-      manifest.frame?.version,
-      manifest.frame?.name,
-      manifest.frame?.webhookUrl,
-      manifest.miniApp?.url,
-      manifest.miniApp?.name,
-      manifest.platform?.contentDiscoveryEndpoint
+      manifest.accountAssociation?.signature,
+      manifest.miniapp?.version,
+      manifest.miniapp?.name,
+      manifest.miniapp?.homeUrl,
+      manifest.miniapp?.iconUrl
     ]
 
     const missingFields = requiredFields.filter(field => !field)
