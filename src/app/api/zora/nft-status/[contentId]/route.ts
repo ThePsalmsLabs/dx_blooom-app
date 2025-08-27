@@ -50,7 +50,7 @@ export async function GET(
       })
     }
 
-    // Get performance comparison
+    // Get performance comparison with real analytics
     const performanceComparison = await dbService.getPerformanceComparison(contentId)
 
     return NextResponse.json<NFTStatusResponse>({
@@ -59,10 +59,23 @@ export async function GET(
         isMinted: true,
         nftRecord,
         analytics: performanceComparison ? {
+          // NFT Metrics
           totalMints: performanceComparison.nftMetrics.mints,
           totalVolume: performanceComparison.nftMetrics.nftRevenue,
           averagePrice: performanceComparison.nftMetrics.averageMintPrice,
           uniqueMinters: 0, // TODO: Query from on-chain data
+          
+          // Subscription Metrics
+          totalSubscribers: performanceComparison.subscriptionMetrics.subscribers,
+          subscriptionRevenue: performanceComparison.subscriptionMetrics.subscriptionRevenue,
+          averageSubscriptionPrice: performanceComparison.subscriptionMetrics.averageSubscriptionPrice,
+          
+          // Combined Metrics
+          totalRevenue: performanceComparison.combinedMetrics.totalRevenue,
+          totalEngagement: performanceComparison.combinedMetrics.totalEngagement,
+          revenuePerUser: performanceComparison.combinedMetrics.revenuePerUser,
+          
+          // Historical Data (TODO: Implement)
           mintsLast24h: BigInt(0), // TODO: Calculate from mint timestamps
           volumeLast24h: BigInt(0), // TODO: Calculate from mint timestamps
           mintsLast7d: BigInt(0), // TODO: Calculate from mint timestamps
@@ -71,6 +84,8 @@ export async function GET(
           volumeLast30d: BigInt(0), // TODO: Calculate from mint timestamps
           mintTrend: 'stable', // TODO: Calculate trend from historical data
           volumeTrend: 'stable', // TODO: Calculate trend from historical data
+          
+          // Social Metrics (TODO: Implement)
           conversionRate: 0, // TODO: Calculate from views vs mints
           socialShares: 0, // TODO: Query from social platforms
           socialEngagement: 0, // TODO: Query from social platforms

@@ -34,7 +34,7 @@ export function getContractAddresses(chainId: number) {
 }
 
 export const ZORA_ADDRESSES = {
-  // Base Mainnet (8453)
+  // Base Mainnet (8453) - Production addresses
   8453: {
     // Core Contracts
     ZORA_CREATOR_1155_FACTORY_IMPL: '0x777777E8850d8D6d98De2d777C5c3c7d45261788' as const,
@@ -51,7 +51,7 @@ export const ZORA_ADDRESSES = {
     ZORA_CREATOR_1155_PREMINT_EXECUTOR: '0x7777773606e7e46C8Ba8B98C08f5cD218F335941' as const,
   },
   
-  // Base Sepolia (84532)  
+  // Base Sepolia (84532) - Testnet addresses (same as mainnet for now, but properly separated)
   84532: {
     // Core Contracts
     ZORA_CREATOR_1155_FACTORY_IMPL: '0x777777E8850d8D6d98De2d777C5c3c7d45261788' as const,

@@ -16,6 +16,7 @@ interface FarcasterManifest {
   readonly accountAssociation: {
     readonly header: string
     readonly payload: string
+    readonly signature: string
   }
   
   /** Frame configuration for content preview and interaction */
@@ -92,8 +93,9 @@ function buildFarcasterManifest(): FarcasterManifest {
     // This prevents impersonation and ensures that Farcaster clients can trust
     // that frames and mini apps are actually served by your legitimate platform
     accountAssociation: {
-      header: "farcaster-verify",
-      payload: `domain=${normalizedBaseUrl.replace(/^https?:\/\//, '')}`
+      header: "eyJmaWQiOjg3Mjg2MiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEFDNzNkZTEzN0NiZjQ4MTgxMzY2RWI4MjVjNGYzNTNiMzFkODI5NzYifQ",
+      payload: "eyJkb21haW4iOiJkeGJsb29tLmNvbSJ9",
+      signature: "MHhlNGI5NmQ2ZTBjZDM0OGE0NjdhZDYxYTAxOGIxY2UwZmRmOTdkZjhkYjYwNzI0YTgxYThiNmMyMTI2NjU4ZGRmM2ZmYmI1ZTJmNzQ5NTMwMzllOWEzZDlkZTVkNzI3ZTU2ZWU1OTlmZTNmMWZlNmFmMWY2YjcyNmQxMDY0NmUxMTFj"
     },
 
     // Frame configuration enables your content to be previewed and interacted with
@@ -122,7 +124,7 @@ function buildFarcasterManifest(): FarcasterManifest {
     // within the social environment
     miniApp: {
       url: `${normalizedBaseUrl}/mini`,
-      name: "Content Platform",
+      name: "Bloom",
       description: "Discover and purchase premium content with instant USDC payments. Support creators through direct purchases and subscriptions.",
       iconUrl: `${normalizedBaseUrl}/icons/miniapp-icon.png`,
       

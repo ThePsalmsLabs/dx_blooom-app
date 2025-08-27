@@ -6,6 +6,13 @@
  * intelligent payment processing. It maintains full backward compatibility with your
  * existing UI while adding advanced error recovery, health monitoring, and performance tracking.
  * 
+ * ENHANCED ARCHITECTURE:
+ * - Payment Intent Phases - Prevents premature RPC calls until user expresses intent
+ * - Conditional Hook Enabling - Balance/allowance hooks only active after intent
+ * - Progressive Enhancement - Show content info first, payment options second
+ * - Payment Method Selection Modal - Dedicated interface for payment methods
+ * - Enhanced Error Handling - Comprehensive error recovery with user-friendly options
+ * 
  * INTEGRATION ARCHITECTURE:
  * - Replaces usePaymentIntentFlow with usePaymentFlowOrchestrator
  * - Maps orchestrated state to existing UI components and patterns
@@ -15,6 +22,7 @@
  * - Implements comprehensive performance tracking and bottleneck identification
  * 
  * PRODUCTION-READY FEATURES:
+ * - Zero RPC calls until user expresses purchase intent
  * - Circuit breaker prevents backend overload during high traffic
  * - Exponential backoff reduces system load during recovery periods
  * - Automatic error classification with targeted recovery strategies
@@ -58,7 +66,8 @@ import {
   Timer,
   RotateCcw,
   Share2,
-  Bookmark
+  Bookmark,
+  X
 } from 'lucide-react'
 
 import {
@@ -75,6 +84,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 // Import business logic hooks and utilities
@@ -95,6 +111,18 @@ import {
 import { ErrorCategory, RecoveryStrategy } from '@/hooks/web3/useErrorRecoveryStrategies'
 
 /**
+ * Payment Intent Phases
+ * Tracks the user's journey from browsing to purchasing
+ */
+enum PaymentIntentPhase {
+  BROWSING = 'browsing',           // User is viewing content info
+  INTENT_EXPRESSED = 'intent_expressed', // User clicked "Purchase Content"
+  SELECTING_METHOD = 'selecting_method', // User is choosing payment method
+  PAYMENT_ACTIVE = 'payment_active',     // Payment is being processed
+  COMPLETED = 'completed'               // Purchase completed
+}
+
+/**
  * Payment Method Configuration Interface
  */
 interface PaymentMethodConfig {
@@ -110,7 +138,7 @@ interface PaymentMethodConfig {
 }
 
 /**
- * Token Information Interface
+ * Token Information Interface - Only populated after intent expressed
  */
 interface TokenInfo {
   readonly address: Address
@@ -127,12 +155,13 @@ interface TokenInfo {
 }
 
 /**
- * Orchestrated Payment State Management
+ * Enhanced Payment State with Intent Tracking
  */
-interface OrchestratedPaymentState {
-  readonly selectedMethod: PaymentMethod
+interface EnhancedPaymentState {
+  readonly intentPhase: PaymentIntentPhase
+  readonly selectedMethod: PaymentMethod | null
   readonly availableTokens: Record<PaymentMethod, TokenInfo | null>
-  readonly showAdvancedOptions: boolean
+  readonly showMethodSelector: boolean
   readonly isProcessing: boolean
   readonly lastPaymentResult: PaymentResult | null
   readonly errorRecoveryOptions: Array<{
@@ -141,6 +170,73 @@ interface OrchestratedPaymentState {
     readonly description: string
     readonly isRecommended: boolean
   }>
+}
+
+/**
+ * Payment Method Selection Modal
+ */
+interface PaymentMethodSelectorProps {
+  readonly isOpen: boolean
+  readonly onClose: () => void
+  readonly contentPrice: bigint
+  readonly availableMethods: PaymentMethodConfig[]
+  readonly onMethodSelect: (method: PaymentMethod) => void
+}
+
+function PaymentMethodSelector({
+  isOpen,
+  onClose,
+  contentPrice,
+  availableMethods,
+  onMethodSelect
+}: PaymentMethodSelectorProps) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Select Payment Method</DialogTitle>
+          <DialogDescription>
+            Choose how you'd like to pay for this content
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-3">
+          {availableMethods.map(method => (
+            <div
+              key={method.id}
+              className="border rounded-lg p-4 cursor-pointer transition-colors hover:bg-muted/50"
+              onClick={() => {
+                onMethodSelect(method.id)
+                onClose()
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <method.icon className="h-5 w-5" />
+                  <div>
+                    <div className="font-medium">{method.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {method.description}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-sm">
+                  <div className="text-muted-foreground">{method.estimatedTime}</div>
+                  <div className="text-xs">Gas: {method.gasEstimate}</div>
+                </div>
+              </div>
+              
+              {method.requiresApproval && (
+                <div className="mt-2 text-xs text-amber-600">
+                  Requires token approval
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 /**
@@ -164,44 +260,17 @@ function SystemHealthIndicator({ health, compact = false }: SystemHealthIndicato
   const getHealthMessage = () => {
     switch (health.overallStatus) {
       case 'healthy': return compact ? 'System Optimal' : 'Payment system operating normally'
-      case 'degraded': return compact ? 'System Slow' : 'Payments may take longer than usual'
-      case 'critical': return compact ? 'System Issues' : 'Payment system experiencing difficulties'
-      default: return compact ? 'Checking...' : 'Checking system health...'
+      case 'degraded': return compact ? 'System Degraded' : 'Some payment methods may be slower'
+      case 'critical': return compact ? 'System Issues' : 'Payment system experiencing issues'
+      default: return 'Checking system status...'
     }
   }
 
-  if (compact) {
-    return (
-      <div className="flex items-center gap-2 text-sm">
-        {getHealthIcon()}
-        <span className="text-muted-foreground">{getHealthMessage()}</span>
-      </div>
-    )
-  }
-
   return (
-    <Alert className={cn(
-      "border-l-4",
-      health.overallStatus === 'healthy' && "border-l-green-500 bg-green-50",
-      health.overallStatus === 'degraded' && "border-l-yellow-500 bg-yellow-50", 
-      health.overallStatus === 'critical' && "border-l-red-500 bg-red-50"
-    )}>
-      <div className="flex items-start gap-3">
-        {getHealthIcon()}
-        <div className="flex-1">
-          <div className="font-medium text-sm">{getHealthMessage()}</div>
-          {health.recommendations.length > 0 && (
-            <div className="mt-2 text-xs text-muted-foreground">
-              {health.recommendations[0]}
-            </div>
-          )}
-          <div className="mt-2 text-xs text-muted-foreground">
-            Response Time: {health.backend.avgResponseTime.toFixed(0)}ms • 
-            Success Rate: {health.backend.successRate.toFixed(1)}%
-          </div>
-        </div>
-      </div>
-    </Alert>
+    <div className="flex items-center gap-2 text-sm">
+      {getHealthIcon()}
+      <span className="text-muted-foreground">{getHealthMessage()}</span>
+    </div>
   )
 }
 
@@ -411,14 +480,37 @@ export function OrchestratedContentPurchaseCard({
   // Use connected address if no userAddress provided
   const effectiveUserAddress = userAddress || connectedAddress
 
-  // Core data hooks
+  // ===== CORE DATA HOOKS (Always Active) =====
+  // These are lightweight and only fetch basic content info
   const contentQuery = useContentById(contentId)
   const accessQuery = useHasContentAccess(effectiveUserAddress, contentId)
+
+  // ===== PAYMENT INTENT STATE MANAGEMENT =====
+  const [paymentState, setPaymentState] = useState<EnhancedPaymentState>({
+    intentPhase: PaymentIntentPhase.BROWSING,
+    selectedMethod: null,
+    availableTokens: {
+      [PaymentMethod.USDC]: null,
+      [PaymentMethod.ETH]: null,
+      [PaymentMethod.WETH]: null,
+      [PaymentMethod.CBETH]: null,
+      [PaymentMethod.DAI]: null,
+      [PaymentMethod.OTHER_TOKEN]: null
+    },
+    showMethodSelector: false,
+    isProcessing: false,
+    lastPaymentResult: null,
+    errorRecoveryOptions: []
+  })
+
+  // ===== CONDITIONAL PAYMENT DATA HOOKS (Only Active After Intent) =====
+  // These hooks are only enabled after user expresses purchase intent
+  const paymentDataEnabled = paymentState.intentPhase !== PaymentIntentPhase.BROWSING
   
   // Legacy USDC purchase flow (still used for USDC direct payments)
   const usdcPurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress)
   
-  // Orchestrated payment system integration
+  // Orchestrated payment system integration - only initialize if needed
   const orchestrator = usePaymentFlowOrchestrator({
     healthConfig: {
       maxConsecutiveFailures: 3,
@@ -455,63 +547,51 @@ export function OrchestratedContentPurchaseCard({
     }
   })
 
-  // Token balance hooks for multi-payment support
+  // Token balance hooks - ONLY enabled after payment intent expressed
   const usdcBalance = useTokenBalance(
-    contractAddresses?.USDC, 
-    effectiveUserAddress
+    paymentDataEnabled && !!contractAddresses?.USDC && !!effectiveUserAddress ? contractAddresses.USDC : undefined, 
+    paymentDataEnabled && !!effectiveUserAddress ? effectiveUserAddress : undefined
   )
   
   const ethBalance = useBalance({
     address: effectiveUserAddress,
     query: { 
-      enabled: !!effectiveUserAddress && !!contractAddresses
+      enabled: paymentDataEnabled && !!effectiveUserAddress,
+      refetchInterval: 30000
     }
   })
   
-  // FIXED: Add USDC allowance checking for proper contract integration
+  // USDC allowance checking - ONLY enabled after payment intent expressed
   const usdcAllowance = useTokenAllowance(
-    contractAddresses?.USDC,
-    effectiveUserAddress,
-    contractAddresses?.PAY_PER_VIEW
+    paymentDataEnabled && !!contractAddresses?.USDC && !!effectiveUserAddress ? contractAddresses.USDC : undefined,
+    paymentDataEnabled && !!effectiveUserAddress ? effectiveUserAddress : undefined,
+    paymentDataEnabled && !!contractAddresses?.PAY_PER_VIEW ? contractAddresses.PAY_PER_VIEW : undefined
   )
   
-  // FIXED: Price oracle integration - use correct function and parameters
+  // Price oracle integration - ONLY enabled after payment intent expressed
   const ethPriceQuery = useReadContract({
     address: contractAddresses?.PRICE_ORACLE,
     abi: PRICE_ORACLE_ABI,
-    functionName: 'getTokenPrice', // Use the actual function from your ABI
-    args: contractAddresses ? ['0x0000000000000000000000000000000000000000', contractAddresses.USDC, contentQuery.data?.payPerViewPrice || BigInt(0), 6] : undefined,
+    functionName: 'getTokenPrice',
+    args: contractAddresses ? [
+      '0x0000000000000000000000000000000000000000', 
+      contractAddresses.USDC, 
+      contentQuery.data?.payPerViewPrice || BigInt(0), 
+      6
+    ] : undefined,
     query: { 
-      enabled: !!contractAddresses?.PRICE_ORACLE && !!contentQuery.data?.payPerViewPrice,
-      refetchInterval: 30000 // Refresh every 30 seconds
+      enabled: paymentDataEnabled && !!contractAddresses?.PRICE_ORACLE && !!contentQuery.data?.payPerViewPrice,
+      refetchInterval: 30000
     }
   })
-  
-  // Component state management - FIXED: Proper initialization
-  const [paymentState, setPaymentState] = useState<OrchestratedPaymentState>({
-    selectedMethod: PaymentMethod.USDC,
-    availableTokens: {
-      [PaymentMethod.USDC]: null,
-      [PaymentMethod.ETH]: null,
-      [PaymentMethod.WETH]: null,
-      [PaymentMethod.CBETH]: null,
-      [PaymentMethod.DAI]: null,
-      [PaymentMethod.OTHER_TOKEN]: null
-    },
-    showAdvancedOptions: false,
-    isProcessing: false,
-    lastPaymentResult: null,
-    errorRecoveryOptions: []
-  })
 
-  // FIXED: Price calculations for ETH payments - use actual price oracle data
+  // ===== PAYMENT CALCULATIONS (Only After Intent) =====
   const ethPaymentCalculation = useMemo(() => {
-    if (!contentQuery.data?.payPerViewPrice || !ethPriceQuery.data) {
+    if (!paymentDataEnabled || !contentQuery.data?.payPerViewPrice || !ethPriceQuery.data) {
       return null
     }
     
     const usdcPrice = contentQuery.data.payPerViewPrice
-    // ethPriceQuery.data is the amount of ETH needed for the USDC amount
     const requiredEthAmount = ethPriceQuery.data as bigint
     const slippageBps = BigInt(200) // 2% slippage
     
@@ -524,10 +604,12 @@ export function OrchestratedContentPurchaseCard({
       ethAmountWithSlippage,
       slippageAmount: ethAmountWithSlippage - requiredEthAmount
     }
-  }, [contentQuery.data?.payPerViewPrice, ethPriceQuery.data])
+  }, [paymentDataEnabled, contentQuery.data?.payPerViewPrice, ethPriceQuery.data])
 
-  // Available payment methods configuration - FIXED: Use correct enum values
+  // Available payment methods - only calculated when needed
   const availablePaymentMethods = useMemo((): PaymentMethodConfig[] => {
+    if (!paymentDataEnabled) return []
+    
     const systemHealth = orchestrator.state.systemHealth
     
     return [
@@ -554,10 +636,14 @@ export function OrchestratedContentPurchaseCard({
         healthStatus: systemHealth.overallStatus === 'critical' ? 'unavailable' : systemHealth.overallStatus
       }
     ]
-  }, [orchestrator.canStartPayment, orchestrator.state.systemHealth])
+  }, [paymentDataEnabled, orchestrator.canStartPayment, orchestrator.state.systemHealth])
 
-  // Token information calculation - properly handle USDC allowance
+
+
+  // Token information calculation - only when payment data is enabled
   useEffect(() => {
+    if (!paymentDataEnabled) return
+    
     const tokens: Record<PaymentMethod, TokenInfo | null> = {
       [PaymentMethod.USDC]: null,
       [PaymentMethod.ETH]: null,
@@ -600,166 +686,106 @@ export function OrchestratedContentPurchaseCard({
         error: ethBalance.error?.message || ethPriceQuery.error?.message
       }
     }
-
-    // Only update state if values actually changed to avoid render loops
-    setPaymentState(prev => {
-      const prevTokens = prev.availableTokens
-      let changed = false
-      ;([PaymentMethod.USDC, PaymentMethod.ETH] as const).forEach((m) => {
-        const a = prevTokens[m]
-        const b = tokens[m]
-        if (!a && !b) return
-        if (!a || !b) { changed = true; return }
-        if (
-          a.address !== b.address ||
-          a.symbol !== b.symbol ||
-          a.decimals !== b.decimals ||
-          a.balance !== b.balance ||
-          a.requiredAmount !== b.requiredAmount ||
-          a.hasEnoughBalance !== b.hasEnoughBalance ||
-          a.allowance !== b.allowance ||
-          a.needsApproval !== b.needsApproval ||
-          a.isLoading !== b.isLoading ||
-          a.error !== b.error
-        ) {
-          changed = true
-        }
-      })
-      if (!changed) return prev
-      return { ...prev, availableTokens: tokens }
-    })
+    
+    setPaymentState(prev => ({
+      ...prev,
+      availableTokens: tokens
+    }))
   }, [
-    contractAddresses?.USDC,
-    contentQuery.data?.payPerViewPrice,
+    paymentDataEnabled,
+    contractAddresses,
+    contentQuery.data,
     usdcBalance.data,
     usdcBalance.isLoading,
     usdcBalance.error,
     usdcAllowance.data,
     usdcAllowance.isLoading,
     usdcAllowance.error,
-    ethBalance.data?.value,
+    ethPaymentCalculation,
+    ethBalance.data,
     ethBalance.isLoading,
     ethBalance.error,
-    ethPaymentCalculation?.ethAmountWithSlippage,
     ethPriceQuery.isLoading,
     ethPriceQuery.error
   ])
+
+  // ===== EVENT HANDLERS =====
+  
+  /**
+   * Handle Initial Purchase Intent
+   * This is triggered when user clicks "Purchase Content" for the first time
+   */
+  const handleExpressPurchaseIntent = useCallback(() => {
+    console.log('💭 User expressed purchase intent for content:', contentId.toString())
+    
+    setPaymentState(prev => ({
+      ...prev,
+      intentPhase: PaymentIntentPhase.INTENT_EXPRESSED,
+      showMethodSelector: enableMultiPayment
+    }))
+  }, [contentId, enableMultiPayment])
+
+  /**
+   * Handle Payment Method Selection
+   */
+  const handleMethodSelect = useCallback((method: PaymentMethod) => {
+    console.log('🎯 User selected payment method:', method)
+    
+    setPaymentState(prev => ({
+      ...prev,
+      selectedMethod: method,
+      intentPhase: PaymentIntentPhase.SELECTING_METHOD,
+      showMethodSelector: false
+    }))
+  }, [])
 
   // FIXED: Add payment duration tracking
   const [paymentStartTime, setPaymentStartTime] = useState<number | null>(null)
 
   /**
-   * FIXED: Handle USDC payment using existing flow with proper error handling
+   * Handle USDC Purchase Execution
    */
   const handleUSDCPurchase = useCallback(async () => {
-    if (!usdcPurchaseFlow.canExecutePayment || paymentState.isProcessing) {
-      return
-    }
+    if (!contentQuery.data || paymentState.isProcessing) return
 
     const startTime = Date.now()
-    setPaymentStartTime(startTime)
-    setPaymentState(prev => ({ ...prev, isProcessing: true }))
+    setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
 
     try {
-      // Use existing USDC purchase flow
+      console.log('💳 Starting USDC purchase via legacy flow')
+      
       await usdcPurchaseFlow.executePayment()
       
-      const totalDuration = Date.now() - startTime
-      
-      // Create comprehensive payment result for consistency
-      const result: PaymentResult = {
-        success: true,
-        intentId: `usdc_direct_${Date.now()}` as `0x${string}`,
-        transactionHash: null, // Will be populated by the flow if available
-        signature: null,
-        totalDuration,
-        performanceMetrics: {
-          intentCreationTime: 0,
-          signatureWaitTime: 0,
-          executionTime: totalDuration,
-          confirmationTime: 0
-        },
-        recoveryAttempts: 0,
-        errorCategory: null,
-        finalError: null
-      }
+      console.log('✅ USDC purchase completed successfully')
       
       setPaymentState(prev => ({ 
         ...prev, 
         isProcessing: false,
-        lastPaymentResult: result
+        intentPhase: PaymentIntentPhase.COMPLETED
       }))
-      
-      if (onPurchaseSuccess) {
-        onPurchaseSuccess(contentId, result)
-      }
-      
-      // Refresh data to show updated access status
-      await Promise.allSettled([
-        accessQuery.refetch(),
-        usdcBalance.refetch()
-      ])
-      
+
+      // Refresh access status
+      await accessQuery.refetch()
+
     } catch (error) {
-      const totalDuration = Date.now() - startTime
-      console.error('USDC purchase failed:', error)
-      
-      // Determine error category for recovery strategies
-      let errorCategory: ErrorCategory = 'unknown_error'
-      if (error instanceof Error) {
-        if (error.message.includes('insufficient funds') || error.message.includes('balance')) {
-          errorCategory = 'insufficient_funds'
-        } else if (error.message.includes('user rejected') || error.message.includes('cancelled')) {
-          errorCategory = 'validation_error'
-        } else if (error.message.includes('network') || error.message.includes('timeout')) {
-          errorCategory = 'transient_network'
-        } else if (error.message.includes('contract') || error.message.includes('revert')) {
-          errorCategory = 'contract_error'
-        }
-      }
+      console.error('❌ USDC purchase failed:', error)
       
       setPaymentState(prev => ({ 
         ...prev, 
         isProcessing: false,
-        lastPaymentResult: {
-          success: false,
-          intentId: null,
-          transactionHash: null,
-          signature: null,
-          totalDuration,
-          performanceMetrics: {
-            intentCreationTime: 0,
-            signatureWaitTime: 0,
-            executionTime: 0,
-            confirmationTime: 0
-          },
-          recoveryAttempts: 0,
-          errorCategory,
-          finalError: error as Error
-        }
+        intentPhase: PaymentIntentPhase.SELECTING_METHOD
       }))
-    } finally {
-      setPaymentStartTime(null)
     }
-  }, [usdcPurchaseFlow, paymentState.isProcessing, onPurchaseSuccess, contentId, accessQuery, usdcBalance])
+  }, [contentQuery.data, paymentState.isProcessing, usdcPurchaseFlow, accessQuery])
 
   /**
-   * FIXED: Handle ETH payment using orchestrated flow with comprehensive error handling
+   * Handle ETH Purchase Execution
    */
   const handleETHPurchase = useCallback(async () => {
-    if (!orchestrator.canStartPayment || !ethPaymentCalculation || !contentQuery.data || !effectiveUserAddress) {
-      console.error('Cannot start ETH payment:', {
-        canStart: orchestrator.canStartPayment,
-        hasCalculation: !!ethPaymentCalculation,
-        hasContent: !!contentQuery.data,
-        hasAddress: !!effectiveUserAddress
-      })
-      return
-    }
+    if (!contentQuery.data || !ethPaymentCalculation || paymentState.isProcessing) return
 
     const startTime = Date.now()
-    setPaymentStartTime(startTime)
-    setPaymentState(prev => ({ ...prev, isProcessing: true }))
+    setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
 
     try {
       const paymentRequest: OrchestratedPaymentRequest = {
@@ -768,23 +794,24 @@ export function OrchestratedContentPurchaseCard({
         ethAmount: ethPaymentCalculation.ethAmountWithSlippage,
         maxSlippage: BigInt(200), // 2%
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600), // 1 hour
-        userAddress: effectiveUserAddress,
+        userAddress: effectiveUserAddress!,
         sessionId: `purchase_${contentId}_${Date.now()}`,
         metadata: {
-          source: 'content_purchase_card',
+          source: 'enhanced_content_purchase_card',
           referrer: window.location.href
         }
       }
 
-      console.log(' Starting orchestrated ETH payment:', paymentRequest)
+      console.log('⚡ Starting orchestrated ETH payment:', paymentRequest)
       
       const result = await orchestrator.executePayment(paymentRequest)
       
-      console.log(' ETH payment completed:', result)
+      console.log('✅ ETH payment completed:', result)
       
       setPaymentState(prev => ({ 
         ...prev, 
         isProcessing: false,
+        intentPhase: PaymentIntentPhase.COMPLETED,
         lastPaymentResult: result
       }))
 
@@ -797,466 +824,338 @@ export function OrchestratedContentPurchaseCard({
       }
 
     } catch (error) {
-      console.error(' ETH purchase failed:', error)
-      
-      // Create comprehensive error result
-      const errorResult: PaymentResult = {
-        success: false,
-        intentId: null,
-        transactionHash: null,
-        signature: null,
-        totalDuration: Date.now() - startTime,
-        performanceMetrics: {
-          intentCreationTime: 0,
-          signatureWaitTime: 0,
-          executionTime: 0,
-          confirmationTime: 0
-        },
-        recoveryAttempts: orchestrator.state.recoveryContext.recoveryAttempt,
-        errorCategory: 'unknown_error',
-        finalError: error as Error
-      }
+      console.error('❌ ETH purchase failed:', error)
       
       setPaymentState(prev => ({ 
         ...prev, 
         isProcessing: false,
-        lastPaymentResult: errorResult
+        intentPhase: PaymentIntentPhase.SELECTING_METHOD
       }))
-    } finally {
-      setPaymentStartTime(null)
     }
   }, [
-    orchestrator,
-    ethPaymentCalculation,
-    contentQuery.data,
+    contentQuery.data, 
+    ethPaymentCalculation, 
+    paymentState.isProcessing, 
+    contentId, 
     effectiveUserAddress,
-    contentId,
-    accessQuery,
+    orchestrator, 
+    accessQuery, 
     ethBalance
   ])
 
-  /**
-   * Handle payment retry 
-   */
-  const handleRetryPayment = useCallback(async () => {
-    if (paymentState.selectedMethod === PaymentMethod.USDC) {
-      await handleUSDCPurchase()
-    } else if (paymentState.selectedMethod === PaymentMethod.ETH) {
-      await orchestrator.retryPayment()
-    }
-  }, [paymentState.selectedMethod, handleUSDCPurchase, orchestrator])
 
-  /**
-   * Handle payment cancellation
-   */
-  const handleCancelPayment = useCallback(() => {
-    orchestrator.cancelPayment()
-    setPaymentState(prev => ({ ...prev, isProcessing: false }))
-  }, [orchestrator])
 
-  // Loading states
-  if (contentQuery.isLoading) {
+  // ===== RENDER LOGIC =====
+
+  // Loading state
+  if (contentQuery.isLoading || accessQuery.isLoading) {
     return (
       <Card className={className}>
         <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-20" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-2/3" />
         </CardContent>
+        <CardFooter>
+          <Skeleton className="h-10 w-full" />
+        </CardFooter>
       </Card>
     )
   }
 
   // Error state
-  if (contentQuery.isError || !contentQuery.data) {
+  if (contentQuery.error || accessQuery.error) {
     return (
       <Card className={className}>
-        <CardContent className="pt-6">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Failed to load content information
-            </AlertDescription>
-          </Alert>
+        <CardContent className="text-center py-8">
+          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+          <p className="text-sm text-muted-foreground">Failed to load content information</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-2"
+            onClick={() => {
+              contentQuery.refetch()
+              accessQuery.refetch()
+            }}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </CardContent>
       </Card>
     )
   }
 
-  // Access granted state
-  if (accessQuery.data) {
+  const content = contentQuery.data
+  const hasAccess = accessQuery.data
+
+  // User already has access
+  if (hasAccess && content) {
     return (
+      <Card className={className}>
+        <CardContent className="text-center py-8">
+          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
+          <p className="font-medium text-green-800 mb-3">You have access to this content</p>
+          <Button onClick={() => onViewContent?.(contentId)}>
+            <Eye className="h-4 w-4 mr-2" />
+            View Content
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Main purchase interface
+  if (!content) {
+    return (
+      <Card className={className}>
+        <CardContent className="text-center py-8">
+          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+          <p className="text-sm text-muted-foreground">Content not found</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <>
       <Card className={className}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xl">Content Access</CardTitle>
+              <CardTitle className="text-xl">
+                {variant === 'minimal' ? 'Purchase' : 'Purchase Content'}
+              </CardTitle>
               <CardDescription>
-                You have successfully purchased this content
+                {formatCurrency(content.payPerViewPrice, 6)} USDC
               </CardDescription>
             </div>
             <div className="text-right">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Access Granted
-                </Badge>
+              <div className="text-sm font-medium">
+                {content.category}
               </div>
+              {showCreatorInfo && (
+                <div className="text-xs text-muted-foreground">
+                  by {formatAddress(content.creator)}
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {/* Content Information */}
-          {contentQuery.data && (
-            <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1">
-                    {contentQuery.data.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {contentQuery.data.description}
-                  </p>
-                </div>
-                <div className="ml-4 text-right">
-                  <div className="text-sm font-medium text-green-600">
-                    {formatCurrency(contentQuery.data.payPerViewPrice, 6)} USDC
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Paid
-                  </div>
-                </div>
-              </div>
+        <CardContent className="space-y-6">
+          {/* System Health Indicator - Only show during payment flow */}
+          {showSystemHealth && paymentDataEnabled && (
+            <SystemHealthIndicator health={orchestrator.state.systemHealth} />
+          )}
 
-              {/* Creator Information */}
-              {showCreatorInfo && (
-                <div className="flex items-center gap-2 pt-2 border-t">
-                  <Avatar className="w-6 h-6">
-                    <AvatarFallback className="text-xs">
-                      {formatAddress(contentQuery.data.creator).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      by {formatAddress(contentQuery.data.creator)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Creator
-                    </div>
-                  </div>
+          {/* Payment Progress - Only show during active payment */}
+          {paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{orchestrator.state.message}</span>
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+              <Progress value={orchestrator.state.progress} />
+              
+              {orchestrator.state.paymentProgress.estimatedTimeRemaining > 0 && (
+                <div className="text-xs text-muted-foreground text-center">
+                  Estimated time remaining: {Math.ceil(orchestrator.state.paymentProgress.estimatedTimeRemaining / 1000)}s
                 </div>
               )}
-
-              {/* Content Category */}
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {contentQuery.data.category}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  Content Type
-                </span>
-              </div>
             </div>
           )}
 
-          {/* Purchase Details */}
-          {showPurchaseDetails && paymentState.lastPaymentResult && (
-            <div className="pt-3 border-t">
-              <div className="text-sm font-medium mb-2">Purchase Details</div>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>Payment Method:</span>
-                  <span className="font-medium">
-                    {paymentState.selectedMethod === PaymentMethod.USDC ? 'USDC Direct' : 'ETH Swap'}
-                  </span>
-                </div>
-                {paymentState.lastPaymentResult.totalDuration && (
-                  <div className="flex justify-between">
-                    <span>Processing Time:</span>
-                    <span className="font-medium">
-                      {(paymentState.lastPaymentResult.totalDuration / 1000).toFixed(1)}s
-                    </span>
-                  </div>
-                )}
-                {paymentState.lastPaymentResult.transactionHash && (
-                  <div className="flex justify-between">
-                    <span>Transaction:</span>
-                    <span className="font-medium truncate ml-2">
-                      {paymentState.lastPaymentResult.transactionHash.slice(0, 8)}...
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="pt-4 border-t">
-            <Button 
-              onClick={() => router.push(`/content/${contentId}/view`)}
-              className="w-full"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View Full Content
-            </Button>
-            
-            {/* Additional Actions */}
-            <div className="flex gap-2 mt-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={() => {
-                  // Share content functionality
-                  if (navigator.share && contentQuery.data) {
-                    navigator.share({
-                      title: contentQuery.data.title,
-                      text: contentQuery.data.description,
-                      url: window.location.href
-                    })
-                  } else {
-                    // Fallback to copying URL
-                    navigator.clipboard.writeText(window.location.href)
-                  }
-                }}
-              >
-                <Share2 className="h-4 w-4 mr-1" />
-                Share
-              </Button>
+          {/* Selected Payment Method Details - Only show after method selected */}
+          {paymentState.selectedMethod && paymentState.availableTokens[paymentState.selectedMethod] && (
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Payment Details</div>
               
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={() => {
-                  // Download or save functionality
-                  console.log('Save content functionality')
-                }}
-              >
-                <Bookmark className="h-4 w-4 mr-1" />
-                Save
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Active payment in progress
-  if (orchestrator.state.isActive || paymentState.isProcessing) {
-    return (
-      <div className={className}>
-        <PaymentProgressDisplay
-          state={orchestrator.state}
-          onCancel={orchestrator.state.userInteraction.canCancel ? handleCancelPayment : undefined}
-          onRetry={orchestrator.state.phase === 'failed' ? handleRetryPayment : undefined}
-        />
-      </div>
-    )
-  }
-
-  const selectedToken = paymentState.availableTokens[paymentState.selectedMethod]
-  const canProceed = selectedToken?.hasEnoughBalance && 
-    (paymentState.selectedMethod === PaymentMethod.USDC ? usdcPurchaseFlow.canExecutePayment : orchestrator.canStartPayment)
-
-  return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl">Purchase Content</CardTitle>
-            <CardDescription>
-              {formatCurrency(contentQuery.data.payPerViewPrice, 6)} USDC
-            </CardDescription>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-medium">
-              {contentQuery.data.category}
-            </div>
-            {showCreatorInfo && (
-              <div className="text-xs text-muted-foreground">
-                by {formatAddress(contentQuery.data.creator)}
-              </div>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* System Health Indicator */}
-        {showSystemHealth && (
-          <SystemHealthIndicator health={orchestrator.state.systemHealth} />
-        )}
-
-        {/* Payment Method Selection */}
-        {enableMultiPayment && (
-          <div className="space-y-3">
-            <div className="text-sm font-medium">Payment Method</div>
-            <div className="grid gap-3">
-              {availablePaymentMethods.map(method => {
-                const token = paymentState.availableTokens[method.id]
-                const isSelected = paymentState.selectedMethod === method.id
-                const isDisabled = !method.isAvailable || !token?.hasEnoughBalance
-
+              {(() => {
+                const selectedToken = paymentState.availableTokens[paymentState.selectedMethod]!
                 return (
-                  <div
-                    key={method.id}
-                    className={cn(
-                      "border rounded-lg p-4 cursor-pointer transition-colors",
-                      isSelected && "border-primary bg-primary/5",
-                      isDisabled && "opacity-50 cursor-not-allowed",
-                      !isDisabled && !isSelected && "hover:bg-muted/50"
-                    )}
-                    onClick={() => !isDisabled && setPaymentState(prev => ({ 
-                      ...prev, 
-                      selectedMethod: method.id 
-                    }))}
-                  >
+                  <div className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <method.icon className="h-5 w-5" />
-                        <div>
-                          <div className="font-medium">{method.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {method.description}
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium">{selectedToken.symbol} Balance</div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">
-                          {method.estimatedTime}
-                        </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <Gauge className="h-3 w-3" />
-                          {method.gasEstimate} Gas
-                        </div>
+                      <div className={cn(
+                        "text-sm font-medium",
+                        selectedToken.hasEnoughBalance ? "text-green-600" : "text-red-600"
+                      )}>
+                        {formatTokenBalance(selectedToken.balance || BigInt(0), selectedToken.decimals)} {selectedToken.symbol}
                       </div>
                     </div>
                     
-                    {/* Token Balance Display */}
-                    {token && (
-                      <div className="mt-3 pt-3 border-t">
-                        <div className="flex justify-between items-center text-sm">
-                          <span>Balance:</span>
-                          <span className={cn(
-                            token.hasEnoughBalance ? "text-green-600" : "text-red-600"
-                          )}>
-                            {formatTokenBalance(token.balance || BigInt(0), token.decimals, token.symbol)} {token.symbol}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span>Required:</span>
-                          <span>
-                            {formatTokenBalance(token.requiredAmount, token.decimals, token.symbol)} {token.symbol}
-                          </span>
-                        </div>
-                        {method.id === PaymentMethod.ETH && ethPaymentCalculation && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Includes {formatTokenBalance(ethPaymentCalculation.slippageAmount, 18, 'ETH')} slippage
-                          </div>
-                        )}
+                    {!selectedToken.hasEnoughBalance && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Insufficient {selectedToken.symbol} balance. Need {formatTokenBalance(selectedToken.requiredAmount, selectedToken.decimals)} {selectedToken.symbol}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    {selectedToken.needsApproval && selectedToken.symbol === 'USDC' && (
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          USDC approval required before purchase. This allows the contract to spend your USDC.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    {selectedToken.isLoading && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Checking {selectedToken.symbol} balance and allowance...</span>
                       </div>
                     )}
-
-                    {/* Method Health Status */}
-                    {method.healthStatus && method.healthStatus !== 'healthy' && (
-                      <div className="mt-2 text-xs">
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                          {method.healthStatus === 'degraded' ? 'Slower than usual' : 'Temporarily unavailable'}
-                        </Badge>
-                      </div>
+                    
+                    {selectedToken.error && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          Error checking {selectedToken.symbol}: {selectedToken.error}
+                        </AlertDescription>
+                      </Alert>
                     )}
                   </div>
                 )
-              })}
+              })()}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* FIXED: Enhanced Balance & Approval Status with proper contract integration */}
-        {selectedToken && (
-          <div className="space-y-2">
-            {!selectedToken.hasEnoughBalance && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Insufficient {selectedToken.symbol} balance. You need{' '}
-                  {formatTokenBalance(
-                    selectedToken.requiredAmount - (selectedToken.balance || BigInt(0)),
-                    selectedToken.decimals,
-                    selectedToken.symbol
-                  )}{' '}
-                  more {selectedToken.symbol}.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {selectedToken.needsApproval && selectedToken.symbol === 'USDC' && (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  USDC approval required before purchase. This allows the contract to spend your USDC.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {/* Show loading state for balance/allowance checks */}
-            {selectedToken.isLoading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Checking {selectedToken.symbol} balance and allowance...</span>
-              </div>
-            )}
-            
-            {/* Show errors if any */}
-            {selectedToken.error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Error checking {selectedToken.symbol}: {selectedToken.error}
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        )}
+          {/* Performance Metrics Display - Only during active payment */}
+          {enablePerformanceMetrics && 
+           paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE && 
+           orchestrator.state.performance.totalDuration && (
+            <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded">
+              <div className="font-medium">Performance Metrics</div>
+              <div>Total Duration: {(orchestrator.state.performance.totalDuration / 1000).toFixed(1)}s</div>
+              {orchestrator.state.performance.bottleneckPhase && (
+                <div>Slowest Phase: {orchestrator.state.performance.bottleneckPhase}</div>
+              )}
+            </div>
+          )}
+        </CardContent>
 
-        {/* Performance Metrics Display */}
-        {enablePerformanceMetrics && orchestrator.state.performance.totalDuration && (
-          <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded">
-            <div className="font-medium">Performance Metrics</div>
-            <div>Total Duration: {(orchestrator.state.performance.totalDuration / 1000).toFixed(1)}s</div>
-            {orchestrator.state.performance.bottleneckPhase && (
-              <div>Slowest Phase: {orchestrator.state.performance.bottleneckPhase}</div>
-            )}
-          </div>
-        )}
-      </CardContent>
+        <CardFooter className="space-y-3">
+          {/* Main Action Button - Changes based on intent phase */}
+          {paymentState.intentPhase === PaymentIntentPhase.BROWSING && (
+            <Button 
+              className="w-full" 
+              onClick={handleExpressPurchaseIntent}
+              disabled={!isConnected}
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Purchase Content
+            </Button>
+          )}
 
-      <CardFooter className="space-y-3">
-        {/* Main Purchase Button */}
-        <Button
-          className="w-full"
-          disabled={!canProceed}
-          onClick={paymentState.selectedMethod === PaymentMethod.USDC ? handleUSDCPurchase : handleETHPurchase}
-        >
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          {!selectedToken ? 'Loading...' :
-           !selectedToken.hasEnoughBalance ? `Insufficient ${selectedToken.symbol}` :
-           paymentState.selectedMethod === PaymentMethod.USDC ? 'Purchase with USDC' : 'Purchase with ETH'}
-        </Button>
+          {paymentState.intentPhase === PaymentIntentPhase.INTENT_EXPRESSED && !enableMultiPayment && (
+            <Button 
+              className="w-full" 
+              onClick={() => {
+                setPaymentState(prev => ({ ...prev, selectedMethod: PaymentMethod.USDC }))
+                handleMethodSelect(PaymentMethod.USDC)
+              }}
+              disabled={!isConnected}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Continue with USDC
+            </Button>
+          )}
 
-        {/* Additional Actions */}
-        {!isConnected && (
-          <Button variant="outline" className="w-full">
-            <Wallet className="h-4 w-4 mr-2" />
-            Connect Wallet
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
+          {paymentState.selectedMethod === PaymentMethod.USDC && 
+           paymentState.intentPhase === PaymentIntentPhase.SELECTING_METHOD && (
+            <Button
+              className="w-full"
+              disabled={!paymentState.availableTokens[PaymentMethod.USDC]?.hasEnoughBalance || paymentState.isProcessing}
+              onClick={handleUSDCPurchase}
+            >
+              {paymentState.isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  {paymentState.availableTokens[PaymentMethod.USDC]?.needsApproval 
+                    ? 'Approve & Purchase with USDC' 
+                    : 'Purchase with USDC'}
+                </>
+              )}
+            </Button>
+          )}
+
+          {paymentState.selectedMethod === PaymentMethod.ETH && 
+           paymentState.intentPhase === PaymentIntentPhase.SELECTING_METHOD && (
+            <Button
+              className="w-full"
+              disabled={!paymentState.availableTokens[PaymentMethod.ETH]?.hasEnoughBalance || paymentState.isProcessing}
+              onClick={handleETHPurchase}
+            >
+              {paymentState.isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Coins className="h-4 w-4 mr-2" />
+                  Purchase with ETH
+                </>
+              )}
+            </Button>
+          )}
+
+          {paymentState.intentPhase === PaymentIntentPhase.COMPLETED && (
+            <Button className="w-full bg-green-600 hover:bg-green-700" disabled>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Purchase Complete!
+            </Button>
+          )}
+
+          {/* Connection Required */}
+          {!isConnected && (
+            <Button variant="outline" className="w-full">
+              <Wallet className="h-4 w-4 mr-2" />
+              Connect Wallet
+            </Button>
+          )}
+
+          {/* Back to method selection */}
+          {paymentState.selectedMethod && paymentState.intentPhase === PaymentIntentPhase.SELECTING_METHOD && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setPaymentState(prev => ({ 
+                ...prev, 
+                selectedMethod: null, 
+                showMethodSelector: true,
+                intentPhase: PaymentIntentPhase.INTENT_EXPRESSED
+              }))}
+            >
+              Choose Different Method
+            </Button>
+          )}
+        </CardFooter>
+      </Card>
+
+      {/* Payment Method Selection Modal */}
+      <PaymentMethodSelector
+        isOpen={paymentState.showMethodSelector}
+        onClose={() => setPaymentState(prev => ({ ...prev, showMethodSelector: false }))}
+        contentPrice={content.payPerViewPrice}
+        availableMethods={availablePaymentMethods}
+        onMethodSelect={handleMethodSelect}
+      />
+    </>
   )
 }

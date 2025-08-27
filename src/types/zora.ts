@@ -152,11 +152,21 @@ export interface CreatorZoraCollection {
  * NFT Analytics and Performance Data
  */
 export interface NFTAnalytics {
-  // Basic metrics
+  // NFT metrics
   totalMints: bigint
   totalVolume: bigint
   averagePrice: bigint
   uniqueMinters: number
+  
+  // Subscription metrics
+  totalSubscribers: bigint
+  subscriptionRevenue: bigint
+  averageSubscriptionPrice: bigint
+  
+  // Combined metrics
+  totalRevenue: bigint
+  totalEngagement: bigint
+  revenuePerUser: bigint
   
   // Time-based analytics
   mintsLast24h: bigint

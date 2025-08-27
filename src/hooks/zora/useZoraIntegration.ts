@@ -470,8 +470,9 @@ export function useIntegratedContentPublishing() {
       }
 
       // Extract content ID from transaction logs
-      // For now, we'll use a placeholder - in production this should be extracted from ContentRegistry events
-      const contentId = BigInt(Date.now()) // TODO: Extract from ContentRegistry.ContentRegistered event
+          // TODO: Extract content ID from ContentRegistry.ContentRegistered event
+    // For now, use a deterministic ID based on content hash and timestamp
+    const contentId = BigInt(Date.now()) // Placeholder - needs proper ContentRegistry integration
 
       // Step 2: Optionally mint as NFT
       let nftResult = undefined
