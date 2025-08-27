@@ -13,7 +13,6 @@ import { type Address, type Log, parseEventLogs } from 'viem'
 import { useCreatorPendingEarnings } from '@/hooks/contracts/core'
 
 // Import Mini App analytics integration (Component 4.2)
-import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 
 // Import contract configuration and ABIs
 import { getCommerceIntegrationContract } from '@/lib/contracts/config'

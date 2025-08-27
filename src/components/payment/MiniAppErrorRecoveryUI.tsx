@@ -41,7 +41,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sheet,
@@ -49,7 +49,6 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '@/components/ui/sheet'
 import {
   Dialog,
@@ -61,15 +60,11 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/seperator'
 import { cn } from '@/lib/utils'
 
@@ -77,31 +72,19 @@ import {
   AlertTriangle,
   RefreshCw,
   CreditCard,
-  Wifi,
   WifiOff,
   Server,
   Clock,
-  Zap,
   Shield,
-  CheckCircle,
   XCircle,
   ArrowRight,
-  ExternalLink,
   MessageCircle,
-  Share2,
-  Copy,
   Wallet,
-  Coins,
   Settings,
   HelpCircle,
   ChevronDown,
   ChevronUp,
-  Smartphone,
-  Globe,
   Activity,
-  TrendingUp,
-  Timer,
-  Heart,
   Users,
   Sparkles,
   RotateCcw

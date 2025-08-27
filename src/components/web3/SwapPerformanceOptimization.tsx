@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Loader2, ArrowRight, Zap, Activity, Shield, TrendingUp } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 // ================================================================================
 // PERFORMANCE OPTIMIZATION UTILITIES

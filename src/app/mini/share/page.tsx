@@ -6,7 +6,6 @@ import { useAccount } from 'wagmi'
 import { Share2, Copy, CheckCircle, ExternalLink, ArrowLeft, Sparkles, MessageCircle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
 export default function MiniAppSharePage() {

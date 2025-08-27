@@ -13,8 +13,7 @@ import {
   AlertTriangle, 
   RefreshCw, 
   XCircle, 
-  Info,
-  ExternalLink
+  Info
 } from 'lucide-react'
 import { 
   isZoraError, 

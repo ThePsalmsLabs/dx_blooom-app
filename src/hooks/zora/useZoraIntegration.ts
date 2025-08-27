@@ -12,10 +12,7 @@ import {
   useAccount, 
   useChainId, 
   usePublicClient, 
-  useWalletClient,
-  useWriteContract,
-  useWaitForTransactionReceipt,
-  useReadContract
+  useWalletClient
 } from 'wagmi'
 import { Address, parseEther, formatEther, createPublicClient, http, parseEventLogs } from 'viem'
 import { base, baseSepolia } from 'viem/chains'

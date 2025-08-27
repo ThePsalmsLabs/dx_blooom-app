@@ -32,7 +32,6 @@ import { useAccount } from 'wagmi'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   Search,
-  Filter,
   Grid3X3,
   List,
   Eye,
@@ -40,7 +39,6 @@ import {
   TrendingUp,
   Clock,
   DollarSign,
-  Users,
   Play,
   FileText,
   Headphones,
@@ -48,7 +46,6 @@ import {
   BookOpen,
   RefreshCw,
   AlertCircle,
-  Loader2,
   ArrowUp,
   ArrowDown,
   Zap,
@@ -91,7 +88,6 @@ import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
 
 // Import your existing types
 import { ContentCategory } from '@/types/contracts'
-import type { Address } from 'viem'
 
 // ================================================
 // PRODUCTION TYPE DEFINITIONS
@@ -239,7 +235,7 @@ function useEnhancedContentData(
       return []
     }
     
-    let filtered = [...contentQuery.data.contentIds]
+    const filtered = [...contentQuery.data.contentIds]
     
     // Apply category filter if specified
     if (filters.category && filters.category !== 'all') {

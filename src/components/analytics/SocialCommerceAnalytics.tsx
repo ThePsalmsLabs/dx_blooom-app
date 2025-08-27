@@ -8,9 +8,8 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
-import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 
 // Import your existing UI components
@@ -42,7 +41,6 @@ import { useMiniApp } from '@/contexts/MiniAppProvider'
 import {
   BarChart3,
   TrendingUp,
-  TrendingDown,
   Users,
   Share2,
   DollarSign,
@@ -50,29 +48,19 @@ import {
   Target,
   Globe,
   Smartphone,
-  Clock,
   Award,
   AlertCircle,
   RefreshCw,
   Download,
-  ChevronUp,
-  ChevronDown,
   ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  CheckCircle,
-  Eye,
-  Heart,
-  MessageCircle,
-  ShoppingCart
+  CheckCircle
 } from 'lucide-react'
 
 // Import utilities
-import { cn, formatCurrency, formatNumber, formatPercentage, formatRelativeTime } from '@/lib/utils'
+import { cn, formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils'
 
 // Import types from your existing infrastructure
 import type { TimePeriod } from '@/types/integration'
-import type { Creator, Content } from '@/types/contracts'
 
 // ================================================
 // PRODUCTION TYPES (Based on Your Real Infrastructure)

@@ -1,7 +1,4 @@
 // src/lib/web3/wagmi.ts - Updated to use enhanced configuration
-import { createConfig } from 'wagmi'
-import { base, baseSepolia } from 'wagmi/chains'
-import { metaMask, coinbaseWallet, walletConnect, injected, safe } from 'wagmi/connectors'
 import { enhancedWagmiConfig } from './enhanced-wagmi-config'
 
 // Re-export the enhanced configuration as the main wagmi config

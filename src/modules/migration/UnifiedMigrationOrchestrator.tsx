@@ -38,32 +38,18 @@ import {
   Activity,
   TrendingUp,
   Shield,
-  AlertTriangle,
   CheckCircle,
-  RotateCcw,
-  Settings,
-  BarChart3,
-  Users,
   Zap,
   Clock,
   Target,
   Eye,
   AlertCircle,
-  Loader2,
-  ArrowRight,
-  Database,
-  GitBranch,
-  Gauge,
-  Timer,
-  Bell,
   Sparkles
 } from 'lucide-react'
 
 // Import all previous components
 import { 
-  useUnifiedBalanceManagement,
-  useSmartCardBalanceAdapter,
-  useOrchestratedCardBalanceAdapter
+  useUnifiedBalanceManagement
 } from '../balance/BalanceManagementModule'
 
 import { 
@@ -145,14 +131,8 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+
+
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'

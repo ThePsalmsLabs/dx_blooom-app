@@ -45,14 +45,11 @@ import React, {
   useReducer,
   ReactNode
 } from 'react'
-import { useAccount, useConnect, useDisconnect, useChainId } from 'wagmi'
+import { useAccount, useChainId } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
 
 // Import your established types and patterns
 import type {
-  ApplicationContext,
-  ViewportSize,
-  ConnectionStatus,
   UnifiedUserProfile
 } from '@/providers/UnifiedAppProvider'
 
@@ -66,8 +63,6 @@ import type {
   SocialShareableContent,
   SocialInteraction,
   MiniAppError,
-  MiniAppErrorCode,
-  UseMiniAppReturn,
   Address
 } from '@/types/miniapp'
 

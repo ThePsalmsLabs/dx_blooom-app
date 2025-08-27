@@ -25,10 +25,9 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
-import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 
 // Import your established UI components
@@ -45,10 +44,6 @@ import {
   AlertDescription,
   Progress,
   Skeleton,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Separator,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -67,23 +62,18 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
-  Sparkles,
-  ArrowRight,
   Star,
   BarChart3,
-  User,
   Verified
 } from 'lucide-react'
 
 // Import your business logic hook
 import { 
-  useSocialPurchaseFlow,
-  type SocialPurchaseFlowResult 
+  useSocialPurchaseFlow 
 } from '@/hooks/commerce/useSocialPurchaseFlow'
 
 // Import your existing utilities and types
-import { cn, formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
-import type { Content, Creator } from '@/types/contracts'
+import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 
 // Import your existing integrations
 import { useMiniApp } from '@/contexts/MiniAppProvider'

@@ -24,7 +24,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -33,18 +33,14 @@ import {
   Users,
   Play,
   Star,
-  ArrowRight,
   Sparkles,
-  DollarSign,
   Eye,
   Heart,
-  Share2,
   Zap,
   Globe,
   Shield,
   ChevronRight,
   AlertCircle,
-  Loader2,
   RefreshCw
 } from 'lucide-react'
 
@@ -56,11 +52,6 @@ import {
   CardHeader,
   CardTitle,
   Badge,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Alert,
-  AlertDescription,
   Skeleton
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'

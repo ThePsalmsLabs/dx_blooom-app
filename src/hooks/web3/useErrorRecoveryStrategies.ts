@@ -33,8 +33,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useChainId, usePublicClient } from 'wagmi'
 import { Address } from 'viem'
 import { 
-  IntelligentSignaturePollingError,
-  IntelligentSignatureResponse 
+  IntelligentSignaturePollingError 
 } from '@/hooks/web3/useIntelligentSignaturePolling'
 import { BackendHealthError } from '@/hooks/web3/useBackendHealthMonitor'
 import { PaymentIntentFlowError } from '@/hooks/web3/usePaymentIntentFlow'

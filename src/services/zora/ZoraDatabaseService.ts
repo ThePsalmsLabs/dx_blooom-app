@@ -18,12 +18,9 @@ import type {
   ContentNFTRecord, 
   CreatorZoraCollection, 
   NFTAnalytics,
-  ZoraNFTMetadata,
-  NFTMintOptions,
   NFTDiscoveryOptions,
   NFTPerformanceComparison
 } from '@/types/zora'
-import type { Content, Creator } from '@/types/contracts'
 
 /**
  * Database Storage Interface

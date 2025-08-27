@@ -36,8 +36,7 @@
  */
 
 import { 
-    useReadContract, 
-    useReadContracts,
+    useReadContract,
     useWriteContract, 
     useWaitForTransactionReceipt,
     useChainId,
@@ -45,13 +44,13 @@ import {
     useWatchContractEvent
   } from 'wagmi'
   import { useQueryClient } from '@tanstack/react-query'
-  import { useCallback, useMemo, useEffect, useState } from 'react'
-  import { type Address, type Hash } from 'viem'
+  import { useCallback, useMemo } from 'react'
+  import { type Address } from 'viem'
   
   // Import your established foundational layers
   import { getContractAddresses } from '@/lib/contracts/config'
   import { SUBSCRIPTION_MANAGER_ABI } from '@/lib/contracts/abis'
-  import type { ContractReadResult, ContractWriteWithConfirmationResult } from '@/hooks/contracts/core'
+  import type { ContractWriteWithConfirmationResult } from '@/hooks/contracts/core'
   
   // ===== AUTO-RENEWAL MANAGEMENT TYPE DEFINITIONS =====
   

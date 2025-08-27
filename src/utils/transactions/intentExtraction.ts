@@ -24,7 +24,7 @@
  * File: src/utils/transaction/intentExtraction.ts
  */
 
-import { Log, decodeEventLog, parseEventLogs, keccak256, toHex } from 'viem'
+import { Log, parseEventLogs, keccak256, toHex } from 'viem'
 import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 
 // Event topic hashes for efficient log filtering

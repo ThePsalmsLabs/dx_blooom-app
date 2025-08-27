@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Address } from 'viem'
 import { useReadContract, useAccount, useChainId } from 'wagmi'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { PRICE_ORACLE_ABI, ERC20_ABI } from '@/lib/contracts/abis'
+import { PRICE_ORACLE_ABI } from '@/lib/contracts/abis'
 import { PaymentMethod } from '../../business/workflows'
 
 /**

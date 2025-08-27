@@ -13,15 +13,13 @@
  */
 
 import { useState, useCallback } from 'react'
-import { PublicClient, WalletClient, Address, parseEther, formatEther, parseEventLogs } from 'viem'
+import { PublicClient, WalletClient, Address, parseEther } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { ZORA_CREATOR_1155_FACTORY_ABI, ZORA_CREATOR_1155_IMPL_ABI } from '@/lib/contracts/abis/zora'
 import { ZORA_ADDRESSES } from '@/lib/contracts/addresses'
 import { 
   extractContractAddressFromSetupEvent,
-  extractTokenIdFromUpdatedEvent,
-  parseSetupNewContractEvent,
-  parseUpdatedTokenEvent
+  extractTokenIdFromUpdatedEvent
 } from '@/lib/utils/zora-events'
 
 // Get Zora addresses from the centralized configuration

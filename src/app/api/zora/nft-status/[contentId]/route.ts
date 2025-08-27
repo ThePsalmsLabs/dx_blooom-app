@@ -1,8 +1,5 @@
 // src/app/api/zora/nft-status/[contentId]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { getSharedPublicClient } from '@/lib/web3/client'
-import { base, baseSepolia } from 'viem/chains'
-import { getContractConfig } from '@/lib/contracts/config'
 import { ZoraDatabaseService } from '@/services/zora/ZoraDatabaseService'
 import type { NFTStatusResponse } from '@/types/zora'
 

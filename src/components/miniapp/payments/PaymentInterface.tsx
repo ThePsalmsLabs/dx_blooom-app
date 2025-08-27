@@ -2,9 +2,8 @@
 
 'use client'
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { type Address } from 'viem'
-import { formatUnits } from 'viem'
 import { 
   ShoppingCart,
   Zap, 
@@ -16,22 +15,15 @@ import {
   CheckCircle2,
   Shield,
   Star,
-  ExternalLink,
-  Sparkles,
-  Clock,
-  TrendingUp,
-  Copy,
-  Settings
+  Sparkles
 } from 'lucide-react'
 
 // Import established UI components following your patterns
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -44,7 +36,7 @@ import {
 } from '@/components/ui/tooltip'
 
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 // Import business logic hooks we built
 import { 
@@ -54,8 +46,7 @@ import {
 } from '@/hooks/business/miniapp-auth'
 import { 
   useUnifiedMiniAppPurchaseFlow,
-  type PurchaseStrategy,
-  type UnifiedPurchaseFlowResult
+  type PurchaseStrategy
 } from '@/hooks/business/miniapp-commerce'
 
 // Import existing infrastructure

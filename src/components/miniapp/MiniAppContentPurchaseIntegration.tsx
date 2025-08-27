@@ -4,8 +4,6 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAccount } from 'wagmi'
-import type { Address } from 'viem'
-import { formatUnits } from 'viem'
 
 // Import business logic hooks we built
 import { 
@@ -13,8 +11,7 @@ import {
   type MiniAppAuthResult 
 } from '@/hooks/business/miniapp-auth'
 import { 
-  useUnifiedMiniAppPurchaseFlow,
-  type UnifiedPurchaseFlowResult
+  useUnifiedMiniAppPurchaseFlow
 } from '@/hooks/business/miniapp-commerce'
 
 // Import existing sophisticated infrastructure
@@ -28,7 +25,6 @@ import { PaymentInterface } from '@/components/miniapp/payments/PaymentInterface
 import { 
   Card, 
   CardContent, 
-  CardDescription, 
   CardFooter, 
   CardHeader, 
   CardTitle 
@@ -43,7 +39,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Progress } from '@/components/ui/progress'
 
 // Import icons for social features
 import { 
@@ -52,22 +47,14 @@ import {
   Share2, 
   CheckCircle2, 
   Star,
-  ExternalLink,
-  Copy,
-  Heart,
-  MessageCircle,
   TrendingUp,
   Sparkles,
   Zap,
-  Eye,
-  Clock,
-  DollarSign,
-  AlertCircle,
-  Verified
+  AlertCircle
 } from 'lucide-react'
 
 // Import utilities following your patterns
-import { cn, formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 
 // ===== SOCIAL CONTEXT INTERFACES =====
 

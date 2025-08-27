@@ -30,13 +30,12 @@ import { type Address } from 'viem'
 
 // Import your business logic layer
 import { 
-  useSocialPurchaseFlow,
-  type SocialPurchaseFlowResult 
+  useSocialPurchaseFlow 
 } from '@/hooks/commerce/useSocialPurchaseFlow'
 
 // Import your existing integrations and utilities
 import { useMiniApp } from '@/contexts/MiniAppProvider'
-import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
+import { formatCurrency, formatAddress } from '@/lib/utils'
 
 // ================================================
 // UI-FOCUSED INTERFACES

@@ -9,15 +9,13 @@ import {
   Info, 
   Settings,
   Zap,
-  DollarSign,
   Activity,
   Clock
 } from 'lucide-react'
 import { 
   useSlippageManagement, 
   SlippageLevel, 
-  MarketVolatility, 
-  PairType 
+  MarketVolatility 
 } from '../../hooks/web3/payment/useSlippageManagement'
 import { PaymentMethod } from '@/hooks/business/workflows'
 

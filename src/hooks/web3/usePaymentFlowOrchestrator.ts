@@ -33,7 +33,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
-import { Address, parseEther } from 'viem'
+import { Address } from 'viem'
 import { 
   useBackendHealthMonitor,
   BackendHealthConfig,
@@ -51,9 +51,7 @@ import {
   RecoveryStrategy 
 } from '@/hooks/web3/useErrorRecoveryStrategies'
 import { 
-  extractIntentIdFromLogs,
-  validateIntentIdFormat,
-  ExtractedIntentData 
+  extractIntentIdFromLogs 
 } from '@/utils/transactions/intentExtraction'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'

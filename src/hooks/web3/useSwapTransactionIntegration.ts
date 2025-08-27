@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react'
-import { useSwapCalculation, useSwapExecution } from './useSwapCalculation'
+import { useSwapExecution } from './useSwapCalculation'
 import { useTransactionStatus } from '@/components/web3/SwapTransactionStatus'
 import type { TokenInfo } from './useTokenBalances'
 

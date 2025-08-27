@@ -3,7 +3,6 @@
 import React, { ReactNode, useEffect, useMemo, useState, useCallback } from 'react'
 import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { usePathname } from 'next/navigation'
 
 // Import your existing sophisticated provider and configuration systems
 import { EnhancedMiniAppProvider } from '@/contexts/MiniAppProvider'
@@ -12,7 +11,7 @@ import { Toaster } from '@/components/ui/sonner'
 
 // Import error boundary and monitoring systems
 import { ErrorBoundary } from 'react-error-boundary'
-import { Loader2, AlertTriangle, RefreshCw, Settings } from 'lucide-react'
+import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'

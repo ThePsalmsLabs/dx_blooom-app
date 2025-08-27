@@ -12,11 +12,9 @@ import React, {
 import { PrivyProvider } from '@privy-io/react-auth'
 import { WagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { usePrivyWagmi } from '@privy-io/wagmi'
 import { base, baseSepolia } from 'viem/chains'
 import { type Address } from 'viem'
 import { BiconomySmartAccountV2 } from '@biconomy/account'
-import { createSmartAccount } from '@/lib/biconomy/config'
 import { useAccount, useChainId } from 'wagmi'
 import { usePrivy } from '@privy-io/react-auth'
 

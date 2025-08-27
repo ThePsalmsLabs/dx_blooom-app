@@ -32,18 +32,16 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAccount, useChainId } from 'wagmi'
+import { useAccount } from 'wagmi'
 import { 
   Search,
   Filter,
   Grid3x3,
   List,
   SortAsc,
-  Loader2,
   AlertCircle,
   RefreshCw,
   Eye,
-  Users,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -54,32 +52,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/seperator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { useContentDiscovery } from '@/hooks/contracts/content/useContentDiscovery'
-import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
-import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
-import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
-import { useUnifiedContentPurchaseFlow } from '@/hooks/business/workflows'
-import { PaymentMethod } from '@/hooks/business/workflows'
-import { getContractAddresses } from '@/lib/contracts/config'
-import { getSupportedTokens } from '@/hooks/business/workflows'
-import { TokenConfig } from '@/hooks/business/workflows'
-import { useActiveContentPaginated, useContentById, useHasContentAccess, useCreatorProfile } from '@/hooks/contracts/core'
+import { useActiveContentPaginated, useContentById, useHasContentAccess } from '@/hooks/contracts/core'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 import { cn, formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'

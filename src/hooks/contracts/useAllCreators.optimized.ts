@@ -1,10 +1,9 @@
 // src/hooks/contracts/useAllCreators.optimized.ts
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { useChainId, useReadContract, useReadContracts, usePublicClient } from 'wagmi'
+import { useChainId, useReadContract, usePublicClient } from 'wagmi'
 import { type Address } from 'viem'
 import { getCreatorRegistryContract } from '@/lib/contracts/config'
 import { CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
-import { safeStringify } from '@/lib/utils/bigint-serializer'
 
 // Types remain the same
 export interface CreatorProfile {

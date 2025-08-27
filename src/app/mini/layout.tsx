@@ -53,17 +53,10 @@ import React, {
 	AlertCircle,
 	RefreshCw,
 	Loader2,
-	Wifi,
 	WifiOff,
-	Smartphone,
-	Monitor,
 	Zap,
 	Users,
 	Share2,
-	TrendingUp,
-	X,
-	CheckCircle2,
-	Info,
 	ExternalLink
   } from 'lucide-react'
   
@@ -80,34 +73,27 @@ import React, {
 	Avatar,
 	AvatarFallback,
 	AvatarImage,
-	Skeleton,
 	Progress,
 	Toaster
   } from '@/components/ui/index'
-  import { cn, formatAddress } from '@/lib/utils'
+  import { cn } from '@/lib/utils'
   
   // Import your existing layout components for seamless integration
   import { AppLayout } from '@/components/layout/AppLayout'
-  import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
   
-  // Import previous components for complete integration
-  import type { 
-	MiniAppEnvironment,
-	EnhancedSocialProfile,
-	MiniAppCapabilities,
-	MiniAppError
+// Import previous components for complete integration
+  import type {
+	EnhancedSocialProfile
   } from '@/types/miniapp'
   import { 
 	EnhancedMiniAppProvider,
-	useEnhancedMiniApp,
 	useMiniAppState,
 	useMiniAppActions,
 	useMiniAppEnvironment,
 	useEnhancedSocialProfile
   } from '@/contexts/MiniAppProvider'
   import { 
-	getEnhancedWagmiConfig,
-	checkEnhancedConfigHealth 
+	getEnhancedWagmiConfig 
   } from '@/lib/contracts/miniapp-config'
   
   // Import your existing hooks for seamless integration

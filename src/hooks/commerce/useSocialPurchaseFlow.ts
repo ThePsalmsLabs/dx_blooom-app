@@ -26,20 +26,18 @@
 'use client'
 
 import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
-import { useAccount, useChainId, useSendCalls, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useChainId, useSendCalls } from 'wagmi'
 import { encodeFunctionData, type Address } from 'viem'
 
 // Import your existing purchase flow foundation
 import { 
   useContentPurchaseFlow,
-  type PaymentExecutionState,
   getPurchaseFlowStepMessage
 } from '@/hooks/business/workflows'
 
 // Import your existing contract integrations
 import { 
-  useContentById, 
-  useHasContentAccess,
+  useContentById,
   useIsCreatorRegistered 
 } from '@/hooks/contracts/core'
 import { getContractAddresses } from '@/lib/contracts/config'
@@ -50,7 +48,7 @@ import { useMiniApp } from '@/contexts/MiniAppProvider'
 import { useSocialCommerceAnalytics } from '@/hooks/useSocialCommerceAnalytics'
 
 // Import your existing utilities
-import { formatCurrency, formatAddress } from '@/lib/utils'
+import { formatAddress } from '@/lib/utils'
 import type { Content, Creator } from '@/types/contracts'
 
 // ================================================

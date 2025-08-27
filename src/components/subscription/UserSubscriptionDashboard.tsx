@@ -36,7 +36,6 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
 import {
   Calendar,
-  CreditCard,
   AlertCircle,
   CheckCircle2,
   Clock,
@@ -79,15 +78,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Alert,
   AlertDescription,
 } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/seperator'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
 // Import our architectural layers following established patterns
@@ -103,9 +99,7 @@ import {
 import type {
   SubscriptionRecord,
   UserSubscriptionSummary,
-  SubscriptionStatus,
-  AutoRenewalSetupOptions,
-  PaymentFailureContext
+  AutoRenewalSetupOptions
 } from '@/types/platform'
 // Use the runtime hook's config type which matches the API actually returned
 import type { AutoRenewalConfig as HookAutoRenewalConfig } from '@/hooks/contracts/subscription/useAutoRenewalManagement'

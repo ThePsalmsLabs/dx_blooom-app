@@ -35,22 +35,13 @@ import {
   AlertCircle,
   Loader2,
   Info,
-  TrendingUp,
-  Shield,
   Zap,
-  RefreshCw,
   Eye,
   EyeOff,
   ChevronDown,
   ChevronUp,
   AlertTriangle,
-  Activity,
-  Clock,
   DollarSign,
-  Wallet,
-  ArrowRight,
-  Sparkles,
-  Target,
   RotateCcw
 } from 'lucide-react'
 
@@ -58,10 +49,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -76,9 +63,7 @@ import {
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 // Import Components 1 & 2 dependencies

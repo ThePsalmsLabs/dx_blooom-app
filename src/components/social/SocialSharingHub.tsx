@@ -23,11 +23,9 @@ import {
   Badge,
   Avatar,
   AvatarFallback,
-  AvatarImage,
   Alert,
   AlertDescription,
-  Progress,
-  Skeleton
+  Progress
 } from '@/components/ui/index'
 
 // Import your existing MiniApp integration
@@ -37,28 +35,19 @@ import { useMiniApp } from '@/contexts/MiniAppProvider'
 import {
   Share2,
   TrendingUp,
-  Users,
-  Heart,
-  MessageCircle,
-  Repeat2,
   Zap,
-  Trophy,
-  Clock,
-  Target,
   BarChart3,
   CheckCircle,
   AlertCircle,
   Loader2,
-  ExternalLink,
-  Copy,
-  X
+  Copy
 } from 'lucide-react'
 
 // Import utilities
 import { cn, formatAddress, formatRelativeTime, formatCurrency } from '@/lib/utils'
 
 // Import your existing types
-import type { Content, Creator } from '@/types/contracts'
+import type { Creator } from '@/types/contracts'
 
 // ================================================
 // PRODUCTION TYPES

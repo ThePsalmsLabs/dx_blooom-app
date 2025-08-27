@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react'
-import { usePrivy, useLogin, useLogout } from '@privy-io/react-auth'
+import { usePrivy } from '@privy-io/react-auth'
 import { useAccount, useChainId, useSwitchChain } from 'wagmi'
 import { useEnhancedWeb3 } from '@/components/providers/Web3Provider'
 import { formatAddress } from '@/lib/utils'

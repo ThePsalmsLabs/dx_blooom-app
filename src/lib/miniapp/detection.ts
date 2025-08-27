@@ -24,21 +24,14 @@
 
 import type {
     MiniAppEnvironment,
-    MiniAppCapabilityType,
-    MiniAppContextState,
-    MiniAppCapabilities,
-    FarcasterSDKUser,
-    FarcasterSDKContext,
-    MiniAppError,
-    MiniAppErrorCode
+    MiniAppCapabilities
   } from '@/types/miniapp'
   
   // Import your existing detection types and utilities
   import type {
     DetectedPlatform,
     DeviceCapabilityProfile,
-    EnvironmentConfidence,
-    SocialContextInfo
+    EnvironmentConfidence
   } from '@/utils/context/detection'
   
   // ================================================

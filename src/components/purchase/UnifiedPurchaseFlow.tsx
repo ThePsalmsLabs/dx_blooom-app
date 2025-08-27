@@ -41,8 +41,6 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  TrendingUp,
-  AlertTriangle,
   Wallet,
   Clock,
   CheckCircle,
@@ -69,18 +67,10 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip'
 import {
   Dialog,

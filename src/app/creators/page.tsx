@@ -5,7 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { 
   Users, 
@@ -16,11 +16,8 @@ import {
   Smartphone,
   Crown,
   Zap,
-  Search,
   Filter,
-  RefreshCw,
-  Menu,
-  X
+  RefreshCw
 } from 'lucide-react'
 
 import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'

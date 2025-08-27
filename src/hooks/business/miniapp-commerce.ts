@@ -7,15 +7,12 @@ import { encodeFunctionData, type Address } from 'viem'
 // Import existing sophisticated purchase flow
 import { 
   useContentPurchaseFlow,
-  type ContentPurchaseFlowResult,
-  type ContentPurchaseFlowStep,
-  type PaymentMethod
+  type ContentPurchaseFlowResult
 } from '@/hooks/business/workflows'
 
 // Import authentication that we just built
 import { 
   useMiniAppAuth,
-  type OptimalPaymentMethod,
   type MiniAppAuthResult
 } from '@/hooks/business/miniapp-auth'
 

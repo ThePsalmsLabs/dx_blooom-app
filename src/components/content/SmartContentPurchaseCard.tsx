@@ -20,7 +20,6 @@ import { formatUnits } from 'viem'
 import Image from 'next/image'
 import { 
   ShoppingCart, 
-  Lock, 
   CheckCircle, 
   AlertTriangle, 
   Loader2,

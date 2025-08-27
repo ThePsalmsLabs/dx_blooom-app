@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useState, useEffect, useMemo } from 'react'
 import { 
   useAccount, 
   useChainId, 
@@ -14,7 +14,7 @@ import {
   useWaitForTransactionReceipt
 } from 'wagmi'
 import type { Address } from 'viem'
-import { encodeFunctionData, parseUnits, formatUnits } from 'viem'
+import { encodeFunctionData, parseUnits } from 'viem'
 
 // Import Phase 1 MiniApp integration for context detection
 import { useMiniApp } from '@/contexts/MiniAppProvider'
@@ -29,18 +29,14 @@ import {
 import { getContractAddresses } from '@/lib/contracts/config'
 
 // Import existing types and interfaces from your workflows system
-import type { 
-  PaymentMethod,
-  CommercePaymentMethod,
+import type {
   PaymentExecutionState,
   ExtendedContentPurchaseFlowResult 
 } from '@/hooks/business/workflows'
-import type { Content } from '@/types/contracts'
 
 // Import contract ABIs - these should match your existing deployed contracts
 import { PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { ERC20_ABI } from '@/lib/contracts/abis'
-import { COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 
 // ================================================
 // ENHANCED INTERFACES FOR BATCH TRANSACTION SUPPORT

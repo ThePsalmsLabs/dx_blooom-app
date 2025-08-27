@@ -9,15 +9,13 @@ import { sdk } from '@farcaster/miniapp-sdk'
 import { 
   useContentPurchaseFlow,
   type ContentPurchaseFlowResult,
-  type ContentPurchaseFlowStep,
-  type PaymentMethod
+  type ContentPurchaseFlowStep
 } from '@/hooks/business/workflows'
 
 // Import your contract configuration and ABIs
 import { getContractAddresses } from '@/lib/contracts/config'
 import { 
-  PAY_PER_VIEW_ABI,
-  COMMERCE_PROTOCOL_INTEGRATION_ABI 
+  PAY_PER_VIEW_ABI 
 } from '@/lib/contracts/abis'
 
 // Import your Farcaster context

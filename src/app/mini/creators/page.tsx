@@ -32,17 +32,13 @@ import { ErrorBoundary } from 'react-error-boundary'
 import {
   Users,
   Search,
-  Filter,
   Star,
   TrendingUp,
   Crown,
-  Grid3X3,
-  List,
   ArrowUp,
   ArrowDown,
   RefreshCw,
   AlertCircle,
-  Loader2,
   CheckCircle2,
   Heart,
   Share2,
@@ -71,7 +67,6 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/index'
-import { cn } from '@/lib/utils'
 
 // Import your actual hooks and components
 import { useMiniApp } from '@/contexts/MiniAppProvider'

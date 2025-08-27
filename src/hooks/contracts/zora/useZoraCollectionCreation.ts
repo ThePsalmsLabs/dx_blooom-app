@@ -16,17 +16,14 @@ import { ZORA_CREATOR_1155_FACTORY_ABI } from '@/lib/contracts/abis/zora'
 import { ipfsService, createZoraCollectionMetadata } from '@/lib/services/ipfs-zora'
 import { 
   extractContractAddressFromSetupEvent,
-  parseSetupNewContractEvent,
-  type SetupNewContractEvent
+  parseSetupNewContractEvent
 } from '@/lib/utils/zora-events'
 import {
   mapWagmiError,
   mapIPFSError,
   createValidationError,
-  createContractError,
   createIPFSError,
   ZORA_ERROR_CODES,
-  ZORA_ERROR_CATEGORIES,
   logZoraError,
   logUserError,
   type ZoraErrorContext

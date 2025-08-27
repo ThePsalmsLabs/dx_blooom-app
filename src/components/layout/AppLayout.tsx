@@ -37,7 +37,6 @@ import {
   Home,
   Compass,
   BarChart3,
-  Shield,
   AlertCircle,
   CheckCircle,
   WifiOff,

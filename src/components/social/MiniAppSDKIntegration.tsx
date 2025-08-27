@@ -41,7 +41,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { 
   Card,
   CardContent,
@@ -51,45 +51,26 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/seperator'
 import { cn } from '@/lib/utils'
 
 import {
   Smartphone,
   Users,
   Share2,
-  Zap,
   Shield,
   Sparkles,
   Heart,
   MessageCircle,
   TrendingUp,
-  Globe,
-  Link,
-  Copy,
   Check,
   Crown,
-  Star,
-  Gift,
-  Wallet,
-  CreditCard,
   Activity,
-  Eye,
-  ThumbsUp,
-  ArrowRight,
-  ExternalLink,
-  Bell,
-  Settings,
-  ChevronRight,
-  Layers,
   Network,
   Zap as Lightning
 } from 'lucide-react'
 
 import { OrchestratedPaymentFlowState, PaymentResult } from '@/hooks/web3/usePaymentFlowOrchestrator'
-import { BackendHealthMetrics } from '@/hooks/web3/useBackendHealthMonitor'
 
 /**
  * MiniApp SDK Types and Interfaces

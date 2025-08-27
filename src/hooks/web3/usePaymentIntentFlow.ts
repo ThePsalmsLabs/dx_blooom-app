@@ -32,16 +32,13 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
-import { Address, parseEther } from 'viem'
+import { Address } from 'viem'
 import { 
   extractIntentIdFromLogs, 
-  validateIntentIdFormat,
-  ExtractedIntentData,
-  IntentExtractionError 
+  validateIntentIdFormat 
 } from '@/utils/transactions/intentExtraction'
 import { 
   useIntelligentSignaturePolling, 
-  IntelligentSignatureResponse, 
   IntelligentSignaturePollingError 
 } from '@/hooks/web3/useIntelligentSignaturePolling'
 import { getContractAddresses } from '@/lib/contracts/config'

@@ -47,31 +47,23 @@ import React, {
   useCallback
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useAccount, useConnect, useDisconnect, useChainId } from 'wagmi'
-import { useQueryClient, QueryClientProvider, QueryClient } from '@tanstack/react-query'
+import { useAccount, useChainId } from 'wagmi'
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 
 // Import unified app provider types
 import type {
   ApplicationContext,
-  ViewportSize,
-  ConnectionStatus,
-  LoadingState,
-  UserRole,
-  UnifiedUserProfile,
   UnifiedApplicationState,
   UnifiedAppContextValue,
   UnifiedAppProviderProps,
-  StateAction,
-  ApplicationActions,
-  ApplicationUtils
+  StateAction
 } from '@/types/unified-app'
 
 import type {
   MiniAppEnvironment,
   MiniAppCapabilities,
   EnhancedSocialProfile,
-  MiniAppState,
   MiniAppError
 } from '@/types/miniapp'
 
@@ -87,14 +79,12 @@ import {
 } from '@/contexts/MiniAppProvider'
 
 import {
-  getEnhancedWagmiConfig,
   initializeEnhancedWagmiForProvider,
   type EnhancedWagmiConfig
 } from '@/lib/contracts/miniapp-config'
 
 // Import your existing hooks for seamless integration
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
-import { useAppNavigation, type NavigationSection } from '@/components/layout/Navigation'
 
 // ================================================
 // ENHANCED UNIFIED STATE TYPES

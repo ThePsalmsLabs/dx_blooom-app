@@ -56,7 +56,6 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 import {
@@ -68,28 +67,19 @@ import {
   Zap,
   Shield,
   CreditCard,
-  ArrowRight,
   ExternalLink,
   RotateCcw,
   X,
-  Pause,
-  Play,
   Info,
   TrendingUp,
   Timer,
-  Globe,
   Server,
-  Database,
-  Cpu,
-  Network,
-  Eye,
   Copy,
   CheckCheck
 } from 'lucide-react'
 
 import { OrchestratedPaymentFlowState } from '@/hooks/web3/usePaymentFlowOrchestrator'
 import { BackendHealthMetrics } from '@/hooks/web3/useBackendHealthMonitor'
-import { ErrorCategory, RecoveryStrategy } from '@/hooks/web3/useErrorRecoveryStrategies'
 
 /**
  * Progress Experience Configuration

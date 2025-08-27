@@ -44,9 +44,9 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { motion } from 'framer-motion'
+import { useAccount, useWriteContract, useChainId } from 'wagmi'
 import { Address, encodeFunctionData, parseEther } from 'viem'
 
 import {
@@ -60,34 +60,20 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/seperator'
 import { cn } from '@/lib/utils'
 
 import {
   Layers,
   Zap,
   Shield,
-  Clock,
   CheckCircle,
   AlertTriangle,
-  ArrowRight,
   Sparkles,
-  TrendingUp,
   Activity,
   Settings,
   Eye,
   RefreshCw,
-  Wallet,
-  CreditCard,
-  Coins,
-  Users,
-  Target,
-  Zap as Lightning,
-  Gauge,
-  Timer,
-  Network,
-  Database,
-  Cpu
+  Timer
 } from 'lucide-react'
 
 import { OrchestratedPaymentFlowState } from '@/hooks/web3/usePaymentFlowOrchestrator'

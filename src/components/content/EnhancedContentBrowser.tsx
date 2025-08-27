@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Grid3X3, List, Filter, Menu, X, Eye, Heart, Share2, ChevronDown } from 'lucide-react'
+import { Search, Grid3X3, List, Menu, X, Eye } from 'lucide-react'
 import { useAccount } from 'wagmi'
 
 // Import your existing infrastructure
@@ -17,7 +17,7 @@ import { OrchestratedContentPurchaseCard } from './OrchestratedContentPurchaseCa
 import { formatCurrency } from '@/lib/utils'
 
 // Import UI components
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'

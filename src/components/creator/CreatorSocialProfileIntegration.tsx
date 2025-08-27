@@ -10,13 +10,11 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount, useChainId } from 'wagmi'
-import { formatUnits } from 'viem'
+import { useAccount } from 'wagmi'
 import type { Address } from 'viem'
 
 // Import your existing hooks and components
-import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
-import { useCreatorOnboarding } from '@/hooks/business/workflows'
+import { useCreatorProfile } from '@/hooks/contracts/core'
 
 // Import your existing UI components
 import {
@@ -26,9 +24,6 @@ import {
   CardTitle,
   Button,
   Badge,
-  Input,
-  Label,
-  Textarea,
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -41,42 +36,17 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   Alert,
   AlertDescription,
-  Progress,
-  Separator,
   Skeleton
 } from '@/components/ui'
 
 // Import icons
 import {
   User,
-  Shield,
-  CheckCircle,
-  Users,
-  ExternalLink,
   Share2,
-  Heart,
-  MessageCircle,
-  TrendingUp,
-  Star,
-  Zap,
-  Link,
-  Twitter,
-  Globe,
-  Camera,
-  Edit,
-  Save,
-  X,
   AlertCircle,
-  Loader2,
   Clock,
-  DollarSign,
-  Eye,
-  UserPlus,
-  Sparkles,
-  ArrowUpRight,
   Verified
 } from 'lucide-react'
 

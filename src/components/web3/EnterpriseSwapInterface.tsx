@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Loader2, Shield, Target, Lock, BarChart3, AlertCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Shield, Target, Lock, BarChart3, AlertCircle } from 'lucide-react';
 import { 
   useAdvancedPriceIntegration,
   useSecurityHardening,

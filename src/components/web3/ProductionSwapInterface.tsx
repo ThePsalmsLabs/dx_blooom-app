@@ -1,12 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Loader2, Shield, Target, Lock, BarChart3, AlertCircle, Zap, TrendingUp, Activity } from 'lucide-react';
-import { formatUnits, parseUnits } from 'viem';
+import { AlertTriangle, CheckCircle2, Clock, Loader2, Shield, Target, Lock, AlertCircle, Zap, Activity } from 'lucide-react';
+import { formatUnits } from 'viem';
 import { useAccount, useBalance } from 'wagmi';
 import { 
   useEnterpriseSwapPrice, 
   useEnterpriseSecurityValidation, 
   useEnterpriseSwapExecution,
-  type PriceAnalysis,
   type SecurityValidation 
 } from './EnterpriseSwapIntegration';
 import type { TokenInfo } from '@/hooks/web3/useTokenBalances';

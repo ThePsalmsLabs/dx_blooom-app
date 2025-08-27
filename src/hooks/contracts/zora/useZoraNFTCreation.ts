@@ -12,19 +12,15 @@ import { type Address, type Hash } from 'viem'
 import { useQueryClient } from '@tanstack/react-query'
 import { ZORA_CREATOR_1155_IMPL_ABI } from '@/lib/contracts/abis/zora'
 import { ipfsService, createZoraMetadata } from '@/lib/services/ipfs-zora'
-import { 
-  extractTokenIdFromUpdatedEvent,
-  parseUpdatedTokenEvent,
-  type UpdatedTokenEvent
+import {
+  parseUpdatedTokenEvent
 } from '@/lib/utils/zora-events'
 import {
   mapWagmiError,
   mapIPFSError,
   createValidationError,
-  createContractError,
   createIPFSError,
   ZORA_ERROR_CODES,
-  ZORA_ERROR_CATEGORIES,
   logZoraError,
   logUserError,
   type ZoraErrorContext

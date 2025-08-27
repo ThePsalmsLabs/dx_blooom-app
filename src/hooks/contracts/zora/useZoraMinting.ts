@@ -3,12 +3,10 @@ import { useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagm
 import { type Address, parseEther, encodeAbiParameters, parseAbiParameters } from 'viem'
 import { useQueryClient } from '@tanstack/react-query'
 import { 
-  getFixedPriceSaleStrategyContract,
-  getZoraCreator1155Contract 
+  getFixedPriceSaleStrategyContract 
 } from '@/lib/contracts/config'
 import { 
-  ZORA_CREATOR_1155_IMPL_ABI,
-  ZORA_FIXED_PRICE_SALE_STRATEGY_ABI 
+  ZORA_CREATOR_1155_IMPL_ABI 
 } from '@/lib/contracts/abis/zora'
 import { 
   parsePurchasedEvent,
@@ -19,9 +17,7 @@ import {
 import {
   mapWagmiError,
   createValidationError,
-  createContractError,
   ZORA_ERROR_CODES,
-  ZORA_ERROR_CATEGORIES,
   logZoraError,
   logUserError,
   type ZoraErrorContext

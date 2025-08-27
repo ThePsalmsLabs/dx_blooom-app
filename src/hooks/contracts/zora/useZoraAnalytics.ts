@@ -6,22 +6,11 @@
  */
 
 import { useMemo } from 'react'
-import { useReadContract, useReadContracts, useChainId } from 'wagmi'
 import { type Address } from 'viem'
-import { 
-  getCreatorRegistryContract,
-  getContentRegistryContract,
-  getPayPerViewContract,
-  getSubscriptionManagerContract,
-  getZoraCreator1155Contract
-} from '@/lib/contracts/config'
-import {
-  CREATOR_REGISTRY_ABI,
-  CONTENT_REGISTRY_ABI,
-  PAY_PER_VIEW_ABI,
-  SUBSCRIPTION_MANAGER_ABI
-} from '@/lib/contracts/abis'
-import { ZORA_CREATOR_1155_IMPL_ABI } from '@/lib/contracts/abis/zora'
+
+
+
+
 
 /**
  * NFT Analytics Result

@@ -43,15 +43,14 @@ import {
     useWatchContractEvent
   } from 'wagmi'
   import { useQueryClient } from '@tanstack/react-query'
-  import { useCallback, useMemo, useEffect, useState } from 'react'
+  import { useCallback, useMemo } from 'react'
   import { type Address } from 'viem'
   
   // Import your established foundational layers
   import { getContractAddresses } from '@/lib/contracts/config'
   import { SUBSCRIPTION_MANAGER_ABI, CREATOR_REGISTRY_ABI } from '@/lib/contracts/abis'
-  import type { ContractReadResult } from '@/hooks/contracts/core'
   
-  // ===== CREATOR SUBSCRIBER MANAGEMENT TYPE DEFINITIONS =====
+// ===== CREATOR SUBSCRIBER MANAGEMENT TYPE DEFINITIONS =====
   
   /**
    * Subscriber Information Interface

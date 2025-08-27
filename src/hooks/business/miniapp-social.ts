@@ -7,7 +7,7 @@ import { type Address } from 'viem'
 
 // MiniApp provider utilities (Phase 1)
 import { useMiniKitAvailable, useFarcasterContext } from '@/components/providers/MiniKitProvider'
-import { trackMiniAppEvent, miniAppAnalytics } from '@/lib/miniapp/analytics'
+import { miniAppAnalytics } from '@/lib/miniapp/analytics'
 
 
 /**

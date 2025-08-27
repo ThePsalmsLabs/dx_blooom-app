@@ -47,16 +47,14 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-  Badge
+  CardTitle
 } from '@/components/ui'
 
 // Import our previous components for integration
 import { useMiniApp, type EnhancedMiniAppContextValue } from '@/contexts/MiniAppProvider'
 import { 
   useCompatibilityTesting, 
-  type CompatibilityTestSuiteResult,
-  type CompatibilityLevel 
+  type CompatibilityTestSuiteResult 
 } from '@/utils/miniapp/compatibility'
 
 // ================================================

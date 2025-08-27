@@ -1,6 +1,5 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { AlertTriangle, CheckCircle2, Clock, Loader2, Shield, Target, Lock, BarChart3, AlertCircle } from 'lucide-react';
 import { formatUnits, type Address } from 'viem';
 import { getContractAddresses } from '@/lib/contracts/config';
 import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis';

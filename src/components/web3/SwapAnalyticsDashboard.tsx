@@ -1,10 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { TrendingUp, Activity, AlertTriangle, Clock, DollarSign, Shield, CheckCircle2, Target, BarChart3 } from 'lucide-react';
+import { TrendingUp, Activity, AlertTriangle, Clock, DollarSign, Shield, CheckCircle2, Target } from 'lucide-react';
 import { 
   useSwapAnalytics, 
   useSecurityHardening,
-  type SwapAnalytics,
-  type RealTimeMetrics 
+  type SwapAnalytics 
 } from './SwapEnterpriseFeatures';
 
 /**

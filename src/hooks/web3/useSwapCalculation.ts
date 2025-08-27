@@ -39,7 +39,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi'
 import { getTransactionReceipt } from 'viem/actions'
-import { formatUnits, type Address } from 'viem'
+import { formatUnits } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis'
 import type { TokenInfo } from '@/hooks/web3/useTokenBalances'

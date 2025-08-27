@@ -22,7 +22,6 @@
 
 import React, { 
   useState, 
-  useEffect, 
   useCallback, 
   useMemo, 
   useRef,
@@ -41,14 +40,10 @@ import {
   Menu,
   X,
   ChevronRight,
-  ArrowLeft,
   Users,
-  TrendingUp,
   Wallet,
   Settings,
-  HelpCircle,
-  AlertCircle,
-  Loader2
+  AlertCircle
 } from 'lucide-react'
 
 // Import your actual UI components

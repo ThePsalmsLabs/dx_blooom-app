@@ -29,7 +29,7 @@
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import { useAccount, useChainId, useSendTransaction } from 'wagmi'
-import { encodeFunctionData, erc20Abi, type Address } from 'viem'
+import { type Address } from 'viem'
 
 // Import our sophisticated foundation systems
 import { useMiniApp } from '@/contexts/MiniAppProvider'

@@ -17,15 +17,11 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useAccount, useChainId } from 'wagmi'
 import { type Address } from 'viem'
 import {
   Plus,
-  Image,
-  TrendingUp,
-  Users,
-  DollarSign,
   ExternalLink,
   Settings,
   Sparkles,
@@ -33,8 +29,7 @@ import {
   CheckCircle,
   Loader2,
   Copy,
-  Eye,
-  Edit3
+  Eye
 } from 'lucide-react'
 
 // Import shadcn/ui components following your exact patterns
@@ -94,7 +89,7 @@ import {
 } from '@/hooks/contracts/zora/useZoraCollectionList'
 
 // Import error handling components
-import { ZoraErrorBoundary, ZoraErrorDisplay } from '@/components/errors/ZoraErrorBoundary'
+import { ZoraErrorBoundary } from '@/components/errors/ZoraErrorBoundary'
 
 // ===== INTERFACE DEFINITIONS =====
 

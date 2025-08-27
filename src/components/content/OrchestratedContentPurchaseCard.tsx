@@ -42,7 +42,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance, useSendCalls } from 'wagmi'
-import { type Address, parseEther, encodeFunctionData } from 'viem'
+import { type Address, encodeFunctionData } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { 
   PRICE_ORACLE_ABI, 
@@ -52,7 +52,6 @@ import {
 } from '@/lib/contracts/abis'
 import {
   ShoppingCart,
-  Lock,
   Eye,
   CheckCircle,
   AlertCircle,
@@ -64,18 +63,12 @@ import {
   RefreshCw,
   Wallet,
   AlertTriangle,
-  ChevronDown,
   ExternalLink,
   Clock,
-  TrendingUp,
-  ArrowRight,
   Activity,
   Shield,
-  Gauge,
   Timer,
   RotateCcw,
-  Share2,
-  Bookmark,
   X
 } from 'lucide-react'
 
@@ -88,9 +81,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -98,20 +89,17 @@ import { cn } from '@/lib/utils'
 
 // Import business logic hooks and utilities
 import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance } from '@/hooks/contracts/core'
-import { useUnifiedContentPurchaseFlow, UnifiedPurchaseFlowResult, PaymentMethod } from '@/hooks/business/workflows'
+import { useUnifiedContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
 import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
-import type { Content } from '@/types/contracts'
 
 // Import the orchestrated payment system
 import { 
   usePaymentFlowOrchestrator,
-  OrchestratedPaymentRequest,
   PaymentResult,
   OrchestratedPaymentFlowState
 } from '@/hooks/web3/usePaymentFlowOrchestrator'
 
 // Import error recovery system
-import { ErrorCategory, RecoveryStrategy } from '@/hooks/web3/useErrorRecoveryStrategies'
 
 /**
  * Payment Intent Phases

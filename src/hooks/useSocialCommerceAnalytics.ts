@@ -8,17 +8,13 @@ import { type Address } from 'viem'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
 // Import existing MiniApp purchase flow integration
-import { 
-  useMiniAppPurchaseFlow,
-  type MiniAppPurchaseFlowResult,
-  type MiniAppPurchaseFlowState 
-} from '@/hooks/useMiniAppPurchaseFlow'
+
+
 
 // Import existing analytics utilities and patterns
 import { 
   TIME_PERIOD_CONFIG,
-  isFeatureEnabled,
-  validatePlatformStats 
+  isFeatureEnabled 
 } from '@/utils/analytics'
 import type { TimePeriod } from '@/types/integration'
 
