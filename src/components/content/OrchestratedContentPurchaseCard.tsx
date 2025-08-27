@@ -160,7 +160,6 @@ interface TokenInfo {
 interface EnhancedPaymentState {
   readonly intentPhase: PaymentIntentPhase
   readonly selectedMethod: PaymentMethod | null
-  readonly availableTokens: Record<PaymentMethod, TokenInfo | null>
   readonly showMethodSelector: boolean
   readonly isProcessing: boolean
   readonly lastPaymentResult: PaymentResult | null
@@ -489,14 +488,6 @@ export function OrchestratedContentPurchaseCard({
   const [paymentState, setPaymentState] = useState<EnhancedPaymentState>({
     intentPhase: PaymentIntentPhase.BROWSING,
     selectedMethod: null,
-    availableTokens: {
-      [PaymentMethod.USDC]: null,
-      [PaymentMethod.ETH]: null,
-      [PaymentMethod.WETH]: null,
-      [PaymentMethod.CBETH]: null,
-      [PaymentMethod.DAI]: null,
-      [PaymentMethod.OTHER_TOKEN]: null
-    },
     showMethodSelector: false,
     isProcessing: false,
     lastPaymentResult: null,
@@ -508,10 +499,30 @@ export function OrchestratedContentPurchaseCard({
   const paymentDataEnabled = paymentState.intentPhase !== PaymentIntentPhase.BROWSING
   
   // Legacy USDC purchase flow (still used for USDC direct payments)
-  const usdcPurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress)
+  // Only initialize when needed to prevent unnecessary RPC calls
+  const usdcPurchaseFlow = useUnifiedContentPurchaseFlow(
+    paymentDataEnabled ? contentId : undefined, 
+    paymentDataEnabled ? effectiveUserAddress : undefined
+  )
   
-  // Orchestrated payment system integration - only initialize if needed
-  const orchestrator = usePaymentFlowOrchestrator({
+  // Memoize orchestrator callbacks to prevent unnecessary re-initialization
+  const orchestratorCallbacks = useMemo(() => ({
+    onPaymentCompleted: (result: PaymentResult) => {
+      console.log(`Payment completed:`, result)
+      if (result.success && onPurchaseSuccess) {
+        onPurchaseSuccess(contentId, result)
+      }
+    },
+    onHealthChange: (health: any) => {
+      console.log(`Backend health changed:`, health)
+    },
+    onRecoveryAttempt: (strategy: string, attempt: number) => {
+      console.log(`Recovery attempt ${attempt} using strategy: ${strategy}`)
+    }
+  }), [contentId, onPurchaseSuccess])
+
+  // Memoize orchestrator configuration to prevent unnecessary re-initialization
+  const orchestratorConfig = useMemo(() => ({
     healthConfig: {
       maxConsecutiveFailures: 3,
       enableLogging: process.env.NODE_ENV === 'development'
@@ -531,21 +542,11 @@ export function OrchestratedContentPurchaseCard({
       enablePerformanceLogging: enablePerformanceMetrics,
       enableStateLogging: process.env.NODE_ENV === 'development'
     },
-    callbacks: {
-      onPaymentCompleted: (result) => {
-        console.log(`Payment completed:`, result)
-        if (result.success && onPurchaseSuccess) {
-          onPurchaseSuccess(contentId, result)
-        }
-      },
-      onHealthChange: (health) => {
-        console.log(`Backend health changed:`, health)
-      },
-      onRecoveryAttempt: (strategy, attempt) => {
-        console.log(`Recovery attempt ${attempt} using strategy: ${strategy}`)
-      }
-    }
-  })
+    callbacks: orchestratorCallbacks
+  }), [orchestratorCallbacks, enablePerformanceMetrics])
+
+  // Orchestrated payment system integration - only initialize if needed
+  const orchestrator = usePaymentFlowOrchestrator(orchestratorConfig)
 
   // Token balance hooks - ONLY enabled after payment intent expressed
   const usdcBalance = useTokenBalance(
@@ -606,11 +607,26 @@ export function OrchestratedContentPurchaseCard({
     }
   }, [paymentDataEnabled, contentQuery.data?.payPerViewPrice, ethPriceQuery.data])
 
+  // Memoize orchestrator state values to prevent unnecessary re-renders
+  const orchestratorState = useMemo(() => ({
+    systemHealth: orchestrator.state.systemHealth,
+    message: orchestrator.state.message,
+    progress: orchestrator.state.progress,
+    paymentProgress: orchestrator.state.paymentProgress,
+    performance: orchestrator.state.performance,
+    canStartPayment: orchestrator.canStartPayment
+  }), [
+    orchestrator.state.systemHealth,
+    orchestrator.state.message,
+    orchestrator.state.progress,
+    orchestrator.state.paymentProgress,
+    orchestrator.state.performance,
+    orchestrator.canStartPayment
+  ])
+
   // Available payment methods - only calculated when needed
   const availablePaymentMethods = useMemo((): PaymentMethodConfig[] => {
     if (!paymentDataEnabled) return []
-    
-    const systemHealth = orchestrator.state.systemHealth
     
     return [
       {
@@ -628,21 +644,31 @@ export function OrchestratedContentPurchaseCard({
         id: PaymentMethod.ETH,
         name: 'ETH',
         description: 'ETH → USDC swap',
-        estimatedTime: systemHealth.overallStatus === 'healthy' ? '~45 seconds' : '~90 seconds',
+        estimatedTime: '~45 seconds',
         gasEstimate: 'Medium',
         requiresApproval: false,
         icon: Coins,
-        isAvailable: orchestrator.canStartPayment,
-        healthStatus: systemHealth.overallStatus === 'critical' ? 'unavailable' : systemHealth.overallStatus
+        isAvailable: orchestratorState.canStartPayment,
+        healthStatus: 'healthy'
       }
     ]
-  }, [paymentDataEnabled, orchestrator.canStartPayment, orchestrator.state.systemHealth])
+  }, [paymentDataEnabled, orchestratorState.canStartPayment])
 
 
 
   // Token information calculation - only when payment data is enabled
-  useEffect(() => {
-    if (!paymentDataEnabled) return
+  // Optimized to reduce dependencies and prevent frequent re-renders
+  const calculatedTokens = useMemo((): Record<PaymentMethod, TokenInfo | null> => {
+    if (!paymentDataEnabled) {
+      return {
+        [PaymentMethod.USDC]: null,
+        [PaymentMethod.ETH]: null,
+        [PaymentMethod.WETH]: null,
+        [PaymentMethod.CBETH]: null,
+        [PaymentMethod.DAI]: null,
+        [PaymentMethod.OTHER_TOKEN]: null
+      }
+    }
     
     const tokens: Record<PaymentMethod, TokenInfo | null> = {
       [PaymentMethod.USDC]: null,
@@ -655,16 +681,20 @@ export function OrchestratedContentPurchaseCard({
     
     // USDC token info with proper allowance checking
     if (contractAddresses?.USDC && contentQuery.data) {
+      const usdcBalanceValue = usdcBalance.data
+      const usdcAllowanceValue = usdcAllowance.data
+      const price = contentQuery.data.payPerViewPrice
+      
       tokens[PaymentMethod.USDC] = {
         address: contractAddresses.USDC,
         symbol: 'USDC',
         name: 'USD Coin',
         decimals: 6,
-        balance: usdcBalance.data || null,
-        requiredAmount: contentQuery.data.payPerViewPrice,
-        hasEnoughBalance: usdcBalance.data ? usdcBalance.data >= contentQuery.data.payPerViewPrice : false,
-        allowance: usdcAllowance.data || undefined,
-        needsApproval: usdcAllowance.data ? usdcAllowance.data < contentQuery.data.payPerViewPrice : true,
+        balance: usdcBalanceValue || null,
+        requiredAmount: price,
+        hasEnoughBalance: usdcBalanceValue ? usdcBalanceValue >= price : false,
+        allowance: usdcAllowanceValue || undefined,
+        needsApproval: usdcAllowanceValue ? usdcAllowanceValue < price : true,
         isLoading: (usdcBalance.isLoading ?? false) || (usdcAllowance.isLoading ?? false),
         error: usdcBalance.error?.message || usdcAllowance.error?.message
       }
@@ -672,14 +702,17 @@ export function OrchestratedContentPurchaseCard({
     
     // ETH token info with proper price calculation
     if (ethPaymentCalculation && ethBalance.data) {
+      const ethBalanceValue = ethBalance.data.value
+      const requiredAmount = ethPaymentCalculation.ethAmountWithSlippage
+      
       tokens[PaymentMethod.ETH] = {
         address: '0x0000000000000000000000000000000000000000' as Address,
         symbol: 'ETH',
         name: 'Ethereum',
         decimals: 18,
-        balance: ethBalance.data.value,
-        requiredAmount: ethPaymentCalculation.ethAmountWithSlippage,
-        hasEnoughBalance: ethBalance.data.value >= ethPaymentCalculation.ethAmountWithSlippage,
+        balance: ethBalanceValue,
+        requiredAmount: requiredAmount,
+        hasEnoughBalance: ethBalanceValue >= requiredAmount,
         allowance: BigInt(0), // ETH doesn't need approval
         needsApproval: false,
         isLoading: (ethBalance.isLoading ?? false) || (ethPriceQuery.isLoading ?? false),
@@ -687,27 +720,27 @@ export function OrchestratedContentPurchaseCard({
       }
     }
     
-    setPaymentState(prev => ({
-      ...prev,
-      availableTokens: tokens
-    }))
+    return tokens
   }, [
     paymentDataEnabled,
-    contractAddresses,
-    contentQuery.data,
+    contractAddresses?.USDC,
+    contentQuery.data?.payPerViewPrice,
     usdcBalance.data,
-    usdcBalance.isLoading,
-    usdcBalance.error,
     usdcAllowance.data,
+    ethPaymentCalculation?.ethAmountWithSlippage,
+    ethBalance.data?.value,
+    usdcBalance.isLoading,
     usdcAllowance.isLoading,
-    usdcAllowance.error,
-    ethPaymentCalculation,
-    ethBalance.data,
     ethBalance.isLoading,
-    ethBalance.error,
     ethPriceQuery.isLoading,
-    ethPriceQuery.error
+    usdcBalance.error?.message,
+    usdcAllowance.error?.message,
+    ethBalance.error?.message,
+    ethPriceQuery.error?.message
   ])
+
+  // Remove the useEffect that was causing infinite loops
+  // Instead, we'll use calculatedTokens directly in the component
 
   // ===== EVENT HANDLERS =====
   
@@ -950,33 +983,33 @@ export function OrchestratedContentPurchaseCard({
         <CardContent className="space-y-6">
           {/* System Health Indicator - Only show during payment flow */}
           {showSystemHealth && paymentDataEnabled && (
-            <SystemHealthIndicator health={orchestrator.state.systemHealth} />
+            <SystemHealthIndicator health={orchestratorState.systemHealth} />
           )}
 
           {/* Payment Progress - Only show during active payment */}
           {paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{orchestrator.state.message}</span>
+                <span className="text-sm font-medium">{orchestratorState.message}</span>
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
-              <Progress value={orchestrator.state.progress} />
+              <Progress value={orchestratorState.progress} />
               
-              {orchestrator.state.paymentProgress.estimatedTimeRemaining > 0 && (
+              {orchestratorState.paymentProgress.estimatedTimeRemaining > 0 && (
                 <div className="text-xs text-muted-foreground text-center">
-                  Estimated time remaining: {Math.ceil(orchestrator.state.paymentProgress.estimatedTimeRemaining / 1000)}s
+                  Estimated time remaining: {Math.ceil(orchestratorState.paymentProgress.estimatedTimeRemaining / 1000)}s
                 </div>
               )}
             </div>
           )}
 
           {/* Selected Payment Method Details - Only show after method selected */}
-          {paymentState.selectedMethod && paymentState.availableTokens[paymentState.selectedMethod] && (
+          {paymentState.selectedMethod && calculatedTokens[paymentState.selectedMethod] && (
             <div className="space-y-3">
               <div className="text-sm font-medium">Payment Details</div>
               
               {(() => {
-                const selectedToken = paymentState.availableTokens[paymentState.selectedMethod]!
+                const selectedToken = calculatedTokens[paymentState.selectedMethod]!
                 return (
                   <div className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -1033,12 +1066,12 @@ export function OrchestratedContentPurchaseCard({
           {/* Performance Metrics Display - Only during active payment */}
           {enablePerformanceMetrics && 
            paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE && 
-           orchestrator.state.performance.totalDuration && (
+           orchestratorState.performance.totalDuration && (
             <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 p-3 rounded">
               <div className="font-medium">Performance Metrics</div>
-              <div>Total Duration: {(orchestrator.state.performance.totalDuration / 1000).toFixed(1)}s</div>
-              {orchestrator.state.performance.bottleneckPhase && (
-                <div>Slowest Phase: {orchestrator.state.performance.bottleneckPhase}</div>
+              <div>Total Duration: {(orchestratorState.performance.totalDuration / 1000).toFixed(1)}s</div>
+              {orchestratorState.performance.bottleneckPhase && (
+                <div>Slowest Phase: {orchestratorState.performance.bottleneckPhase}</div>
               )}
             </div>
           )}
@@ -1075,7 +1108,7 @@ export function OrchestratedContentPurchaseCard({
            paymentState.intentPhase === PaymentIntentPhase.SELECTING_METHOD && (
             <Button
               className="w-full"
-              disabled={!paymentState.availableTokens[PaymentMethod.USDC]?.hasEnoughBalance || paymentState.isProcessing}
+              disabled={!calculatedTokens[PaymentMethod.USDC]?.hasEnoughBalance || paymentState.isProcessing}
               onClick={handleUSDCPurchase}
             >
               {paymentState.isProcessing ? (
@@ -1086,7 +1119,7 @@ export function OrchestratedContentPurchaseCard({
               ) : (
                 <>
                   <DollarSign className="h-4 w-4 mr-2" />
-                  {paymentState.availableTokens[PaymentMethod.USDC]?.needsApproval 
+                  {calculatedTokens[PaymentMethod.USDC]?.needsApproval 
                     ? 'Approve & Purchase with USDC' 
                     : 'Purchase with USDC'}
                 </>
@@ -1098,7 +1131,7 @@ export function OrchestratedContentPurchaseCard({
            paymentState.intentPhase === PaymentIntentPhase.SELECTING_METHOD && (
             <Button
               className="w-full"
-              disabled={!paymentState.availableTokens[PaymentMethod.ETH]?.hasEnoughBalance || paymentState.isProcessing}
+              disabled={!calculatedTokens[PaymentMethod.ETH]?.hasEnoughBalance || paymentState.isProcessing}
               onClick={handleETHPurchase}
             >
               {paymentState.isProcessing ? (
