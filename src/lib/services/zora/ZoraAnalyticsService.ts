@@ -251,7 +251,12 @@ export class ZoraAnalyticsService {
     description: string
     value: string
   }> {
-    const insights = []
+    const insights: Array<{
+      type: 'positive' | 'negative' | 'neutral'
+      title: string
+      description: string
+      value: string
+    }> = []
 
     // Engagement insights
     const engagementRate = this.calculateEngagementRate(

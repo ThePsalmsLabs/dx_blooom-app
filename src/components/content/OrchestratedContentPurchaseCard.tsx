@@ -260,7 +260,7 @@ function PaymentMethodSelector({
                 className="border rounded-lg p-3 sm:p-4 cursor-pointer transition-colors hover:bg-muted/50"
                 onClick={() => {
                   onMethodSelect(method.id)
-                  onClose()
+                  // Don't call onClose() here - let handleMethodSelect handle the modal state
                 }}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -550,6 +550,36 @@ export function OrchestratedContentPurchaseCard({
     errorRecoveryOptions: []
   })
 
+  // ===== CONTRACT VALIDATION =====
+  // Add validation to ensure contract is properly configured
+  const contractValidation = useMemo(() => {
+    if (!contractAddresses) return { isValid: false, error: 'No contract addresses' }
+    
+    const requiredContracts = [
+      'COMMERCE_INTEGRATION',
+      'PRICE_ORACLE',
+      'USDC'
+    ]
+    
+    for (const contractName of requiredContracts) {
+      const address = contractAddresses[contractName as keyof typeof contractAddresses]
+      if (!address || address === '0x0000000000000000000000000000000000000000') {
+        return { isValid: false, error: `Invalid ${contractName} address: ${address}` }
+      }
+    }
+    
+    return { isValid: true, error: null }
+  }, [contractAddresses])
+
+  // Log contract validation for debugging
+  useEffect(() => {
+    if (!contractValidation.isValid) {
+      console.error('❌ Contract validation failed:', contractValidation.error)
+    } else {
+      console.log('✅ Contract validation passed')
+    }
+  }, [contractValidation])
+
   // ===== CONDITIONAL PAYMENT DATA HOOKS (Only Active After Intent) =====
   // These hooks are only enabled after user expresses purchase intent
   const paymentDataEnabled = paymentState.intentPhase !== PaymentIntentPhase.BROWSING
@@ -802,10 +832,7 @@ export function OrchestratedContentPurchaseCard({
 
   // Memoize orchestrator configuration to prevent unnecessary re-initialization
   const orchestratorConfig = useMemo(() => ({
-    healthConfig: {
-      maxConsecutiveFailures: 3,
-      enableLogging: process.env.NODE_ENV === 'development'
-    },
+    // Health config removed - now uses shared BackendHealthProvider
     signingConfig: {
       maxAttempts: 45,
       useAdaptiveIntervals: true,
@@ -1159,7 +1186,20 @@ export function OrchestratedContentPurchaseCard({
    * Handle ETH Purchase Execution
    */
   const handleETHPurchase = useCallback(async () => {
-    if (!contentQuery.data || !ethPaymentCalculation || paymentState.isProcessing || !contractAddresses) return
+    console.log('🚀 handleETHPurchase called')
+    console.log('📊 Current state:', {
+      hasContentData: !!contentQuery.data,
+      hasEthCalculation: !!ethPaymentCalculation,
+      isProcessing: paymentState.isProcessing,
+      hasContractAddresses: !!contractAddresses,
+      intentPhase: paymentState.intentPhase,
+      selectedMethod: paymentState.selectedMethod
+    })
+
+    if (!contentQuery.data || !ethPaymentCalculation || paymentState.isProcessing || !contractAddresses) {
+      console.error('❌ ETH purchase prerequisites not met')
+      return
+    }
 
     const startTime = Date.now()
     setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
@@ -1234,6 +1274,9 @@ export function OrchestratedContentPurchaseCard({
       intentPhase: PaymentIntentPhase.SELECTING_METHOD,
       showMethodSelector: false
     }))
+
+    // Add a small delay to ensure state is updated before executing payment
+    await new Promise(resolve => setTimeout(resolve, 100))
 
     // Execute payment based on selected method
     try {
@@ -1521,6 +1564,26 @@ export function OrchestratedContentPurchaseCard({
             </div>
           )}
         </CardContent>
+
+        {/* Debug Information (Development Only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
+            <h4 className="font-semibold mb-2">Debug Info:</h4>
+            <div className="space-y-1">
+              <div>Intent Phase: {paymentState.intentPhase}</div>
+              <div>Selected Method: {paymentState.selectedMethod || 'None'}</div>
+              <div>Is Processing: {paymentState.isProcessing ? 'Yes' : 'No'}</div>
+              <div>Contract Valid: {contractValidation?.isValid ? 'Yes' : 'No'}</div>
+              {contractValidation && !contractValidation.isValid && (
+                <div className="text-red-600">Contract Error: {contractValidation.error}</div>
+              )}
+              <div>ETH Balance: {calculatedTokens[PaymentMethod.ETH]?.balance?.toString() || 'Loading...'}</div>
+              <div>ETH Required: {calculatedTokens[PaymentMethod.ETH]?.requiredAmount?.toString() || 'Loading...'}</div>
+              <div>Has Enough ETH: {calculatedTokens[PaymentMethod.ETH]?.hasEnoughBalance ? 'Yes' : 'No'}</div>
+              <div>Payment Data Enabled: {paymentDataEnabled ? 'Yes' : 'No'}</div>
+            </div>
+          </div>
+        )}
 
         <CardFooter className="space-y-3 w-full">
           {/* Main Action Button - Changes based on intent phase */}

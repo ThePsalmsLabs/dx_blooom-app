@@ -35,10 +35,10 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
 import { Address } from 'viem'
 import { 
-  useBackendHealthMonitor,
+  useBackendHealthSafe,
   BackendHealthConfig,
   BackendHealthMetrics 
-} from '@/hooks/web3/useBackendHealthMonitor'
+} from '@/contexts/BackendHealthContext'
 import { 
   useIntelligentSignaturePolling,
   IntelligentSignaturePollingConfig,
@@ -331,8 +331,30 @@ export function usePaymentFlowOrchestrator(
   const { writeContract } = useWriteContract()
   const { data: receiptData, isLoading: isReceiptLoading } = useWaitForTransactionReceipt()
   
-  // Intelligent component integrations
-  const healthMonitor = useBackendHealthMonitor(finalConfig.healthConfig)
+  // Intelligent component integrations - use shared health monitor if available
+  const sharedHealthMonitor = useBackendHealthSafe()
+  const healthMonitor = sharedHealthMonitor || {
+    metrics: {
+      status: 'unknown',
+      avgResponseTime: 0,
+      successRate: 100,
+      consecutiveFailures: 0,
+      totalRequests: 0,
+      successfulRequests: 0,
+      lastSuccessfulRequest: null,
+      lastFailure: null,
+      currentRetryDelay: finalConfig.healthConfig?.baseRetryDelay || 1000,
+      circuitBreakerOpen: false,
+      nextRetryTime: null
+    },
+    isBackendAvailable: true,
+    getCurrentRetryDelay: () => finalConfig.healthConfig?.baseRetryDelay || 1000,
+    recordSuccess: () => {},
+    recordFailure: () => {},
+    forceHealthCheck: async () => true,
+    resetHealth: () => {},
+    makeMonitoredRequest: async <T>(requestFn: () => Promise<T>) => requestFn()
+  }
   const signaturePolling = useIntelligentSignaturePolling(finalConfig.signingConfig)
   const errorRecovery = useErrorRecoveryStrategies(finalConfig.recoveryConfig)
   

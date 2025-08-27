@@ -116,7 +116,7 @@ export class ZoraMetadataService {
       },
       {
         trait_type: 'Mint Price',
-        value: parseEther(mintPrice.toString()),
+        value: mintPrice.toString(),
         display_type: 'number'
       },
       {
