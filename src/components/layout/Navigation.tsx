@@ -43,7 +43,8 @@ import {
   User,
   RefreshCw,
   Calendar,
-  Wallet
+  Wallet,
+  Sparkles
 } from 'lucide-react'
 
 // ===== NAVIGATION TYPES =====
@@ -121,6 +122,16 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
           description: 'Discover and support amazing creators',
           roles: ['disconnected', 'consumer', 'creator', 'admin'],
           isActive: pathname.startsWith('/creators')
+        },
+        {
+          id: 'collections',
+          label: 'NFT Collections',
+          href: '/collections',
+          icon: Sparkles,
+          description: 'Browse and collect NFT content on Zora',
+          roles: ['disconnected', 'consumer', 'creator', 'admin'],
+          isNew: true, // New NFT feature
+          isActive: pathname.startsWith('/collections')
         }
       ],
       roles: ['disconnected', 'consumer', 'creator', 'admin'],
@@ -295,6 +306,16 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
             roles: ['creator'],
             isNew: true, // Phase 3 feature
             isActive: pathname.startsWith('/dashboard/renewals')
+          },
+          {
+            id: 'collections',
+            label: 'NFT Collections',
+            href: '/collections',
+            icon: Sparkles,
+            description: 'Create and manage your NFT collections on Zora',
+            roles: ['creator'],
+            isNew: true, // New NFT feature
+            isActive: pathname.startsWith('/collections')
           }
         ],
         roles: ['creator'],

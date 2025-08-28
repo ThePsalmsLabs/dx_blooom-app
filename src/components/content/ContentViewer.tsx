@@ -72,6 +72,7 @@ import {
 
 import { useAccount } from 'wagmi'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
+import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
 import { categoryToString } from '@/types/contracts'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -693,7 +694,7 @@ function AccessDeniedState({
           </p>
         </div>
         
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto space-y-4">
           <OrchestratedContentPurchaseCard
             contentId={contentId}
             userAddress={userAddress as `0x${string}` | undefined}
@@ -708,6 +709,19 @@ function AccessDeniedState({
             showSystemHealth={true}
             enablePerformanceMetrics={false}
           />
+          
+          {/* NFT Promotion for Content Creators */}
+          {userAddress && content.creator.toLowerCase() === userAddress.toLowerCase() && (
+            <ContentNFTPromotionAdapter
+              content={content}
+              creatorAddress={content.creator}
+              contentId={contentId}
+              onMintSuccess={(contractAddress, tokenId) => {
+                toast.success('Content minted as NFT successfully!')
+                console.log('Content minted as NFT:', { contractAddress, tokenId })
+              }}
+            />
+          )}
         </div>
       </CardContent>
     </Card>

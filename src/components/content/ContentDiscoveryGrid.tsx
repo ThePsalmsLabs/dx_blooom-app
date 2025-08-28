@@ -75,6 +75,7 @@ import {
 } from '@/hooks/contracts/core'
 import { useAccount } from 'wagmi'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
+import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 
 /**
@@ -725,7 +726,7 @@ function ContentDisplayCard({
       </CardContent>
       
       <CardFooter className="pt-0">
-        <div className="w-full">
+        <div className="w-full space-y-3">
           <OrchestratedContentPurchaseCard
             contentId={contentId}
             userAddress={userAddress as `0x${string}` | undefined}
@@ -742,6 +743,21 @@ function ContentDisplayCard({
             enablePerformanceMetrics={false}
             className="w-full"
           />
+          
+          {/* NFT Promotion for Content Creators */}
+          {userAddress && content.creator.toLowerCase() === userAddress.toLowerCase() && (
+            <ContentNFTPromotionAdapter
+              content={content}
+              creatorAddress={content.creator}
+              contentId={contentId}
+              onMintSuccess={(contractAddress, tokenId) => {
+                console.log('Content minted as NFT:', { contractAddress, tokenId })
+                // Refresh data after successful mint
+                accessControl.refetch()
+              }}
+              className="w-full"
+            />
+          )}
         </div>
       </CardFooter>
     </Card>

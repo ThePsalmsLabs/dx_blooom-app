@@ -187,6 +187,29 @@ export function AppLayout({
     }))
   }, [userRole, isNetworkSupported])
 
+  // Force UI refresh when wallet connects/disconnects
+  useEffect(() => {
+    if (isConnected && address) {
+      console.log('🔄 AppLayout: Wallet connected, refreshing UI for:', address)
+      // Force a re-render by updating layout state
+      setLayoutState(prev => ({
+        ...prev,
+        userRole,
+        isNetworkSupported,
+        isOnline: navigator.onLine
+      }))
+    } else if (!isConnected) {
+      console.log('🔄 AppLayout: Wallet disconnected, clearing UI state')
+      // Reset to disconnected state
+      setLayoutState(prev => ({
+        ...prev,
+        userRole: 'disconnected',
+        isNetworkSupported,
+        isOnline: navigator.onLine
+      }))
+    }
+  }, [isConnected, address, userRole, isNetworkSupported])
+
   // Navigation items based on user role
   const navigationItems: NavigationItem[] = useMemo(() => {
     const items: NavigationItem[] = [

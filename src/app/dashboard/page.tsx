@@ -136,6 +136,26 @@ export default function SubscriptionManagementPage() {
     }
   }, [isConnected, userAddress, creatorProfile])
 
+  // Force refresh when wallet connects to ensure immediate UI updates
+  useEffect(() => {
+    if (isConnected && userAddress) {
+      debug.log('🔄 Dashboard: Wallet connected, refreshing all creator data for:', userAddress)
+      
+      // Refresh all creator-related data
+      creatorProfile.refetch()
+      creatorContent.refetch()
+      pendingEarnings.refetch()
+      
+      // Force a small delay to ensure all queries are properly invalidated
+      setTimeout(() => {
+        debug.log('🔄 Dashboard: Delayed refresh to ensure cache invalidation')
+        creatorProfile.refetch()
+        creatorContent.refetch()
+        pendingEarnings.refetch()
+      }, 100)
+    }
+  }, [isConnected, userAddress, creatorProfile, creatorContent, pendingEarnings, dashboardUI])
+
   // Handle fresh registrations
   useEffect(() => {
     if (typeof window === 'undefined') return

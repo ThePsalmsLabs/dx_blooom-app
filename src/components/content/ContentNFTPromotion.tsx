@@ -58,6 +58,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -327,30 +328,62 @@ export function ContentNFTPromotion({
   }
 
   return (
-    <Dialog open={showConfigDialog} onOpenChange={handleDialogClose}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn("gap-2", className)}
-          disabled={!canMint || isAlreadyMinted}
+    <>
+      {/* Custom Modal Overlay */}
+      {showConfigDialog && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowConfigDialog(false)}
+        />
+      )}
+      
+      {/* Custom Modal Content */}
+      {showConfigDialog && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10000,
+            background: 'hsl(var(--background))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: '0.5rem',
+            padding: '1.5rem',
+            maxWidth: 'min(90vw, 600px)',
+            maxHeight: 'min(80vh, 700px)',
+            width: '90vw',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          }}
         >
-          <Sparkles className="h-4 w-4" />
-          Mint as NFT
-        </Button>
-      </DialogTrigger>
-
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-yellow-500" />
-            Promote Content as NFT
-          </DialogTitle>
-          <DialogDescription>
-            Transform your subscription content into a collectible NFT on Zora marketplace.
-            This creates additional revenue streams while maintaining your subscription model.
-          </DialogDescription>
-        </DialogHeader>
+          {/* Header */}
+          <div className="flex-shrink-0 mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-yellow-500" />
+                <div>
+                  <h2 className="text-lg font-semibold">Promote Content as NFT</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Transform your subscription content into a collectible NFT on Zora marketplace.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowConfigDialog(false)}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Content */}
+          <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
 
         {mintingState === 'idle' && (
           <div className="space-y-6">
@@ -578,26 +611,42 @@ export function ContentNFTPromotion({
           </div>
         )}
 
-        <DialogFooter>
-          {mintingState === 'idle' && (
-            <>
-              <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleMintContent} className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Mint NFT ({mintConfig.mintPrice} ETH)
-              </Button>
-            </>
-          )}
+          </div>
           
-          {mintingState === 'success' && (
-            <Button onClick={() => setShowConfigDialog(false)}>
-              Done
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          {/* Footer */}
+          <div className="flex-shrink-0 mt-6 flex justify-end gap-2">
+            {mintingState === 'idle' && (
+              <>
+                <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleMintContent} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Mint NFT ({mintConfig.mintPrice} ETH)
+                </Button>
+              </>
+            )}
+            
+            {mintingState === 'success' && (
+              <Button onClick={() => setShowConfigDialog(false)}>
+                Done
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Trigger Button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className={cn("gap-2", className)}
+        disabled={!canMint || isAlreadyMinted}
+        onClick={() => setShowConfigDialog(true)}
+      >
+        <Sparkles className="h-4 w-4" />
+        Mint as NFT
+      </Button>
+    </>
   )
 }

@@ -230,6 +230,7 @@ type StateAction =
   | { type: 'ERROR_REPORTED'; error: Error; context?: string }
   | { type: 'ERROR_DISMISSED'; errorId: string }
   | { type: 'ERRORS_CLEARED' }
+  | { type: 'USER_CONNECTION_CHANGED'; isConnected: boolean }
 
 /**
  * Initial State Factory
@@ -531,6 +532,15 @@ function unifiedAppReducer(
         }
       }
 
+    case 'USER_CONNECTION_CHANGED':
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          connectionStatus: action.isConnected ? 'connected' : 'disconnected'
+        }
+      }
+
     default:
       return state
   }
@@ -725,13 +735,71 @@ export function UnifiedAppProvider({
 
   // User connection state synchronization
   useEffect(() => {
-    if (isConnected && address) {
-      const userRole = determineUserRole(address, creatorRegistration.data)
-      dispatch({ type: 'USER_CONNECTED', address, userRole })
-    } else if (!isConnected && state.user.connectionStatus !== 'disconnected') {
-      dispatch({ type: 'USER_DISCONNECTED' })
+    const currentConnectionStatus = isConnected ? 'connected' : 'disconnected'
+    if (currentConnectionStatus !== state.user.connectionStatus) {
+      dispatch({ type: 'USER_CONNECTION_CHANGED', isConnected })
     }
-  }, [isConnected, address, creatorRegistration.data, state.user.connectionStatus])
+  }, [isConnected, state.user.connectionStatus])
+
+  // ===== WALLET CONNECTION CACHE INVALIDATION =====
+  // This effect ensures that when a wallet connects or disconnects,
+  // all relevant queries are invalidated to refresh the UI immediately
+  useEffect(() => {
+    if (isConnected && address) {
+      // Wallet connected - invalidate all user-specific queries
+      console.log('🔄 Wallet connected, invalidating user queries for:', address)
+      
+      // Invalidate all queries that depend on the user's address
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey
+          return queryKey.some(key => 
+            typeof key === 'string' && (
+              key.includes('creator') ||
+              key.includes('user') ||
+              key.includes('subscription') ||
+              key.includes('balance') ||
+              key.includes('allowance') ||
+              key.includes('earnings') ||
+              key.includes('content') ||
+              key.includes('analytics')
+            )
+          ) || queryKey.some(key => 
+            typeof key === 'object' && 
+            key !== null && 
+            'address' in key && 
+            key.address === address
+          )
+        }
+      })
+      
+      // Also invalidate readContract queries that might be user-specific
+      queryClient.invalidateQueries({ queryKey: ['readContract'] })
+      
+    } else if (!isConnected) {
+      // Wallet disconnected - clear user-specific data
+      console.log('🔄 Wallet disconnected, clearing user data')
+      
+      // Remove all user-specific queries from cache
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey
+          return queryKey.some(key => 
+            typeof key === 'string' && (
+              key.includes('creator') ||
+              key.includes('user') ||
+              key.includes('subscription') ||
+              key.includes('balance') ||
+              key.includes('allowance') ||
+              key.includes('earnings') ||
+              key.includes('content') ||
+              key.includes('analytics')
+            )
+          )
+        }
+      })
+    }
+  }, [isConnected, address, queryClient])
 
   // Creator status synchronization
   useEffect(() => {

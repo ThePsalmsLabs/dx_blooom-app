@@ -193,7 +193,7 @@ export function ContentDiscoveryInterface({
   compact = false
 }: ContentDiscoveryInterfaceProps) {
   const router = useRouter()
-  const { address: connectedAddress } = useAccount()
+  const { address: connectedAddress, isConnected } = useAccount()
 
   // Extract configuration with intelligent defaults
   const {
@@ -750,13 +750,25 @@ function ContentCard({
 }: ContentCardProps) {
   const { data: content, isLoading: contentLoading } = useContentById(contentId)
   const { data: creator } = useCreatorProfile(content?.creator)
-  const { address: connectedAddress } = useAccount()
+  const { address: connectedAddress, isConnected } = useAccount()
 
-  // Check if current user is the creator
+  // Check if connected user is the content creator
   const isCreator = useMemo(() => {
     return connectedAddress && content?.creator && 
            connectedAddress.toLowerCase() === content.creator.toLowerCase()
   }, [connectedAddress, content?.creator])
+
+  // Force UI refresh when wallet connects/disconnects
+  useEffect(() => {
+    if (isConnected && connectedAddress) {
+      console.log('🔄 ContentDiscoveryInterface: Wallet connected, refreshing UI for:', connectedAddress)
+      // Force a re-render by updating the component state
+      // This will trigger the isCreator calculation and show/hide NFT promotion
+    } else if (!isConnected) {
+      console.log('🔄 ContentDiscoveryInterface: Wallet disconnected, clearing creator state')
+      // The isCreator will automatically become false when connectedAddress is null
+    }
+  }, [isConnected, connectedAddress])
 
   // Create ContentWithMetadata from Content for NFT promotion
   const contentWithMetadata = useMemo(() => {

@@ -98,6 +98,7 @@ import {
 import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 import { useAccount } from 'wagmi'
 import { ContentUploadForm } from '@/components/content/ContentUpload'
+import { ZoraCollectionManager } from '@/components/creator/ZoraCollectionManager'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import { CreatorProfileEditor } from '@/components/creator/CreatorProfileEditor'
 import { ContentManagementDashboard } from '@/components/creator/ContentManagementDashboard'
@@ -190,7 +191,7 @@ type TimePeriod = '7d' | '30d' | '90d' | '1y' | 'all'
  * Different views optimize the dashboard for different creator needs
  * and device sizes, now including Mini App specific analytics.
  */
-type DashboardView = 'overview' | 'analytics' | 'content' | 'earnings' | 'settings' | 'social' | 'verification'
+type DashboardView = 'overview' | 'analytics' | 'content' | 'earnings' | 'settings' | 'social' | 'verification' | 'collections'
 
 /**
  * Props interface for the Enhanced CreatorDashboard component
@@ -402,12 +403,13 @@ export function EnhancedCreatorDashboard({
 
       {/* Enhanced Dashboard Navigation with Social Tab */}
       <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as DashboardView)}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="earnings">Earnings</TabsTrigger>
+          <TabsTrigger value="collections">Collections</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
         </TabsList>
@@ -481,6 +483,29 @@ export function EnhancedCreatorDashboard({
             ) || BigInt(0)}
             isLoading={isLoading}
           />
+        </TabsContent>
+
+        {/* New Collections Tab for Zora NFT Management */}
+        <TabsContent value="collections" className="space-y-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold mb-2">NFT Collections</h2>
+              <p className="text-muted-foreground">
+                Create and manage your NFT collections on Zora. Turn your content into collectible NFTs to unlock new revenue streams.
+              </p>
+            </div>
+            {effectiveCreatorAddress && (
+              <ZoraCollectionManager
+                creatorAddress={effectiveCreatorAddress}
+                onCollectionCreated={(collectionAddress) => {
+                  console.log('New collection created:', collectionAddress)
+                  // Refresh relevant data when a new collection is created
+                  creatorContent.refetch()
+                  creatorProfile.refetch()
+                }}
+              />
+            )}
+          </div>
         </TabsContent>
 
         {/* Enhanced Settings Tab with profile editor and verification */}

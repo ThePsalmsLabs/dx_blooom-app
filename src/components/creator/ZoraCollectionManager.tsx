@@ -100,6 +100,7 @@ import { ZoraErrorBoundary } from '@/components/errors/ZoraErrorBoundary'
 interface ZoraCollectionManagerProps {
   readonly creatorAddress: Address
   readonly className?: string
+  readonly onCollectionCreated?: (collectionAddress: Address) => void
 }
 
 /**
@@ -143,7 +144,8 @@ type CollectionCreationState =
 
 export function ZoraCollectionManager({ 
   creatorAddress, 
-  className 
+  className,
+  onCollectionCreated
 }: ZoraCollectionManagerProps) {
   const { address: connectedAddress } = useAccount()
   const chainId = useChainId()
@@ -285,6 +287,11 @@ export function ZoraCollectionManager({
       })
 
       setCreationState('success')
+      
+      // Call success callback if provided
+      if (onCollectionCreated && newCollectionAddress) {
+        onCollectionCreated(newCollectionAddress)
+      }
       
       // Reset form and close dialog after success
       setTimeout(() => {

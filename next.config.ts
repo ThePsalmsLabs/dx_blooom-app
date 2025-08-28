@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   },
 
   // Build performance optimizations
-  swcMinify: true,
+  // swcMinify: true, // Removed - deprecated in Next.js 15
   
   // Webpack optimizations for faster builds
   webpack: (config, { dev, isServer }) => {
