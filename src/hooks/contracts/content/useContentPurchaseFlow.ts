@@ -212,16 +212,21 @@ export function useEnhancedContentPurchaseFlow(
     contractAddresses?.PAY_PER_VIEW
   )
   
-  // Existing wagmi contract interaction hooks
-  const { writeContract: writeApproval, data: approvalHash } = useContractWrite()
-  const { writeContract: writePurchase, data: purchaseHash } = useContractWrite()
+  // Single writeContract hook to avoid React hook rule violations
+  const { writeContract, data: transactionHash, error: writeError, isPending: isWritePending } = useWriteContract()
+  
+  // Track current transaction type for proper state management
+  const [currentTransactionType, setCurrentTransactionType] = useState<'approval' | 'purchase' | 'batch' | null>(null)
   
   // NEW: EIP-5792 batch transaction capability
   const { sendCalls, data: batchCallsData, isPending: isBatchPending } = useSendCalls()
   
-  // Transaction receipt monitoring for both sequential and batch transactions
-  const { isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({ hash: approvalHash })
-  const { isSuccess: isPurchaseSuccess } = useWaitForTransactionReceipt({ hash: purchaseHash })
+  // Transaction receipt monitoring for unified transaction hash
+  const { isSuccess: isTransactionSuccess, error: receiptError } = useWaitForTransactionReceipt({ 
+    hash: transactionHash 
+  })
+  
+  // Batch transaction receipt monitoring
   const { isSuccess: isBatchSuccess } = useWaitForTransactionReceipt({ 
     hash: batchCallsData as `0x${string}` | undefined 
   })

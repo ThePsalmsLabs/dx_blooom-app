@@ -641,20 +641,16 @@ export function OrchestratedContentPurchaseCard({
   }, [pendingTransactionHash, transactionReceipt, receiptError, accessQuery])
   
   // ===== DIRECT CONTRACT INTERACTION FOR PAYMENTS =====
-  // Use direct writeContract for payments to get immediate error feedback
+  // Use single writeContract hook to avoid React hook rule violations
   const { 
-    writeContract: writeEthContract, 
-    data: ethTransactionHash, 
-    error: ethWriteError, 
-    isPending: isEthWritePending 
+    writeContract, 
+    data: transactionHash, 
+    error: writeError, 
+    isPending: isWritePending 
   } = useWriteContract()
   
-  const { 
-    writeContract: writeUsdcContract, 
-    data: usdcTransactionHash, 
-    error: usdcWriteError, 
-    isPending: isUsdcWritePending 
-  } = useWriteContract()
+  // Track current transaction type for proper state management
+  const [currentTransactionType, setCurrentTransactionType] = useState<'eth' | 'usdc' | 'batch' | null>(null)
   
   // ===== EIP-5792 BATCH TRANSACTION SUPPORT =====
   // Use sendCalls for batch transactions (approve + purchase in one)
@@ -719,40 +715,15 @@ export function OrchestratedContentPurchaseCard({
     }
   }, [batchTransactionHash, paymentState.intentPhase])
   
-  // Monitor ETH write contract errors (immediate cancellation detection)
+  // Monitor write contract errors (immediate cancellation detection)
   useEffect(() => {
-    if (ethWriteError) {
-      console.log('❌ ETH write contract error:', ethWriteError)
+    if (writeError) {
+      console.log('❌ Write contract error:', writeError)
       
-      const isCancelled = ethWriteError.message.includes('User rejected') || 
-                         ethWriteError.message.includes('User denied') ||
-                         ethWriteError.message.includes('cancelled') ||
-                         ethWriteError.message.includes('rejected')
-      
-      setPaymentState(prev => ({
-        ...prev,
-        isProcessing: false,
-        intentPhase: isCancelled ? PaymentIntentPhase.CANCELLED : PaymentIntentPhase.FAILED,
-        transactionStatus: {
-          hash: null,
-          status: isCancelled ? 'cancelled' : 'failed',
-          confirmedAt: null,
-          error: ethWriteError,
-          receipt: null
-        }
-      }))
-    }
-  }, [ethWriteError])
-  
-  // Monitor USDC write contract errors (immediate cancellation detection)
-  useEffect(() => {
-    if (usdcWriteError) {
-      console.log('❌ USDC write contract error:', usdcWriteError)
-      
-      const isCancelled = usdcWriteError.message.includes('User rejected') || 
-                         usdcWriteError.message.includes('User denied') ||
-                         usdcWriteError.message.includes('cancelled') ||
-                         usdcWriteError.message.includes('rejected')
+      const isCancelled = writeError.message.includes('User rejected') || 
+                         writeError.message.includes('User denied') ||
+                         writeError.message.includes('cancelled') ||
+                         writeError.message.includes('rejected')
       
       setPaymentState(prev => ({
         ...prev,
@@ -762,23 +733,23 @@ export function OrchestratedContentPurchaseCard({
           hash: null,
           status: isCancelled ? 'cancelled' : 'failed',
           confirmedAt: null,
-          error: usdcWriteError,
+          error: writeError,
           receipt: null
         }
       }))
     }
-  }, [usdcWriteError])
+  }, [writeError])
   
-  // Monitor ETH transaction hash (when user approves)
+  // Monitor transaction hash (when user approves)
   useEffect(() => {
-    if (ethTransactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
-      console.log('✅ ETH transaction hash received:', ethTransactionHash)
-      setPendingTransactionHash(ethTransactionHash)
+    if (transactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
+      console.log('✅ Transaction hash received:', transactionHash)
+      setPendingTransactionHash(transactionHash)
       setPaymentState(prev => ({
         ...prev,
         intentPhase: PaymentIntentPhase.WAITING_CONFIRMATION,
         transactionStatus: {
-          hash: ethTransactionHash,
+          hash: transactionHash,
           status: 'pending',
           confirmedAt: null,
           error: null,
@@ -786,26 +757,7 @@ export function OrchestratedContentPurchaseCard({
         }
       }))
     }
-  }, [ethTransactionHash, paymentState.intentPhase])
-  
-  // Monitor USDC transaction hash (when user approves)
-  useEffect(() => {
-    if (usdcTransactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
-      console.log('✅ USDC transaction hash received:', usdcTransactionHash)
-      setPendingTransactionHash(usdcTransactionHash)
-      setPaymentState(prev => ({
-        ...prev,
-        intentPhase: PaymentIntentPhase.WAITING_CONFIRMATION,
-        transactionStatus: {
-          hash: usdcTransactionHash,
-          status: 'pending',
-          confirmedAt: null,
-          error: null,
-          receipt: null
-        }
-      }))
-    }
-  }, [usdcTransactionHash, paymentState.intentPhase])
+  }, [transactionHash, paymentState.intentPhase])
   
   // Legacy USDC purchase flow (still used for USDC direct payments)
   // Only initialize when needed to prevent unnecessary RPC calls
@@ -1133,7 +1085,8 @@ export function OrchestratedContentPurchaseCard({
       if (needsApproval) {
         console.log('🔐 Approving USDC spending (sequential)...')
         
-        await writeUsdcContract({
+        setCurrentTransactionType('usdc')
+        await writeContract({
           address: contractAddresses.USDC,
           abi: ERC20_ABI,
           functionName: 'approve',
@@ -1148,7 +1101,8 @@ export function OrchestratedContentPurchaseCard({
       // Direct purchase without approval needed
       console.log('💰 Purchasing content with USDC...')
       
-      await writeUsdcContract({
+      setCurrentTransactionType('usdc')
+      await writeContract({
         address: contractAddresses.PAY_PER_VIEW,
         abi: PAY_PER_VIEW_ABI,
         functionName: 'purchaseContentDirect',
@@ -1180,7 +1134,7 @@ export function OrchestratedContentPurchaseCard({
         }
       }))
     }
-  }, [contentQuery.data, paymentState.isProcessing, contractAddresses, calculatedTokens, contentId, writeUsdcContract, canUseBatchTransactions, sendCalls])
+  }, [contentQuery.data, paymentState.isProcessing, contractAddresses, calculatedTokens, contentId, writeContract, canUseBatchTransactions, sendCalls])
 
   /**
    * Handle ETH Purchase Execution
@@ -1231,7 +1185,8 @@ export function OrchestratedContentPurchaseCard({
       console.log('📝 Creating payment intent:', paymentRequest)
       
       // This will trigger the writeContract hook and we'll get immediate feedback
-      await writeEthContract({
+      setCurrentTransactionType('eth')
+      await writeContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
         abi: COMMERCE_PROTOCOL_INTEGRATION_ABI,
         functionName: 'createPaymentIntent',
@@ -1269,7 +1224,7 @@ export function OrchestratedContentPurchaseCard({
     paymentState.isProcessing, 
     contractAddresses,
     contentId, 
-    writeEthContract
+    writeContract
   ])
 
   /**
