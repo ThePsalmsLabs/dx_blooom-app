@@ -263,6 +263,7 @@ function ContentCard({ contentId, width, breakpoint, compact = false }: ContentC
               contentId={contentId}
               userAddress={address}
               onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
+              onViewContent={(contentId) => window.location.href = `/content/${contentId}`}
               variant="full"
               showCreatorInfo={true}
               showPurchaseDetails={true}

@@ -106,7 +106,9 @@ import {
 import { useContentById, useCreatorProfile } from '@/hooks/contracts/core'
 import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 import { type Address } from 'viem'
-import { categoryToString } from '@/types/contracts'
+import { categoryToString, type ContentWithMetadata } from '@/types/contracts'
+import { ContentNFTPromotion } from '@/components/content/ContentNFTPromotion'
+import { toast } from 'sonner'
 
 // ===== COMPONENT INTERFACE DEFINITIONS =====
 
@@ -748,6 +750,28 @@ function ContentCard({
 }: ContentCardProps) {
   const { data: content, isLoading: contentLoading } = useContentById(contentId)
   const { data: creator } = useCreatorProfile(content?.creator)
+  const { address: connectedAddress } = useAccount()
+
+  // Check if current user is the creator
+  const isCreator = useMemo(() => {
+    return connectedAddress && content?.creator && 
+           connectedAddress.toLowerCase() === content.creator.toLowerCase()
+  }, [connectedAddress, content?.creator])
+
+  // Create ContentWithMetadata from Content for NFT promotion
+  const contentWithMetadata = useMemo(() => {
+    if (!content) return null
+    
+    return {
+      ...content,
+      contentId: contentId,
+      formattedPrice: formatCurrency(content.payPerViewPrice, 6),
+      relativeTime: formatRelativeTime(content.creationTime),
+      creatorProfile: creator,
+      accessCount: BigInt(0), // This would need to come from a separate query
+      tags: [] // This would need to come from a separate query
+    } as ContentWithMetadata
+  }, [content, contentId, creator])
 
   if (contentLoading || !content) {
     return <ContentCardSkeleton displayMode={displayMode} />
@@ -792,6 +816,15 @@ function ContentCard({
                     <Badge variant="secondary">
                       {categoryToString(content.category)}
                     </Badge>
+                    {isCreator && contentWithMetadata && (
+                      <ContentNFTPromotion
+                        content={contentWithMetadata}
+                        creatorAddress={content.creator}
+                        onMintSuccess={(contractAddress, tokenId) => {
+                          toast.success('Content minted as NFT!')
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-4">
@@ -849,6 +882,18 @@ function ContentCard({
           <div className={cn("text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
             {formatRelativeTime(content.creationTime)}
           </div>
+          
+          {isCreator && contentWithMetadata && (
+            <div className="flex justify-center">
+              <ContentNFTPromotion
+                content={contentWithMetadata}
+                creatorAddress={content.creator}
+                onMintSuccess={(contractAddress, tokenId) => {
+                  toast.success('Content minted as NFT!')
+                }}
+              />
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

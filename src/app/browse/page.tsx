@@ -678,6 +678,7 @@ function BrowsePageClient() {
                 onPurchaseSuccess={() => {
                   handlePurchaseSuccess(interactionState.selectedContentId!)
                 }}
+                onViewContent={handleViewContent}
                 variant="full"
                 showCreatorInfo={true}
                 showPurchaseDetails={true}
@@ -820,6 +821,7 @@ function ContentGrid({
           contentId={contentId}
           userAddress={userAddress}
           onPurchaseSuccess={() => onPurchaseSuccess(contentId)}
+          onViewContent={onViewContent}
           variant="full"
           showCreatorInfo={true}
           showPurchaseDetails={true}

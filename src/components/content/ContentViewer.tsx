@@ -241,6 +241,12 @@ export function ContentViewer({
     
   }, [contentQuery.data, loadContentFromIPFS])
 
+  // Handle view content navigation
+  const handleViewContent = useCallback((contentId: bigint) => {
+    // Navigate to content view page
+    router.push(`/content/${contentId}/view`)
+  }, [router])
+
   // Load content when access is granted
   useEffect(() => {
     if (accessStatus === 'granted' && contentQuery.data && contentLoadingState === 'idle') {
@@ -669,6 +675,13 @@ function AccessDeniedState({
   content: NonNullable<ReturnType<typeof useContentById>['data']>
   userAddress: string | undefined
 }) {
+  const router = useRouter()
+
+  // Handle view content navigation
+  const handleViewContent = useCallback((contentId: bigint) => {
+    // Navigate to content view page
+    router.push(`/content/${contentId}/view`)
+  }, [router])
   return (
     <Card>
       <CardContent className="py-12 text-center space-y-6">
@@ -687,6 +700,7 @@ function AccessDeniedState({
             onPurchaseSuccess={() => {
               toast.success('Content purchased successfully!')
             }}
+            onViewContent={handleViewContent}
             variant="full"
             showCreatorInfo={true}
             showPurchaseDetails={true}

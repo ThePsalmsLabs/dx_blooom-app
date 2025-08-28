@@ -194,6 +194,12 @@ export function ContentDiscoveryGrid({
     }
   }, [contentQuery.data, itemsPerPage])
 
+  // Handle view content navigation
+  const handleViewContent = useCallback((contentId: bigint) => {
+    // Navigate to content detail page
+    window.location.href = `/content/${contentId}`
+  }, [])
+
   // Determine if filters are active
   const hasActiveFilters = useMemo(() => {
     return (
@@ -580,6 +586,12 @@ function ContentDisplayCard({
     }
   }, [contentId, onSelect])
 
+  // Handle view content navigation
+  const handleViewContent = useCallback((contentId: bigint) => {
+    // Navigate to content detail page
+    window.location.href = `/content/${contentId}`
+  }, [])
+
   // Loading state for individual cards
   if (contentQuery.isLoading) {
     return <ContentCardSkeleton viewMode={viewMode} />
@@ -721,6 +733,7 @@ function ContentDisplayCard({
               // Refresh access control data
               accessControl.refetch()
             }}
+            onViewContent={handleViewContent}
             variant="full"
             showCreatorInfo={true}
             showPurchaseDetails={true}

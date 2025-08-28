@@ -48,27 +48,6 @@
       ]
     },
     {
-      "file": "src/app/dashboard/page.tsx",
-      "matches": 15,
-      "lines": [
-        "console.log('🔄 Forcing creator data refresh on da...",
-        "console.log('🎉 New creator detected! Refreshing d...",
-        "console.log('🎉 Welcome to Your Creator Dashboard!...",
-        "console.log('🔍 Dashboard verification effect:', {...",
-        "console.log('⚠️ Non-creator detected, redirecting ...",
-        "console.log(`Analytics period changed to: ${period...",
-        "console.log('Dashboard data refreshed')...",
-        "console.log('❌ No earnings available to withdraw')...",
-        "console.log('⏳ Withdrawal already in progress')...",
-        "console.log('🚀 Initiating earnings withdrawal...'...",
-        "console.log(`💰 Amount: ${formatCurrency(pending, ...",
-        "console.log('✅ Earnings withdrawal confirmed! Refr...",
-        "console.log('🎉 Your earnings have been successful...",
-        "console.log('Access denied:', result)...",
-        "console.log(`Content uploaded: ${contentId}`)..."
-      ]
-    },
-    {
       "file": "src/app/demo/enhanced-ui/page.tsx",
       "matches": 1,
       "lines": [
@@ -114,29 +93,6 @@
         "console.log('📍 Context detection result:', contex...",
         "console.log('⚙️ Generated layout config:', layoutC...",
         "console.log(`✅ Layout initialized successfully in ..."
-      ]
-    },
-    {
-      "file": "src/app/onboard/page.tsx",
-      "matches": 17,
-      "lines": [
-        "console.log('Form Data:', formData)...",
-        "console.log('Subscription Price (wei)...",
-        "console.log('Profile Data:', profileData)...",
-        "console.log('🔍 Success handling effect triggered:...",
-        "console.log('✅ Registration successful, showing di...",
-        "console.log(`🔄 Redirect attempt ${attempt}/${maxA...",
-        "console.log('🔄 Refreshing registration data...')...",
-        "console.log('✅ Redirect initiated successfully')...",
-        "console.log('🧹 Cleaning up redirect timeout')...",
-        "console.log('Progress Percentage:', progressPercen...",
-        "console.log('Completed Steps:', completedSteps)...",
-        "console.log('Current Step Index:', currentStepInde...",
-        "console.log('Registration Progress:', onboarding.r...",
-        "console.log(`Navigation context changed to: ${cont...",
-        "console.log('🚀 Dashboard button clicked!')...",
-        "console.log('Current router state:', router)...",
-        "console.log('✅ Navigation initiated successfully')..."
       ]
     },
     {
@@ -245,9 +201,12 @@
     },
     {
       "file": "src/components/creator/ZoraCollectionManager.tsx",
-      "matches": 1,
+      "matches": 4,
       "lines": [
-        "console.log('Manage collection:', collection.addre..."
+        "console.log('Updating collection settings:', {\n   ...",
+        "console.log('Collection settings updated successfu...",
+        "console.log('Manage collection:', collection.addre...",
+        "console.log('Edit collection:', collection.address..."
       ]
     },
     {
@@ -494,60 +453,9 @@
     },
     {
       "file": "src/hooks/business/workflows.ts",
-      "matches": 52,
+      "matches": 1,
       "lines": [
-        "console.log(`🔄 Using fallback ETH price: ${fallba...",
-        "console.log(`🔍 Token info fetch - Method: ${payme...",
-        "console.log(`📦 Using cached token info for ${toke...",
-        "console.log(`🎯 Final token info for ${symbol}:`, ...",
-        "console.log('⏳ Skipping refresh: already running')...",
-        "console.log('⏳ Skipping refresh: throttled')...",
-        "console.log(`🔄 Starting price refresh for ${userA...",
-        "console.log(`📋 Methods to check: ${methodsToCheck...",
-        "console.log(`🔄 Fetching ${tokenConfig.symbol} inf...",
-        "console.log(`✅ Updated ${tokenConfig.symbol} info:...",
-        "console.log(`💰 Price refresh completed for ${upda...",
-        "console.log('🔄 useEffect: Auto-refreshing prices....",
-        "console.log(`🚀 Creating payment intent for ${sele...",
-        "console.log(`✅ Payment intent created:`, result)...",
-        "console.log('Creating Commerce Protocol payment in...",
-        "console.log('Executing signed payment intent:', co...",
-        "console.log('Starting content publishing workflow....",
-        "console.log('Calling registerContent with validate...",
-        "console.log('Transaction submitted, waiting for co...",
-        "console.log('Transaction confirmed, waiting for re...",
-        "console.log('Transaction successful, extracting co...",
-        "console.log('Transaction receipt:', receipt)...",
-        "console.log('Successfully extracted content ID:', ...",
-        "console.log('Sharing to Farcaster:', message)...",
-        "console.log('Subscription Price (BigInt)...",
-        "console.log('Profile Data:', profileData)...",
-        "console.log('User Address:', userAddress)...",
-        "console.log('Transaction Hash:', currentTxHash)...",
-        "console.log('Setting state to registered and flagg...",
-        "console.log('🔄 Refreshing registration and profil...",
-        "console.log('Current Step:', workflowState.current...",
-        "console.log('Has Just Registered:', workflowState....",
-        "console.log('Registration Check Data:', registrati...",
-        "console.log('Registration Check Loading:', registr...",
-        "console.log('Registration Check Error:', registrat...",
-        "console.log('Registration Check Success:', registr...",
-        "console.log('User Address:', userAddress)...",
-        "console.log('🛡️ Protected: Ignoring registration ...",
-        "console.log('🛡️ Protected: Ignoring registration ...",
-        "console.log('⚠️ No user address available, staying...",
-        "console.log('⏳ Registration check still loading......",
-        "console.log('📊 Registration check confirmed: User...",
-        "console.log('📊 Registration check confirmed: User...",
-        "console.log('🔄 Treating undefined result as not r...",
-        "console.log('🎯 Data refresh confirmed registratio...",
-        "console.log('👤 Address changed, resetting workflo...",
-        "console.log('Current Step:', workflowState.current...",
-        "console.log('Has Just Registered:', workflowState....",
-        "console.log('Registration Check Data:', registrati...",
-        "console.log('Registration Check Loading:', registr...",
-        "console.log('Profile Data Available:', !!profileDa...",
-        "console.log('Transaction Hash:', workflowState.las..."
+        "console.log('🛡️ Protected: Ignoring registration ..."
       ]
     },
     {
@@ -781,6 +689,13 @@
       "matches": 1,
       "lines": [
         "console.log('Tracking share:', trackingData)..."
+      ]
+    },
+    {
+      "file": "src/lib/services/zora-integration.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('✅ Metadata uploaded to IPFS successfu..."
       ]
     },
     {
@@ -1244,6 +1159,20 @@
       ]
     },
     {
+      "file": "src/lib/services/ipfs-production.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Pinata API credentials not configure..."
+      ]
+    },
+    {
+      "file": "src/lib/services/zora-integration.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Collection not found for address:', ..."
+      ]
+    },
+    {
       "file": "src/lib/utils/debug.tsx",
       "matches": 3,
       "lines": [
@@ -1567,6 +1496,14 @@
       ]
     },
     {
+      "file": "src/components/content/ContentNFTPromotion.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Error checking mint status:', error...",
+        "console.error('NFT minting error:', error)..."
+      ]
+    },
+    {
       "file": "src/components/content/ContentPurchaseCard.backup.tsx",
       "matches": 5,
       "lines": [
@@ -1643,9 +1580,14 @@
     },
     {
       "file": "src/components/creator/ZoraCollectionManager.tsx",
-      "matches": 1,
+      "matches": 6,
       "lines": [
-        "console.error('Collection creation failed:', error..."
+        "console.error('IPFS upload failed:', uploadError)...",
+        "console.error('Collection creation failed:', error...",
+        "console.error('User-facing error:', errorMessage)...",
+        "console.error('IPFS upload failed:', uploadError)...",
+        "console.error('Collection settings update failed:'...",
+        "console.error('User-facing error:', errorMessage)..."
       ]
     },
     {
@@ -2330,7 +2272,7 @@
     },
     {
       "file": "src/lib/services/zora-integration.ts",
-      "matches": 7,
+      "matches": 8,
       "lines": [
         "console.error('Error creating Zora collection:', e...",
         "console.error('Error minting NFT:', error)...",
@@ -2338,7 +2280,8 @@
         "console.error('Error fetching NFT info:', error)...",
         "console.error('Error checking if content is minted...",
         "console.error('Error getting creator collection:',...",
-        "console.error('Error uploading metadata to IPFS:',..."
+        "console.error('❌ Error uploading metadata to IPFS:...",
+        "console.error('Error fetching collection analytics..."
       ]
     },
     {
@@ -2457,14 +2400,16 @@
     },
     {
       "file": "src/services/zora/ZoraDatabaseService.ts",
-      "matches": 6,
+      "matches": 8,
       "lines": [
         "console.error('Error reading from localStorage:', ...",
         "console.error('Error writing to localStorage:', er...",
         "console.error('Error deleting from localStorage:',...",
         "console.error('Error listing localStorage keys:', ...",
         "console.error('Failed to get subscription metrics:...",
-        "console.error('Failed to get NFT metrics:', error)..."
+        "console.error('Failed to get NFT metrics:', error)...",
+        "console.error('Error getting creator analytics:', ...",
+        "console.error('Error getting collection performanc..."
       ]
     },
     {

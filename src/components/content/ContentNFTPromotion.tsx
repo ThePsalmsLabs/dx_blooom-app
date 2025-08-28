@@ -85,12 +85,13 @@ import { cn, formatAddress } from '@/lib/utils'
 
 // Import Zora types
 import type { ZoraNFTMetadata } from '@/types/zora'
-import type { Content } from '@/types/contracts'
+import type { Content, ContentWithMetadata } from '@/types/contracts'
+import { categoryToString } from '@/types/contracts'
 
 // ===== INTERFACES =====
 
 interface ContentNFTPromotionProps {
-  readonly content: Content
+  readonly content: ContentWithMetadata // Use ContentWithMetadata to get contentId
   readonly creatorAddress: Address
   readonly className?: string
   readonly onMintSuccess?: (contractAddress: Address, tokenId: bigint) => void
@@ -139,26 +140,26 @@ function calculateSuggestedPrice(
  * Format content metadata for Zora NFT
  */
 function formatContentMetadata(
-  content: Content,
+  content: ContentWithMetadata,
   creatorAddress: Address,
   customDescription?: string
 ): Omit<ZoraNFTMetadata, 'tokenURI'> {
   return {
     name: content.title,
     description: customDescription || content.description,
-    image: content.imageUrl || '', // Will be uploaded to IPFS
-    external_url: `https://yourplatform.com/content/${content.id}`,
+    image: '', // Will be uploaded to IPFS - no imageUrl in Content interface
+    external_url: `https://yourplatform.com/content/${content.contentId}`,
     attributes: [
-      { trait_type: 'Category', value: content.category },
+      { trait_type: 'Category', value: categoryToString(content.category) },
       { trait_type: 'Creator', value: creatorAddress },
       { trait_type: 'Platform', value: 'onchain-content-platform' },
-      { trait_type: 'Content Type', value: content.paymentType === 0 ? 'Pay-per-view' : 'Subscription' },
+      { trait_type: 'Content Type', value: content.payPerViewPrice > BigInt(0) ? 'Pay-per-view' : 'Free' },
       { trait_type: 'Publish Date', value: new Date().toISOString().split('T')[0] }
     ],
-    content_id: content.id.toString(),
+    content_id: content.contentId.toString(),
     creator_address: creatorAddress,
     original_publish_date: new Date().toISOString(),
-    content_category: content.category,
+    content_category: categoryToString(content.category),
     platform: 'onchain-content-platform'
   }
 }
@@ -209,11 +210,11 @@ export function ContentNFTPromotion({
   
   useEffect(() => {
     async function checkMintStatus() {
-      if (!zoraService || !content.id) return
+      if (!zoraService || !content.contentId) return
       
       try {
         const isMinted = await zoraService.isContentMinted(
-          content.id.toString(),
+          content.contentId.toString(),
           creatorAddress
         )
         setIsAlreadyMinted(isMinted)
@@ -223,15 +224,15 @@ export function ContentNFTPromotion({
     }
     
     checkMintStatus()
-  }, [zoraService, content.id, creatorAddress])
+  }, [zoraService, content.contentId, creatorAddress])
 
   // Suggested pricing
   const suggestedPrice = useMemo(() => {
-    const tier = content.price === BigInt(0) ? 'free' : 
-                 content.price < parseEther('0.01') ? 'premium' : 'exclusive'
+    const tier = content.payPerViewPrice === BigInt(0) ? 'free' : 
+                 content.payPerViewPrice < parseEther('0.01') ? 'premium' : 'exclusive'
     
-    return formatEther(calculateSuggestedPrice(content.price, tier))
-  }, [content.price])
+    return formatEther(calculateSuggestedPrice(content.payPerViewPrice, tier))
+  }, [content.payPerViewPrice])
 
   // Handle mint configuration
   const handleMintContent = useCallback(async () => {
@@ -367,7 +368,7 @@ export function ContentNFTPromotion({
                     {content.category}
                   </Badge>
                   <span>
-                    {content.paymentType === 0 ? 'Pay-per-view' : 'Subscription'} Content
+                    {content.payPerViewPrice > BigInt(0) ? 'Pay-per-view' : 'Free'} Content
                   </span>
                 </div>
               </CardContent>
@@ -534,7 +535,7 @@ export function ContentNFTPromotion({
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Transaction:</span>
-                    <code className="text-xs">{formatAddress(mintResult.transactionHash)}</code>
+                    <code className="text-xs">{formatAddress(mintResult.transactionHash as Address)}</code>
                   </div>
                 </div>
               </CardContent>

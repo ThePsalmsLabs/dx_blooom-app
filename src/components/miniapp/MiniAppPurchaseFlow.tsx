@@ -298,6 +298,7 @@ export function MiniAppPurchaseFlow({
         contentId={contentId}
         userAddress={address}
         onPurchaseSuccess={handlePurchaseSuccess}
+        onViewContent={(contentId) => window.location.href = `/content/${contentId}`}
         variant="full"
         showCreatorInfo={true}
         showPurchaseDetails={true}

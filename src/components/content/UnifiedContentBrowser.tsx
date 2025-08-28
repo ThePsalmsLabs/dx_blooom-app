@@ -929,6 +929,7 @@ function ContentItemCard({
                   contentId={contentId}
                   userAddress={userAddress}
                   onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
+                  onViewContent={(contentId) => window.location.href = `/content/${contentId}`}
                   variant="full"
                   showCreatorInfo={true}
                   showPurchaseDetails={true}

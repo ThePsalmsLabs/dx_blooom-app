@@ -65,6 +65,7 @@ export function ContentAccessControl({
           contentId={contentId}
           userAddress={userAddress}
           onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
+          onViewContent={(contentId) => router.push(`/content/${contentId}/view`)}
           variant="full"
           showCreatorInfo={true}
           showPurchaseDetails={true}
