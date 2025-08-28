@@ -798,7 +798,8 @@ export function OrchestratedContentPurchaseCard({
     callbacks: orchestratorCallbacks
   }), [orchestratorCallbacks, enablePerformanceMetrics])
 
-  // Orchestrated payment system integration - only initialize if needed
+  // Orchestrated payment system integration - always call hook to avoid Rules of Hooks violation
+  // The hook itself will handle wallet client availability gracefully
   const orchestrator = usePaymentFlowOrchestrator(orchestratorConfig)
 
   // Token balance hooks - ONLY enabled after payment intent expressed

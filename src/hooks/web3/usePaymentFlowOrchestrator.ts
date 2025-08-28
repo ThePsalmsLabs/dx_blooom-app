@@ -779,6 +779,16 @@ export function useEnhancedPaymentOrchestrator(
   if (!publicClient) {
     throw new Error('Public client is not available')
   }
+  
+  // Helper function to safely access wallet client when needed
+  const requireWalletForPayment = (operation: string) => {
+    if (!address) {
+      throw new Error(`Please connect your wallet to ${operation}`)
+    }
+    if (!walletAddress) {
+      throw new Error(`Wallet address is required for ${operation}`)
+    }
+  }
 
   /**
    * Enhanced Helper: Check Token Allowance
@@ -1130,6 +1140,9 @@ export function useEnhancedPaymentOrchestrator(
       return
     }
 
+    // Check wallet connection before proceeding
+    requireWalletForPayment('execute payment')
+
     setIsProcessing(true)
     const executionStartTime = Date.now()
     
@@ -1364,13 +1377,22 @@ export function usePaymentFlowOrchestrator(
   })
   const { sendCalls } = useSendCalls()
   
-  // Ensure clients are available
-  if (!publicClient) {
-    throw new Error('Public client is not available')
-  }
+  // Gracefully handle missing clients - don't throw immediately
+  const isClientReady = !!publicClient && !!walletClient && isConnected
   
-  if (!walletClient) {
-    throw new Error('Wallet client is not available')
+  // Only throw wallet client error if we're trying to execute a payment
+  // This allows the hook to be used for read-only operations
+  const requireWalletClient = (operation: string) => {
+    if (!publicClient) {
+      throw new Error('Public client is not available')
+    }
+    if (!walletClient) {
+      throw new Error(`Wallet client is required for ${operation}. Please connect your wallet.`)
+    }
+    if (!isConnected) {
+      throw new Error(`Please connect your wallet to ${operation}`)
+    }
+    return walletClient
   }
   
   // State machine state
@@ -1693,10 +1715,11 @@ export function usePaymentFlowOrchestrator(
           if (!publicClient) {
             throw new Error('Public client is not available')
           }
+          const walletClientInstance = requireWalletClient('Permit2 flow')
           return await executePermit2Flow(
             request.contentId,
             publicClient!,
-            walletClient!,
+            walletClientInstance,
             address!
           )
           
@@ -1706,10 +1729,11 @@ export function usePaymentFlowOrchestrator(
             progress: 20,
             message: 'Preparing batch transaction...'
           })
+          const batchWalletClient = requireWalletClient('Batch flow')
           return await executeBatchFlow(
             request.contentId,
             publicClient!,
-            walletClient!,
+            batchWalletClient,
             address!,
             sendCalls
           )
@@ -1720,10 +1744,11 @@ export function usePaymentFlowOrchestrator(
             progress: 20,
             message: 'Approving token spending...'
           })
+          const sequentialWalletClient = requireWalletClient('Sequential flow')
           return await executeSequentialFlow(
             request.contentId,
             publicClient!,
-            walletClient!,
+            sequentialWalletClient,
             address!
           )
           
@@ -2202,7 +2227,7 @@ export function usePaymentFlowOrchestrator(
   }, [])
   
   // Computed properties
-  const canStartPayment = !state.isActive && healthMonitor.isBackendAvailable && isConnected
+  const canStartPayment = !state.isActive && healthMonitor.isBackendAvailable && isClientReady
   
   return {
     state,

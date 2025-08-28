@@ -87,12 +87,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/images/miniapp-og-square.png', sizes: '32x32', type: 'image/png' },
-      { url: '/images/miniapp-og-square.png', sizes: '16x16', type: 'image/png' },
+      { url: '/images/miniapp-icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
     apple: [
       { url: '/images/miniapp-og-square.png', sizes: '180x180', type: 'image/png' }
-    ],
-    shortcut: '/images/miniapp-og-square.png'
+    ]
   }
 }
 
@@ -115,6 +114,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-context="desktop">
+      <head>
+        <link rel="icon" href="/images/miniapp-og-square.png?v=1" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/images/miniapp-icon-192.png?v=1" type="image/png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="/images/miniapp-og-square.png?v=1" />
+      </head>
       <body className="min-h-screen bg-background font-sans antialiased bg-amber-glow">
         {/* 
           🔧 KEY FIX: This provider hierarchy ensures that every component
