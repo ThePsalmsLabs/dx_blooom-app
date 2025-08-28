@@ -70,6 +70,7 @@ import { useWalletConnectionUI } from '@/hooks/ui/integration'
 // Import utilities and types that ensure type safety throughout
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 import type { Creator } from '@/types/contracts'
+import { debug } from '@/lib/utils/debug'
 
 /**
  * Page-level interfaces that define our component's contract
@@ -208,11 +209,10 @@ function OnboardingContent() {
          throw new Error('Profile data cannot be empty')
       }
       
-      console.group('🚀 Enhanced Page: Submitting Registration')
-      console.log('Form Data:', formData)
-      console.log('Subscription Price (wei):', subscriptionPriceWei.toString())
-      console.log('Profile Data:', profileData)
-      console.groupEnd()
+      debug.log('🚀 Enhanced Page: Submitting Registration')
+      debug.log('Form Data:', formData)
+      debug.log('Subscription Price (wei):', subscriptionPriceWei.toString())
+      debug.log('Profile Data:', profileData)
       
       onboarding.register(subscriptionPriceWei, profileData)
       
@@ -232,7 +232,7 @@ function OnboardingContent() {
   
   // Enhanced success handling with better navigation logic
   useEffect(() => {
-    console.log('🔍 Success handling effect triggered:', {
+    debug.log('🔍 Success handling effect triggered:', {
       currentStep: onboarding.currentStep,
       isNavigating,
       showSuccessDialog,
@@ -240,7 +240,7 @@ function OnboardingContent() {
     })
     
     if (onboarding.currentStep === 'registered' && !isNavigating) {
-      console.log('✅ Registration successful, showing dialog and setting up redirect')
+      debug.log('✅ Registration successful, showing dialog and setting up redirect')
       
       if (!showSuccessDialog) {
         setShowSuccessDialog(true)
@@ -255,11 +255,11 @@ function OnboardingContent() {
       // Enhanced redirect logic with retry mechanism
       const attemptRedirect = async (attempt = 1, maxAttempts = 3) => {
         try {
-          console.log(`🔄 Redirect attempt ${attempt}/${maxAttempts}`)
+          debug.log(`🔄 Redirect attempt ${attempt}/${maxAttempts}`)
           
           // Force refresh the registration status before redirecting
           if (attempt === 1) {
-            console.log('🔄 Refreshing registration data...')
+            debug.log('🔄 Refreshing registration data...')
             await onboarding.registrationCheck?.refetch?.()
             await onboarding.creatorProfile?.refetch?.()
             
@@ -269,7 +269,7 @@ function OnboardingContent() {
           
           // Navigate to dashboard with registration flag
           router.push('/dashboard?newRegistration=true')
-          console.log('✅ Redirect initiated successfully')
+          debug.log('✅ Redirect initiated successfully')
           
         } catch (error) {
           console.error(`❌ Redirect attempt ${attempt} failed:`, error)
@@ -296,7 +296,7 @@ function OnboardingContent() {
       }, 1000)
       
       return () => {
-        console.log('🧹 Cleaning up redirect timeout')
+        debug.log('🧹 Cleaning up redirect timeout')
         clearTimeout(redirectTimeout)
       }
     }
@@ -350,12 +350,11 @@ function OnboardingContent() {
   
   // Enhanced debug information
   useEffect(() => {
-    console.group('🔍 Enhanced Page: State Debug')
-    console.log('Progress Percentage:', progressPercentage)
-    console.log('Completed Steps:', completedSteps)
-    console.log('Current Step Index:', currentStepIndex)
-    console.log('Registration Progress:', onboarding.registrationProgress)
-    console.groupEnd()
+    debug.log('🔍 Enhanced Page: State Debug')
+    debug.log('Progress Percentage:', progressPercentage)
+    debug.log('Completed Steps:', completedSteps)
+    debug.log('Current Step Index:', currentStepIndex)
+    debug.log('Registration Progress:', onboarding.registrationProgress)
   }, [progressPercentage, completedSteps, currentStepIndex, onboarding.registrationProgress])
 
   return (
@@ -425,7 +424,7 @@ function OnboardingContent() {
           showMobileNav={true}
           showWorkflowProgress={true}
           onContextChange={useCallback((context: 'home' | 'browse' | 'content_creation' | 'content_consumption' | 'creator_dashboard' | 'user_profile' | 'transaction_flow' | 'onboarding') => {
-            console.log(`Navigation context changed to: ${context}`)
+            debug.log(`Navigation context changed to: ${context}`)
           }, [])}
         />
       </Suspense>
@@ -532,15 +531,15 @@ function OnboardingContent() {
               Stay Here
             </Button>
             <Button onClick={() => {
-              console.log('🚀 Dashboard button clicked!')
-              console.log('Current router state:', router)
+              debug.log('🚀 Dashboard button clicked!')
+              debug.log('Current router state:', router)
               try {
                 // Close the dialog first
                 setShowSuccessDialog(false)
                 // Then navigate to dashboard
                 setTimeout(() => {
                   router.push('/dashboard')
-                  console.log('✅ Navigation initiated successfully')
+                  debug.log('✅ Navigation initiated successfully')
                 }, 100)
               } catch (error) {
                 console.error('❌ Navigation failed:', error)

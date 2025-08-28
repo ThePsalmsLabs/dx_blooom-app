@@ -145,7 +145,7 @@ export const debug = {
   /**
    * General debug logging
    */
-  log: (message: string, data?: any) => {
+  log: (message: string, data?: any, p0?: string) => {
     if (isDevelopment && isDebugEnabled) {
       console.log(`[DEBUG] 🔍 ${message}`, data)
     }

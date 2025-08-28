@@ -146,6 +146,57 @@ export interface MintedEvent {
  */
 export type ZoraEvent = SetupNewContractEvent | UpdatedTokenEvent | PurchasedEvent | MintedEvent
 
+/**
+ * Processed Zora Event for Analytics
+ * 
+ * Enhanced event data with additional analytics metadata
+ * used for dashboard and reporting purposes
+ */
+export interface ProcessedZoraEvent {
+  readonly originalEvent: ZoraEvent
+  readonly processedAt: Date
+  readonly analytics: {
+    readonly eventType: ZoraEvent['eventName']
+    readonly contractAddress: Address
+    readonly timestamp: Date
+    readonly blockNumber: bigint
+    readonly transactionHash: Hash
+    readonly gasUsed?: bigint
+    readonly gasPrice?: bigint
+    readonly totalValue?: bigint
+    readonly uniqueParticipants?: number
+    readonly eventCount?: number
+  }
+  readonly metadata: {
+    readonly source: 'zora_protocol'
+    readonly version: 'v3'
+    readonly network: string
+    readonly processedBy: string
+    readonly processingTime: number
+    readonly validationStatus: 'valid' | 'warning' | 'error'
+    readonly validationErrors?: string[]
+  }
+}
+
+/**
+ * Bulk Event Processing Result
+ */
+export interface BulkEventProcessingResult {
+  readonly processedEvents: ProcessedZoraEvent[]
+  readonly summary: {
+    readonly totalEvents: number
+    readonly validEvents: number
+    readonly invalidEvents: number
+    readonly processingTime: number
+    readonly eventsByType: Record<ZoraEvent['eventName'], number>
+    readonly totalValue: bigint
+    readonly uniqueContracts: Address[]
+    readonly uniqueParticipants: Address[]
+  }
+  readonly errors: ZoraEventParsingError[]
+  readonly warnings: string[]
+}
+
 // ===== EVENT PARSING FUNCTIONS =====
 
 /**
@@ -716,4 +767,333 @@ export function parseZoraEventsWithDecodeEventLog(
   }
 
   return { events, errors }
+}
+
+/**
+ * Bulk event processing for dashboard analytics
+ * 
+ * Processes multiple events in batch for efficient analytics processing
+ * and provides comprehensive summary statistics
+ */
+export function processBulkZoraEvents(
+  events: Log[],
+  eventTypes: string[],
+  options: {
+    factoryAddress?: Address
+    contractAddresses?: Address[]
+    network?: string
+    includeGasData?: boolean
+    validateEvents?: boolean
+  } = {}
+): BulkEventProcessingResult {
+  const startTime = Date.now()
+  const processedEvents: ProcessedZoraEvent[] = []
+  const errors: ZoraEventParsingError[] = []
+  const warnings: string[] = []
+  
+  // Track analytics data
+  const eventsByType: Record<ZoraEvent['eventName'], number> = {
+    SetupNewContract: 0,
+    UpdatedToken: 0,
+    Purchased: 0,
+    Minted: 0
+  }
+  
+  const uniqueContracts = new Set<Address>()
+  const uniqueParticipants = new Set<Address>()
+  let totalValue = BigInt(0)
+  let validEvents = 0
+  let invalidEvents = 0
+
+  // Process each event
+  for (const log of events) {
+    const eventStartTime = Date.now()
+    
+    try {
+      // Validate event log structure
+      if (!validateEventLog(log)) {
+        invalidEvents++
+        warnings.push(`Invalid event log structure at index ${log.logIndex}`)
+        continue
+      }
+
+      // Check if event type is requested
+      const eventSignature = log.topics[0]
+      if (!eventSignature) {
+        invalidEvents++
+        continue
+      }
+
+      // Determine event type and parse accordingly
+      let parsedEvent: ZoraEvent | null = null
+      let validationStatus: 'valid' | 'warning' | 'error' = 'valid'
+      const validationErrors: string[] = []
+
+      // Parse SetupNewContract events
+      if (eventSignature === ZORA_EVENT_SIGNATURES.SETUP_NEW_CONTRACT) {
+        if (eventTypes.includes('SetupNewContract') && options.factoryAddress) {
+          parsedEvent = parseSetupNewContractLog(log, BigInt(0), '0x' as Hash)
+          if (parsedEvent) {
+            uniqueContracts.add(parsedEvent.contractAddress)
+            uniqueParticipants.add(parsedEvent.creator)
+            eventsByType.SetupNewContract++
+          }
+        }
+      }
+      
+      // Parse UpdatedToken events
+      else if (eventSignature === ZORA_EVENT_SIGNATURES.UPDATED_TOKEN) {
+        if (eventTypes.includes('UpdatedToken') && options.contractAddresses?.length) {
+          for (const contractAddress of options.contractAddresses) {
+            if (log.address.toLowerCase() === contractAddress.toLowerCase()) {
+              parsedEvent = parseUpdatedTokenLog(log, BigInt(0), '0x' as Hash)
+              if (parsedEvent) {
+                uniqueContracts.add(parsedEvent.contractAddress)
+                uniqueParticipants.add(parsedEvent.sender)
+                eventsByType.UpdatedToken++
+                break
+              }
+            }
+          }
+        }
+      }
+      
+      // Parse Purchased events
+      else if (eventSignature === ZORA_EVENT_SIGNATURES.PURCHASED) {
+        if (eventTypes.includes('Purchased') && options.contractAddresses?.length) {
+          for (const contractAddress of options.contractAddresses) {
+            if (log.address.toLowerCase() === contractAddress.toLowerCase()) {
+              parsedEvent = parsePurchasedLog(log, BigInt(0), '0x' as Hash)
+              if (parsedEvent) {
+                uniqueContracts.add(parsedEvent.contractAddress)
+                uniqueParticipants.add(parsedEvent.sender)
+                totalValue += parsedEvent.value
+                eventsByType.Purchased++
+                break
+              }
+            }
+          }
+        }
+      }
+      
+      // Parse Minted events
+      else if (eventSignature === ZORA_EVENT_SIGNATURES.MINTED) {
+        if (eventTypes.includes('Minted') && options.contractAddresses?.length) {
+          for (const contractAddress of options.contractAddresses) {
+            if (log.address.toLowerCase() === contractAddress.toLowerCase()) {
+              parsedEvent = parseMintedLog(log, BigInt(0), '0x' as Hash)
+              if (parsedEvent) {
+                uniqueContracts.add(parsedEvent.contractAddress)
+                uniqueParticipants.add(parsedEvent.minter)
+                totalValue += parsedEvent.value
+                eventsByType.Minted++
+                break
+              }
+            }
+          }
+        }
+      }
+
+      // Validate parsed event
+      if (parsedEvent && options.validateEvents) {
+        if (!validateZoraEvent(parsedEvent)) {
+          validationStatus = 'error'
+          validationErrors.push('Event validation failed')
+          invalidEvents++
+        } else {
+          validEvents++
+        }
+      } else if (parsedEvent) {
+        validEvents++
+      }
+
+      // Create processed event if parsing was successful
+      if (parsedEvent) {
+        const processingTime = Date.now() - eventStartTime
+        
+        const processedEvent: ProcessedZoraEvent = {
+          originalEvent: parsedEvent,
+          processedAt: new Date(),
+          analytics: {
+            eventType: parsedEvent.eventName,
+            contractAddress: parsedEvent.contractAddress,
+            timestamp: new Date(), // In production, this would come from block timestamp
+            blockNumber: parsedEvent.blockNumber,
+            transactionHash: parsedEvent.transactionHash,
+            totalValue: 'value' in parsedEvent ? parsedEvent.value : undefined,
+            uniqueParticipants: 1, // Simplified - would be calculated across all events
+            eventCount: 1
+          },
+          metadata: {
+            source: 'zora_protocol',
+            version: 'v3',
+            network: options.network || 'unknown',
+            processedBy: 'zora-events-processor',
+            processingTime,
+            validationStatus,
+            validationErrors: validationErrors.length > 0 ? validationErrors : undefined
+          }
+        }
+
+        processedEvents.push(processedEvent)
+      }
+
+    } catch (error) {
+      invalidEvents++
+      const parsingError = new ZoraEventParsingError(
+        'Failed to process event in bulk',
+        log,
+        error instanceof Error ? error : new Error('Unknown error')
+      )
+      errors.push(parsingError)
+    }
+  }
+
+  const totalProcessingTime = Date.now() - startTime
+
+  return {
+    processedEvents,
+    summary: {
+      totalEvents: events.length,
+      validEvents,
+      invalidEvents,
+      processingTime: totalProcessingTime,
+      eventsByType,
+      totalValue,
+      uniqueContracts: Array.from(uniqueContracts),
+      uniqueParticipants: Array.from(uniqueParticipants)
+    },
+    errors,
+    warnings
+  }
+}
+
+/**
+ * Enhanced bulk processing with transaction receipt context
+ * 
+ * Processes events from multiple transaction receipts with full context
+ */
+export function processBulkZoraEventsFromReceipts(
+  receipts: TransactionReceipt[],
+  eventTypes: string[],
+  options: {
+    factoryAddress?: Address
+    contractAddresses?: Address[]
+    network?: string
+    includeGasData?: boolean
+    validateEvents?: boolean
+  } = {}
+): BulkEventProcessingResult {
+  // Extract all logs from receipts
+  const allLogs: Log[] = []
+  
+  for (const receipt of receipts) {
+    allLogs.push(...receipt.logs)
+  }
+
+  // Process all logs
+  const result = processBulkZoraEvents(allLogs, eventTypes, options)
+
+  // Enhance with receipt-specific data if available
+  if (options.includeGasData) {
+    const enhancedProcessedEvents = result.processedEvents.map(processedEvent => {
+      const receipt = receipts.find(r => r.transactionHash === processedEvent.originalEvent.transactionHash)
+      if (receipt) {
+        return {
+          ...processedEvent,
+          analytics: {
+            ...processedEvent.analytics,
+            gasUsed: receipt.gasUsed,
+            gasPrice: receipt.effectiveGasPrice
+          }
+        }
+      }
+      return processedEvent
+    })
+
+    return {
+      ...result,
+      processedEvents: enhancedProcessedEvents
+    }
+  }
+
+  return result
+}
+
+/**
+ * Real-time event processing for live dashboard updates
+ * 
+ * Processes events as they come in for real-time analytics
+ */
+export function processRealtimeZoraEvents(
+  newEvents: Log[],
+  previousState: BulkEventProcessingResult,
+  eventTypes: string[],
+  options: {
+    factoryAddress?: Address
+    contractAddresses?: Address[]
+    network?: string
+    maxEventsToKeep?: number
+  } = {}
+): BulkEventProcessingResult {
+  // Process new events
+  const newResult = processBulkZoraEvents(newEvents, eventTypes, options)
+
+  // Merge with previous state
+  const mergedEvents = [
+    ...previousState.processedEvents,
+    ...newResult.processedEvents
+  ]
+
+  // Limit events if specified
+  const maxEvents = options.maxEventsToKeep || 1000
+  const limitedEvents = mergedEvents.slice(-maxEvents)
+
+  // Recalculate summary
+  const eventsByType: Record<ZoraEvent['eventName'], number> = {
+    SetupNewContract: 0,
+    UpdatedToken: 0,
+    Purchased: 0,
+    Minted: 0
+  }
+
+  const uniqueContracts = new Set<Address>()
+  const uniqueParticipants = new Set<Address>()
+  let totalValue = BigInt(0)
+
+  for (const event of limitedEvents) {
+    const originalEvent = event.originalEvent
+    eventsByType[originalEvent.eventName]++
+    uniqueContracts.add(originalEvent.contractAddress)
+    
+    if ('sender' in originalEvent) {
+      uniqueParticipants.add(originalEvent.sender)
+    }
+    if ('minter' in originalEvent) {
+      uniqueParticipants.add(originalEvent.minter)
+    }
+    if ('creator' in originalEvent) {
+      uniqueParticipants.add(originalEvent.creator)
+    }
+    
+    if ('value' in originalEvent) {
+      totalValue += originalEvent.value
+    }
+  }
+
+  return {
+    processedEvents: limitedEvents,
+    summary: {
+      totalEvents: limitedEvents.length,
+      validEvents: limitedEvents.length,
+      invalidEvents: 0,
+      processingTime: newResult.summary.processingTime,
+      eventsByType,
+      totalValue,
+      uniqueContracts: Array.from(uniqueContracts),
+      uniqueParticipants: Array.from(uniqueParticipants)
+    },
+    errors: [...previousState.errors, ...newResult.errors],
+    warnings: [...previousState.warnings, ...newResult.warnings]
+  }
 }

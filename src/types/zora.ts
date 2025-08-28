@@ -187,6 +187,135 @@ export interface NFTAnalytics {
   discoverySource: 'zora_feed' | 'social_share' | 'direct_link' | 'marketplace'
 }
 
+/**
+ * Zora Collection Analytics
+ * 
+ * Comprehensive analytics data for a Zora NFT collection
+ * used in dashboard and performance tracking
+ */
+export interface ZoraCollectionAnalytics {
+  // Basic collection info
+  collectionAddress: Address
+  collectionName: string
+  totalSupply: number
+  mintedCount: number
+  
+  // Financial metrics
+  totalVolume: bigint
+  averagePrice: bigint
+  floorPrice: bigint
+  royaltyEarnings: bigint
+  
+  // Engagement metrics
+  uniqueOwners: number
+  totalViews: number
+  conversionRate: number
+  
+  // Time-based metrics
+  mintsLast24h: bigint
+  volumeLast24h: bigint
+  mintsLast7d: bigint
+  volumeLast7d: bigint
+  mintsLast30d: bigint
+  volumeLast30d: bigint
+  
+  // Trends
+  mintTrend: 'increasing' | 'decreasing' | 'stable'
+  volumeTrend: 'increasing' | 'decreasing' | 'stable'
+  
+  // Recent activity
+  recentActivity: Array<{
+    type: 'mint'
+    timestamp: string
+    description: string
+    value: string
+  }>
+  
+  // Collection status
+  collectionStatus: string
+  lastMintDate?: Date
+  createdAt?: Date
+}
+
+/**
+ * Creator Zora Analytics
+ * 
+ * Comprehensive analytics data for a creator's NFT performance
+ * across all collections and content
+ */
+export interface CreatorZoraAnalytics {
+  // NFT metrics
+  totalMints: bigint
+  totalVolume: bigint
+  averagePrice: bigint
+  uniqueMinters: number
+  
+  // Subscription metrics
+  totalSubscribers: bigint
+  subscriptionRevenue: bigint
+  averageSubscriptionPrice: bigint
+  
+  // Combined metrics
+  totalRevenue: bigint
+  totalEngagement: bigint
+  revenuePerUser: bigint
+  
+  // Time-based analytics
+  mintsLast24h: bigint
+  volumeLast24h: bigint
+  mintsLast7d: bigint
+  volumeLast7d: bigint
+  mintsLast30d: bigint
+  volumeLast30d: bigint
+  
+  // Performance indicators
+  mintTrend: 'increasing' | 'decreasing' | 'stable'
+  volumeTrend: 'increasing' | 'decreasing' | 'stable'
+  conversionRate: number // mints per view
+  
+  // Social metrics (if available)
+  socialShares: number
+  socialEngagement: number
+  discoverySource: 'zora_feed' | 'social_share' | 'direct_link' | 'marketplace'
+  
+  // Collection-specific data
+  collectionAddress?: Address
+  collectionName: string
+  collectionStatus: string
+}
+
+/**
+ * Collection Performance Metrics
+ * 
+ * Detailed performance metrics for a specific NFT collection
+ */
+export interface CollectionPerformance {
+  // Collection identification
+  collectionAddress: Address
+  
+  // Basic metrics
+  totalNFTs: number
+  totalMinted: bigint
+  totalVolume: bigint
+  averagePrice: bigint
+  
+  // Engagement metrics
+  uniqueMinters: number
+  conversionRate: number
+  
+  // Financial metrics
+  floorPrice: bigint
+  royaltyEarnings: bigint
+  
+  // Performance indicators
+  mintTrend: 'increasing' | 'decreasing' | 'stable'
+  volumeTrend: 'increasing' | 'decreasing' | 'stable'
+  
+  // Timestamps
+  lastMintDate?: Date
+  createdAt?: Date
+}
+
 // ===== API RESPONSE TYPES =====
 
 /**

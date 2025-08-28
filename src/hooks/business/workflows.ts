@@ -88,6 +88,7 @@ async function generatePermit2Signature({
 import { CONTENT_REGISTRY_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PRICE_ORACLE_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
 import type { Creator, ContentCategory, Content } from '@/types/contracts'
+import { debug } from '@/lib/utils/debug'
 
 
 // ===== ENUMS AND INTERFACES =====
@@ -657,7 +658,7 @@ export function useUnifiedContentPurchaseFlow(
           console.error(`❌ ETH price calculation failed:`, error)
           // Fallback: use a simple conversion (1 ETH = $3000 USDC for demo)
           const fallbackEthAmount = (usdcAmount * BigInt(1e18)) / BigInt(3000 * 1e6)
-          console.log(`🔄 Using fallback ETH price: ${fallbackEthAmount.toString()} wei`)
+          debug.log(`🔄 Using fallback ETH price: ${fallbackEthAmount.toString()} wei`)
           const result = {
             requiredAmount: fallbackEthAmount,
             priceInUSDC: usdcAmount
@@ -712,7 +713,7 @@ export function useUnifiedContentPurchaseFlow(
     const isEth = tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH
     const isUsdc = tokenAddress === contractAddresses.USDC || paymentMethod === PaymentMethod.USDC
     
-    console.log(`🔍 Token info fetch - Method: ${paymentMethod}, Address: ${tokenAddress}, isEth: ${isEth}, isUsdc: ${isUsdc}`)
+    debug.log(`🔍 Token info fetch - Method: ${paymentMethod}, Address: ${tokenAddress}, isEth: ${isEth}, isUsdc: ${isUsdc}`)
 
     // Calculate required amount for current content
     const contentPrice = contentQuery.data?.payPerViewPrice || BigInt(0)
@@ -722,7 +723,7 @@ export function useUnifiedContentPurchaseFlow(
     const cacheKey = `${tokenAddress}-${userAddress}-${paymentMethod}`
     const cached = contractReadCacheRef.current.get(cacheKey)
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-      console.log(`📦 Using cached token info for ${tokenAddress}`)
+      debug.log(`📦 Using cached token info for ${tokenAddress}`)
       return cached.value as TokenInfo
     }
 
@@ -813,7 +814,7 @@ export function useUnifiedContentPurchaseFlow(
       error: undefined
     }
 
-    console.log(`🎯 Final token info for ${symbol}:`, {
+    debug.log(`🎯 Final token info for ${symbol}:`, {
       symbol,
       balance: balance?.toString(),
       formattedBalance,
@@ -837,24 +838,24 @@ export function useUnifiedContentPurchaseFlow(
 
     // Prevent overlapping refresh cycles and throttle rapid calls
     if (isRefreshingRef.current) {
-      console.log('⏳ Skipping refresh: already running')
+      debug.log('⏳ Skipping refresh: already running')
       return
     }
     const now = Date.now()
     if (lastRefreshAtRef.current && now - lastRefreshAtRef.current < 2000) {
-      console.log('⏳ Skipping refresh: throttled')
+      debug.log('⏳ Skipping refresh: throttled')
       return
     }
     isRefreshingRef.current = true
     lastRefreshAtRef.current = now
 
-    console.log(`🔄 Starting price refresh for ${userAddress} on chain ${chainId}`)
+    debug.log(`🔄 Starting price refresh for ${userAddress} on chain ${chainId}`)
     const updatedPrices = new Map<Address, TokenInfo>()
 
     // Get all payment methods to check
     const supportedTokens = getSupportedTokens(chainId)
     const methodsToCheck = Object.keys(supportedTokens).map(key => parseInt(key) as PaymentMethod)
-    console.log(`📋 Methods to check: ${methodsToCheck.join(', ')}`)
+    debug.log(`📋 Methods to check: ${methodsToCheck.join(', ')}`)
     
     // Limit how many tokens we refresh per cycle to avoid RPC flooding
     const MAX_TOKENS_PER_CYCLE = 2
@@ -878,11 +879,11 @@ export function useUnifiedContentPurchaseFlow(
       if (!tokenConfig) continue
 
       try {
-        console.log(`🔄 Fetching ${tokenConfig.symbol} info for method ${method}...`)
+        debug.log(`🔄 Fetching ${tokenConfig.symbol} info for method ${method}...`)
         const tokenInfo = await fetchTokenInfo(tokenConfig.address, method)
         updatedPrices.set(tokenConfig.address, tokenInfo)
         processed += 1
-        console.log(`✅ Updated ${tokenConfig.symbol} info:`, {
+        debug.log(`✅ Updated ${tokenConfig.symbol} info:`, {
           symbol: tokenInfo.symbol,
           balance: tokenInfo.formattedBalance,
           hasEnoughBalance: tokenInfo.hasEnoughBalance,
@@ -910,7 +911,7 @@ export function useUnifiedContentPurchaseFlow(
 
     setTokenPrices(updatedPrices)
     setPriceUpdateCounter(prev => prev + 1)
-    console.log(`💰 Price refresh completed for ${updatedPrices.size} tokens`)
+    debug.log(`💰 Price refresh completed for ${updatedPrices.size} tokens`)
     isRefreshingRef.current = false
   }, [contractAddresses, contentQuery.data, customTokenAddress, fetchTokenInfo, userAddress, chainId])
 
@@ -928,7 +929,7 @@ export function useUnifiedContentPurchaseFlow(
    * Auto-refresh prices when hook initializes or key dependencies change
    */
   useEffect(() => {
-    console.log('🔄 useEffect: Auto-refreshing prices...', {
+    debug.log('🔄 useEffect: Auto-refreshing prices...', {
       hasContractAddresses: !!contractAddresses,
       hasContent: !!contentQuery.data,
       hasUserAddress: !!userAddress,
@@ -1074,7 +1075,7 @@ export function useUnifiedContentPurchaseFlow(
           deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
         }
 
-        console.log(`🚀 Creating payment intent for ${selectedToken?.symbol}:`, paymentRequest)
+        debug.log(`🚀 Creating payment intent for ${selectedToken?.symbol}:`, paymentRequest)
 
         const result = await writeCommerceContract({
           address: contractAddresses.COMMERCE_INTEGRATION,
@@ -1083,7 +1084,7 @@ export function useUnifiedContentPurchaseFlow(
           args: [paymentRequest]
         })
 
-        console.log(`✅ Payment intent created:`, result)
+        debug.log(`✅ Payment intent created:`, result)
 
         setExecutionState(prev => ({
           ...prev,
@@ -2628,7 +2629,7 @@ export function useExtendedContentPurchaseFlow(
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600)
       }
 
-      console.log('Creating Commerce Protocol payment intent:', paymentRequest)
+      debug.log('Creating Commerce Protocol payment intent:', paymentRequest)
 
       await writeCommerceContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
@@ -2698,7 +2699,7 @@ export function useExtendedContentPurchaseFlow(
         flowStep: 'executing_payment'
       }))
 
-      console.log('Executing signed payment intent:', commerceState.intentState.intentId)
+      debug.log('Executing signed payment intent:', commerceState.intentState.intentId)
 
       await writeCommerceContract({
         address: contractAddresses.COMMERCE_INTEGRATION,
@@ -3058,7 +3059,7 @@ export function useContentPublishingFlow(
   }, [])
   
   const publish = useCallback((data: ContentPublishingData) => {
-    console.log('Starting content publishing workflow...', data)
+    debug.log('Starting content publishing workflow...', data)
     
     if (!userAddress) {
       setWorkflowState({
@@ -3095,7 +3096,7 @@ export function useContentPublishingFlow(
     setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
     
     try {
-      console.log('Calling registerContent with validated data:', {
+      debug.log('Calling registerContent with validated data:', {
         ipfsHash: data.ipfsHash,
         title: data.title,
         description: data.description,
@@ -3133,7 +3134,7 @@ export function useContentPublishingFlow(
   
   useEffect(() => {
     if (registerContent.isLoading) {
-      console.log('Transaction submitted, waiting for confirmation...')
+      debug.log('Transaction submitted, waiting for confirmation...')
       setWorkflowState(prev => {
         if (prev.currentStep === 'registering') {
           return prev
@@ -3141,7 +3142,7 @@ export function useContentPublishingFlow(
         return { ...prev, currentStep: 'registering' }
       })
     } else if (registerContent.isConfirming) {
-      console.log('Transaction confirmed, waiting for receipt...')
+      debug.log('Transaction confirmed, waiting for receipt...')
       setWorkflowState(prev => {
         if (prev.currentStep === 'confirming') {
           return prev
@@ -3161,7 +3162,7 @@ export function useContentPublishingFlow(
         }
       })
     } else if (registerContent.isSuccess && registerContent.hash) {
-      console.log('Transaction successful, extracting content ID...')
+      debug.log('Transaction successful, extracting content ID...')
       setWorkflowState(prev => {
         if (prev.currentStep === 'extracting_content_id') {
           return prev
@@ -3180,7 +3181,7 @@ export function useContentPublishingFlow(
             hash: registerContent.hash as `0x${string}`
           })
           
-          console.log('Transaction receipt:', receipt)
+          debug.log('Transaction receipt:', receipt)
           
           const contentRegisteredLogs = parseEventLogs({
             abi: CONTENT_REGISTRY_ABI,
@@ -3190,7 +3191,7 @@ export function useContentPublishingFlow(
           
           if (contentRegisteredLogs.length > 0) {
             const contentId = contentRegisteredLogs[0].args.contentId
-            console.log('Successfully extracted content ID:', contentId)
+            debug.log('Successfully extracted content ID:', contentId)
             
             setWorkflowState({
               currentStep: 'completed',
@@ -3719,7 +3720,7 @@ export function useEnhancedContentPublishingFlow(
         throw new Error('Farcaster sharing not available')
       }
       try {
-        console.log('Sharing to Farcaster:', message)
+        debug.log('Sharing to Farcaster:', message)
       } catch (error) {
         console.error('Farcaster sharing failed:', error)
         throw new Error('Failed to share content to Farcaster')
@@ -3980,11 +3981,10 @@ export function useCreatorOnboarding(
         hasJustRegistered: false
       }))
       
-      console.group('🚀 Enhanced Hook: Starting Creator Registration')
-      console.log('Subscription Price (BigInt):', subscriptionPrice.toString())
-      console.log('Profile Data:', profileData)
-      console.log('User Address:', userAddress)
-      console.groupEnd()
+      debug.log('🚀 Enhanced Hook: Starting Creator Registration')
+      debug.log('Subscription Price (BigInt):', subscriptionPrice.toString())
+      debug.log('Profile Data:', profileData)
+      debug.log('User Address:', userAddress)
       
       registerCreator.write({
         subscriptionPrice,
@@ -4034,10 +4034,9 @@ export function useCreatorOnboarding(
         lastTransactionHash: currentTxHash
       }))
     } else if (registerCreator.isConfirmed) {
-      console.group('✅ Enhanced Hook: Transaction Confirmed!')
-      console.log('Transaction Hash:', currentTxHash)
-      console.log('Setting state to registered and flagging as just registered')
-      console.groupEnd()
+      debug.log('✅ Enhanced Hook: Transaction Confirmed!')
+      debug.log('Transaction Hash:', currentTxHash)
+      debug.log('Setting state to registered and flagging as just registered')
       
       setWorkflowState(prev => ({ 
         ...prev,
@@ -4048,7 +4047,7 @@ export function useCreatorOnboarding(
       }))
       
       setTimeout(() => {
-        console.log('🔄 Refreshing registration and profile data...')
+        debug.log('🔄 Refreshing registration and profile data...')
         registrationCheck.refetch()
         creatorProfile.refetch()
       }, 1000)
@@ -4065,15 +4064,14 @@ export function useCreatorOnboarding(
   
   useEffect(() => {
     // First, let's add comprehensive logging to understand what's happening
-    console.group('🔍 Registration Check Effect - Enhanced Debug')
-    console.log('Current Step:', workflowState.currentStep)
-    console.log('Has Just Registered:', workflowState.hasJustRegistered)
-    console.log('Registration Check Data:', registrationCheck.data, typeof registrationCheck.data)
-    console.log('Registration Check Loading:', registrationCheck.isLoading)
-    console.log('Registration Check Error:', registrationCheck.error)
-    console.log('Registration Check Success:', registrationCheck.isSuccess)
-    console.log('User Address:', userAddress)
-    console.groupEnd()
+    debug.log('🔍 Registration Check Effect - Enhanced Debug')
+    debug.log('Current Step:', workflowState.currentStep)
+    debug.log('Has Just Registered:', workflowState.hasJustRegistered)
+    debug.log('Registration Check Data:', registrationCheck.data, typeof registrationCheck.data)
+    debug.log('Registration Check Loading:', registrationCheck.isLoading)
+    debug.log('Registration Check Error:', registrationCheck.error)
+    debug.log('Registration Check Success:', registrationCheck.isSuccess)
+    debug.log('User Address:', userAddress)
 
     // Skip checks if we just registered - this prevents interference
     if (workflowState.hasJustRegistered) {
@@ -4083,13 +4081,13 @@ export function useCreatorOnboarding(
     
     // Skip checks during registration process
     if (workflowState.currentStep === 'registering') {
-      console.log('🛡️ Protected: Ignoring registration check during registration process')
+      debug.log('🛡️ Protected: Ignoring registration check during registration process')
       return
     }
 
     // If we don't have a user address, we can't check registration
     if (!userAddress) {
-      console.log('⚠️ No user address available, staying in checking state')
+      debug.log('⚠️ No user address available, staying in checking state')
       return
     }
     
@@ -4097,7 +4095,7 @@ export function useCreatorOnboarding(
     if (registrationCheck.isLoading) {
       // Only log this once to avoid spam and start/refresh a timeout watchdog
       if (workflowState.currentStep === 'checking') {
-        console.log('⏳ Registration check still loading...')
+        debug.log('⏳ Registration check still loading...')
         // Initialize the start timestamp if not already set
         if (checkingSinceRef.current === null) {
           checkingSinceRef.current = Date.now()
@@ -4147,7 +4145,7 @@ export function useCreatorOnboarding(
       // We need to handle all three cases explicitly
       
       if (registrationCheck.data === true) {
-        console.log('📊 Registration check confirmed: User IS registered')
+        debug.log('📊 Registration check confirmed: User IS registered')
         setWorkflowState(prev => ({ 
           ...prev, 
           currentStep: 'registered',
@@ -4155,7 +4153,7 @@ export function useCreatorOnboarding(
           error: null
         }))
       } else if (registrationCheck.data === false) {
-        console.log('📊 Registration check confirmed: User is NOT registered')
+        debug.log('📊 Registration check confirmed: User is NOT registered')
         setWorkflowState(prev => ({ 
           ...prev, 
           currentStep: 'not_registered',
@@ -4174,7 +4172,7 @@ export function useCreatorOnboarding(
         
         // Instead of staying stuck, let's treat undefined as "not registered"
         // but log it clearly so you can investigate
-        console.log('🔄 Treating undefined result as not registered for now')
+        debug.log('🔄 Treating undefined result as not registered for now')
         setWorkflowState(prev => ({ 
           ...prev, 
           currentStep: 'not_registered',
@@ -4223,7 +4221,7 @@ export function useCreatorOnboarding(
     if (workflowState.hasJustRegistered && 
         registrationCheck.data === true && 
         !registrationCheck.isLoading) {
-      console.log('🎯 Data refresh confirmed registration - clearing just registered flag')
+      debug.log('🎯 Data refresh confirmed registration - clearing just registered flag')
       setWorkflowState(prev => {
         if (!prev.hasJustRegistered) {
           return prev
@@ -4238,7 +4236,7 @@ export function useCreatorOnboarding(
   
   useEffect(() => {
     if (userAddress) {
-      console.log('👤 Address changed, resetting workflow:', userAddress)
+      debug.log('👤 Address changed, resetting workflow:', userAddress)
       setWorkflowState(prev => ({ 
         ...prev,
         currentStep: 'checking',
@@ -4250,14 +4248,13 @@ export function useCreatorOnboarding(
   }, [userAddress])
   
   useEffect(() => {
-    console.group('🔍 Enhanced Hook State Debug')
-    console.log('Current Step:', workflowState.currentStep)
-    console.log('Has Just Registered:', workflowState.hasJustRegistered)
-    console.log('Registration Check Data:', registrationCheck.data)
-    console.log('Registration Check Loading:', registrationCheck.isLoading)
-    console.log('Profile Data Available:', !!profileData)
-    console.log('Transaction Hash:', workflowState.lastTransactionHash)
-    console.groupEnd()
+    debug.log('🔍 Enhanced Hook State Debug')
+    debug.log('Current Step:', workflowState.currentStep)
+    debug.log('Has Just Registered:', workflowState.hasJustRegistered)
+    debug.log('Registration Check Data:', registrationCheck.data)
+    debug.log('Registration Check Loading:', registrationCheck.isLoading)
+    debug.log('Profile Data Available:', !!profileData)
+    debug.log('Transaction Hash:', workflowState.lastTransactionHash)
   }, [
     workflowState.currentStep, 
     workflowState.hasJustRegistered,

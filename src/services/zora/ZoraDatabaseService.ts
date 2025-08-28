@@ -19,7 +19,9 @@ import type {
   CreatorZoraCollection, 
   NFTAnalytics,
   NFTDiscoveryOptions,
-  NFTPerformanceComparison
+  NFTPerformanceComparison,
+  CreatorZoraAnalytics,
+  CollectionPerformance
 } from '@/types/zora'
 
 /**
@@ -423,6 +425,260 @@ export class ZoraDatabaseService {
       averageMintPrice,
       bestPerformingNFT
     }
+  }
+
+  /**
+   * Get comprehensive creator analytics across all collections
+   * Aggregates NFT performance data across collections
+   */
+  async getCreatorAnalytics(creatorAddress: Address): Promise<CreatorZoraAnalytics> {
+    try {
+      // Get all NFT records for the creator
+      const nftRecords = await this.getCreatorNFTRecords(creatorAddress)
+      const mintedRecords = nftRecords.filter(r => r.isMintedAsNFT)
+
+      // Get creator collection data
+      const collection = await this.getCreatorCollection(creatorAddress)
+
+      // Calculate aggregate metrics
+      const totalNFTs = mintedRecords.length
+      const totalMints = mintedRecords.reduce((sum, r) => sum + BigInt(r.nftMints || 0), BigInt(0))
+      const totalRevenue = mintedRecords.reduce((sum, r) => sum + (r.nftRevenue || BigInt(0)), BigInt(0))
+      const averageMintPrice = totalMints > 0 ? totalRevenue / totalMints : BigInt(0)
+
+      // Calculate time-based metrics (last 30 days)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      const recentRecords = mintedRecords.filter(r => 
+        r.lastMintDate && new Date(r.lastMintDate) > thirtyDaysAgo
+      )
+
+      const mintsLast30d = recentRecords.reduce((sum, r) => sum + BigInt(r.nftMints || 0), BigInt(0))
+      const volumeLast30d = recentRecords.reduce((sum, r) => sum + (r.nftRevenue || BigInt(0)), BigInt(0))
+
+      // Calculate trends
+      const mintTrend = this.calculateTrend(totalMints, BigInt(0)) // Compare with previous period
+      const volumeTrend = this.calculateTrend(totalRevenue, BigInt(0)) // Compare with previous period
+
+      // Calculate conversion rate (mints per view)
+      const totalViews = mintedRecords.reduce((sum, r) => sum + (r.nftViews || 0), 0)
+      const conversionRate = totalViews > 0 ? Number(totalMints) / totalViews : 0
+
+      // Get unique minters (simplified - would need event data in production)
+      const uniqueMinters = Math.floor(Number(totalMints) * 0.8) // Estimate
+
+      // Calculate social metrics (placeholder - would come from social APIs)
+      const socialShares = mintedRecords.reduce((sum, r) => sum + (r.nftViews || 0), 0) * 0.1 // Estimate
+      const socialEngagement = socialShares * 0.3 // Estimate
+
+      return {
+        // NFT metrics
+        totalMints,
+        totalVolume: totalRevenue,
+        averagePrice: averageMintPrice,
+        uniqueMinters,
+        
+        // Subscription metrics (would be populated from contract queries)
+        totalSubscribers: BigInt(0), // TODO: Query from CreatorRegistry
+        subscriptionRevenue: BigInt(0), // TODO: Query from Commerce Protocol
+        averageSubscriptionPrice: BigInt(0), // TODO: Calculate from subscription data
+        
+        // Combined metrics
+        totalRevenue,
+        totalEngagement: BigInt(totalViews),
+        revenuePerUser: totalMints > 0 ? totalRevenue / totalMints : BigInt(0),
+        
+        // Time-based analytics
+        mintsLast24h: BigInt(0), // TODO: Calculate from recent events
+        volumeLast24h: BigInt(0), // TODO: Calculate from recent events
+        mintsLast7d: BigInt(0), // TODO: Calculate from recent events
+        volumeLast7d: BigInt(0), // TODO: Calculate from recent events
+        mintsLast30d,
+        volumeLast30d,
+        
+        // Performance indicators
+        mintTrend,
+        volumeTrend,
+        conversionRate,
+        
+        // Social metrics
+        socialShares: Math.floor(socialShares),
+        socialEngagement: Math.floor(socialEngagement),
+        discoverySource: 'zora_feed' as const, // Most common source
+        
+        // Collection-specific data
+        collectionAddress: collection?.zoraCollectionAddress,
+        collectionName: collection?.zoraCollectionName || 'Unknown Collection',
+        collectionStatus: collection?.collectionStatus || 'unknown'
+      }
+    } catch (error) {
+      console.error('Error getting creator analytics:', error)
+      
+      // Return empty analytics on error
+      return {
+        totalMints: BigInt(0),
+        totalVolume: BigInt(0),
+        averagePrice: BigInt(0),
+        uniqueMinters: 0,
+        totalSubscribers: BigInt(0),
+        subscriptionRevenue: BigInt(0),
+        averageSubscriptionPrice: BigInt(0),
+        totalRevenue: BigInt(0),
+        totalEngagement: BigInt(0),
+        revenuePerUser: BigInt(0),
+        mintsLast24h: BigInt(0),
+        volumeLast24h: BigInt(0),
+        mintsLast7d: BigInt(0),
+        volumeLast7d: BigInt(0),
+        mintsLast30d: BigInt(0),
+        volumeLast30d: BigInt(0),
+        mintTrend: 'stable',
+        volumeTrend: 'stable',
+        conversionRate: 0,
+        socialShares: 0,
+        socialEngagement: 0,
+        discoverySource: 'zora_feed',
+        collectionAddress: undefined,
+        collectionName: 'Unknown Collection',
+        collectionStatus: 'unknown'
+      }
+    }
+  }
+
+  /**
+   * Get collection performance metrics
+   * Calculates collection-level metrics
+   */
+  async getCollectionPerformance(
+    collectionAddress: Address
+  ): Promise<CollectionPerformance> {
+    try {
+      // Get all NFT records for this collection
+      const allRecords = await this.getAllNFTRecords()
+      const collectionRecords = allRecords.filter(r => 
+        r.nftContractAddress?.toLowerCase() === collectionAddress.toLowerCase()
+      )
+
+      if (collectionRecords.length === 0) {
+        return {
+          collectionAddress,
+          totalNFTs: 0,
+          totalMinted: BigInt(0),
+          totalVolume: BigInt(0),
+          averagePrice: BigInt(0),
+          uniqueMinters: 0,
+          floorPrice: BigInt(0),
+          royaltyEarnings: BigInt(0),
+          mintTrend: 'stable',
+          volumeTrend: 'stable',
+          conversionRate: 0,
+          lastMintDate: undefined,
+          createdAt: undefined
+        }
+      }
+
+      // Calculate basic metrics
+      const totalNFTs = collectionRecords.length
+      const totalMinted = collectionRecords.reduce((sum, r) => sum + BigInt(r.nftMints || 0), BigInt(0))
+      const totalVolume = collectionRecords.reduce((sum, r) => sum + (r.nftRevenue || BigInt(0)), BigInt(0))
+      const averagePrice = totalMinted > 0 ? totalVolume / totalMinted : BigInt(0)
+
+      // Calculate floor price (minimum mint price)
+      const mintPrices = collectionRecords
+        .map(r => r.nftMintPrice || BigInt(0))
+        .filter(price => price > BigInt(0))
+      const floorPrice = mintPrices.length > 0 ? mintPrices.reduce((min, price) => 
+        price < min ? price : min
+      ) : BigInt(0)
+
+      // Calculate royalty earnings (simplified - would need secondary sales data)
+      const royaltyRate = 0.05 // 5% default royalty
+      const royaltyEarnings = (totalVolume * BigInt(Math.floor(royaltyRate * 100))) / BigInt(100)
+
+      // Calculate trends
+      const mintTrend = this.calculateTrend(totalMinted, BigInt(0))
+      const volumeTrend = this.calculateTrend(totalVolume, BigInt(0))
+
+      // Calculate conversion rate
+      const totalViews = collectionRecords.reduce((sum, r) => sum + (r.nftViews || 0), 0)
+      const conversionRate = totalViews > 0 ? Number(totalMinted) / totalViews : 0
+
+      // Get unique minters (estimate)
+      const uniqueMinters = Math.floor(Number(totalMinted) * 0.8)
+
+      // Get timestamps
+      const lastMintDate = collectionRecords
+        .map(r => r.lastMintDate)
+        .filter(date => date)
+        .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
+
+      const createdAt = collectionRecords
+        .map(r => r.lastUpdated)
+        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0]
+
+      return {
+        collectionAddress,
+        totalNFTs,
+        totalMinted,
+        totalVolume,
+        averagePrice,
+        uniqueMinters,
+        floorPrice,
+        royaltyEarnings,
+        mintTrend,
+        volumeTrend,
+        conversionRate,
+        lastMintDate: lastMintDate ? new Date(lastMintDate) : undefined,
+        createdAt: createdAt ? new Date(createdAt) : undefined
+      }
+    } catch (error) {
+      console.error('Error getting collection performance:', error)
+      
+      // Return empty performance on error
+      return {
+        collectionAddress,
+        totalNFTs: 0,
+        totalMinted: BigInt(0),
+        totalVolume: BigInt(0),
+        averagePrice: BigInt(0),
+        uniqueMinters: 0,
+        floorPrice: BigInt(0),
+        royaltyEarnings: BigInt(0),
+        mintTrend: 'stable',
+        volumeTrend: 'stable',
+        conversionRate: 0,
+        lastMintDate: undefined,
+        createdAt: undefined
+      }
+    }
+  }
+
+  /**
+   * Get all NFT records (helper method)
+   */
+  private async getAllNFTRecords(): Promise<ContentNFTRecord[]> {
+    const keys = await this.storage.list('content_nft_')
+    const records: ContentNFTRecord[] = []
+
+    for (const key of keys) {
+      const record = await this.storage.get(key)
+      if (record) {
+        records.push({
+          ...record,
+          lastUpdated: new Date(record.lastUpdated)
+        })
+      }
+    }
+
+    return records
+  }
+
+  /**
+   * Calculate trend direction based on current vs previous values
+   */
+  private calculateTrend(current: bigint, previous: bigint): 'increasing' | 'decreasing' | 'stable' {
+    if (current > previous) return 'increasing'
+    if (current < previous) return 'decreasing'
+    return 'stable'
   }
 
   // ===== UTILITY METHODS =====

@@ -14,7 +14,7 @@ import {
 } from './abis'
 
 import { PROTOCOL_REWARDS_ABI, ZORA_CREATOR_1155_IMPL_ABI, ZORA_CREATOR_1155_FACTORY_ABI, ZORA_FIXED_PRICE_SALE_STRATEGY_ABI } from './abis/zora'
-import { ZORA_ADDRESSES } from './addresses'
+import { ZORA_ADDRESSES } from './addresses/zora'
 
 // ===== NETWORK CONTRACT ADDRESSES =====
 // These are the actual deployed contract addresses for each supported network

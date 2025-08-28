@@ -71,6 +71,7 @@ import { useCreatorProfile, useCreatorContent, useCreatorPendingEarnings, useWit
 
 // Import utility functions and types
 import { formatCurrency, formatNumber } from '@/lib/utils'
+import { debug } from '@/lib/utils/debug'
 
 /**
  * Dashboard Tab Types
@@ -130,7 +131,7 @@ export default function SubscriptionManagementPage() {
   // Force refresh creator data when dashboard loads (helps with post-registration navigation)
   useEffect(() => {
     if (isConnected && userAddress) {
-      console.log('🔄 Forcing creator data refresh on dashboard load')
+      debug.log('🔄 Forcing creator data refresh on dashboard load')
       creatorProfile.refetch()
     }
   }, [isConnected, userAddress, creatorProfile])
@@ -143,7 +144,7 @@ export default function SubscriptionManagementPage() {
     const isNewRegistration = searchParams.get('newRegistration') === 'true'
     
     if (isNewRegistration) {
-      console.log('🎉 New creator detected! Refreshing data and cleaning URL...')
+              debug.log('🎉 New creator detected! Refreshing data and cleaning URL...')
       
       // Force refresh all creator data
       creatorProfile.refetch?.()
@@ -154,7 +155,7 @@ export default function SubscriptionManagementPage() {
       window.history.replaceState({}, '', url.toString())
       
       // Show welcome message using console for now (toast causes SSR issues)
-      console.log('🎉 Welcome to Your Creator Dashboard! Your registration is complete.')
+              debug.log('🎉 Welcome to Your Creator Dashboard! Your registration is complete.')
     }
   }, [creatorProfile])
 
@@ -176,7 +177,7 @@ export default function SubscriptionManagementPage() {
    * providing clear upgrade paths for non-creators while protecting creator-only features.
    */
   useEffect(() => {
-    console.log('🔍 Dashboard verification effect:', {
+    debug.log('🔍 Dashboard verification effect:', {
       isConnected,
       isRegistered: dashboardUI.isRegistered,
       isLoading: dashboardUI.isLoading
@@ -184,7 +185,7 @@ export default function SubscriptionManagementPage() {
     
     // Only redirect if we're connected, not loading, and definitely not registered
     if (isConnected && !dashboardUI.isLoading && dashboardUI.isRegistered === false) {
-      console.log('⚠️ Non-creator detected, redirecting to onboarding')
+      debug.log('⚠️ Non-creator detected, redirecting to onboarding')
       // Add a small delay to prevent rapid redirects
       setTimeout(() => {
         router.push('/onboard')
@@ -222,7 +223,7 @@ export default function SubscriptionManagementPage() {
     }))
     
     // In a real implementation, this would trigger analytics data refresh
-    console.log(`Analytics period changed to: ${period}`)
+    debug.log(`Analytics period changed to: ${period}`)
   }, [])
 
   /**
@@ -237,7 +238,7 @@ export default function SubscriptionManagementPage() {
     pendingEarnings.refetch()
     
     // Show success feedback
-    console.log('Dashboard data refreshed')
+    debug.log('Dashboard data refreshed')
   }, [creatorProfile, creatorContent, pendingEarnings])
 
   /**
@@ -250,18 +251,18 @@ export default function SubscriptionManagementPage() {
     const pending = pendingEarnings.data || BigInt(0)
     
     if (pending <= BigInt(0)) {
-      console.log('❌ No earnings available to withdraw')
+      debug.log('❌ No earnings available to withdraw')
       return
     }
     
     if (withdrawEarnings.isLoading || withdrawEarnings.isConfirming) {
-      console.log('⏳ Withdrawal already in progress')
+      debug.log('⏳ Withdrawal already in progress')
       return
     }
     
     try {
-      console.log('🚀 Initiating earnings withdrawal...')
-      console.log(`💰 Amount: ${formatCurrency(pending, 6, 'USDC')}`)
+      debug.log('🚀 Initiating earnings withdrawal...')
+      debug.log(`💰 Amount: ${formatCurrency(pending, 6, 'USDC')}`)
       withdrawEarnings.write()
     } catch (error) {
       console.error('❌ Failed to initiate withdrawal:', error)
@@ -317,8 +318,8 @@ export default function SubscriptionManagementPage() {
   // Handle withdrawal success and refresh data
   useEffect(() => {
     if (withdrawEarnings.isConfirmed) {
-      console.log('✅ Earnings withdrawal confirmed! Refreshing data...')
-      console.log('🎉 Your earnings have been successfully withdrawn to your wallet!')
+      debug.log('✅ Earnings withdrawal confirmed! Refreshing data...')
+      debug.log('🎉 Your earnings have been successfully withdrawn to your wallet!')
       
       // Refresh earnings data after successful withdrawal
       pendingEarnings.refetch()
@@ -384,7 +385,7 @@ export default function SubscriptionManagementPage() {
         }}
         onAccessDenied={(result) => {
           // Handle access denial with specific guidance
-          console.log('Access denied:', result)
+          debug.log('Access denied:', result)
           if (!result.hasAccess) {
             // Could show specific onboarding guidance based on blockers
             router.push('/onboard')
@@ -493,7 +494,7 @@ export default function SubscriptionManagementPage() {
                 onContentUploaded={(contentId) => {
                   creatorContent.refetch()
                   creatorProfile.refetch()
-                  console.log(`Content uploaded: ${contentId}`)
+                  debug.log(`Content uploaded: ${contentId}`)
                 }}
               />
             </CardContent>

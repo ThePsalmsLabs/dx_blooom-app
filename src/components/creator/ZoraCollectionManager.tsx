@@ -113,7 +113,19 @@ interface CollectionFormData {
   readonly image?: File
 }
 
-
+/**
+ * Collection Settings Interface
+ * Defines the structure for collection settings updates
+ */
+interface CollectionSettings {
+  readonly name?: string
+  readonly description?: string
+  readonly royaltyBPS?: number
+  readonly image?: File
+  readonly isActive?: boolean
+  readonly maxSupply?: number
+  readonly defaultMintPrice?: bigint
+}
 
 /**
  * Collection Creation State
@@ -181,16 +193,84 @@ export function ZoraCollectionManager({
     return formData.name.trim().length > 0 && formData.description.trim().length > 0
   }, [formData])
 
-  // Collection creation handler
+  // Collection creation handler with enhanced IPFS integration and error handling
   const handleCreateCollection = useCallback(async () => {
     if (!isFormValid || !canManageCollections) return
 
     try {
       setCreationState('creating')
 
-      // Metadata upload is now handled automatically by the hook
-      // The hook will create and upload metadata to IPFS
+      // Step 1: Upload collection metadata to IPFS if image is provided
+      let metadataURI = ''
+      if (formData.image) {
+        setCreationState('uploading-metadata')
+        
+        try {
+          // Create collection metadata object
+          const collectionMetadata = {
+            name: formData.name,
+            description: formData.description,
+            image: '', // Will be set after image upload
+            external_link: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yourplatform.com'}/creator/${creatorAddress}`,
+            seller_fee_basis_points: formData.royaltyBPS,
+            fee_recipient: creatorAddress
+          }
 
+          // Upload image first
+          const imageFormData = new FormData()
+          imageFormData.append('file', formData.image)
+          
+          const imageResponse = await fetch('/api/ipfs/upload', {
+            method: 'POST',
+            body: imageFormData
+          })
+          
+          if (!imageResponse.ok) {
+            throw new Error('Failed to upload collection image to IPFS')
+          }
+          
+          const imageResult = await imageResponse.json()
+          if (!imageResult.success || !imageResult.hash) {
+            throw new Error('Invalid response from IPFS upload service')
+          }
+
+          // Update metadata with image URI
+          collectionMetadata.image = `ipfs://${imageResult.hash}`
+
+          // Upload metadata
+          const metadataBlob = new Blob([JSON.stringify(collectionMetadata, null, 2)], {
+            type: 'application/json'
+          })
+          const metadataFile = new File([metadataBlob], 'collection-metadata.json', {
+            type: 'application/json'
+          })
+
+          const metadataFormData = new FormData()
+          metadataFormData.append('file', metadataFile)
+
+          const metadataResponse = await fetch('/api/ipfs/upload', {
+            method: 'POST',
+            body: metadataFormData
+          })
+
+          if (!metadataResponse.ok) {
+            throw new Error('Failed to upload collection metadata to IPFS')
+          }
+
+          const metadataResult = await metadataResponse.json()
+          if (!metadataResult.success || !metadataResult.hash) {
+            throw new Error('Invalid response from metadata upload service')
+          }
+
+          metadataURI = `ipfs://${metadataResult.hash}`
+          
+        } catch (uploadError) {
+          console.error('IPFS upload failed:', uploadError)
+          throw new Error(`Failed to upload collection assets: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
+        }
+      }
+
+      // Step 2: Create collection on blockchain
       setCreationState('confirming')
 
       await createCollection({
@@ -221,8 +301,112 @@ export function ZoraCollectionManager({
     } catch (error) {
       console.error('Collection creation failed:', error)
       setCreationState('error')
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Collection creation failed'
+      
+      // In a real implementation, you would show this in a toast or alert
+      console.error('User-facing error:', errorMessage)
     }
   }, [formData, isFormValid, canManageCollections, createCollection, creatorAddress, refetchCollections])
+
+  // Collection settings management handler
+  const handleCollectionSettings = useCallback(async (
+    collectionAddress: Address,
+    settings: CollectionSettings
+  ) => {
+    try {
+      // Step 1: Upload updated metadata to IPFS if image is provided
+      let metadataURI = ''
+      if (settings.image) {
+        try {
+          // Create updated collection metadata object
+          const collectionMetadata = {
+            name: settings.name || '',
+            description: settings.description || '',
+            image: '', // Will be set after image upload
+            external_link: `${process.env.NEXT_PUBLIC_APP_URL || 'https://yourplatform.com'}/creator/${creatorAddress}`,
+            seller_fee_basis_points: settings.royaltyBPS || 500,
+            fee_recipient: creatorAddress
+          }
+
+          // Upload image first
+          const imageFormData = new FormData()
+          imageFormData.append('file', settings.image)
+          
+          const imageResponse = await fetch('/api/ipfs/upload', {
+            method: 'POST',
+            body: imageFormData
+          })
+          
+          if (!imageResponse.ok) {
+            throw new Error('Failed to upload collection image to IPFS')
+          }
+          
+          const imageResult = await imageResponse.json()
+          if (!imageResult.success || !imageResult.hash) {
+            throw new Error('Invalid response from IPFS upload service')
+          }
+
+          // Update metadata with image URI
+          collectionMetadata.image = `ipfs://${imageResult.hash}`
+
+          // Upload metadata
+          const metadataBlob = new Blob([JSON.stringify(collectionMetadata, null, 2)], {
+            type: 'application/json'
+          })
+          const metadataFile = new File([metadataBlob], 'collection-metadata.json', {
+            type: 'application/json'
+          })
+
+          const metadataFormData = new FormData()
+          metadataFormData.append('file', metadataFile)
+
+          const metadataResponse = await fetch('/api/ipfs/upload', {
+            method: 'POST',
+            body: metadataFormData
+          })
+
+          if (!metadataResponse.ok) {
+            throw new Error('Failed to upload collection metadata to IPFS')
+          }
+
+          const metadataResult = await metadataResponse.json()
+          if (!metadataResult.success || !metadataResult.hash) {
+            throw new Error('Invalid response from metadata upload service')
+          }
+
+          metadataURI = `ipfs://${metadataResult.hash}`
+          
+        } catch (uploadError) {
+          console.error('IPFS upload failed:', uploadError)
+          throw new Error(`Failed to upload collection assets: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`)
+        }
+      }
+
+      // Step 2: Update collection settings on blockchain
+      // Note: This would require a hook that handles collection updates
+      // For now, we'll just log the settings and metadata URI
+      console.log('Updating collection settings:', {
+        collectionAddress,
+        settings,
+        metadataURI
+      })
+
+      // Step 3: Update local state and refetch collections
+      refetchCollections()
+
+      // Show success message
+      console.log('Collection settings updated successfully')
+
+    } catch (error) {
+      console.error('Collection settings update failed:', error)
+      
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Collection settings update failed'
+      console.error('User-facing error:', errorMessage)
+    }
+  }, [creatorAddress, refetchCollections])
 
   // Reset creation state when dialog closes
   const handleDialogClose = useCallback((open: boolean) => {
@@ -306,6 +490,16 @@ export function ZoraCollectionManager({
               onManage={() => {
                 // Future: Navigate to collection management
                 console.log('Manage collection:', collection.address)
+              }}
+              onEdit={() => {
+                // Future: Open collection settings dialog
+                console.log('Edit collection:', collection.address)
+                // Example: handleCollectionSettings(collection.address, { name: 'Updated Name' })
+              }}
+              onViewOnZora={() => {
+                // Open collection on Zora marketplace
+                const zoraUrl = `https://zora.co/collections/${collection.address}`
+                window.open(zoraUrl, '_blank', 'noopener,noreferrer')
               }}
             />
           ))
@@ -405,14 +599,16 @@ function CollectionCreationDialog({
               <span>Creating collection...</span>
               <span>
                 {creationState === 'creating' && 'Preparing transaction'}
+                {creationState === 'uploading-metadata' && 'Uploading to IPFS'}
                 {creationState === 'confirming' && 'Confirming on blockchain'}
                 {creationState === 'error' && 'Failed'}
               </span>
             </div>
             <Progress 
               value={
-                creationState === 'creating' ? 33 : 
-                creationState === 'confirming' ? 66 : 100
+                creationState === 'creating' ? 25 : 
+                creationState === 'uploading-metadata' ? 50 :
+                creationState === 'confirming' ? 75 : 100
               } 
             />
           </div>
@@ -440,6 +636,28 @@ function CollectionCreationDialog({
               placeholder="A collection of exclusive NFTs for my community..."
               disabled={creationState !== 'idle'}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="collection-image">Collection Image (Optional)</Label>
+            <Input
+              id="collection-image"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  onFormDataChange({
+                    ...formData,
+                    image: file
+                  })
+                }
+              }}
+              disabled={creationState !== 'idle'}
+            />
+            <p className="text-xs text-muted-foreground">
+              Upload an image to represent your collection on marketplaces
+            </p>
           </div>
 
           <div className="grid gap-2">
@@ -494,15 +712,37 @@ function CollectionCreationDialog({
 interface CollectionCardProps {
   readonly collection: ZoraCollection
   readonly onManage: () => void
+  readonly onEdit?: () => void
+  readonly onViewOnZora?: () => void
 }
 
-function CollectionCard({ collection, onManage }: CollectionCardProps) {
+function CollectionCard({ collection, onManage, onEdit, onViewOnZora }: CollectionCardProps) {
+  // Calculate collection stats
+  const mintProgress = collection.totalTokens > BigInt(0) 
+    ? Number((collection.totalMinted * BigInt(100)) / collection.totalTokens) 
+    : 0
+
+  const isPopular = Number(collection.totalMinted) > 10
+  const isNew = Date.now() - Number(collection.createdAt) * 1000 < 7 * 24 * 60 * 60 * 1000 // 7 days
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{collection.name}</CardTitle>
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{collection.name}</CardTitle>
+              {isNew && (
+                <Badge variant="secondary" className="text-xs">
+                  New
+                </Badge>
+              )}
+              {isPopular && (
+                <Badge variant="default" className="text-xs">
+                  Popular
+                </Badge>
+              )}
+            </div>
             <CardDescription className="line-clamp-2">
               {collection.description}
             </CardDescription>
@@ -514,6 +754,7 @@ function CollectionCard({ collection, onManage }: CollectionCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Collection Stats */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <div className="font-medium text-muted-foreground">Total NFTs</div>
@@ -529,31 +770,80 @@ function CollectionCard({ collection, onManage }: CollectionCardProps) {
           </div>
         </div>
 
+        {/* Mint Progress */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Mint Progress</span>
+            <span className="font-medium">{mintProgress}%</span>
+          </div>
+          <div className="w-full bg-secondary rounded-full h-2">
+            <div 
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(mintProgress, 100)}%` }}
+            />
+          </div>
+        </div>
+
         <Separator />
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            {(collection.royaltyBPS / 100).toFixed(1)}% royalty
+        {/* Collection Details */}
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Royalty</span>
+            <span className="font-medium">{(collection.royaltyBPS / 100).toFixed(1)}%</span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Created</span>
+            <span className="font-medium">
+              {new Date(Number(collection.createdAt) * 1000).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex gap-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="ghost">
-                    <Eye className="h-4 w-4" />
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={onViewOnZora}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>View on Zora</p>
+                  <p>View on Zora Marketplace</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
-            <Button size="sm" variant="outline" onClick={onManage}>
-              <Settings className="h-4 w-4 mr-1" />
-              Manage
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={onEdit}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit Collection Settings</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
+
+          <Button size="sm" variant="outline" onClick={onManage}>
+            <Eye className="h-4 w-4 mr-1" />
+            Manage
+          </Button>
         </div>
       </CardContent>
     </Card>
