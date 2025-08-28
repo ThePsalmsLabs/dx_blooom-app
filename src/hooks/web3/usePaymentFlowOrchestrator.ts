@@ -52,6 +52,7 @@ import { getContractAddresses } from '@/lib/contracts/config'
 import { COMMERCE_PROTOCOL_INTEGRATION_ABI, CONTENT_REGISTRY_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
 import { USDC_DECIMALS } from '@/lib/contracts/helpers/usdcHelpers'
+import { debug, createDebugLogger } from '@/lib/utils/debug'
 
 /**
  * Payment Intent Flow Error Types
@@ -324,7 +325,7 @@ const detectAccountType = async (publicClient: PublicClient, address: Address): 
     const code = await publicClient.getBytecode({ address })
     return code && code !== '0x' ? 'smart_account' : 'eoa'
   } catch (error) {
-    console.warn('Account type detection failed, defaulting to EOA:', error)
+    debug.warn('Account type detection failed, defaulting to EOA:', error)
     return 'eoa' // Safe fallback
   }
 }
@@ -1107,7 +1108,7 @@ export function useEnhancedPaymentOrchestrator(
 
       const accountType = await detectAccountTypeEnhanced(walletAddress)
       
-      console.log('🔍 Account type detected:', {
+      debug.log('Account type detected:', {
         address: walletAddress,
         type: accountType,
         timestamp: new Date().toISOString()
@@ -1115,7 +1116,7 @@ export function useEnhancedPaymentOrchestrator(
 
       // For now, always use sequential until batch implementation is verified
       if (accountType === 'smart_account') {
-        console.log('🚀 Smart Account detected, but using sequential for stability')
+        debug.log('Smart Account detected, but using sequential for stability')
         return 'sequential' // TODO: Enable 'batch' after testing
       }
       
@@ -1150,7 +1151,7 @@ export function useEnhancedPaymentOrchestrator(
       // Use strategy selection
       const strategy = await selectPaymentStrategy()
       
-      console.log('💰 Starting USDC payment with strategy:', {
+      debug.log('Starting USDC payment with strategy:', {
         contentId: contentId.toString(),
         wallet: walletAddress,
         strategy,
@@ -1160,7 +1161,7 @@ export function useEnhancedPaymentOrchestrator(
       // Get allowance data
       const allowanceData = await checkTokenAllowance()
       
-      console.log('📊 Allowance check result:', {
+      debug.log('Allowance check result:', {
         needsApproval: allowanceData.needsApproval,
         currentAllowance: allowanceData.currentAllowance.toString(),
         requiredAmount: allowanceData.requiredAmount.toString(),
@@ -1178,7 +1179,7 @@ export function useEnhancedPaymentOrchestrator(
       }
       
     } catch (error) {
-      console.error('❌ Payment execution failed:', error)
+      debug.error('Payment execution failed:', error)
       
       setPaymentState({
         phase: 'error',
@@ -1272,9 +1273,9 @@ const DEFAULT_ORCHESTRATOR_CONFIG: Required<Omit<PaymentFlowOrchestratorConfig, 
     autoRetryUserErrors: false
   },
   debugConfig: {
-    enableVerboseLogging: false,
-    enablePerformanceLogging: false,
-    enableStateLogging: false
+    enableVerboseLogging: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG === 'true',
+    enablePerformanceLogging: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_PERFORMANCE === 'true',
+    enableStateLogging: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG === 'true'
   }
 }
 
@@ -1502,7 +1503,7 @@ export function usePaymentFlowOrchestrator(
       }
       
       if (finalConfig.debugConfig.enableStateLogging) {
-        console.log(`🎭 Orchestrator state update:`, {
+        debug.log('Orchestrator state update:', {
           phase: newState.phase,
           progress: newState.progress,
           backendHealth: healthMonitor.metrics.status
@@ -1549,7 +1550,7 @@ export function usePaymentFlowOrchestrator(
     }
     
     if (finalConfig.debugConfig.enablePerformanceLogging) {
-      console.log(`⏱️ Performance: ${phase} ${startTime ? 'completed' : 'started'} at ${new Date().toISOString()}`)
+      debug.performance(phase, startTime ? Date.now() - startTime : 0)
     }
   }, [finalConfig.debugConfig])
   
@@ -1566,7 +1567,7 @@ export function usePaymentFlowOrchestrator(
   ): Promise<boolean> => {
     
     if (finalConfig.debugConfig.enableVerboseLogging) {
-      console.log(`❌ Payment error in phase ${context.phase}:`, error)
+      debug.error(`Payment error in phase ${context.phase}:`, error)
     }
     
     // Analyze error and determine recovery strategy
@@ -1605,14 +1606,14 @@ export function usePaymentFlowOrchestrator(
         })
         
         if (recovered) {
-          if (finalConfig.debugConfig.enableVerboseLogging) {
-            console.log('✅ Automatic recovery successful')
-          }
+                  if (finalConfig.debugConfig.enableVerboseLogging) {
+          debug.log('Automatic recovery successful')
+        }
           return true
         }
       } catch (recoveryError) {
         if (finalConfig.debugConfig.enableVerboseLogging) {
-          console.log('❌ Automatic recovery failed:', recoveryError)
+          debug.error('Automatic recovery failed:', recoveryError)
         }
       }
     }
@@ -1677,7 +1678,7 @@ export function usePaymentFlowOrchestrator(
     })
     
     if (finalConfig.debugConfig.enableVerboseLogging) {
-      console.log('🚀 Starting orchestrated payment execution:', request)
+      debug.log('Starting orchestrated payment execution:', request)
     }
     
     try {
@@ -1916,7 +1917,7 @@ export function usePaymentFlowOrchestrator(
     })
     
     if (finalConfig.debugConfig.enableVerboseLogging) {
-      console.log('🛑 Payment cancelled by user')
+      debug.log('Payment cancelled by user')
     }
   }, [signaturePolling, errorRecovery, updateState, finalConfig.debugConfig])
   
@@ -2040,7 +2041,7 @@ export function usePaymentFlowOrchestrator(
    */
   useEffect(() => {
     if (transactionHash && flowState.phase === 'creating_intent' && currentRequestRef.current) {
-      console.log('✅ Intent creation transaction hash received:', transactionHash)
+      debug.log('Intent creation transaction hash received:', transactionHash)
       
       // Update state to indicate intent creation is pending
       setFlowState({ phase: 'waiting_intent_confirmation', transactionHash })
@@ -2061,7 +2062,7 @@ export function usePaymentFlowOrchestrator(
    */
   useEffect(() => {
     if (receiptData && flowState.phase === 'waiting_intent_confirmation' && currentRequestRef.current) {
-      console.log('✅ Intent creation confirmed, extracting intent ID...')
+              debug.log('Intent creation confirmed, extracting intent ID...')
       
       try {
         const intentId = extractIntentIdFromLogs(receiptData.logs)
@@ -2112,7 +2113,7 @@ export function usePaymentFlowOrchestrator(
               args: [intentId]
             })
           }).catch(error => {
-            console.error('❌ Signature polling failed:', error)
+            debug.error('Signature polling failed:', error)
             handlePaymentError(error, {
               phase: 'waiting_signature',
               intentId,
@@ -2122,8 +2123,8 @@ export function usePaymentFlowOrchestrator(
         } else {
           throw new Error('Failed to extract intent ID from transaction logs')
         }
-      } catch (error) {
-        console.error('❌ Intent ID extraction failed:', error)
+              } catch (error) {
+          debug.error('Intent ID extraction failed:', error)
         handlePaymentError(error as Error, {
           phase: 'waiting_intent_confirmation',
           request: currentRequestRef.current!
@@ -2137,7 +2138,7 @@ export function usePaymentFlowOrchestrator(
    */
   useEffect(() => {
     if (transactionHash && flowState.phase === 'executing_purchase' && currentRequestRef.current) {
-      console.log('✅ Payment execution transaction hash received:', transactionHash)
+      debug.log('Payment execution transaction hash received:', transactionHash)
       
       setFlowState({ phase: 'confirming', transactionHash })
       updateState({
@@ -2153,7 +2154,7 @@ export function usePaymentFlowOrchestrator(
    */
   useEffect(() => {
     if (receiptData && flowState.phase === 'confirming' && currentRequestRef.current) {
-      console.log('✅ Payment execution confirmed successfully')
+      debug.log('Payment execution confirmed successfully')
       
       const totalDuration = Date.now() - (state.performance.startTime || Date.now())
       
@@ -2199,7 +2200,7 @@ export function usePaymentFlowOrchestrator(
       }
       
       if (finalConfig.debugConfig.enableVerboseLogging) {
-        console.log('✅ Payment completed successfully')
+        debug.log('Payment completed successfully')
       }
     }
   }, [receiptData, flowState.phase, updateState, state.paymentProgress, state.performance, finalConfig, errorRecovery.state.recoveryHistory.length])
@@ -2209,7 +2210,7 @@ export function usePaymentFlowOrchestrator(
    */
   useEffect(() => {
     if (writeError && currentRequestRef.current) {
-      console.error('❌ Transaction error:', writeError)
+      debug.error('Transaction error:', writeError)
       handlePaymentError(writeError, {
         phase: flowState.phase as OrchestratedPaymentFlowState['phase'],
         request: currentRequestRef.current

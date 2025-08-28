@@ -86,6 +86,7 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 
 import { cn } from '@/lib/utils'
+import { debug, useDebugCondition } from '@/lib/utils/debug'
 
 // Import business logic hooks and utilities
 import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance } from '@/hooks/contracts/core'
@@ -574,9 +575,9 @@ export function OrchestratedContentPurchaseCard({
   // Log contract validation for debugging
   useEffect(() => {
     if (!contractValidation.isValid) {
-      console.error('❌ Contract validation failed:', contractValidation.error)
+      debug.error('Contract validation failed:', contractValidation.error)
     } else {
-      console.log('✅ Contract validation passed')
+      debug.log('Contract validation passed')
     }
   }, [contractValidation])
 
@@ -669,7 +670,7 @@ export function OrchestratedContentPurchaseCard({
   // Monitor batch transaction errors (immediate cancellation detection)
   useEffect(() => {
     if (batchError) {
-      console.log('❌ Batch transaction error:', batchError)
+      debug.error('Batch transaction error:', batchError)
       
       const isCancelled = batchError.message.includes('User rejected') || 
                          batchError.message.includes('User denied') ||
@@ -694,7 +695,7 @@ export function OrchestratedContentPurchaseCard({
   // Monitor batch transaction hash (when user approves)
   useEffect(() => {
     if (batchTransactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
-      console.log('✅ Batch transaction hash received:', batchTransactionHash)
+      debug.log('Batch transaction hash received:', batchTransactionHash)
       // Extract the actual transaction hash from the batch result
       const txHash = (batchTransactionHash as any)?.id || batchTransactionHash
       
@@ -718,7 +719,7 @@ export function OrchestratedContentPurchaseCard({
   // Monitor write contract errors (immediate cancellation detection)
   useEffect(() => {
     if (writeError) {
-      console.log('❌ Write contract error:', writeError)
+      debug.error('Write contract error:', writeError)
       
       const isCancelled = writeError.message.includes('User rejected') || 
                          writeError.message.includes('User denied') ||
@@ -743,7 +744,7 @@ export function OrchestratedContentPurchaseCard({
   // Monitor transaction hash (when user approves)
   useEffect(() => {
     if (transactionHash && paymentState.intentPhase === PaymentIntentPhase.PAYMENT_ACTIVE) {
-      console.log('✅ Transaction hash received:', transactionHash)
+      debug.log('Transaction hash received:', transactionHash)
       setPendingTransactionHash(transactionHash)
       setPaymentState(prev => ({
         ...prev,
@@ -764,16 +765,16 @@ export function OrchestratedContentPurchaseCard({
   // Memoize orchestrator callbacks to prevent unnecessary re-initialization
   const orchestratorCallbacks = useMemo(() => ({
     onPaymentCompleted: (result: PaymentResult) => {
-      console.log(`Payment completed:`, result)
+      debug.log('Payment completed:', result)
       if (result.success && onPurchaseSuccess) {
         onPurchaseSuccess(contentId, result)
       }
     },
     onHealthChange: (health: any) => {
-      console.log(`Backend health changed:`, health)
+      debug.log('Backend health changed:', health)
     },
     onRecoveryAttempt: (strategy: string, attempt: number) => {
-      console.log(`Recovery attempt ${attempt} using strategy: ${strategy}`)
+      debug.log(`Recovery attempt ${attempt} using strategy: ${strategy}`)
     }
   }), [contentId, onPurchaseSuccess])
 
@@ -783,17 +784,17 @@ export function OrchestratedContentPurchaseCard({
     signingConfig: {
       maxAttempts: 45,
       useAdaptiveIntervals: true,
-      enableLogging: process.env.NODE_ENV === 'development'
+      enableLogging: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG === 'true'
     },
     recoveryConfig: {
       enableAutomaticRecovery: true,
       maxAutoRetryAttempts: 3,
-      enableLogging: process.env.NODE_ENV === 'development'
+      enableLogging: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG === 'true'
     },
     debugConfig: {
-      enableVerboseLogging: process.env.NODE_ENV === 'development',
-      enablePerformanceLogging: enablePerformanceMetrics,
-      enableStateLogging: process.env.NODE_ENV === 'development'
+      enableVerboseLogging: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG === 'true',
+      enablePerformanceLogging: enablePerformanceMetrics && process.env.NEXT_PUBLIC_DEBUG_PERFORMANCE === 'true',
+      enableStateLogging: process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG === 'true'
     },
     callbacks: orchestratorCallbacks
   }), [orchestratorCallbacks, enablePerformanceMetrics])
@@ -1005,7 +1006,7 @@ export function OrchestratedContentPurchaseCard({
    * This is triggered when user clicks "Purchase Content" for the first time
    */
   const handleExpressPurchaseIntent = useCallback(() => {
-    console.log('💭 User expressed purchase intent for content:', contentId.toString())
+    debug.log('User expressed purchase intent for content:', contentId.toString())
     
     setPaymentState(prev => ({
       ...prev,
@@ -1018,7 +1019,7 @@ export function OrchestratedContentPurchaseCard({
    * Handle Modal Close - Reset to browsing state
    */
   const handleModalClose = useCallback(() => {
-    console.log('🔒 Modal closed, resetting to browsing state')
+    debug.log('Modal closed, resetting to browsing state')
     
     setPaymentState(prev => ({
       ...prev,
@@ -1041,7 +1042,7 @@ export function OrchestratedContentPurchaseCard({
     setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
 
     try {
-      console.log('💳 Starting USDC purchase...')
+      debug.log('Starting USDC purchase...')
       
       // Check if approval is needed
       const selectedToken = calculatedTokens[PaymentMethod.USDC]
@@ -1049,7 +1050,7 @@ export function OrchestratedContentPurchaseCard({
       
       // Try batch transaction first if supported and approval is needed
       if (needsApproval && canUseBatchTransactions) {
-        console.log('🚀 Using EIP-5792 batch transaction (approve + purchase)...')
+        debug.log('Using EIP-5792 batch transaction (approve + purchase)...')
         
         const calls = [
           // Call 1: Approve USDC spending
@@ -1073,13 +1074,13 @@ export function OrchestratedContentPurchaseCard({
         ]
         
         await sendCalls({ calls })
-        console.log('✅ Batch transaction submitted successfully')
+        debug.log('Batch transaction submitted successfully')
         return
       }
       
       // Fallback to sequential transactions
       if (needsApproval) {
-        console.log('🔐 Approving USDC spending (sequential)...')
+        debug.log('Approving USDC spending (sequential)...')
         
         setCurrentTransactionType('usdc')
         await writeContract({
@@ -1095,7 +1096,7 @@ export function OrchestratedContentPurchaseCard({
       }
       
       // Direct purchase without approval needed
-      console.log('💰 Purchasing content with USDC...')
+      debug.log('Purchasing content with USDC...')
       
       setCurrentTransactionType('usdc')
       await writeContract({
@@ -1106,10 +1107,10 @@ export function OrchestratedContentPurchaseCard({
       })
       
       // The transaction hash and error handling will be managed by the useEffect hooks above
-      console.log('✅ USDC purchase transaction submitted')
+      debug.log('USDC purchase transaction submitted')
 
     } catch (error) {
-      console.error('❌ USDC purchase failed:', error)
+      debug.error('USDC purchase failed:', error)
       
       const isCancelled = error instanceof Error && (
         error.message.includes('User rejected') || 
@@ -1136,8 +1137,8 @@ export function OrchestratedContentPurchaseCard({
    * Handle ETH Purchase Execution
    */
   const handleETHPurchase = useCallback(async () => {
-    console.log('🚀 handleETHPurchase called')
-    console.log('📊 Current state:', {
+    debug.log('handleETHPurchase called')
+    debug.log('Current state:', {
       hasContentData: !!contentQuery.data,
       hasEthCalculation: !!ethPaymentCalculation,
       isProcessing: paymentState.isProcessing,
@@ -1151,7 +1152,7 @@ export function OrchestratedContentPurchaseCard({
     })
 
     if (!contentQuery.data || !ethPaymentCalculation || paymentState.isProcessing || !contractAddresses) {
-      console.error('❌ ETH purchase prerequisites not met', {
+      debug.error('ETH purchase prerequisites not met', {
         hasContentData: !!contentQuery.data,
         hasEthCalculation: !!ethPaymentCalculation,
         isProcessing: paymentState.isProcessing,
@@ -1166,7 +1167,7 @@ export function OrchestratedContentPurchaseCard({
     setPaymentState(prev => ({ ...prev, isProcessing: true, intentPhase: PaymentIntentPhase.PAYMENT_ACTIVE }))
 
     try {
-      console.log('⚡ Starting direct ETH payment...')
+      debug.log('Starting direct ETH payment...')
       
       // Create payment intent directly using contract
       const paymentRequest = {
@@ -1178,7 +1179,7 @@ export function OrchestratedContentPurchaseCard({
         deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour
       }
 
-      console.log('📝 Creating payment intent:', paymentRequest)
+      debug.log('Creating payment intent:', paymentRequest)
       
       // This will trigger the writeContract hook and we'll get immediate feedback
       setCurrentTransactionType('eth')
@@ -1190,10 +1191,10 @@ export function OrchestratedContentPurchaseCard({
       })
       
       // The transaction hash and error handling will be managed by the useEffect hooks above
-      console.log('✅ ETH payment intent created successfully')
+      debug.log('ETH payment intent created successfully')
 
     } catch (error) {
-      console.error('❌ ETH purchase failed:', error)
+      debug.error('ETH purchase failed:', error)
       
       const isCancelled = error instanceof Error && (
         error.message.includes('User rejected') || 
@@ -1227,7 +1228,7 @@ export function OrchestratedContentPurchaseCard({
    * Handle Payment Method Selection
    */
   const handleMethodSelect = useCallback(async (method: PaymentMethod) => {
-    console.log('🎯 User selected payment method:', method)
+    debug.log('User selected payment method:', method)
     
     // Set the selected method and close modal
     setPaymentState(prev => ({
@@ -1248,7 +1249,7 @@ export function OrchestratedContentPurchaseCard({
         await handleETHPurchase()
       }
     } catch (error) {
-      console.error('❌ Payment execution failed:', error)
+      debug.error('Payment execution failed:', error)
       // Reset to method selection on error
       setPaymentState(prev => ({
         ...prev,
@@ -1262,7 +1263,7 @@ export function OrchestratedContentPurchaseCard({
    * Handle Payment Retry
    */
   const handleRetryPayment = useCallback(() => {
-    console.log('🔄 Retrying payment...')
+    debug.log('Retrying payment...')
     
     // Reset to method selection to allow retry
     setPaymentState(prev => ({
@@ -1277,7 +1278,7 @@ export function OrchestratedContentPurchaseCard({
    * Handle Payment Reset
    */
   const handleResetPayment = useCallback(() => {
-    console.log('🔄 Resetting payment flow...')
+    debug.log('Resetting payment flow...')
     
     // Reset to browsing state
     setPaymentState(prev => ({
@@ -1528,7 +1529,7 @@ export function OrchestratedContentPurchaseCard({
         </CardContent>
 
         {/* Debug Information (Development Only) */}
-        {process.env.NODE_ENV === 'development' && (
+        {useDebugCondition() && (
           <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
             <h4 className="font-semibold mb-2">Debug Info:</h4>
             <div className="space-y-1">

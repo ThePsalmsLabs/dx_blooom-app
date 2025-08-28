@@ -1,0 +1,2792 @@
+{
+  "consoleLog": [
+    {
+      "file": "src/app/api/admin/verification/decide/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Verification decision made:', {\n     ..."
+      ]
+    },
+    {
+      "file": "src/app/api/commerce/signature-status/route.ts",
+      "matches": 7,
+      "lines": [
+        "console.log(`Intent ${intentId} is already signed`...",
+        "console.log(`Generated signature for intent hash $...",
+        "console.log(`Successfully submitted signature for ...",
+        "console.log(`Cleaned up expired intent: ${intentId...",
+        "console.log(`Returning cached signature for intent...",
+        "console.log(`Processing signature request for inte...",
+        "console.log(`Successfully signed and stored intent..."
+      ]
+    },
+    {
+      "file": "src/app/api/ipfs/upload/route.ts",
+      "matches": 7,
+      "lines": [
+        "console.log('🚀 Starting real IPFS upload via Pina...",
+        "console.log('📁 File received for IPFS upload:', {...",
+        "console.log('📤 Uploading to Pinata IPFS...')...",
+        "console.log('📨 Pinata response status:', pinataRe...",
+        "console.log('📨 Pinata response:', responseText)...",
+        "console.log('✅ IPFS upload successful!')...",
+        "console.log('📋 Upload details:', {\n      hash: ha..."
+      ]
+    },
+    {
+      "file": "src/app/api/verification/apply/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Verification application received:', ..."
+      ]
+    },
+    {
+      "file": "src/app/creators/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('🔍 Filter button clicked, current sta..."
+      ]
+    },
+    {
+      "file": "src/app/dashboard/page.tsx",
+      "matches": 15,
+      "lines": [
+        "console.log('🔄 Forcing creator data refresh on da...",
+        "console.log('🎉 New creator detected! Refreshing d...",
+        "console.log('🎉 Welcome to Your Creator Dashboard!...",
+        "console.log('🔍 Dashboard verification effect:', {...",
+        "console.log('⚠️ Non-creator detected, redirecting ...",
+        "console.log(`Analytics period changed to: ${period...",
+        "console.log('Dashboard data refreshed')...",
+        "console.log('❌ No earnings available to withdraw')...",
+        "console.log('⏳ Withdrawal already in progress')...",
+        "console.log('🚀 Initiating earnings withdrawal...'...",
+        "console.log(`💰 Amount: ${formatCurrency(pending, ...",
+        "console.log('✅ Earnings withdrawal confirmed! Refr...",
+        "console.log('🎉 Your earnings have been successful...",
+        "console.log('Access denied:', result)...",
+        "console.log(`Content uploaded: ${contentId}`)..."
+      ]
+    },
+    {
+      "file": "src/app/demo/enhanced-ui/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Demo purchase success')..."
+      ]
+    },
+    {
+      "file": "src/app/mini/browse/page.tsx",
+      "matches": 4,
+      "lines": [
+        "console.log('MiniApp browse interaction tracked:',...",
+        "console.log('Filtering by category:', filters.cate...",
+        "console.log('Filtering by search:', filters.search...",
+        "console.log('Sorting by:', filters.sortBy)..."
+      ]
+    },
+    {
+      "file": "src/app/mini/creators/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('MiniApp creators interaction tracked:..."
+      ]
+    },
+    {
+      "file": "src/app/mini/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('MiniApp interaction tracked:', eventD..."
+      ]
+    },
+    {
+      "file": "src/app/mini/share/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Share tracked:', { platform, contentI..."
+      ]
+    },
+    {
+      "file": "src/app/miniapp/MiniAppLayout.tsx",
+      "matches": 4,
+      "lines": [
+        "console.log('🚀 Starting MiniApp layout initializa...",
+        "console.log('📍 Context detection result:', contex...",
+        "console.log('⚙️ Generated layout config:', layoutC...",
+        "console.log(`✅ Layout initialized successfully in ..."
+      ]
+    },
+    {
+      "file": "src/app/onboard/page.tsx",
+      "matches": 17,
+      "lines": [
+        "console.log('Form Data:', formData)...",
+        "console.log('Subscription Price (wei)...",
+        "console.log('Profile Data:', profileData)...",
+        "console.log('🔍 Success handling effect triggered:...",
+        "console.log('✅ Registration successful, showing di...",
+        "console.log(`🔄 Redirect attempt ${attempt}/${maxA...",
+        "console.log('🔄 Refreshing registration data...')...",
+        "console.log('✅ Redirect initiated successfully')...",
+        "console.log('🧹 Cleaning up redirect timeout')...",
+        "console.log('Progress Percentage:', progressPercen...",
+        "console.log('Completed Steps:', completedSteps)...",
+        "console.log('Current Step Index:', currentStepInde...",
+        "console.log('Registration Progress:', onboarding.r...",
+        "console.log(`Navigation context changed to: ${cont...",
+        "console.log('🚀 Dashboard button clicked!')...",
+        "console.log('Current router state:', router)...",
+        "console.log('✅ Navigation initiated successfully')..."
+      ]
+    },
+    {
+      "file": "src/app/page.tsx",
+      "matches": 3,
+      "lines": [
+        "console.log('🔄 Home page: Triggering manual load ...",
+        "console.log('🔄 Home page: Safety check - triggeri...",
+        "console.log('🏠 Home page creators state:', {\n    ..."
+      ]
+    },
+    {
+      "file": "src/app/portfolio/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Swap requested:', fromToken?.symbol, ..."
+      ]
+    },
+    {
+      "file": "src/components/analytics/PlatformInsightsDashboard.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Exporting platform data...', { platfo..."
+      ]
+    },
+    {
+      "file": "src/components/commerce/MiniAppPurchaseButton.tsx",
+      "matches": 8,
+      "lines": [
+        "console.log('Content ID:', contentId.toString()...",
+        "console.log('Batch Transaction Available:', purcha...",
+        "console.log('Estimated Gas Savings:', purchaseFlow...",
+        "console.log('✅ Purchase completed successfully')...",
+        "console.log('Content ID:', contentId.toString()...",
+        "console.log('Content Title:', title)...",
+        "console.log('Social User:', socialFlow.socialUser)...",
+        "console.log('✅ Content shared successfully')..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentAccessControl.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Purchase successful for content:', co..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentBrowser.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Purchase successful for content:', co..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentPurchaseCard.backup.tsx",
+      "matches": 10,
+      "lines": [
+        "console.log('🔍 Allowance check status:', {\n      ...",
+        "console.log('🔄 Starting token balance check...', ...",
+        "console.log('💰 Created USDC token info:', usdcTok...",
+        "console.log('🔍 Checking available payment methods...",
+        "console.log(`✅ Found ${methodTokenInfo.symbol} tok...",
+        "console.log('✅ Token balance check completed succe...",
+        "console.log('Approving token spending:', {\n       ...",
+        "console.log('Creating payment intent:', paymentReq...",
+        "console.log('Custom token purchase transaction sub...",
+        "console.log(`🖥️ UI: Displaying balance for ${toke..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentUpload.tsx",
+      "matches": 10,
+      "lines": [
+        "console.log('🚀 Starting real IPFS upload via Pina...",
+        "console.log(`📈 Upload progress: ${percentComplete...",
+        "console.log('✅ IPFS upload successful:', result)...",
+        "console.log('🎉 Content published successfully:', ...",
+        "console.log('📁 File selected:', file.name, 'Type:...",
+        "console.log('✅ Upload successful, hash:', uploadRe...",
+        "console.log('📝 Form submission started with data:...",
+        "console.log('❌ Form validation failed:', errors)...",
+        "console.log('❌ Cannot publish - creator requiremen...",
+        "console.log('🚀 Publishing content with data:', pu..."
+      ]
+    },
+    {
+      "file": "src/components/content/EnhancedContentBrowser.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Purchase successful for content:', co..."
+      ]
+    },
+    {
+      "file": "src/components/content/UnifiedContentBrowser.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Purchase successful for content:', co..."
+      ]
+    },
+    {
+      "file": "src/components/creator/ContentManagementDashboard.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log(`Bulk action ${action} not yet impleme..."
+      ]
+    },
+    {
+      "file": "src/components/creator/ZoraCollectionManager.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Manage collection:', collection.addre..."
+      ]
+    },
+    {
+      "file": "src/components/debug/FastRPCProvider.tsx",
+      "matches": 2,
+      "lines": [
+        "console.log(`🚀 Fast RPC Provider: ${provider.name...",
+        "console.log('⚠️ No fast RPC provider found, using ..."
+      ]
+    },
+    {
+      "file": "src/components/errors/MiniAppErrorBoundary.tsx",
+      "matches": 3,
+      "lines": [
+        "console.log('Switching to read-only mode')...",
+        "console.log('Opening support channel')...",
+        "console.log('Reporting error to external service:'..."
+      ]
+    },
+    {
+      "file": "src/components/examples/SmartPurchaseIntegrationExamples.tsx",
+      "matches": 8,
+      "lines": [
+        "console.log(`User needs ${requiredAmount} ${requir...",
+        "console.log('User selected:', method, 'Analysis:',...",
+        "console.log('Insufficient balance for:', analysis....",
+        "console.log('Subscription payment method:', method...",
+        "console.log('Need more funds for subscription')...",
+        "console.log(`Processing bulk purchase of ${content...",
+        "console.log('Insufficient balance for bulk purchas...",
+        "console.log('Advanced example purchase success')..."
+      ]
+    },
+    {
+      "file": "src/components/layout/AdaptiveNavigation.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Navigation tracked:', eventData)..."
+      ]
+    },
+    {
+      "file": "src/components/layout/AppLayout.tsx",
+      "matches": 2,
+      "lines": [
+        "console.log('🍔 Hamburger clicked!', { isOpen: isN...",
+        "console.log('👆 Touch started on hamburger')..."
+      ]
+    },
+    {
+      "file": "src/components/layout/RouteGuards.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('🔍 New registration detected, allowin..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/EnhancedContentBrowser.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Creator selected:', creatorAddress)..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppBrowseIntegration.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('MiniApp Browse Interaction:', { inter..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppContentPurchaseIntegration.tsx",
+      "matches": 14,
+      "lines": [
+        "console.log('✅ MiniKit SDK connection test success...",
+        "console.log('🚀 Social Share Integration:', {\n    ...",
+        "console.log('📱 MiniKit SDK ready - initiating nat...",
+        "console.log('🚀 MiniKit Capabilities:', miniKitCap...",
+        "console.log('✅ Cast composed successfully:', castR...",
+        "console.log('📊 MiniKit Share Analytics:', {\n     ...",
+        "console.log('⚠️ Cast composed but no result return...",
+        "console.log('🔄 SDK not ready, attempting to initi...",
+        "console.log('✅ SDK initialized, retrying share...'...",
+        "console.log('✅ Cast composed successfully on retry...",
+        "console.log('📋 Share content copied to clipboard'...",
+        "console.log('📋 Share content copied to clipboard'...",
+        "console.log('📊 Influencer share tracked for viral...",
+        "console.log('📊 Social Purchase Completed:', {\n   ..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppPurchaseFlow.tsx",
+      "matches": 2,
+      "lines": [
+        "console.log('Successfully shared cast with embeds'...",
+        "console.log('Purchase success shared to Farcaster'..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MobileMiniApp.tsx",
+      "matches": 2,
+      "lines": [
+        "console.log(`Purchasing content ${contentId}`)...",
+        "console.log(`Sharing content ${contentId}`)..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/UpgradedMiniAppInterface.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Purchase initiated')..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/payments/PaymentInterface.tsx",
+      "matches": 4,
+      "lines": [
+        "console.log('🚀 Initiating purchase with strategy:...",
+        "console.log('✅ Purchase completed successfully')...",
+        "console.log('🚀 Social Share:', {\n        contentI...",
+        "console.log('✅ Content shared successfully on Farc..."
+      ]
+    },
+    {
+      "file": "src/components/payment/PaymentIntentMonitor.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('🔄 Auto-recovery triggered:', failure..."
+      ]
+    },
+    {
+      "file": "src/components/providers/AuthProvider.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('User login initiated')..."
+      ]
+    },
+    {
+      "file": "src/components/providers/MiniKitProvider.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('✅ MiniKit initialized successfully', ..."
+      ]
+    },
+    {
+      "file": "src/components/providers/Web3Provider.tsx",
+      "matches": 7,
+      "lines": [
+        "console.log('🔧 Environment Configuration:', {\n   ...",
+        "console.log('🔍 Privy State Debug:', {\n        rea...",
+        "console.log('❌ Cannot create smart account: missin...",
+        "console.log('🚀 Creating smart account for address...",
+        "console.log('⚠️ Smart account creation requires pr...",
+        "console.log('🔄 Auto-creating smart account for co...",
+        "console.log('🚀 Initializing Privy Provider with A..."
+      ]
+    },
+    {
+      "file": "src/components/purchase/SmartPaymentSelector.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log(`Successfully swapped ${amount} ${from..."
+      ]
+    },
+    {
+      "file": "src/components/social/MiniAppSDKIntegration.tsx",
+      "matches": 2,
+      "lines": [
+        "console.log('Sharing frame:', generatedFrame)...",
+        "console.log('Social event:', event, data)..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/SubscribeButton.tsx",
+      "matches": 2,
+      "lines": [
+        "console.log('Subscription successful:', transactio...",
+        "console.log('Success!', hash)..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/SubscriptionApprovalFlow.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('User needs to add USDC to their walle..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/UserSubscriptionDashboard.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Bulk auto-renewal:', enable, selected..."
+      ]
+    },
+    {
+      "file": "src/components/transactions/BatchTransactionImplementation.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Batch simulation completed successful..."
+      ]
+    },
+    {
+      "file": "src/components/web3/EnterpriseSwapIntegration.tsx",
+      "matches": 4,
+      "lines": [
+        "console.log('🔍 Multi-pool price analysis:', {\n   ...",
+        "console.log('🔄 Creating swap payment intent:', {\n...",
+        "console.log('🎯 Executing signed swap intent:', { ...",
+        "console.log('✅ Enterprise swap completed successfu..."
+      ]
+    },
+    {
+      "file": "src/components/web3/portfolio/SwapModal.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('Executing swap:', {\n        from: sta..."
+      ]
+    },
+    {
+      "file": "src/contexts/MiniAppProvider.tsx",
+      "matches": 6,
+      "lines": [
+        "console.log('🚀 Initializing MiniApp SDK...')...",
+        "console.log('✅ MiniApp SDK initialized successfull...",
+        "console.log('✅ MiniApp ready signal sent successfu...",
+        "console.log('🔍 Starting environment detection...'...",
+        "console.log('🎯 Environment detection complete:', ...",
+        "console.log('🔄 Falling back to web mode due to in..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-auth.ts",
+      "matches": 30,
+      "lines": [
+        "console.log('🔍 Social verification analysis:', {\n...",
+        "console.log('🎯 Optimal payment method: Farcaster-...",
+        "console.log('🎯 Optimal payment method: Privy-conn...",
+        "console.log('🎯 Optimal payment method: Requires c...",
+        "console.log('👤 User profile created with social c...",
+        "console.log('👤 User profile created (wallet-only)...",
+        "console.log('🎯 Recommended strategy: standard-flo...",
+        "console.log('🎯 Recommended strategy: farcaster-di...",
+        "console.log('🎯 Recommended strategy: batch-transa...",
+        "console.log('🎯 Recommended strategy: standard-flo...",
+        "console.log('🚀 MiniApp social login initiated')...",
+        "console.log('✅ MiniApp social login completed')...",
+        "console.log('🚀 Web wallet login initiated')...",
+        "console.log('✅ Web wallet login completed')...",
+        "console.log('🚀 Logout initiated')...",
+        "console.log('🔄 Clearing Farcaster context')...",
+        "console.log('🚀 Logout completed')...",
+        "console.log('🔄 Refreshing profile data...')...",
+        "console.log('🔄 Refreshing Farcaster context...')...",
+        "console.log('✅ Farcaster context refreshed')...",
+        "console.log('🔄 Refreshing creator onboarding data...",
+        "console.log('✅ Creator onboarding data refreshed')...",
+        "console.log('🔄 Refreshing creator profile...')...",
+        "console.log('✅ Creator profile refreshed')...",
+        "console.log('✅ Profile refresh completed successfu...",
+        "console.log('🚀 Creator status update:', { isCreat...",
+        "console.log('✅ Creator status updated successfully...",
+        "console.log('🚀 Initializing authentication state....",
+        "console.log('✅ Authentication state initialized:',...",
+        "console.log('🔄 Loading state synchronized:', { \n ..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-commerce.ts",
+      "matches": 31,
+      "lines": [
+        "console.log('✅ Contract addresses loaded for chain...",
+        "console.log('📊 Strategy Selection Analytics', {\n ...",
+        "console.log('📊 Social Purchase Analytics', {\n    ...",
+        "console.log('Content ID:', contentId.toString()...",
+        "console.log('Verified Address:', authResult.optima...",
+        "console.log('Social Trust Score:', socialContext.s...",
+        "console.log('Content Price:', basePurchaseFlow.con...",
+        "console.log('✅ Farcaster direct purchase completed...",
+        "console.log('🔄 Attempting fallback to batch trans...",
+        "console.log('ℹ️ No approval needed, using standard...",
+        "console.log('Content ID:', contentId.toString()...",
+        "console.log('Required Amount:', basePurchaseFlow.e...",
+        "console.log('Content Price:', basePurchaseFlow.con...",
+        "console.log('Batch Calls Count: 2 (approve + purch...",
+        "console.log('Gas Limit:', finalConfig.batchGasLimi...",
+        "console.log('Timeout:', finalConfig.batchTimeout)...",
+        "console.log('✅ Batch transaction submitted success...",
+        "console.log('🔄 Attempting fallback to standard fl...",
+        "console.log('Content ID:', contentId.toString()...",
+        "console.log('Flow Step:', basePurchaseFlow.executi...",
+        "console.log('Content Price:', basePurchaseFlow.con...",
+        "console.log('Needs Approval:', 'Handled by orchest...",
+        "console.log('✅ Standard purchase flow completed su...",
+        "console.log('Selected Strategy:', strategy)...",
+        "console.log('Confidence:', strategyAnalysis.confid...",
+        "console.log('UX Score:', strategyAnalysis.userExpe...",
+        "console.log('Reasoning:', strategyAnalysis.reasoni...",
+        "console.log('Environment Type:', authResult.enviro...",
+        "console.log('Social Trust Score:', socialContext.s...",
+        "console.log('🔄 Falling back to standard flow due ...",
+        "console.log('📝 Batch transaction hash received:',..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-social.ts",
+      "matches": 8,
+      "lines": [
+        "console.log('Content ID:', params.contentId.toStri...",
+        "console.log('Share Text:', shareText)...",
+        "console.log('Embeds:', embeds)...",
+        "console.log('Social User:', socialUser)...",
+        "console.log('✅ Content shared successfully')...",
+        "console.log('Event Count:', eventsToFlush.length)...",
+        "console.log('Events:', eventsToFlush)...",
+        "console.log('✅ Social engagement events flushed su..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/usePaymentIntentManager.ts",
+      "matches": 6,
+      "lines": [
+        "console.log('💭 Payment intent expressed:', { time...",
+        "console.log('📊 Analytics: Payment intent expresse...",
+        "console.log('🔄 Payment processing started:', meta...",
+        "console.log('✅ Payment completed successfully:', m...",
+        "console.log('📊 Analytics: Payment completed', { d...",
+        "console.log('🔄 Resetting to browsing state')..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/useSocialRevenueTracking.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Refreshing revenue attribution data....."
+      ]
+    },
+    {
+      "file": "src/hooks/business/workflows.ts",
+      "matches": 52,
+      "lines": [
+        "console.log(`🔄 Using fallback ETH price: ${fallba...",
+        "console.log(`🔍 Token info fetch - Method: ${payme...",
+        "console.log(`📦 Using cached token info for ${toke...",
+        "console.log(`🎯 Final token info for ${symbol}:`, ...",
+        "console.log('⏳ Skipping refresh: already running')...",
+        "console.log('⏳ Skipping refresh: throttled')...",
+        "console.log(`🔄 Starting price refresh for ${userA...",
+        "console.log(`📋 Methods to check: ${methodsToCheck...",
+        "console.log(`🔄 Fetching ${tokenConfig.symbol} inf...",
+        "console.log(`✅ Updated ${tokenConfig.symbol} info:...",
+        "console.log(`💰 Price refresh completed for ${upda...",
+        "console.log('🔄 useEffect: Auto-refreshing prices....",
+        "console.log(`🚀 Creating payment intent for ${sele...",
+        "console.log(`✅ Payment intent created:`, result)...",
+        "console.log('Creating Commerce Protocol payment in...",
+        "console.log('Executing signed payment intent:', co...",
+        "console.log('Starting content publishing workflow....",
+        "console.log('Calling registerContent with validate...",
+        "console.log('Transaction submitted, waiting for co...",
+        "console.log('Transaction confirmed, waiting for re...",
+        "console.log('Transaction successful, extracting co...",
+        "console.log('Transaction receipt:', receipt)...",
+        "console.log('Successfully extracted content ID:', ...",
+        "console.log('Sharing to Farcaster:', message)...",
+        "console.log('Subscription Price (BigInt)...",
+        "console.log('Profile Data:', profileData)...",
+        "console.log('User Address:', userAddress)...",
+        "console.log('Transaction Hash:', currentTxHash)...",
+        "console.log('Setting state to registered and flagg...",
+        "console.log('🔄 Refreshing registration and profil...",
+        "console.log('Current Step:', workflowState.current...",
+        "console.log('Has Just Registered:', workflowState....",
+        "console.log('Registration Check Data:', registrati...",
+        "console.log('Registration Check Loading:', registr...",
+        "console.log('Registration Check Error:', registrat...",
+        "console.log('Registration Check Success:', registr...",
+        "console.log('User Address:', userAddress)...",
+        "console.log('🛡️ Protected: Ignoring registration ...",
+        "console.log('🛡️ Protected: Ignoring registration ...",
+        "console.log('⚠️ No user address available, staying...",
+        "console.log('⏳ Registration check still loading......",
+        "console.log('📊 Registration check confirmed: User...",
+        "console.log('📊 Registration check confirmed: User...",
+        "console.log('🔄 Treating undefined result as not r...",
+        "console.log('🎯 Data refresh confirmed registratio...",
+        "console.log('👤 Address changed, resetting workflo...",
+        "console.log('Current Step:', workflowState.current...",
+        "console.log('Has Just Registered:', workflowState....",
+        "console.log('Registration Check Data:', registrati...",
+        "console.log('Registration Check Loading:', registr...",
+        "console.log('Profile Data Available:', !!profileDa...",
+        "console.log('Transaction Hash:', workflowState.las..."
+      ]
+    },
+    {
+      "file": "src/hooks/commerce/useSocialPurchaseFlow.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Triggered immediate share:', shareDat..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/core/useBatchTransactionState.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Initiating sequential transaction fal..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/subscription/useAutoRenewalManagement.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Computing renewal analytics for:', su..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/useAllCreators.optimized.ts",
+      "matches": 4,
+      "lines": [
+        "console.log(`✅ Increasing batch size to ${this.cur...",
+        "console.log(`📊 Fetching creators ${i} to ${chunkE...",
+        "console.log(`✅ Loaded ${newCreators.length} creato...",
+        "console.log(`🔄 Retrying ${failedBatches.length} f..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraCollectionCreation.ts",
+      "matches": 2,
+      "lines": [
+        "console.log('Extracted contract address from Setup...",
+        "console.log('Found SetupNewContract events:', setu..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraNFTCreation.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Found UpdatedToken events:', updatedE..."
+      ]
+    },
+    {
+      "file": "src/hooks/miniapp/integration.ts",
+      "matches": 7,
+      "lines": [
+        "console.log(`Purchase completed in ${completionTim...",
+        "console.log('Triggering post-purchase social shari...",
+        "console.log('Executing batch purchase using EIP-57...",
+        "console.log('Executing simplified purchase flow')...",
+        "console.log('Executing sequential purchase flow')...",
+        "console.log('Sharing via Farcaster:', content)...",
+        "console.log('Content copied to clipboard for shari..."
+      ]
+    },
+    {
+      "file": "src/hooks/miniapp/useAppNavigation.ts",
+      "matches": 3,
+      "lines": [
+        "console.log('Opening modal for:', finalUrl)...",
+        "console.log('Navigation successful:', {\n        st...",
+        "console.log('Share URL copied to clipboard')..."
+      ]
+    },
+    {
+      "file": "src/hooks/ui/integration.ts",
+      "matches": 8,
+      "lines": [
+        "console.log('🔍 useWalletConnectionUI Debug:', {\n ...",
+        "console.log('🚀 handleConnect called', {\n        l...",
+        "console.log('⚠️ Using custom modal due to missing ...",
+        "console.log('✅ Privy login available, opening...')...",
+        "console.log('❌ Privy login not available, falling ...",
+        "console.log('Navigate to content publishing')...",
+        "console.log('Navigate to pricing settings')...",
+        "console.log('Navigate to detailed analytics')..."
+      ]
+    },
+    {
+      "file": "src/hooks/ui/useSocialPurchaseUI.ts",
+      "matches": 2,
+      "lines": [
+        "console.log('Preview share triggered')...",
+        "console.log('UI Event Tracked:', event, data)..."
+      ]
+    },
+    {
+      "file": "src/hooks/useMiniAppPurchaseFlow.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Social purchase tracked:', analyticsE..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useBackendHealthMonitor.ts",
+      "matches": 5,
+      "lines": [
+        "console.log(`🔴 Backend health monitor: Circuit br...",
+        "console.log('🟡 Backend health monitor: Circuit br...",
+        "console.log(`✅ Backend health monitor: Successful ...",
+        "console.log(`❌ Backend health monitor: Failed requ...",
+        "console.log('🔄 Backend health monitor: State rese..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useErrorRecoveryStrategies.ts",
+      "matches": 13,
+      "lines": [
+        "console.log(`Recovery ${success ? 'succeeded' : 'f...",
+        "console.log('🔍 Analyzing error for recovery:', er...",
+        "console.log(`📋 Error classified as '${category}' ...",
+        "console.log(`❌ Automatic recovery not applicable f...",
+        "console.log(`❌ Maximum auto-retry attempts reached...",
+        "console.log(`🔄 Starting automatic recovery attemp...",
+        "console.log(`✅ Automatic recovery attempt ${attemp...",
+        "console.log(`👤 User selected recovery action: ${s...",
+        "console.log('❌ User cancelled recovery operation')...",
+        "console.log(`💾 Recovery state saved for session: ...",
+        "console.log(`❌ No saved recovery state found for s...",
+        "console.log(`📂 Resuming recovery from saved state...",
+        "console.log('🔄 Error recovery state reset')..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useIntelligentSignaturePolling.ts",
+      "matches": 10,
+      "lines": [
+        "console.log(`Backend health: ${error.backendHealth...",
+        "console.log(`🔄 Making signature request to: ${end...",
+        "console.log(`🚀 Starting intelligent signature pol...",
+        "console.log(`📊 Backend health: ${healthMonitor.me...",
+        "console.log(`🔄 Signature polling attempt ${attemp...",
+        "console.log(`✅ Signature found for intent: ${inten...",
+        "console.log(`❌ Polling attempt ${attemptNumber} fa...",
+        "console.log(`❌ Single signature check failed: ${er...",
+        "console.log('🛑 Signature polling cancelled')...",
+        "console.log('🔄 Signature polling state reset')..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useMiniAppWalletConnect.ts",
+      "matches": 4,
+      "lines": [
+        "console.log('Wagmi store reset completed')...",
+        "console.log(`Recovery attempt ${currentAttempts + ...",
+        "console.log('Recovery completed successfully')...",
+        "console.log('Automatically attempting recovery for..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/usePaymentFlowOrchestrator.ts",
+      "matches": 1,
+      "lines": [
+        "console.log(`Payment ${result.success ? 'succeeded..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useSwapCalculation.ts",
+      "matches": 10,
+      "lines": [
+        "console.log('Uniswap v3 quote successful:', {\n    ...",
+        "console.log('🔄 Creating payment intent:', payment...",
+        "console.log('⏳ Transaction submitted, monitoring f...",
+        "console.log('🎯 Executing signed swap intent:', in...",
+        "console.log('✅ Swap executed successfully')...",
+        "console.log('🔍 Transaction confirmed, extracting ...",
+        "console.log('📋 Transaction receipt received, extr...",
+        "console.log('✅ Intent ID extracted:', intentId)...",
+        "console.log('🔐 Starting signature polling...')...",
+        "console.log('✅ Signature received, executing swap...."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useSwapTransactionIntegration.ts",
+      "matches": 2,
+      "lines": [
+        "console.log('🔄 Starting swap execution:', {\n     ...",
+        "console.log('✅ Swap execution completed successful..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useWalletConnect.ts",
+      "matches": 6,
+      "lines": [
+        "console.log(`🔄 Switching to network ${targetChain...",
+        "console.log('🚀 Starting smart account upgrade...'...",
+        "console.log('✅ Smart account upgrade successful')...",
+        "console.log('❌ Smart account upgrade failed')...",
+        "console.log('🚪 Logging out user...')...",
+        "console.log('✅ User logged out successfully')..."
+      ]
+    },
+    {
+      "file": "src/hooks/zora/useSocialSharing.ts",
+      "matches": 2,
+      "lines": [
+        "console.log(`Share tracked: ${platform} - ${conten...",
+        "console.log(`Copy tracked: ${contentType} - ${cont..."
+      ]
+    },
+    {
+      "file": "src/hooks/zora/useZoraAnalytics.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Analytics event:', event, data)..."
+      ]
+    },
+    {
+      "file": "src/hooks/zora/useZoraIntegration.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Successfully extracted content ID:', ..."
+      ]
+    },
+    {
+      "file": "src/lib/biconomy/config.ts",
+      "matches": 2,
+      "lines": [
+        "console.log('Biconomy not available for this chain...",
+        "console.log('✅ Smart Account created:', await smar..."
+      ]
+    },
+    {
+      "file": "src/lib/services/zora/ZoraSocialService.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Tracking share:', trackingData)..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/bigint-serializer.ts",
+      "matches": 1,
+      "lines": [
+        "console.log(label, safeStringify(obj)..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/debug.ts",
+      "matches": 9,
+      "lines": [
+        "console.log(logMessage, data)...",
+        "console.log(logMessage)...",
+        "console.log(logMessage, metadata)...",
+        "console.log(logMessage)...",
+        "console.log(logMessage, data)...",
+        "console.log(logMessage)...",
+        "console.log(`[DEBUG] ${message}`, data)...",
+        "console.log(`[PERF] ⏱️ ${operation}: ${duration}ms...",
+        "console.log(`[WALLET] 🔗 ${message}`, data)..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/zora-social.ts",
+      "matches": 1,
+      "lines": [
+        "console.log('Share tracked:', trackingData)..."
+      ]
+    },
+    {
+      "file": "src/modules/migration/UnifiedMigrationOrchestrator.tsx",
+      "matches": 3,
+      "lines": [
+        "console.log('Selected token:', token)...",
+        "console.log('Selected token:', token)...",
+        "console.log('Selected token:', token)..."
+      ]
+    },
+    {
+      "file": "src/providers/UnifiedAppProvider.tsx",
+      "matches": 1,
+      "lines": [
+        "console.log('UnifiedAppProvider State:', state)..."
+      ]
+    },
+    {
+      "file": "src/services/notifications/NotificationService.ts",
+      "matches": 2,
+      "lines": [
+        "console.log('Real-time notification connection est...",
+        "console.log('WebSocket connection closed, attempti..."
+      ]
+    },
+    {
+      "file": "src/utils/transactions/intentExtraction.ts",
+      "matches": 17,
+      "lines": [
+        "console.log(`Total logs: ${logs.length}`)...",
+        "console.log(`Address: ${log.address}`)...",
+        "console.log(`Topics: ${log.topics?.length || 0}`)...",
+        "console.log(`Topic[0] (Event Signature)...",
+        "console.log('✅ Found PaymentIntentCreated event')...",
+        "console.log(`Intent ID: ${log.topics[1] || 'Missin...",
+        "console.log(`User: ${log.topics[2] || 'Missing'}`)...",
+        "console.log(`Creator: ${log.topics[3] || 'Missing'...",
+        "console.log('✅ Found IntentReadyForSigning event')...",
+        "console.log(`Intent ID: ${log.topics[1] || 'Missin...",
+        "console.log('✅ Found IntentSigned event')...",
+        "console.log(`Intent ID: ${log.topics[1] || 'Missin...",
+        "console.log(`Data: ${log.data}`)...",
+        "console.log('✅ Commerce Protocol Integration ABI i...",
+        "console.log('✅ Event topic hashes are correctly ca...",
+        "console.log('Expected PaymentIntentCreated:', test...",
+        "console.log('Actual PaymentIntentCreated:', EVENT_..."
+      ]
+    }
+  ],
+  "consoleWarn": [
+    {
+      "file": "src/app/mini/browse/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Analytics tracking failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/mini/creators/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Analytics tracking failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/mini/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Analytics tracking failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/mini/share/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Analytics tracking failed:', analyti..."
+      ]
+    },
+    {
+      "file": "src/app/miniapp/MiniAppLayout.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Context detection failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/commerce/MiniAppPurchaseButton.tsx",
+      "matches": 2,
+      "lines": [
+        "console.warn('Purchase not available in current st...",
+        "console.warn('Social sharing not available in curr..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentPurchaseCard.backup.tsx",
+      "matches": 5,
+      "lines": [
+        "console.warn('Contract addresses not available:', ...",
+        "console.warn('Failed to get contract addresses:', ...",
+        "console.warn('🚨 USDC allowance check stuck, using...",
+        "console.warn('⚠️ Token balance checking timed out,...",
+        "console.warn('🚨 Force stopping stuck balance chec..."
+      ]
+    },
+    {
+      "file": "src/components/content/EnhancedSocialContentDiscovery.tsx",
+      "matches": 2,
+      "lines": [
+        "console.warn('Farcaster API key not configured')...",
+        "console.warn('Invalid Farcaster API response struc..."
+      ]
+    },
+    {
+      "file": "src/components/content/OrchestratedContentPurchaseCard.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Failed to get contract addresses:', ..."
+      ]
+    },
+    {
+      "file": "src/components/errors/MiniAppErrorBoundary.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Maximum retry attempts reached')..."
+      ]
+    },
+    {
+      "file": "src/components/layout/AdaptiveNavigation.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Analytics tracking failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/layout/LayoutStatePersistence.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Failed to load persisted layout:', e..."
+      ]
+    },
+    {
+      "file": "src/components/layout/RouteGuards.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn(`Unknown resolution path: ${resolutio..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppContentPurchaseIntegration.tsx",
+      "matches": 3,
+      "lines": [
+        "console.warn('❌ MiniKit SDK connection test failed...",
+        "console.warn('MiniKit SDK sharing failed, falling ...",
+        "console.warn('SDK retry failed, proceeding with fa..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppPurchaseFlow.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Social sharing not available in curr..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/ProgressiveEnhancement.tsx",
+      "matches": 4,
+      "lines": [
+        "console.warn('Frame support detection failed:', er...",
+        "console.warn('Wallet access detection failed:', er...",
+        "console.warn('x402 configuration validation failed...",
+        "console.warn('x402 support detection failed:', err..."
+      ]
+    },
+    {
+      "file": "src/components/providers/MiniKitProvider.tsx",
+      "matches": 4,
+      "lines": [
+        "console.warn('MiniKit not available:', error)...",
+        "console.warn('⚠️ MiniKit initialization failed:', ...",
+        "console.warn('Failed to extract Farcaster context:...",
+        "console.warn('Failed to refresh Farcaster context:..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/SubscriptionApprovalFlow.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Unhandled step action:', subscriptio..."
+      ]
+    },
+    {
+      "file": "src/components/transactions/BatchTransactionImplementation.tsx",
+      "matches": 3,
+      "lines": [
+        "console.warn('Public client not available, default...",
+        "console.warn('Public client not available, default...",
+        "console.warn(`Batch transactions not supported for..."
+      ]
+    },
+    {
+      "file": "src/components/ui/BuyButton.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Purchase already in progress, ignori..."
+      ]
+    },
+    {
+      "file": "src/components/web3/EnterpriseSwapIntegration.tsx",
+      "matches": 2,
+      "lines": [
+        "console.warn('Failed to get contract addresses for...",
+        "console.warn('Failed to get contract addresses:', ..."
+      ]
+    },
+    {
+      "file": "src/components/web3/SwapEnterpriseFeatures.tsx",
+      "matches": 2,
+      "lines": [
+        "console.warn('Failed to update volume:', error)...",
+        "console.warn('Failed to store analytics:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/web3/SwapPerformanceOptimization.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Failed to persist transaction state:..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-auth.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('AuthProvider not available - using l..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-commerce.ts",
+      "matches": 3,
+      "lines": [
+        "console.warn('Missing required contract addresses:...",
+        "console.warn('Invalid strategy analysis, falling b...",
+        "console.warn(`Selected strategy ${strategy} is not..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/useSocialRevenueTracking.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Invalid payment event structure:', e..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/workflows.ts",
+      "matches": 14,
+      "lines": [
+        "console.warn('Failed to initialize Farcaster conte...",
+        "console.warn('x402 configuration not available:', ...",
+        "console.warn('Failed to share to Farcaster:', erro...",
+        "console.warn('Failed to get contract addresses:', ...",
+        "console.warn('Permit2 failed, falling back to appr...",
+        "console.warn('Image optimization failed, using fal...",
+        "console.warn('⏰ Registration check stuck in loadin...",
+        "console.warn('⚠️ Registration check returned unexp...",
+        "console.warn('This usually means:')...",
+        "console.warn('1. Contract address is wrong')...",
+        "console.warn('2. Contract ABI mismatch')...",
+        "console.warn('3. Function doesnt exist')...",
+        "console.warn('4. Network connectivity issue')...",
+        "console.warn('⏰ Registration check timeout - treat..."
+      ]
+    },
+    {
+      "file": "src/hooks/commerce/useSocialPurchaseFlow.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn('Social context analysis failed:', er...",
+        "console.warn('Immediate sharing failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/subscription/useAutoRenewalManagement.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn('Missing contract addresses or user a...",
+        "console.warn('Auto-renewal failed for:', log.args...."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/useAllCreators.optimized.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn(`⚠️ Rate limit detected. Reducing bat...",
+        "console.warn(`Failed to fetch address at index ${i..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraCollectionCreation.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('No SetupNewContract events found in ..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraNFTCreation.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('No UpdatedToken events found in tran..."
+      ]
+    },
+    {
+      "file": "src/hooks/farcaster/useFarcasterContext.ts",
+      "matches": 4,
+      "lines": [
+        "console.warn('Failed to detect MiniApp environment...",
+        "console.warn('MiniKit context is incomplete or una...",
+        "console.warn('Failed to extract MiniKit context:',...",
+        "console.warn('Refresh not available in fallback mo..."
+      ]
+    },
+    {
+      "file": "src/hooks/farcaster/useMiniAppAnalytics.ts",
+      "matches": 5,
+      "lines": [
+        "console.warn(`Failed to fetch casts for FID ${fid}...",
+        "console.warn(`Failed to fetch frame interactions f...",
+        "console.warn(`Failed to fetch social conversions f...",
+        "console.warn('Failed to fetch frame analytics:', e...",
+        "console.warn('Failed to fetch social engagement da..."
+      ]
+    },
+    {
+      "file": "src/hooks/miniapp/integration.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Sharing not available in current con..."
+      ]
+    },
+    {
+      "file": "src/hooks/miniapp/useAppNavigation.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn(warning, { path, context: currentNavi..."
+      ]
+    },
+    {
+      "file": "src/hooks/miniapp/useMiniAppPurchaseFlow.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Social sharing failed:', err)..."
+      ]
+    },
+    {
+      "file": "src/hooks/useMiniAppPurchaseFlow.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn('Failed to track social purchase:', e...",
+        "console.warn('MiniApp share action not available:'..."
+      ]
+    },
+    {
+      "file": "src/hooks/useSocialCommerceAnalytics.ts",
+      "matches": 6,
+      "lines": [
+        "console.warn('Failed to track social discovery:', ...",
+        "console.warn('Failed to track batch transaction:',...",
+        "console.warn('Failed to track social conversion:',...",
+        "console.warn('Failed to track creator revenue impa...",
+        "console.warn('Failed to get metrics for period:', ...",
+        "console.warn('No analytics data available for expo..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useEnhancedTokenBalances.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn(`Failed to get contract addresses for...",
+        "console.warn('Failed to get contract addresses:', ..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useMiniAppWalletConnect.ts",
+      "matches": 3,
+      "lines": [
+        "console.warn('Could not clear localStorage:', stor...",
+        "console.warn('Maximum recovery attempts reached')...",
+        "console.warn('Reconnect failed, will require manua..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/usePaymentFlowOrchestrator.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn('Account type detection failed, defau...",
+        "console.warn('Payment execution skipped:', {\n     ..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useSwapCalculation.ts",
+      "matches": 3,
+      "lines": [
+        "console.warn('Failed to get contract addresses for...",
+        "console.warn('Uniswap quoter failed, using fallbac...",
+        "console.warn('Failed to get contract addresses for..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useTokenBalances.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Failed to get contract addresses for..."
+      ]
+    },
+    {
+      "file": "src/lib/contracts/miniapp-config.ts",
+      "matches": 6,
+      "lines": [
+        "console.warn(`Storage context mismatch: stored ${p...",
+        "console.warn('Failed to deserialize enhanced stora...",
+        "console.warn('Enhanced Wagmi Configuration Warning...",
+        "console.warn(warning)...",
+        "console.warn('Environment detection failed, fallin...",
+        "console.warn('Detection failed in debug mode:', er..."
+      ]
+    },
+    {
+      "file": "src/lib/miniapp/analytics.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Analytics flush failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/debug.ts",
+      "matches": 3,
+      "lines": [
+        "console.warn(logMessage, data)...",
+        "console.warn(logMessage)...",
+        "console.warn(`[DEBUG] ⚠️ ${message}`, data)..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/zora-events.ts",
+      "matches": 8,
+      "lines": [
+        "console.warn('SetupNewContract event has insuffici...",
+        "console.warn('SetupNewContract event has no data')...",
+        "console.warn('UpdatedToken event has insufficient ...",
+        "console.warn('UpdatedToken event has no data')...",
+        "console.warn('Purchased event has insufficient top...",
+        "console.warn('Purchased event has no data')...",
+        "console.warn('Minted event has insufficient topics...",
+        "console.warn('Minted event has no data')..."
+      ]
+    },
+    {
+      "file": "src/lib/web3/enhanced-wagmi-config.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn(\n      '⚠️  No premium RPC providers ..."
+      ]
+    },
+    {
+      "file": "src/lib/web3/x402-config.ts",
+      "matches": 3,
+      "lines": [
+        "console.warn('Using fallback random generation - n...",
+        "console.warn('Failed to generate secure nonce, usi...",
+        "console.warn('X402 middleware configuration warnin..."
+      ]
+    },
+    {
+      "file": "src/modules/balance/BalanceManagementModule.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Failed to get contract addresses:', ..."
+      ]
+    },
+    {
+      "file": "src/modules/migration/UnifiedMigrationOrchestrator.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn(`Migration rollback triggered: ${reas..."
+      ]
+    },
+    {
+      "file": "src/modules/swap/SwapIntegrationModule.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn('Failed to get contract addresses:', ...",
+        "console.warn('Price calculator not available')..."
+      ]
+    },
+    {
+      "file": "src/providers/EnhancedUnifiedAppProvider.tsx",
+      "matches": 1,
+      "lines": [
+        "console.warn('Environment detection failed:', dete..."
+      ]
+    },
+    {
+      "file": "src/services/commerce/BackendSignatureService.ts",
+      "matches": 1,
+      "lines": [
+        "console.warn('Error during signature polling:', er..."
+      ]
+    },
+    {
+      "file": "src/services/notifications/NotificationService.ts",
+      "matches": 8,
+      "lines": [
+        "console.warn('WebSocket delivery failed, falling b...",
+        "console.warn(`Cannot disable critical notification...",
+        "console.warn('Failed to initialize notification pe...",
+        "console.warn('Invalid notification received:', err...",
+        "console.warn('Failed to establish WebSocket connec...",
+        "console.warn('Failed to process batched notificati...",
+        "console.warn('Failed to persist notification state...",
+        "console.warn('Failed to persist user preferences:'..."
+      ]
+    },
+    {
+      "file": "src/utils/performance/miniAppMetrics.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn(`Timer ${timerName} was not started`)...",
+        "console.warn('Subgraph performance tracking failed..."
+      ]
+    },
+    {
+      "file": "src/utils/transactions/intentExtraction.ts",
+      "matches": 2,
+      "lines": [
+        "console.warn(`⚠️  Missing events in Commerce Proto...",
+        "console.warn('⚠️  Event topic hashes mismatch dete..."
+      ]
+    }
+  ],
+  "consoleError": [
+    {
+      "file": "src/app/api/admin/verification/decide/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Verification decision error:', erro..."
+      ]
+    },
+    {
+      "file": "src/app/api/admin/verification/pending/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to fetch pending application..."
+      ]
+    },
+    {
+      "file": "src/app/api/commerce/signature-status/route.ts",
+      "matches": 7,
+      "lines": [
+        "console.error(`Intent ${intentId} not found on-cha...",
+        "console.error(`Intent hash mismatch for ${intentId...",
+        "console.error('Intent validation failed:', error)...",
+        "console.error('Signature generation failed:', erro...",
+        "console.error(`Transaction failed for intent ${int...",
+        "console.error('Failed to submit signature to contr...",
+        "console.error('Signature service error:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/api/content/[id]/access/route.ts",
+      "matches": 5,
+      "lines": [
+        "console.error('Error verifying content access:', e...",
+        "console.error('Error fetching content access data:...",
+        "console.error('Error in user access verification:'...",
+        "console.error('Error checking direct purchase:', e...",
+        "console.error('Error checking subscription access:..."
+      ]
+    },
+    {
+      "file": "src/app/api/content/[id]/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Error fetching content:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/api/farcaster/webhook/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Farcaster webhook error', error)..."
+      ]
+    },
+    {
+      "file": "src/app/api/health/route.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Health check failed:', error)...",
+        "console.error('Detailed health check failed:', err..."
+      ]
+    },
+    {
+      "file": "src/app/api/ipfs/upload/route.ts",
+      "matches": 5,
+      "lines": [
+        "console.error('❌ PINATA_JWT environment variable n...",
+        "console.error('❌ Pinata upload failed:', errorMess...",
+        "console.error('❌ Invalid IPFS hash returned from P...",
+        "console.error('❌ Pinata returned invalid CID forma...",
+        "console.error('💥 IPFS upload error:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/api/og/content/[id]/route.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Error fetching content for image ge...",
+        "console.error('Error generating Open Graph image:'..."
+      ]
+    },
+    {
+      "file": "src/app/api/protected/content/[id]/route.ts",
+      "matches": 3,
+      "lines": [
+        "console.error('Payment verification error:', error...",
+        "console.error('Subscription verification error:', ...",
+        "console.error('Error accessing protected content:'..."
+      ]
+    },
+    {
+      "file": "src/app/api/verification/apply/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Verification application error:', e..."
+      ]
+    },
+    {
+      "file": "src/app/api/zora/collection-status/[creatorAddress]/route.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Error checking collection status:',...",
+        "console.error('Error creating collection record:',..."
+      ]
+    },
+    {
+      "file": "src/app/api/zora/nft-status/[contentId]/route.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Error checking NFT status:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/dashboard/page.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('❌ Failed to initiate withdrawal:', ...",
+        "console.error('❌ Earnings withdrawal failed:', wit...",
+        "console.error('💡 Please check your wallet connect..."
+      ]
+    },
+    {
+      "file": "src/app/mini/browse/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('MiniApp Browse Page error:', error,..."
+      ]
+    },
+    {
+      "file": "src/app/mini/creators/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('MiniApp Creators Page error:', erro..."
+      ]
+    },
+    {
+      "file": "src/app/mini/layout.tsx",
+      "matches": 5,
+      "lines": [
+        "console.error('Retry failed:', retryError)...",
+        "console.error('Layout initialization failed:', err...",
+        "console.error('Failed to initialize wagmi config:'...",
+        "console.error('Fallback config also failed:', fall...",
+        "console.error('MiniApp Layout Error:', error, erro..."
+      ]
+    },
+    {
+      "file": "src/app/mini/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('MiniApp Home Page error:', error, e..."
+      ]
+    },
+    {
+      "file": "src/app/mini/share/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Share failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/miniapp/MiniAppLayout.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('❌ Layout initialization failed:', e...",
+        "console.error('Layout Error Boundary caught an err..."
+      ]
+    },
+    {
+      "file": "src/app/onboard/page.tsx",
+      "matches": 4,
+      "lines": [
+        "console.error('Enhanced submission error:', error)...",
+        "console.error(`❌ Redirect attempt ${attempt} faile...",
+        "console.error('❌ All redirect attempts failed')...",
+        "console.error('❌ Navigation failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/app/rpc-test/page.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to validate RPC configuratio..."
+      ]
+    },
+    {
+      "file": "src/components/analytics/CreatorAnalyticsDashboard.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Withdraw failed:', error)...",
+        "console.error('Failed to refresh analytics:', erro..."
+      ]
+    },
+    {
+      "file": "src/components/analytics/SocialCommerceAnalytics.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Failed to track social event:', err...",
+        "console.error('Failed to refresh analytics:', erro...",
+        "console.error('Export failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/commerce/MiniAppPurchaseButton.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('❌ Purchase failed:', purchaseError)...",
+        "console.error('❌ Share failed:', shareError)..."
+      ]
+    },
+    {
+      "file": "src/components/commerce/SocialPurchaseFlow.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Purchase failed:', error)...",
+        "console.error('Viral sharing failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentPurchaseCard.backup.tsx",
+      "matches": 5,
+      "lines": [
+        "console.error('Failed to check token balances:', e...",
+        "console.error('Purchase failed:', error)...",
+        "console.error('Purchase failed:', error)...",
+        "console.error('ETH purchase failed:', error)...",
+        "console.error('Custom token purchase failed:', err..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentUpload.tsx",
+      "matches": 7,
+      "lines": [
+        "console.error('❌ Failed to parse IPFS response:', ...",
+        "console.error('❌ IPFS API error response:', errorD...",
+        "console.error('❌ IPFS upload failed:', xhr.statusT...",
+        "console.error('💥 Network error during upload')...",
+        "console.error('❌ Upload failed:', uploadResult.err...",
+        "console.error('💥 Upload error:', error)...",
+        "console.error('💥 Error preparing publish data:', ..."
+      ]
+    },
+    {
+      "file": "src/components/content/ContentViewer.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to load content from IPFS:',..."
+      ]
+    },
+    {
+      "file": "src/components/content/EnhancedSocialContentDiscovery.tsx",
+      "matches": 4,
+      "lines": [
+        "console.error('Error enhancing content with social...",
+        "console.error('Error fetching Farcaster profile:',...",
+        "console.error(`Error enhancing content ${contentId...",
+        "console.error('Error enhancing content:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/creator/AdminVerificationDashboard.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to load applications:', erro...",
+        "console.error('Verification decision error:', erro..."
+      ]
+    },
+    {
+      "file": "src/components/creator/ContentManagementDashboard.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Failed to update content price:', e...",
+        "console.error('Failed to toggle content activation...",
+        "console.error('Bulk action failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/creator/CreatorSocialProfileIntegration.tsx",
+      "matches": 4,
+      "lines": [
+        "console.error('Error fetching Farcaster profile:',...",
+        "console.error('Error fetching Farcaster profile by...",
+        "console.error('Error fetching user casts:', error)...",
+        "console.error('Error fetching mutual followers:', ..."
+      ]
+    },
+    {
+      "file": "src/components/creator/VerificationApplication.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Verification application error:', e..."
+      ]
+    },
+    {
+      "file": "src/components/creator/ZoraCollectionManager.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Collection creation failed:', error..."
+      ]
+    },
+    {
+      "file": "src/components/errors/MiniAppErrorBoundary.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('MiniApp Error Boundary caught error...",
+        "console.error('Manual error report:', {\n      erro..."
+      ]
+    },
+    {
+      "file": "src/components/errors/ZoraErrorBoundary.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Zora Error Boundary caught an error...",
+        "console.error('Zora Error Boundary Error:', error,..."
+      ]
+    },
+    {
+      "file": "src/components/farcaster/ContentFrame.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Error parsing frame state:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/layout/AdaptiveNavigation.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Navigation error:', error)...",
+        "console.error('AdaptiveNavigation error:', error, ..."
+      ]
+    },
+    {
+      "file": "src/components/layout/LayoutStatePersistence.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to persist layout state:', e..."
+      ]
+    },
+    {
+      "file": "src/components/layout/RouteGuards.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to refresh access state:', e..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppBrowseIntegration.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to refresh content:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppContentPurchaseIntegration.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Social share failed:', errorMessage..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/MiniAppPurchaseFlow.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to share cast:', error)...",
+        "console.error('Error in purchase success handler:'..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/ProductionMiniAppHome.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('MiniApp Error Boundary caught error..."
+      ]
+    },
+    {
+      "file": "src/components/miniapp/payments/PaymentInterface.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Purchase failed:', errorMessage)...",
+        "console.error('Share failed:', errorMessage)..."
+      ]
+    },
+    {
+      "file": "src/components/payment/MiniAppErrorRecoveryUI.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Recovery action failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/providers/AuthProvider.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Login error:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/providers/MiniKitProvider.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to create MiniKit config:', ...",
+        "console.error('MiniKit initialization error:', err..."
+      ]
+    },
+    {
+      "file": "src/components/providers/Web3Provider.tsx",
+      "matches": 9,
+      "lines": [
+        "console.error('❌ Failed to create smart account:',...",
+        "console.error('Failed to refresh smart account sta...",
+        "console.error('❌ NEXT_PUBLIC_PRIVY_APP_ID is requi...",
+        "console.error('📝 To fix this:')...",
+        "console.error('   1. Go to https://console.privy.i...",
+        "console.error('   2. Create an account and new app...",
+        "console.error('   3. Copy your App ID')...",
+        "console.error('   4. Add NEXT_PUBLIC_PRIVY_APP_ID=...",
+        "console.error('   5. Restart your development serv..."
+      ]
+    },
+    {
+      "file": "src/components/purchase/UnifiedPurchaseFlow.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Social sharing failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/social/MiniAppSDKIntegration.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Frame generation failed:', error)...",
+        "console.error('Frame sharing failed:', error)...",
+        "console.error('MiniApp initialization failed:', er..."
+      ]
+    },
+    {
+      "file": "src/components/social/SocialSharingHub.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Failed to track share event:', erro...",
+        "console.error('Failed to fetch share performance:'...",
+        "console.error('Failed to copy link:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/CreatorSubscriptionPurchase.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Subscription failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/SubscribeButton.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Subscription error:', error)...",
+        "console.error(error)..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/SubscriptionApprovalFlow.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Subscription flow action failed:', ..."
+      ]
+    },
+    {
+      "file": "src/components/subscription/UserSubscriptionDashboard.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Auto-renewal configuration failed:'...",
+        "console.error('Subscription cancellation failed:',...",
+        "console.error('Failed to load auto-renewal config:..."
+      ]
+    },
+    {
+      "file": "src/components/transactions/BatchTransactionImplementation.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Capability detection failed:', erro...",
+        "console.error('Batch transaction failed:', error)...",
+        "console.error('Batch execution failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/web3/ContentPurchaseCard.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Purchase failed:', err)..."
+      ]
+    },
+    {
+      "file": "src/components/web3/EnterpriseSwapIntegration.tsx",
+      "matches": 7,
+      "lines": [
+        "console.error('Failed to prepare price arguments:'...",
+        "console.error('Price analysis failed:', error)...",
+        "console.error('Security validation error:', error)...",
+        "console.error('❌ Enterprise swap execution failed:...",
+        "console.error('Signature polling error:', error)...",
+        "console.error('Signature polling or execution fail...",
+        "console.error('Failed to process intent creation:'..."
+      ]
+    },
+    {
+      "file": "src/components/web3/EnterpriseSwapInterface.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Enterprise swap failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/web3/ProductionSwapInterface.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Security validation failed:', error...",
+        "console.error('Swap execution failed:', result.err...",
+        "console.error('Swap execution error:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/web3/SwapEnterpriseFeatures.tsx",
+      "matches": 4,
+      "lines": [
+        "console.error('Price analysis failed:', error)...",
+        "console.error('Security validation failed:', error...",
+        "console.error('Rate limit check failed:', error)...",
+        "console.error('Failed to update real-time metrics:..."
+      ]
+    },
+    {
+      "file": "src/components/web3/SwapIntegrationExample.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Swap failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/web3/SwapTransactionStatus.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Signature polling error:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/zora/ZoraIntegrationDemo.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to create collection:', erro...",
+        "console.error('Failed to publish with NFT:', error..."
+      ]
+    },
+    {
+      "file": "src/components/zora/ZoraUserExperienceFlow.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to create collection:', erro...",
+        "console.error('Failed to mint NFT:', error)..."
+      ]
+    },
+    {
+      "file": "src/components/zora/shared/SocialSharing.tsx",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to copy link:', err)...",
+        "console.error('Failed to share:', err)..."
+      ]
+    },
+    {
+      "file": "src/contexts/AnalyticsContext.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('Error refreshing analytics data:', ..."
+      ]
+    },
+    {
+      "file": "src/contexts/MiniAppProvider.tsx",
+      "matches": 4,
+      "lines": [
+        "console.error('❌ MiniApp SDK initialization failed...",
+        "console.error('❌ Failed to signal ready:', error)...",
+        "console.error('❌ Environment detection failed:', e...",
+        "console.error('Enhanced MiniApp Provider initializ..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-auth.ts",
+      "matches": 10,
+      "lines": [
+        "console.error('Social verification analysis error:...",
+        "console.error('Optimal payment method computation ...",
+        "console.error('User profile computation error:', e...",
+        "console.error('Recommended strategy computation er...",
+        "console.error('Login error:', errorMessage)...",
+        "console.error('Logout error:', error)...",
+        "console.error('Profile refresh error:', errorMessa...",
+        "console.error('Creator status update error:', erro...",
+        "console.error('Authentication state initialization...",
+        "console.error('Loading state synchronization error..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-commerce.ts",
+      "matches": 8,
+      "lines": [
+        "console.error('Failed to get contract addresses:',...",
+        "console.error('Strategy analysis failed:', error)...",
+        "console.error('Farcaster direct purchase failed:',...",
+        "console.error('Fallback to batch transaction also ...",
+        "console.error('Batch transaction failed:', error)...",
+        "console.error('Fallback to standard flow also fail...",
+        "console.error('Standard purchase flow failed:', er...",
+        "console.error('Optimal strategy purchase failed:',..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/miniapp-social.ts",
+      "matches": 3,
+      "lines": [
+        "console.error('❌ Content sharing failed:', shareEr...",
+        "console.error('Failed to track engagement:', error...",
+        "console.error('❌ Failed to flush engagement events..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/usePaymentIntentManager.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('❌ Payment failed:', errorMessage, m..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/useSocialRevenueTracking.ts",
+      "matches": 5,
+      "lines": [
+        "console.error('Error fetching historical PaymentCo...",
+        "console.error('Payment event processing error:', e...",
+        "console.error('Event subscription error:', error)...",
+        "console.error('Error processing contract event log...",
+        "console.error('Revenue attribution refetch error:'..."
+      ]
+    },
+    {
+      "file": "src/hooks/business/workflows.ts",
+      "matches": 23,
+      "lines": [
+        "console.error('Failed to get contract addresses:',...",
+        "console.error(`❌ ETH price calculation failed:`, e...",
+        "console.error(`❌ Token price calculation failed fo...",
+        "console.error(`Price calculation failed for ${paym...",
+        "console.error(`Failed to fetch custom token info:`...",
+        "console.error(`❌ Failed to fetch ${tokenConfig.sym...",
+        "console.error('Error details:', {\n          method...",
+        "console.error('Payment execution failed:', error)...",
+        "console.error('Approval failed:', error)...",
+        "console.error('Failed to get contract addresses:',...",
+        "console.error('Failed to create payment intent:', ...",
+        "console.error('Failed to check signature status:',...",
+        "console.error('Failed to execute signed intent:', ...",
+        "console.error('Error calling registerContent:', er...",
+        "console.error('Transaction error:', registerConten...",
+        "console.error('Error extracting content ID:', erro...",
+        "console.error('Frame asset generation failed:', er...",
+        "console.error('Social content generation failed:',...",
+        "console.error('Farcaster sharing failed:', error)...",
+        "console.error('Post-publishing optimization failed...",
+        "console.error('Registration hook error:', error)...",
+        "console.error('Registration transaction error:', r...",
+        "console.error('❌ Registration check failed:', regi..."
+      ]
+    },
+    {
+      "file": "src/hooks/commerce/useSocialPurchaseFlow.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Batch purchase failed:', error)...",
+        "console.error('Fallback purchase failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/content/useAdvancedContentManagement.ts",
+      "matches": 3,
+      "lines": [
+        "console.error('Error fetching content by category:...",
+        "console.error('Error fetching content by tag:', er...",
+        "console.error('Error fetching creator active conte..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/core.ts",
+      "matches": 3,
+      "lines": [
+        "console.error('❌ Creator registration check failed...",
+        "console.error('Purchase failed:', error)...",
+        "console.error('Token approval failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/creator/useCreatorVerification.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to check verification status..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/subscription/useAutoRenewalManagement.ts",
+      "matches": 6,
+      "lines": [
+        "console.error('Failed to get contract addresses:',...",
+        "console.error('Failed to configure auto-renewal:',...",
+        "console.error('Failed to withdraw auto-renewal bal...",
+        "console.error('Failed to get auto-renewal status:'...",
+        "console.error('Failed to handle payment failure:',...",
+        "console.error('Failed to get renewal analytics:', ..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/subscription/useCreatorSubscriberManagement.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to get contract addresses:',..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/subscription/useSubscriptionManagement.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to get contract addresses:',...",
+        "console.error('Failed to cancel subscription:', er..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/subscription/useSubscriptionWithApproval.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to get contract addresses fo..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/useAllCreators.optimized.ts",
+      "matches": 3,
+      "lines": [
+        "console.error(`Error fetching chunk ${i}-${chunkEn...",
+        "console.error('Failed to load creators:', err)...",
+        "console.error('Retry failed:', err)..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraCollectionCreation.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to extract contract address ..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraCollectionList.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to get Zora factory contract..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraMinting.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to parse mint events:', erro..."
+      ]
+    },
+    {
+      "file": "src/hooks/contracts/zora/useZoraNFTCreation.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to extract token ID from rec..."
+      ]
+    },
+    {
+      "file": "src/hooks/farcaster/useFarcasterContext.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to initialize Farcaster cont..."
+      ]
+    },
+    {
+      "file": "src/hooks/farcaster/useMiniAppAnalytics.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Social analytics fetch error:', err..."
+      ]
+    },
+    {
+      "file": "src/hooks/miniapp/integration.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Sharing failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/miniapp/useAppNavigation.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Sharing failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/ui/integration.ts",
+      "matches": 3,
+      "lines": [
+        "console.error('💥 Wallet connection error:', err)...",
+        "console.error('Connector selection error:', err)...",
+        "console.error('Network switch error:', err)..."
+      ]
+    },
+    {
+      "file": "src/hooks/useMiniAppPurchaseFlow.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to get contract addresses:',...",
+        "console.error('Batch purchase failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/useSocialCommerceAnalytics.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to export analytics:', error..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/payment/useSlippageManagement.ts",
+      "matches": 5,
+      "lines": [
+        "console.error('Failed to get contract addresses fo...",
+        "console.error('Slippage calculation failed:', calc...",
+        "console.error('Failed to get optimal pool fee:', e...",
+        "console.error('Price impact estimation failed:', e...",
+        "console.error('Market data update failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/payment/useSyncedPaymentState.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to get contract addresses:',...",
+        "console.error('Sync recovery failed:', recoveryErr..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useIntelligentSignaturePolling.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to check intent on-chain:', ...",
+        "console.error('Enhanced contract verification fail..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useMiniAppWalletConnect.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to reset wagmi store:', rese...",
+        "console.error('Recovery failed:', recoveryError)..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/usePaymentFlowOrchestrator.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Error checking allowance:', error)...",
+        "console.error('Strategy selection failed, using se..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useSwapCalculation.ts",
+      "matches": 8,
+      "lines": [
+        "console.error('Failed to prepare price oracle argu...",
+        "console.error('Failed to process Uniswap quote:', ...",
+        "console.error('Signature polling error:', error)...",
+        "console.error('❌ Swap execution failed:', error)...",
+        "console.error('Contract addresses not available')...",
+        "console.error('Failed to execute signed swap:', er...",
+        "console.error('❌ Signature polling or execution fa...",
+        "console.error('❌ Intent extraction failed:', extra..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useSwapTransactionIntegration.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('❌ Swap execution failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/web3/useWalletConnect.ts",
+      "matches": 3,
+      "lines": [
+        "console.error('Network switch error:', err)...",
+        "console.error('Smart account upgrade error:', err)...",
+        "console.error('Logout error:', err)..."
+      ]
+    },
+    {
+      "file": "src/hooks/zora/useSocialSharing.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to copy to clipboard:', erro...",
+        "console.error('Native sharing failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/hooks/zora/useZoraIntegration.ts",
+      "matches": 9,
+      "lines": [
+        "console.error('Failed to initialize Zora service:'...",
+        "console.error('Error loading collection address:',...",
+        "console.error('Error storing collection in databas...",
+        "console.error('Error storing NFT record in databas...",
+        "console.error('Error fetching NFT details:', error...",
+        "console.error('Error checking NFT status:', error)...",
+        "console.error('Error fetching collection analytics...",
+        "console.error('Error extracting content ID:', extr...",
+        "console.error('Error uploading metadata to IPFS:',..."
+      ]
+    },
+    {
+      "file": "src/lib/biconomy/config.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to create Smart Account:', e..."
+      ]
+    },
+    {
+      "file": "src/lib/contracts/config.ts",
+      "matches": 1,
+      "lines": [
+        "console.error(errorMessage)..."
+      ]
+    },
+    {
+      "file": "src/lib/contracts/subscription.ts",
+      "matches": 5,
+      "lines": [
+        "console.error('Error querying subscription from co...",
+        "console.error('Error getting subscription details:...",
+        "console.error('Invalid user address format:', user...",
+        "console.error('Subscription query failed:', subscr...",
+        "console.error('Error checking subscription status:..."
+      ]
+    },
+    {
+      "file": "src/lib/farcaster/frameState.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Error encoding frame state:', error...",
+        "console.error('Error decoding frame state:', error..."
+      ]
+    },
+    {
+      "file": "src/lib/miniapp/detection.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('MiniApp environment detection faile...",
+        "console.error('SDK availability assessment failed:..."
+      ]
+    },
+    {
+      "file": "src/lib/services/ipfs-zora.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('IPFS upload failed:', error)...",
+        "console.error('IPFS image upload failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/lib/services/zora/ZoraSocialService.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to track share:', error)...",
+        "console.error('Failed to get social metrics:', err..."
+      ]
+    },
+    {
+      "file": "src/lib/services/zora-integration.ts",
+      "matches": 7,
+      "lines": [
+        "console.error('Error creating Zora collection:', e...",
+        "console.error('Error minting NFT:', error)...",
+        "console.error('Error fetching metadata from IPFS:'...",
+        "console.error('Error fetching NFT info:', error)...",
+        "console.error('Error checking if content is minted...",
+        "console.error('Error getting creator collection:',...",
+        "console.error('Error uploading metadata to IPFS:',..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/debug.ts",
+      "matches": 5,
+      "lines": [
+        "console.error(logMessage, error)...",
+        "console.error(logMessage)...",
+        "console.error(logMessage)...",
+        "console.error(`[DEBUG] ❌ ${message}`, error)...",
+        "console.error(`[ERROR] ${message}`)..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/zora-errors.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Zora Error:', {\n    name: error.nam...",
+        "console.error(`Zora ${operation} Error:`, {\n    us..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/zora-events-production.ts",
+      "matches": 4,
+      "lines": [
+        "console.error('Failed to parse SetupNewContract ev...",
+        "console.error('Failed to parse UpdatedToken event:...",
+        "console.error('Failed to parse Purchased event:', ...",
+        "console.error('Failed to parse Minted event:', err..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/zora-events.ts",
+      "matches": 8,
+      "lines": [
+        "console.error('Failed to parse SetupNewContract ev...",
+        "console.error('Failed to parse UpdatedToken event:...",
+        "console.error('Failed to parse Purchased event:', ...",
+        "console.error('Failed to parse Minted event:', err...",
+        "console.error('Failed to parse SetupNewContract lo...",
+        "console.error('Failed to parse UpdatedToken log:',...",
+        "console.error('Failed to parse Purchased log:', er...",
+        "console.error('Failed to parse Minted log:', error..."
+      ]
+    },
+    {
+      "file": "src/lib/utils/zora-social.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to copy to clipboard:', erro...",
+        "console.error('Native sharing failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/lib/web3/x402-config.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('X402 payment proof creation failed:...",
+        "console.error('X402 payment verification failed:',..."
+      ]
+    },
+    {
+      "file": "src/lib/x402/verification.ts",
+      "matches": 3,
+      "lines": [
+        "console.error('Error verifying transaction details...",
+        "console.error('Error verifying USDC transfer:', er...",
+        "console.error('Payment verification error:', error..."
+      ]
+    },
+    {
+      "file": "src/modules/migration/UnifiedMigrationOrchestrator.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error(`MIGRATION ROLLBACK: ${reason}`)..."
+      ]
+    },
+    {
+      "file": "src/modules/swap/SwapIntegrationModule.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Swap price calculation failed:', er...",
+        "console.error('Failed to calculate swap analysis:'..."
+      ]
+    },
+    {
+      "file": "src/providers/EnhancedUnifiedAppProvider.tsx",
+      "matches": 3,
+      "lines": [
+        "console.error('Provider initialization failed:', e...",
+        "console.error('Context switch failed:', error)...",
+        "console.error('Capability refresh failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/providers/UnifiedAppProvider.tsx",
+      "matches": 1,
+      "lines": [
+        "console.error('UnifiedAppProvider Error:', error, ..."
+      ]
+    },
+    {
+      "file": "src/services/commerce/BackendSignatureService.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Failed to submit signature request:..."
+      ]
+    },
+    {
+      "file": "src/services/notifications/NotificationService.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Failed to update user preferences:'...",
+        "console.error('Failed to load notifications:', err..."
+      ]
+    },
+    {
+      "file": "src/services/zora/ZoraDatabaseService.ts",
+      "matches": 6,
+      "lines": [
+        "console.error('Error reading from localStorage:', ...",
+        "console.error('Error writing to localStorage:', er...",
+        "console.error('Error deleting from localStorage:',...",
+        "console.error('Error listing localStorage keys:', ...",
+        "console.error('Failed to get subscription metrics:...",
+        "console.error('Failed to get NFT metrics:', error)..."
+      ]
+    },
+    {
+      "file": "src/utils/context/detection.ts",
+      "matches": 1,
+      "lines": [
+        "console.error('Context detection failed:', error)..."
+      ]
+    },
+    {
+      "file": "src/utils/performance/miniAppMetrics.ts",
+      "matches": 2,
+      "lines": [
+        "console.error('Error flushing performance events:'...",
+        "console.error('Performance tracking error:', error..."
+      ]
+    },
+    {
+      "file": "src/utils/transactions/intentExtraction.ts",
+      "matches": 4,
+      "lines": [
+        "console.error('Error extracting intent signing dat...",
+        "console.error('Error finding intent signing event:...",
+        "console.error('Error finding intent ready for sign...",
+        "console.error('❌ Error validating event topics:', ..."
+      ]
+    }
+  ],
+  "debugComponents": [
+    {
+      "file": "src/app/mini/layout.tsx",
+      "components": [
+        "DebugInfo"
+      ]
+    },
+    {
+      "file": "src/app/miniapp/MiniAppLayout.tsx",
+      "components": [
+        "DebugMode"
+      ]
+    },
+    {
+      "file": "src/components/content/OrchestratedContentPurchaseCard.tsx",
+      "components": [
+        "DebugCondition"
+      ]
+    },
+    {
+      "file": "src/hooks/web3/usePaymentFlowOrchestrator.ts",
+      "components": [
+        "DebugLogger"
+      ]
+    },
+    {
+      "file": "src/lib/contracts/miniapp-config.ts",
+      "components": [
+        "DebugInfo"
+      ]
+    },
+    {
+      "file": "src/lib/utils/debug.ts",
+      "components": [
+        "DebugEnabled",
+        "DebugLogger",
+        "DebugConfig",
+        "DebugCondition",
+        "DebugType"
+      ]
+    },
+    {
+      "file": "src/modules/migration/UnifiedMigrationOrchestrator.tsx",
+      "components": [
+        "DebugInfo",
+        "DebugMode"
+      ]
+    },
+    {
+      "file": "src/modules/ui/AdaptiveUIModule.tsx",
+      "components": [
+        "DebugInfo"
+      ]
+    },
+    {
+      "file": "src/types/miniapp.ts",
+      "components": [
+        "DebugMode"
+      ]
+    }
+  ],
+  "environmentChecks": [
+    {
+      "file": "src/app/api/commerce/signature-status/route.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/app/api/content/[id]/access/route.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/app/api/health/route.ts",
+      "checks": 2
+    },
+    {
+      "file": "src/app/api/ipfs/upload/route.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/app/mini/layout.tsx",
+      "checks": 4
+    },
+    {
+      "file": "src/app/miniapp/MiniAppLayout.tsx",
+      "checks": 3
+    },
+    {
+      "file": "src/app/page.tsx",
+      "checks": 4
+    },
+    {
+      "file": "src/components/content/OrchestratedContentPurchaseCard.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/components/debug/PerformanceMonitor.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/components/debug/RPCHealthMonitor.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/components/layout/AppLayout.tsx",
+      "checks": 3
+    },
+    {
+      "file": "src/components/miniapp/ProgressiveEnhancement.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/components/providers/Web3Provider.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/components/subscription/SubscriptionApprovalFlow.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/contexts/BackendHealthContext.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/contexts/MiniAppProvider.tsx",
+      "checks": 1
+    },
+    {
+      "file": "src/hooks/contracts/useAllCreators.optimized.ts",
+      "checks": 5
+    },
+    {
+      "file": "src/hooks/ui/integration.ts",
+      "checks": 5
+    },
+    {
+      "file": "src/hooks/web3/usePaymentFlowOrchestrator.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/lib/contracts/miniapp-config.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/lib/utils/debug.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/lib/web3/enhanced-wagmi-config.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/modules/migration/UnifiedMigrationOrchestrator.tsx",
+      "checks": 2
+    },
+    {
+      "file": "src/modules/swap/SwapIntegrationModule.ts",
+      "checks": 1
+    },
+    {
+      "file": "src/providers/EnhancedUnifiedAppProvider.tsx",
+      "checks": 2
+    },
+    {
+      "file": "src/providers/UnifiedAppProvider.tsx",
+      "checks": 2
+    },
+    {
+      "file": "src/utils/error-handling.ts",
+      "checks": 1
+    }
+  ],
+  "debugConfigs": [
+    {
+      "file": "src/components/content/OrchestratedContentPurchaseCard.tsx",
+      "hasDebugConfig": true
+    },
+    {
+      "file": "src/contexts/BackendHealthContext.tsx",
+      "hasDebugConfig": true
+    },
+    {
+      "file": "src/hooks/web3/useBackendHealthMonitor.ts",
+      "hasDebugConfig": true
+    },
+    {
+      "file": "src/hooks/web3/useErrorRecoveryStrategies.ts",
+      "hasDebugConfig": true
+    },
+    {
+      "file": "src/hooks/web3/useIntelligentSignaturePolling.ts",
+      "hasDebugConfig": true
+    },
+    {
+      "file": "src/hooks/web3/usePaymentFlowOrchestrator.ts",
+      "hasDebugConfig": true
+    },
+    {
+      "file": "src/lib/utils/debug.ts",
+      "hasDebugConfig": true
+    },
+    {
+      "file": "src/modules/swap/SwapIntegrationModule.ts",
+      "hasDebugConfig": true
+    }
+  ]
+}
