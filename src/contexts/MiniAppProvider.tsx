@@ -74,6 +74,7 @@ import {
 
 // Import your existing hooks for seamless integration
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { debug } from '@/lib/utils/debug'
 
 // ================================================
 // ENHANCED MINIAPP STATE MANAGEMENT
@@ -540,7 +541,7 @@ function EnhancedMiniAppProvider({
         dispatch({ type: 'SDK_INITIALIZATION_STARTED' })
         
         if (debugMode) {
-          console.log('🚀 Initializing MiniApp SDK...')
+          debug.log('🚀 Initializing MiniApp SDK...')
         }
         
         // Dynamic import to avoid SSR issues
@@ -562,7 +563,7 @@ function EnhancedMiniAppProvider({
         })
         
         if (debugMode) {
-          console.log('✅ MiniApp SDK initialized successfully', contextData)
+          debug.log('✅ MiniApp SDK initialized successfully', contextData)
         }
         
         return true
@@ -616,7 +617,7 @@ function EnhancedMiniAppProvider({
       dispatch({ type: 'SDK_READY_SIGNALED' })
       
       if (debugMode) {
-        console.log('✅ MiniApp ready signal sent successfully')
+        debug.log('✅ MiniApp ready signal sent successfully')
       }
       
     } catch (error) {
@@ -660,7 +661,7 @@ function EnhancedMiniAppProvider({
     const detectionPromise = (async () => {
       try {
         if (debugMode) {
-          console.log('🔍 Starting environment detection...')
+          debug.log('🔍 Starting environment detection...')
         }
         
         const detection = await detectMiniAppEnvironment()
@@ -670,7 +671,7 @@ function EnhancedMiniAppProvider({
         dispatch({ type: 'CAPABILITIES_UPDATED', capabilities: detection.capabilities })
         
         if (debugMode) {
-          console.log('🎯 Environment detection complete:', detection)
+          debug.log('🎯 Environment detection complete:', detection)
         }
         
         return detection
@@ -966,7 +967,7 @@ function EnhancedMiniAppProvider({
         // Fallback to web mode if requested
         if (fallbackToWeb) {
           if (debugMode) {
-            console.log('🔄 Falling back to web mode due to initialization failure')
+            debug.log('🔄 Falling back to web mode due to initialization failure')
           }
         }
       }

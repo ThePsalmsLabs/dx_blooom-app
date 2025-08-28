@@ -12,6 +12,7 @@ import { useCreatorOnboarding } from '@/hooks/business/workflows'
 
 // Import the existing auth context with optional fallback
 import { useAuth as useAuthContext } from '@/components/providers/AuthProvider'
+import { debug } from '@/lib/utils/debug'
 
 // ===== INTERFACES FOR UNIFIED AUTHENTICATION =====
 
@@ -272,7 +273,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       
       // Log verification status for debugging
       if (environmentType === 'miniapp') {
-        console.log('🔍 Social verification analysis:', {
+        debug.log('🔍 Social verification analysis:', {
           fid: farcasterContext.user.fid,
           username: farcasterContext.user.username,
           isAddressVerified,
@@ -320,7 +321,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       if (farcasterContext?.user && socialVerification.isAddressVerified && environmentType === 'miniapp') {
         const confidenceScore = calculateConfidenceScore(address, true, isConnected, environmentType)
         
-        console.log('🎯 Optimal payment method: Farcaster-verified wallet', {
+        debug.log('🎯 Optimal payment method: Farcaster-verified wallet', {
           address,
           confidenceScore,
           environmentType
@@ -341,7 +342,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       if (isConnected) {
         const confidenceScore = calculateConfidenceScore(address, false, isConnected, environmentType)
         
-        console.log('🎯 Optimal payment method: Privy-connected wallet', {
+        debug.log('🎯 Optimal payment method: Privy-connected wallet', {
           address,
           confidenceScore,
           environmentType
@@ -359,7 +360,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       }
 
       // Requires connection
-      console.log('🎯 Optimal payment method: Requires connection')
+      debug.log('🎯 Optimal payment method: Requires connection')
       return {
         type: 'requires-connection',
         address: null,
@@ -458,7 +459,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
           location: 'unknown' as const
         }
         
-        console.log('👤 User profile created with social context:', {
+        debug.log('👤 User profile created with social context:', {
           fid: socialContext.fid,
           username: socialContext.username,
           isAddressVerified: socialContext.isAddressVerified,
@@ -475,7 +476,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         }
       }
       
-      console.log('👤 User profile created (wallet-only):', {
+      debug.log('👤 User profile created (wallet-only):', {
         address,
         isCreator,
         authenticationMethod
@@ -513,24 +514,24 @@ export function useMiniAppAuth(): MiniAppAuthResult {
   const recommendedStrategy = useMemo((): 'farcaster-direct' | 'batch-transaction' | 'standard-flow' => {
     try {
       if (!optimalPaymentMethod) {
-        console.log('🎯 Recommended strategy: standard-flow (no optimal payment method)')
+        debug.log('🎯 Recommended strategy: standard-flow (no optimal payment method)')
         return 'standard-flow'
       }
       
       // Farcaster-verified users get direct payment flow
       if (optimalPaymentMethod.type === 'farcaster-verified' && optimalPaymentMethod.sociallyVerified) {
-        console.log('🎯 Recommended strategy: farcaster-direct (socially verified)')
+        debug.log('🎯 Recommended strategy: farcaster-direct (socially verified)')
         return 'farcaster-direct'
       }
       
       // MiniApp users with connected wallets get batch transactions
       if (environmentType === 'miniapp' && optimalPaymentMethod.canDirectPayment) {
-        console.log('🎯 Recommended strategy: batch-transaction (MiniApp with direct payment)')
+        debug.log('🎯 Recommended strategy: batch-transaction (MiniApp with direct payment)')
         return 'batch-transaction'
       }
       
       // All others use standard flow
-      console.log('🎯 Recommended strategy: standard-flow (fallback)')
+      debug.log('🎯 Recommended strategy: standard-flow (fallback)')
       return 'standard-flow'
     } catch (error) {
       console.error('Recommended strategy computation error:', error)
@@ -554,7 +555,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       // Check if we're in a MiniApp environment and have Farcaster context
       if (environmentType === 'miniapp' && farcasterContext?.user) {
         // In MiniApp, we can use Farcaster context for social authentication
-        console.log('🚀 MiniApp social login initiated')
+        debug.log('🚀 MiniApp social login initiated')
         
         // Validate Farcaster user data
         if (!farcasterContext.user.fid || !farcasterContext.user.username) {
@@ -569,10 +570,10 @@ export function useMiniAppAuth(): MiniAppAuthResult {
           environmentType: 'miniapp'
         }))
         
-        console.log('✅ MiniApp social login completed')
+        debug.log('✅ MiniApp social login completed')
       } else {
         // Standard web authentication - trigger wallet connection
-        console.log('🚀 Web wallet login initiated')
+        debug.log('🚀 Web wallet login initiated')
         
         // In a real implementation, this would trigger Privy's login modal
         // For now, we rely on wagmi's useAccount for wallet connection
@@ -584,7 +585,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         }
         
         setAuthState(prev => ({ ...prev, isLoading: false }))
-        console.log('✅ Web wallet login completed')
+        debug.log('✅ Web wallet login completed')
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Login failed'
@@ -606,7 +607,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
    */
   const logout = useCallback((): void => {
     try {
-      console.log('🚀 Logout initiated')
+      debug.log('🚀 Logout initiated')
       
       // Clear authentication state
       setAuthState({
@@ -620,12 +621,12 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       // Clear Farcaster context if available
       if (farcasterContext?.refreshContext) {
         // Reset Farcaster context to initial state
-        console.log('🔄 Clearing Farcaster context')
+        debug.log('🔄 Clearing Farcaster context')
       }
       
       // Integration point for existing logout functionality
       // This would typically disconnect the wallet and clear any stored tokens
-      console.log('🚀 Logout completed')
+      debug.log('🚀 Logout completed')
     } catch (error) {
       console.error('Logout error:', error)
       // Even if there's an error, we still want to clear the local state
@@ -648,31 +649,31 @@ export function useMiniAppAuth(): MiniAppAuthResult {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }))
       
-      console.log('🔄 Refreshing profile data...')
+      debug.log('🔄 Refreshing profile data...')
       
       // Refresh Farcaster context if available
       if (farcasterContext?.refreshContext) {
-        console.log('🔄 Refreshing Farcaster context...')
+        debug.log('🔄 Refreshing Farcaster context...')
         await farcasterContext.refreshContext()
-        console.log('✅ Farcaster context refreshed')
+        debug.log('✅ Farcaster context refreshed')
       }
       
       // Refresh creator onboarding data
       if (creatorOnboarding.registrationCheck?.refetch) {
-        console.log('🔄 Refreshing creator onboarding data...')
+        debug.log('🔄 Refreshing creator onboarding data...')
         await creatorOnboarding.registrationCheck.refetch()
-        console.log('✅ Creator onboarding data refreshed')
+        debug.log('✅ Creator onboarding data refreshed')
       }
       
       // Refresh creator profile if available
-      if (creatorOnboarding.creatorProfile?.refetch) {
-        console.log('🔄 Refreshing creator profile...')
+      if (environmentType === 'miniapp' && creatorOnboarding.creatorProfile?.refetch) {
+        debug.log('🔄 Refreshing creator profile...')
         await creatorOnboarding.creatorProfile.refetch()
-        console.log('✅ Creator profile refreshed')
+        debug.log('✅ Creator profile refreshed')
       }
       
       setAuthState(prev => ({ ...prev, isLoading: false }))
-      console.log('✅ Profile refresh completed successfully')
+      debug.log('✅ Profile refresh completed successfully')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Profile refresh failed'
       console.error('Profile refresh error:', errorMessage)
@@ -693,7 +694,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
    */
   const updateCreatorStatus = useCallback((isCreator: boolean, displayName?: string): void => {
     try {
-      console.log('🚀 Creator status update:', { isCreator, displayName })
+      debug.log('🚀 Creator status update:', { isCreator, displayName })
       
       // Update local creator onboarding state if available
       if (creatorOnboarding && typeof creatorOnboarding.reset === 'function') {
@@ -714,7 +715,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         isInitialized: true
       }))
       
-      console.log('✅ Creator status updated successfully')
+      debug.log('✅ Creator status updated successfully')
     } catch (error) {
       console.error('Creator status update error:', error)
       setAuthState(prev => ({
@@ -736,7 +737,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
   useEffect(() => {
     if (!authState.isInitialized) {
       try {
-        console.log('🚀 Initializing authentication state...')
+        debug.log('🚀 Initializing authentication state...')
         
         setAuthState(prev => ({
           ...prev,
@@ -745,7 +746,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
           isLoading: isConnecting
         }))
         
-        console.log('✅ Authentication state initialized:', { environmentType, isConnecting })
+        debug.log('✅ Authentication state initialized:', { environmentType, isConnecting })
       } catch (error) {
         console.error('Authentication state initialization error:', error)
         setAuthState(prev => ({
@@ -776,7 +777,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         setAuthState(prev => ({ ...prev, isLoading }))
         
         if (isLoading) {
-          console.log('🔄 Loading state synchronized:', { 
+          debug.log('🔄 Loading state synchronized:', { 
             isConnecting, 
             creatorOnboardingLoading: creatorOnboarding.isLoading,
             authStateLoading: authState.isLoading 

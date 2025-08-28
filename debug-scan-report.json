@@ -392,19 +392,6 @@
       ]
     },
     {
-      "file": "src/components/providers/Web3Provider.tsx",
-      "matches": 7,
-      "lines": [
-        "console.log('🔧 Environment Configuration:', {\n   ...",
-        "console.log('🔍 Privy State Debug:', {\n        rea...",
-        "console.log('❌ Cannot create smart account: missin...",
-        "console.log('🚀 Creating smart account for address...",
-        "console.log('⚠️ Smart account creation requires pr...",
-        "console.log('🔄 Auto-creating smart account for co...",
-        "console.log('🚀 Initializing Privy Provider with A..."
-      ]
-    },
-    {
       "file": "src/components/purchase/SmartPaymentSelector.tsx",
       "matches": 1,
       "lines": [
@@ -466,88 +453,10 @@
       ]
     },
     {
-      "file": "src/contexts/MiniAppProvider.tsx",
-      "matches": 6,
-      "lines": [
-        "console.log('🚀 Initializing MiniApp SDK...')...",
-        "console.log('✅ MiniApp SDK initialized successfull...",
-        "console.log('✅ MiniApp ready signal sent successfu...",
-        "console.log('🔍 Starting environment detection...'...",
-        "console.log('🎯 Environment detection complete:', ...",
-        "console.log('🔄 Falling back to web mode due to in..."
-      ]
-    },
-    {
-      "file": "src/hooks/business/miniapp-auth.ts",
-      "matches": 30,
-      "lines": [
-        "console.log('🔍 Social verification analysis:', {\n...",
-        "console.log('🎯 Optimal payment method: Farcaster-...",
-        "console.log('🎯 Optimal payment method: Privy-conn...",
-        "console.log('🎯 Optimal payment method: Requires c...",
-        "console.log('👤 User profile created with social c...",
-        "console.log('👤 User profile created (wallet-only)...",
-        "console.log('🎯 Recommended strategy: standard-flo...",
-        "console.log('🎯 Recommended strategy: farcaster-di...",
-        "console.log('🎯 Recommended strategy: batch-transa...",
-        "console.log('🎯 Recommended strategy: standard-flo...",
-        "console.log('🚀 MiniApp social login initiated')...",
-        "console.log('✅ MiniApp social login completed')...",
-        "console.log('🚀 Web wallet login initiated')...",
-        "console.log('✅ Web wallet login completed')...",
-        "console.log('🚀 Logout initiated')...",
-        "console.log('🔄 Clearing Farcaster context')...",
-        "console.log('🚀 Logout completed')...",
-        "console.log('🔄 Refreshing profile data...')...",
-        "console.log('🔄 Refreshing Farcaster context...')...",
-        "console.log('✅ Farcaster context refreshed')...",
-        "console.log('🔄 Refreshing creator onboarding data...",
-        "console.log('✅ Creator onboarding data refreshed')...",
-        "console.log('🔄 Refreshing creator profile...')...",
-        "console.log('✅ Creator profile refreshed')...",
-        "console.log('✅ Profile refresh completed successfu...",
-        "console.log('🚀 Creator status update:', { isCreat...",
-        "console.log('✅ Creator status updated successfully...",
-        "console.log('🚀 Initializing authentication state....",
-        "console.log('✅ Authentication state initialized:',...",
-        "console.log('🔄 Loading state synchronized:', { \n ..."
-      ]
-    },
-    {
       "file": "src/hooks/business/miniapp-commerce.ts",
-      "matches": 31,
+      "matches": 1,
       "lines": [
-        "console.log('✅ Contract addresses loaded for chain...",
-        "console.log('📊 Strategy Selection Analytics', {\n ...",
-        "console.log('📊 Social Purchase Analytics', {\n    ...",
-        "console.log('Content ID:', contentId.toString()...",
-        "console.log('Verified Address:', authResult.optima...",
-        "console.log('Social Trust Score:', socialContext.s...",
-        "console.log('Content Price:', basePurchaseFlow.con...",
-        "console.log('✅ Farcaster direct purchase completed...",
-        "console.log('🔄 Attempting fallback to batch trans...",
-        "console.log('ℹ️ No approval needed, using standard...",
-        "console.log('Content ID:', contentId.toString()...",
-        "console.log('Required Amount:', basePurchaseFlow.e...",
-        "console.log('Content Price:', basePurchaseFlow.con...",
-        "console.log('Batch Calls Count: 2 (approve + purch...",
-        "console.log('Gas Limit:', finalConfig.batchGasLimi...",
-        "console.log('Timeout:', finalConfig.batchTimeout)...",
-        "console.log('✅ Batch transaction submitted success...",
-        "console.log('🔄 Attempting fallback to standard fl...",
-        "console.log('Content ID:', contentId.toString()...",
-        "console.log('Flow Step:', basePurchaseFlow.executi...",
-        "console.log('Content Price:', basePurchaseFlow.con...",
-        "console.log('Needs Approval:', 'Handled by orchest...",
-        "console.log('✅ Standard purchase flow completed su...",
-        "console.log('Selected Strategy:', strategy)...",
-        "console.log('Confidence:', strategyAnalysis.confid...",
-        "console.log('UX Score:', strategyAnalysis.userExpe...",
-        "console.log('Reasoning:', strategyAnalysis.reasoni...",
-        "console.log('Environment Type:', authResult.enviro...",
-        "console.log('Social Trust Score:', socialContext.s...",
-        "console.log('🔄 Falling back to standard flow due ...",
-        "console.log('📝 Batch transaction hash received:',..."
+        "console.log('ℹ️ No approval needed, using standard..."
       ]
     },
     {
@@ -882,7 +791,7 @@
       ]
     },
     {
-      "file": "src/lib/utils/debug.ts",
+      "file": "src/lib/utils/debug.tsx",
       "matches": 9,
       "lines": [
         "console.log(logMessage, data)...",
@@ -891,7 +800,7 @@
         "console.log(logMessage)...",
         "console.log(logMessage, data)...",
         "console.log(logMessage)...",
-        "console.log(`[DEBUG] ${message}`, data)...",
+        "console.log(`[DEBUG] 🔍 ${message}`, data)...",
         "console.log(`[PERF] ⏱️ ${operation}: ${duration}ms...",
         "console.log(`[WALLET] 🔗 ${message}`, data)..."
       ]
@@ -1335,7 +1244,7 @@
       ]
     },
     {
-      "file": "src/lib/utils/debug.ts",
+      "file": "src/lib/utils/debug.tsx",
       "matches": 3,
       "lines": [
         "console.warn(logMessage, data)...",
@@ -2433,7 +2342,7 @@
       ]
     },
     {
-      "file": "src/lib/utils/debug.ts",
+      "file": "src/lib/utils/debug.tsx",
       "matches": 5,
       "lines": [
         "console.error(logMessage, error)...",
@@ -2616,7 +2525,7 @@
       ]
     },
     {
-      "file": "src/lib/utils/debug.ts",
+      "file": "src/lib/utils/debug.tsx",
       "components": [
         "DebugEnabled",
         "DebugLogger",
@@ -2695,10 +2604,6 @@
       "checks": 1
     },
     {
-      "file": "src/components/providers/Web3Provider.tsx",
-      "checks": 1
-    },
-    {
       "file": "src/components/subscription/SubscriptionApprovalFlow.tsx",
       "checks": 1
     },
@@ -2727,7 +2632,7 @@
       "checks": 1
     },
     {
-      "file": "src/lib/utils/debug.ts",
+      "file": "src/lib/utils/debug.tsx",
       "checks": 1
     },
     {
@@ -2781,7 +2686,7 @@
       "hasDebugConfig": true
     },
     {
-      "file": "src/lib/utils/debug.ts",
+      "file": "src/lib/utils/debug.tsx",
       "hasDebugConfig": true
     },
     {

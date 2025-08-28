@@ -17,6 +17,7 @@ import { type Address } from 'viem'
 import { BiconomySmartAccountV2 } from '@biconomy/account'
 import { useAccount, useChainId } from 'wagmi'
 import { usePrivy } from '@privy-io/react-auth'
+import { debug } from '@/lib/utils/debug'
 
 // Create QueryClient for React Query
 const queryClient = new QueryClient({
@@ -44,7 +45,7 @@ function createEnvironmentConfig(): EnvironmentConfig {
   const biconomyPaymasterApiKey = process.env.NEXT_PUBLIC_BICONOMY_PAYMASTER_API_KEY ?? ''
   const biconomyBundlerUrl = process.env.NEXT_PUBLIC_BICONOMY_BUNDLER_URL ?? ''
 
-  console.log('🔧 Environment Configuration:', {
+  debug.log('🔧 Environment Configuration:', {
     hasPrivyAppId: Boolean(privyAppId),
     hasBiconomyKeys: Boolean(biconomyPaymasterApiKey && biconomyBundlerUrl),
     privyAppIdLength: privyAppId.length
@@ -161,17 +162,15 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
 
   // Debug logging to help identify issues (disabled for production)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
-      console.log('🔍 Privy State Debug:', {
-        ready,
-        authenticated,
-        hasUser: Boolean(user),
-        userWallet: user?.wallet?.address,
-        wagmiConnected: isConnected,
-        wagmiAddress: address,
-        chainId
-      })
-    }
+    debug.wallet('🔍 Privy State Debug:', {
+      ready,
+      authenticated,
+      hasUser: Boolean(user),
+      userWallet: user?.wallet?.address,
+      wagmiConnected: isConnected,
+      wagmiAddress: address,
+      chainId
+    })
   }, [ready, authenticated, user, isConnected, address, chainId])
 
   /**
@@ -188,16 +187,16 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
    */
   const createSmartAccountAsync = useCallback(async (): Promise<BiconomySmartAccountV2 | null> => {
     if (!address || !envConfig.hasAdvancedFeatures) {
-      console.log('❌ Cannot create smart account: missing address or advanced features not configured')
+      debug.warn('❌ Cannot create smart account: missing address or advanced features not configured')
       return null
     }
 
     try {
-      console.log('🚀 Creating smart account for address:', address)
+      debug.wallet('🚀 Creating smart account for address:', address)
       
       // For now, return null since we need a proper signer implementation
       // This will be implemented when we have the full wallet integration
-      console.log('⚠️ Smart account creation requires proper signer implementation')
+      debug.warn('⚠️ Smart account creation requires proper signer implementation')
       return null
       
     } catch (error) {
@@ -223,7 +222,7 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
   // Auto-create smart account when user connects (if you want this behavior)
   useEffect(() => {
     if (isConnected && address && !smartAccount && envConfig.hasAdvancedFeatures) {
-      console.log('🔄 Auto-creating smart account for connected user')
+      debug.wallet('🔄 Auto-creating smart account for connected user')
       createSmartAccountAsync()
     }
   }, [isConnected, address, smartAccount, createSmartAccountAsync])
@@ -298,7 +297,7 @@ export function Web3Provider({ children }: { children: ReactNode }) {
     )
   }
 
-  console.log('🚀 Initializing Privy Provider with App ID:', envConfig.privyAppId.slice(0, 8) + '...')
+  debug.wallet('🚀 Initializing Privy Provider with App ID:', envConfig.privyAppId.slice(0, 8) + '...')
 
   return (
     <PrivyProvider

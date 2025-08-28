@@ -25,6 +25,7 @@ import {
 
 // Import Farcaster context for social analytics
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
+import { debug } from '@/lib/utils/debug'
 
 // ===== INTERFACES FOR UNIFIED PAYMENT FLOW =====
 
@@ -368,7 +369,7 @@ export function useUnifiedMiniAppPurchaseFlow(
         return null
       }
       
-      console.log('✅ Contract addresses loaded for chain:', chainId, {
+      debug.log(`✅ Contract addresses loaded for chain: ${chainId}`, {
         USDC: addresses.USDC,
         PAY_PER_VIEW: addresses.PAY_PER_VIEW
       })
@@ -536,7 +537,7 @@ export function useUnifiedMiniAppPurchaseFlow(
    */
   const trackStrategySelection = useCallback((strategy: PurchaseStrategy, reasoning: string[]): void => {
     // Integration point for analytics system
-    console.log('📊 Strategy Selection Analytics', {
+    debug.log('📊 Strategy Selection Analytics', {
       strategy,
       reasoning,
       confidence: strategyAnalysis.confidence,
@@ -556,7 +557,7 @@ export function useUnifiedMiniAppPurchaseFlow(
     if (!socialContext.fid) return
     
     // Integration point for social analytics
-    console.log('📊 Social Purchase Analytics', {
+    debug.log('📊 Social Purchase Analytics', {
       contentId: contentId.toString(),
       fid: socialContext.fid,
       isAddressVerified: socialContext.isAddressVerified,
@@ -589,12 +590,11 @@ export function useUnifiedMiniAppPurchaseFlow(
     }
 
     try {
-      console.group('🚀 Farcaster Direct Purchase: Optimized Social Commerce Flow')
-      console.log('Content ID:', contentId.toString())
-      console.log('Verified Address:', authResult.optimalPaymentMethod.address)
-      console.log('Social Trust Score:', socialContext.socialTrustScore)
-      console.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
-      console.groupEnd()
+      debug.log('🚀 Farcaster Direct Purchase: Optimized Social Commerce Flow')
+      debug.log('Content ID:', contentId.toString())
+      debug.log('Verified Address:', authResult.optimalPaymentMethod.address)
+      debug.log('Social Trust Score:', socialContext.socialTrustScore)
+      debug.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
 
       // Update state to reflect purchase initiation
       setUnifiedState(prev => ({
@@ -617,7 +617,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       // Track successful social purchase
       trackSocialPurchase(contentId)
       
-      console.log('✅ Farcaster direct purchase completed successfully')
+      debug.log('✅ Farcaster direct purchase completed successfully')
       
     } catch (error) {
       console.error('Farcaster direct purchase failed:', error)
@@ -629,7 +629,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       }))
       
       if (finalConfig.autoFallback) {
-        console.log('🔄 Attempting fallback to batch transaction...')
+        debug.log('🔄 Attempting fallback to batch transaction...')
         try {
           await purchaseWithBatchTransaction()
         } catch (fallbackError) {
@@ -673,14 +673,13 @@ export function useUnifiedMiniAppPurchaseFlow(
     // }
 
     try {
-      console.group('🚀 Batch Transaction Purchase: EIP-5792 Optimized Flow')
-      console.log('Content ID:', contentId.toString())
-      console.log('Required Amount:', basePurchaseFlow.estimatedCost?.toString() || 'Calculating...')
-      console.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
-      console.log('Batch Calls Count: 2 (approve + purchase)')
-      console.log('Gas Limit:', finalConfig.batchGasLimit.toString())
-      console.log('Timeout:', finalConfig.batchTimeout)
-      console.groupEnd()
+      debug.log('🚀 Batch Transaction Purchase: EIP-5792 Optimized Flow')
+      debug.log('Content ID:', contentId.toString())
+      debug.log('Required Amount:', basePurchaseFlow.estimatedCost?.toString() || 'Calculating...')
+      debug.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
+      debug.log('Batch Calls Count: 2 (approve + purchase)')
+      debug.log('Gas Limit:', finalConfig.batchGasLimit.toString())
+      debug.log('Timeout:', finalConfig.batchTimeout)
 
       // Update state to reflect batch transaction initiation
       setUnifiedState(prev => ({
@@ -740,7 +739,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       
       await Promise.race([batchPromise, timeoutPromise])
       
-      console.log('✅ Batch transaction submitted successfully')
+      debug.log('✅ Batch transaction submitted successfully')
       
     } catch (error) {
       console.error('Batch transaction failed:', error)
@@ -752,7 +751,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       }))
       
       if (finalConfig.autoFallback) {
-        console.log('🔄 Attempting fallback to standard flow...')
+        debug.log('🔄 Attempting fallback to standard flow...')
         try {
           setUnifiedState(prev => ({
             ...prev,
@@ -785,12 +784,11 @@ export function useUnifiedMiniAppPurchaseFlow(
     }
 
     try {
-      console.group('🚀 Standard Purchase Flow: Traditional Web3 Commerce')
-      console.log('Content ID:', contentId.toString())
-      console.log('Flow Step:', basePurchaseFlow.executionState.phase)
-      console.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
-      console.log('Needs Approval:', 'Handled by orchestrator') // basePurchaseFlow.needsApproval moved to orchestrator
-      console.groupEnd()
+      debug.log('🚀 Standard Purchase Flow: Traditional Web3 Commerce')
+      debug.log('Content ID:', contentId.toString())
+      debug.log('Flow Step:', basePurchaseFlow.executionState.phase)
+      debug.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
+      debug.log('Needs Approval:', 'Handled by orchestrator') // basePurchaseFlow.needsApproval moved to orchestrator
 
       // Update state to reflect standard flow initiation
       setUnifiedState(prev => ({
@@ -809,7 +807,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       // Execute standard purchase flow
       await basePurchaseFlow.executePayment()
       
-      console.log('✅ Standard purchase flow completed successfully')
+      debug.log('✅ Standard purchase flow completed successfully')
       
     } catch (error) {
       console.error('Standard purchase flow failed:', error)
@@ -834,14 +832,14 @@ export function useUnifiedMiniAppPurchaseFlow(
     const strategy = strategyAnalysis.selectedStrategy
     
     try {
-      console.group('🚀 Optimal Strategy Purchase')
-      console.log('Selected Strategy:', strategy)
-      console.log('Confidence:', strategyAnalysis.confidence)
-      console.log('UX Score:', strategyAnalysis.userExperienceScore)
-      console.log('Reasoning:', strategyAnalysis.reasoning.join(', '))
-      console.log('Environment Type:', authResult.environmentType)
-      console.log('Social Trust Score:', socialContext.socialTrustScore)
-      console.groupEnd()
+      debug.log('🚀 Optimal Strategy Purchase')
+      debug.log('Selected Strategy:', strategy)
+      debug.log('Confidence:', strategyAnalysis.confidence)
+      debug.log('UX Score:', strategyAnalysis.userExperienceScore)
+              debug.log('Reasoning:', strategyAnalysis.reasoning.join(', '))
+        debug.log('Environment Type:', authResult.environmentType)
+        debug.log('Social Trust Score:', socialContext.socialTrustScore)
+      
 
       // Validate that we can execute the selected strategy
       let canExecute = false
@@ -886,7 +884,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       }))
       
       // Always fall back to standard flow on any error
-      console.log('🔄 Falling back to standard flow due to error...')
+      debug.log('🔄 Falling back to standard flow due to error...')
       return purchaseWithStandardFlow()
     }
   }, [strategyAnalysis, authResult.environmentType, socialContext.socialTrustScore, canUseFarcasterDirect, canUseBatchTransaction, purchaseWithFarcasterDirect, purchaseWithBatchTransaction, purchaseWithStandardFlow])
@@ -897,7 +895,7 @@ export function useUnifiedMiniAppPurchaseFlow(
     if (batchTxHash) {
       const hash = typeof batchTxHash === 'string' ? batchTxHash : batchTxHash.toString()
       
-      console.log('📝 Batch transaction hash received:', hash)
+      debug.log('📝 Batch transaction hash received:', hash)
       
       setUnifiedState(prev => ({
         ...prev,
