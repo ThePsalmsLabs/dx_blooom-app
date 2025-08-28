@@ -180,6 +180,12 @@ const PHASE_CONFIG = {
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200'
   },
+  waiting_intent_confirmation: {
+    color: 'blue',
+    icon: Clock,
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200'
+  },
   waiting_signature: {
     color: 'yellow',
     icon: Clock,
@@ -677,6 +683,8 @@ export function RealTimeProgressExperience({
         return 'Preparing your payment for processing...'
       case 'creating_intent':
         return 'Creating a secure payment intent on the blockchain. This ensures your transaction is properly structured.'
+      case 'waiting_intent_confirmation':
+        return 'Waiting for payment intent confirmation on the blockchain. This ensures your transaction is properly recorded.'
       case 'waiting_signature':
         return 'Waiting for backend authorization. Our secure service is validating and signing your payment request.'
       case 'executing_payment':

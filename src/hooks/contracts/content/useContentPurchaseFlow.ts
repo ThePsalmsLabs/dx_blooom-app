@@ -11,7 +11,8 @@ import {
   useChainId, 
   useContractWrite, 
   useSendCalls,
-  useWaitForTransactionReceipt
+  useWaitForTransactionReceipt,
+  useWriteContract
 } from 'wagmi'
 import type { Address } from 'viem'
 import { encodeFunctionData, parseUnits } from 'viem'
@@ -77,9 +78,9 @@ interface BatchTransactionState {
   /** Whether a batch transaction is currently executing */
   readonly isExecutingBatch: boolean
   /** Current batch transaction hash if available */
-  readonly batchTransactionHash: string | null
+  readonly batchTransactionHash: `0x${string}` | null
   /** Individual transaction hashes within the batch */
-  readonly batchComponentHashes: readonly string[]
+  readonly batchComponentHashes: readonly `0x${string}`[]
   /** Batch transaction progress (0-100) */
   readonly batchProgress: number
   /** Detailed batch execution status */
@@ -185,7 +186,6 @@ export function useEnhancedContentPurchaseFlow(
   const { address, isConnected } = useAccount()
   const finalConfig = useMemo(() => ({ ...DEFAULT_ENHANCED_CONFIG, ...config }), [config])
   
-  // Phase 1 MiniApp context detection - this leverages your existing provider system
   const { context: miniAppContext, isMiniApp, isReady: isMiniAppReady, socialUser } = useMiniApp()
   
   // Contract addresses for current network
@@ -230,6 +230,31 @@ export function useEnhancedContentPurchaseFlow(
   const { isSuccess: isBatchSuccess } = useWaitForTransactionReceipt({ 
     hash: batchCallsData as `0x${string}` | undefined 
   })
+
+  // Helper functions for sequential transactions with strict typing
+  const writeApproval = useCallback(async (params: {
+    address: Address
+    abi: typeof ERC20_ABI
+    functionName: 'approve'
+    args: [Address, bigint]
+  }) => {
+    setCurrentTransactionType('approval')
+    return writeContract(params)
+  }, [writeContract])
+
+  const writePurchase = useCallback(async (params: {
+    address: Address
+    abi: typeof PAY_PER_VIEW_ABI
+    functionName: 'purchaseContentDirect'
+    args: [bigint]
+  }) => {
+    setCurrentTransactionType('purchase')
+    return writeContract(params)
+  }, [writeContract])
+
+  // Transaction success monitoring
+  const isApprovalSuccess = currentTransactionType === 'approval' && isTransactionSuccess
+  const isPurchaseSuccess = currentTransactionType === 'purchase' && isTransactionSuccess
 
   // ================================================
   // ENHANCED STATE MANAGEMENT
@@ -322,11 +347,11 @@ export function useEnhancedContentPurchaseFlow(
       const hash = typeof batchCallsData === 'string' ? batchCallsData : batchCallsData.id
       setBatchState(prev => ({ 
         ...prev, 
-        batchTransactionHash: hash
+        batchTransactionHash: hash as `0x${string}`
       }))
       setExecutionState(prev => ({
         ...prev,
-        transactionHash: hash
+        transactionHash: hash as `0x${string}`
       }))
     }
   }, [batchCallsData])
@@ -370,8 +395,12 @@ export function useEnhancedContentPurchaseFlow(
     }))
     
     try {
-      // Prepare batch transaction calls
-      const calls = []
+      // Prepare batch transaction calls with strict typing
+      const calls: Array<{
+        to: Address
+        data: `0x${string}`
+        value: bigint
+      }> = []
       
       // If approval is needed, add approval call to batch
       if (needsApproval) {
@@ -411,12 +440,11 @@ export function useEnhancedContentPurchaseFlow(
       // Execute batch transaction using EIP-5792
       await sendCalls({
         calls,
-        capabilities: {
-          // Specify batch transaction capabilities for optimal UX
-          paymasterService: process.env.NEXT_PUBLIC_PAYMASTER_URL ? {
-            url: process.env.NEXT_PUBLIC_PAYMASTER_URL
-          } : undefined
-        }
+        capabilities: process.env.NEXT_PUBLIC_PAYMASTER_URL ? {
+          paymasterService: {
+            url: process.env.NEXT_PUBLIC_PAYMASTER_URL as string
+          }
+        } : undefined
       })
       
       // The transaction hash will be available via batchCallsData from the hook
