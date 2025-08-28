@@ -54,6 +54,25 @@ import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-co
 import { USDC_DECIMALS } from '@/lib/contracts/helpers/usdcHelpers'
 
 /**
+ * Payment Intent Flow Error Types
+ * 
+ * Moved from usePaymentIntentFlow.ts to maintain compatibility
+ */
+export class PaymentIntentFlowError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'INTENT_CREATION_FAILED' | 'INTENT_EXTRACTION_FAILED' | 'SIGNATURE_POLLING_FAILED' | 'EXECUTION_FAILED' | 'CONFIRMATION_FAILED' | 'USER_CANCELLED' | 'INSUFFICIENT_FUNDS' | 'SLIPPAGE_EXCEEDED',
+    public readonly step: string,
+    public readonly originalError?: unknown,
+    public readonly intentId?: `0x${string}`,
+    public readonly transactionHash?: `0x${string}`
+  ) {
+    super(message)
+    this.name = 'PaymentIntentFlowError'
+  }
+}
+
+/**
  * Payment Strategy Types
  * 
  * These represent different payment execution strategies based on

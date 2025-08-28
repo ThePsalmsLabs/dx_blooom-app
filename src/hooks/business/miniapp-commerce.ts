@@ -6,7 +6,7 @@ import { encodeFunctionData, type Address } from 'viem'
 
 // Import existing sophisticated purchase flow
 import { 
-  useContentPurchaseFlow,
+  useUnifiedContentPurchaseFlow,
   type ContentPurchaseFlowResult
 } from '@/hooks/business/workflows'
 
@@ -332,14 +332,14 @@ export function useUnifiedMiniAppPurchaseFlow(
   contentId: bigint | undefined,
   userAddress?: Address,
   config: Partial<PurchaseStrategyConfig> = {}
-): UnifiedPurchaseFlowResult {
+): any {
   // Authentication integration
   const authResult = useMiniAppAuth()
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
   
   // Existing purchase flow infrastructure
-  const basePurchaseFlow = useContentPurchaseFlow(contentId, userAddress || address)
+  const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, userAddress || address)
   
   // Farcaster context for social verification
   const farcasterContext = useFarcasterContext()
@@ -403,11 +403,11 @@ export function useUnifiedMiniAppPurchaseFlow(
     return analyzePurchaseStrategies(
       authResult,
       isConnected,
-      basePurchaseFlow.contentDetails?.payPerViewPrice,
+      basePurchaseFlow.content?.payPerViewPrice, // Changed from contentDetails to content
       authResult.environmentType,
       finalConfig
     )
-  }, [authResult, isConnected, basePurchaseFlow.contentDetails, finalConfig])
+  }, [authResult, isConnected, basePurchaseFlow.content, finalConfig])
 
   // Current strategy analysis
   const strategyAnalysis = useMemo(() => {
@@ -581,7 +581,7 @@ export function useUnifiedMiniAppPurchaseFlow(
     if (!contentId) {
       throw new Error('Content ID is required for purchase')
     }
-    if (!basePurchaseFlow.contentDetails) {
+    if (!basePurchaseFlow.content) {
       throw new Error('Content details not available')
     }
     if (!authResult.optimalPaymentMethod?.address) {
@@ -593,7 +593,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       console.log('Content ID:', contentId.toString())
       console.log('Verified Address:', authResult.optimalPaymentMethod.address)
       console.log('Social Trust Score:', socialContext.socialTrustScore)
-      console.log('Content Price:', basePurchaseFlow.contentDetails.payPerViewPrice.toString())
+      console.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
       console.groupEnd()
 
       // Update state to reflect purchase initiation
@@ -612,7 +612,7 @@ export function useUnifiedMiniAppPurchaseFlow(
 
       // Execute direct purchase using verified Farcaster wallet
       // This leverages the social verification to streamline the experience
-      await basePurchaseFlow.purchase()
+      await basePurchaseFlow.executePayment()
       
       // Track successful social purchase
       trackSocialPurchase(contentId)
@@ -656,7 +656,7 @@ export function useUnifiedMiniAppPurchaseFlow(
     if (!contentId) {
       throw new Error('Content ID is required for batch purchase')
     }
-    if (!basePurchaseFlow.contentDetails) {
+    if (!basePurchaseFlow.content) {
       throw new Error('Content details not available for batch purchase')
     }
     if (!contractAddresses) {
@@ -666,17 +666,17 @@ export function useUnifiedMiniAppPurchaseFlow(
       throw new Error('Batch transaction capability not available')
     }
 
-    // Skip batch if no approval needed
-    if (!basePurchaseFlow.needsApproval) {
-      console.log('ℹ️ No approval needed, using standard purchase')
-      return basePurchaseFlow.purchase()
-    }
+    // Skip batch if no approval needed - approval is handled by the orchestrator
+    // if (!basePurchaseFlow.needsApproval) {
+    //   console.log('ℹ️ No approval needed, using standard purchase')
+    //   return basePurchaseFlow.executePayment()
+    // }
 
     try {
       console.group('🚀 Batch Transaction Purchase: EIP-5792 Optimized Flow')
       console.log('Content ID:', contentId.toString())
-      console.log('Required Amount:', basePurchaseFlow.requiredAmount?.toString())
-      console.log('Content Price:', basePurchaseFlow.contentDetails.payPerViewPrice.toString())
+      console.log('Required Amount:', basePurchaseFlow.estimatedCost?.toString() || 'Calculating...')
+      console.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
       console.log('Batch Calls Count: 2 (approve + purchase)')
       console.log('Gas Limit:', finalConfig.batchGasLimit.toString())
       console.log('Timeout:', finalConfig.batchTimeout)
@@ -698,7 +698,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       ])
 
       // Prepare batch transaction calls with proper validation
-      const requiredAmount = basePurchaseFlow.requiredAmount || basePurchaseFlow.contentDetails.payPerViewPrice
+              const requiredAmount = basePurchaseFlow.estimatedCost || basePurchaseFlow.content.payPerViewPrice
       
       if (requiredAmount <= BigInt(0)) {
         throw new Error('Invalid required amount for batch transaction')
@@ -758,7 +758,7 @@ export function useUnifiedMiniAppPurchaseFlow(
             ...prev,
             fallbackReason: 'Batch transaction failed, using standard flow'
           }))
-          await basePurchaseFlow.purchase()
+          await basePurchaseFlow.executePayment()
         } catch (fallbackError) {
           console.error('Fallback to standard flow also failed:', fallbackError)
           throw new Error(`Batch transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}. Fallback also failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`)
@@ -780,16 +780,16 @@ export function useUnifiedMiniAppPurchaseFlow(
     if (!contentId) {
       throw new Error('Content ID is required for standard purchase')
     }
-    if (!basePurchaseFlow.contentDetails) {
+    if (!basePurchaseFlow.content) {
       throw new Error('Content details not available for standard purchase')
     }
 
     try {
       console.group('🚀 Standard Purchase Flow: Traditional Web3 Commerce')
       console.log('Content ID:', contentId.toString())
-      console.log('Flow Step:', basePurchaseFlow.flowState.step)
-      console.log('Content Price:', basePurchaseFlow.contentDetails.payPerViewPrice.toString())
-      console.log('Needs Approval:', basePurchaseFlow.needsApproval)
+      console.log('Flow Step:', basePurchaseFlow.executionState.phase)
+      console.log('Content Price:', basePurchaseFlow.content.payPerViewPrice.toString())
+      console.log('Needs Approval:', 'Handled by orchestrator') // basePurchaseFlow.needsApproval moved to orchestrator
       console.groupEnd()
 
       // Update state to reflect standard flow initiation
@@ -807,7 +807,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       ])
 
       // Execute standard purchase flow
-      await basePurchaseFlow.purchase()
+      await basePurchaseFlow.executePayment()
       
       console.log('✅ Standard purchase flow completed successfully')
       
@@ -914,7 +914,7 @@ export function useUnifiedMiniAppPurchaseFlow(
   // ===== RETURN UNIFIED PURCHASE FLOW RESULT =====
   
   return {
-    // Inherit all base purchase flow functionality
+    // Base purchase flow functionality from UnifiedPurchaseFlowResult
     ...basePurchaseFlow,
     
     // Strategy selection and analysis

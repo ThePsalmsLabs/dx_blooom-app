@@ -31,7 +31,7 @@ import { encodeFunctionData, type Address } from 'viem'
 
 // Import your existing purchase flow foundation
 import { 
-  useContentPurchaseFlow,
+  useUnifiedContentPurchaseFlow,
   getPurchaseFlowStepMessage
 } from '@/hooks/business/workflows'
 
@@ -434,7 +434,7 @@ export function useSocialPurchaseFlow(
   const effectiveUserAddress = userAddress || address
   
   // Your existing purchase flow foundation
-  const basePurchaseFlow = useContentPurchaseFlow(contentId, effectiveUserAddress)
+  const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress)
   
   // Your existing integrations
   const miniAppContext = useMiniApp()
@@ -519,12 +519,12 @@ export function useSocialPurchaseFlow(
     if (!socialContext) return null
     
     return SocialPurchaseAnalyzer.analyzeBatchTransactionConfig(
-      basePurchaseFlow.needsApproval,
+      false, // needsApproval moved to orchestrator
       miniAppContext.isMiniApp,
       socialContext,
-      basePurchaseFlow.userBalance || BigInt(0)
+      basePurchaseFlow.selectedToken?.balance || BigInt(0)
     )
-  }, [socialContext, basePurchaseFlow.needsApproval, miniAppContext.isMiniApp, basePurchaseFlow.userBalance])
+  }, [socialContext, miniAppContext.isMiniApp, basePurchaseFlow.selectedToken?.balance])
   
   // ===== VIRAL SHARING STRATEGY =====
   
@@ -668,7 +668,7 @@ export function useSocialPurchaseFlow(
    */
   const executeSequentialPurchase = useCallback(async (): Promise<void> => {
     // Use your existing purchase flow with social tracking
-    await basePurchaseFlow.purchase()
+          await basePurchaseFlow.executePayment()
     
     // Track the sequential transaction usage
     await socialAnalytics.trackSocialConversion(
@@ -676,7 +676,7 @@ export function useSocialPurchaseFlow(
       miniAppContext.socialUser?.fid || 0,
       contentQuery.data?.payPerViewPrice || BigInt(0)
     )
-  }, [basePurchaseFlow.purchase, socialAnalytics, contentQuery.data, miniAppContext.socialUser])
+  }, [basePurchaseFlow.executePayment, socialAnalytics, contentQuery.data, miniAppContext.socialUser])
   
   /**
    * Trigger Immediate Viral Sharing
@@ -769,9 +769,9 @@ export function useSocialPurchaseFlow(
     isLoading: basePurchaseFlow.isLoading,
     error: null, // Since flowState.error is optional
     currentStep: getPurchaseFlowStepMessage(socialState.step),
-    canAfford: basePurchaseFlow.canPurchase,
-    needsApproval: basePurchaseFlow.needsApproval,
-    userBalance: basePurchaseFlow.userBalance,
+          canAfford: basePurchaseFlow.canExecutePayment,
+      needsApproval: false, // moved to orchestrator
+      userBalance: basePurchaseFlow.selectedToken?.balance || BigInt(0),
     
     // Social commerce state
     socialState,

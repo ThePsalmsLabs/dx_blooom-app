@@ -322,8 +322,7 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
                   <OrchestratedContentPurchaseCard
                     contentId={contentId}
                     userAddress={userAddress}
-                    onPurchaseSuccess={handlePurchaseSuccess}
-                    onViewContent={handleViewContent}
+                    onPurchaseSuccess={() => handlePurchaseSuccess(contentId, {} as any)}
                     variant="full"
                     showCreatorInfo={true}
                     showPurchaseDetails={true}

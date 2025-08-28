@@ -19,7 +19,8 @@ export {
 } from '@/hooks/web3/useTokenBalances'
 
 // Phase 2: Enhanced Purchase Integration
-export { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
+// OrchestratedContentPurchaseCard has been moved to usePaymentFlowOrchestrator
+// export { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 export { SmartPaymentSelector } from '@/components/purchase/SmartPaymentSelector'
 
 // Phase 3: Swap Functionality

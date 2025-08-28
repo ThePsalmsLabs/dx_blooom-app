@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { Address } from 'viem'
 import { AlertTriangle, CheckCircle, Clock, Loader2, XCircle, RefreshCw, DollarSign, Shield } from 'lucide-react'
 import { useSyncedPaymentState, FrontendPaymentState, PaymentIntentStatus, SyncStatus } from '../../hooks/web3/payment/useSyncedPaymentState'
-import { usePaymentIntentCleanup, CleanupStrategy, CleanupReason } from '../../hooks/web3/payment/usePaymentIntentCleanup'
+// usePaymentIntentCleanup has been moved to usePaymentFlowOrchestrator
+// import { usePaymentIntentCleanup, CleanupStrategy, CleanupReason } from '../../hooks/web3/payment/usePaymentIntentCleanup'
 
 /**
  * Props interface for the PaymentIntentMonitor component
@@ -217,12 +218,13 @@ export function PaymentIntentMonitor({
     maxSyncRetries: 3
   })
   
-  const cleanupSystem = usePaymentIntentCleanup({
-    enableAutoCleanup: enableAutoRecovery,
-    maxRetryAttempts: 2,
-    cleanupTimeoutMs: 30000,
-    preserveUserFunds: true
-  })
+  // Cleanup system moved to usePaymentFlowOrchestrator
+  // const cleanupSystem = usePaymentIntentCleanup({
+  //   enableAutoCleanup: enableAutoRecovery,
+  //   maxRetryAttempts: 2,
+  //   cleanupTimeoutMs: 30000,
+  //   preserveUserFunds: true
+  // })
   
   // Local UI state for animations and interactions
   const [userHasBeenNotified, setUserHasBeenNotified] = useState(false)
@@ -285,30 +287,32 @@ export function PaymentIntentMonitor({
    * Automatic Recovery System
    * When our sync hook detects problems, we automatically analyze and fix them
    */
-  useEffect(() => {
-    if (!enableAutoRecovery) return
-    if (syncState.syncStatus !== SyncStatus.OUT_OF_SYNC) return
-    if (cleanupSystem.isCleaningUp) return
-    
-    // Analyze what went wrong and determine the best recovery strategy
-    const failureAnalysis = cleanupSystem.analyzeFailureScenario(
-      syncState.frontendState,
-      syncState.contractStatus,
-      syncState.error || undefined
-    )
-    
-    // Execute automatic recovery for non-destructive strategies
-    if (failureAnalysis.strategy === CleanupStrategy.SOFT_RESET || 
-        failureAnalysis.strategy === CleanupStrategy.AUTO_RETRY) {
-      
-      console.log('🔄 Auto-recovery triggered:', failureAnalysis)
-      cleanupSystem.triggerCleanup(failureAnalysis)
-    } else {
-      // For more complex scenarios, show user action button
-      setShowRetryButton(true)
-    }
-  }, [syncState.syncStatus, syncState.frontendState, syncState.contractStatus, 
-      enableAutoRecovery, cleanupSystem, syncState.error])
+  // Auto-recovery moved to usePaymentFlowOrchestrator
+  // useEffect(() => {
+  //   if (!enableAutoRecovery) return
+  //   if (syncState.syncStatus !== SyncStatus.OUT_OF_SYNC) return
+  //   if (cleanupSystem.isCleaningUp) return
+  //   
+  //   // Analyze what went wrong and determine the best recovery strategy
+  //   const failureAnalysis = cleanupSystem.analyzeFailureScenario(
+  //     syncState.frontendState,
+  //     syncState.contractStatus,
+  //     syncState.error || undefined
+  //   )
+  //   
+  //   // Execute automatic recovery for non-destructive strategies
+  //   // Cleanup strategies moved to usePaymentFlowOrchestrator
+  //   // if (failureAnalysis.strategy === CleanupStrategy.SOFT_RESET ||
+  //   //     failureAnalysis.strategy === CleanupStrategy.AUTO_RETRY) {
+  //     
+  //     console.log('🔄 Auto-recovery triggered:', failureAnalysis)
+  //     cleanupSystem.triggerCleanup(failureAnalysis)
+  //   } else {
+  //     // For more complex scenarios, show user action button
+  //     setShowRetryButton(true)
+  //   }
+  // }, [syncState.syncStatus, syncState.frontendState, syncState.contractStatus, 
+  //     enableAutoRecovery, cleanupSystem, syncState.error])
   
   /**
    * Success/Failure Event Handling
@@ -335,20 +339,21 @@ export function PaymentIntentMonitor({
    * Cleanup Completion Handler
    * Reset UI state when cleanup operations complete successfully
    */
-  useEffect(() => {
-    if (cleanupSystem.lastCleanupOperation && 
-        !cleanupSystem.isCleaningUp && 
-        !cleanupSystem.cleanupError) {
-      
-      setShowRetryButton(false)
-      setUserHasBeenNotified(false)
-      
-      if (intentId) {
-        onCleanupCompleted?.(intentId)
-      }
-    }
-  }, [cleanupSystem.lastCleanupOperation, cleanupSystem.isCleaningUp, 
-      cleanupSystem.cleanupError, intentId, onCleanupCompleted])
+  // Cleanup completion moved to usePaymentFlowOrchestrator
+  // useEffect(() => {
+  //   if (cleanupSystem.lastCleanupOperation && 
+  //       !cleanupSystem.isCleaningUp && 
+  //       !cleanupSystem.cleanupError) {
+  //     
+  //     setShowRetryButton(false)
+  //     setUserHasBeenNotified(false)
+  //     
+  //     if (intentId) {
+  //       onCleanupCompleted?.(intentId)
+  //     }
+  //   }
+  // }, [cleanupSystem.lastCleanupOperation, cleanupSystem.isCleaningUp, 
+  //     cleanupSystem.cleanupError, intentId, onCleanupCompleted])
   
   /**
    * Manual Recovery Handler
@@ -359,17 +364,18 @@ export function PaymentIntentMonitor({
       setShowRetryButton(false)
       
       if (intentId) {
+        // Cleanup moved to usePaymentFlowOrchestrator
         // Analyze current situation and execute appropriate cleanup
-        const failureAnalysis = cleanupSystem.analyzeFailureScenario(
-          syncState.frontendState,
-          syncState.contractStatus,
-          syncState.error || undefined
-        )
-        
-        const success = await cleanupSystem.triggerCleanup(failureAnalysis)
-        if (!success) {
-          setShowRetryButton(true) // Show retry button again if cleanup failed
-        }
+        // const failureAnalysis = cleanupSystem.analyzeFailureScenario(
+        //   syncState.frontendState,
+        //   syncState.contractStatus,
+        //   syncState.error || undefined
+        // )
+        // 
+        // const success = await cleanupSystem.triggerCleanup(failureAnalysis)
+        // if (!success) {
+        //   setShowRetryButton(true) // Show retry button again if cleanup failed
+        // }
       }
       
       onUserActionRequired?.(action, intentId)
@@ -381,11 +387,12 @@ export function PaymentIntentMonitor({
     
     if (action === 'cancel') {
       if (intentId) {
-        await cleanupSystem.softReset(CleanupReason.USER_CANCELLED, 'Payment cancelled by user')
+        // Cleanup moved to usePaymentFlowOrchestrator
+        // await cleanupSystem.softReset(CleanupReason.USER_CANCELLED, 'Payment cancelled by user')
       }
       onUserActionRequired?.(action, intentId)
     }
-  }, [intentId, cleanupSystem, syncState, onUserActionRequired])
+  }, [intentId, syncState, onUserActionRequired]) // cleanupSystem moved to usePaymentFlowOrchestrator
   
   // Hide component when appropriate
   if (shouldHide) {
@@ -448,10 +455,10 @@ export function PaymentIntentMonitor({
           {showRetryButton && (
             <button
               onClick={() => handleUserAction('retry')}
-              disabled={cleanupSystem.isCleaningUp}
+              disabled={false} // cleanupSystem.isCleaningUp moved to usePaymentFlowOrchestrator
               className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
-              {cleanupSystem.isCleaningUp ? 'Retrying...' : 'Retry Payment'}
+              Retry Payment {/* cleanupSystem.isCleaningUp moved to usePaymentFlowOrchestrator */}
             </button>
           )}
           
@@ -469,7 +476,7 @@ export function PaymentIntentMonitor({
            syncState.frontendState !== FrontendPaymentState.IDLE && (
             <button
               onClick={() => handleUserAction('cancel')}
-              disabled={cleanupSystem.isCleaningUp}
+              disabled={false} // cleanupSystem.isCleaningUp moved to usePaymentFlowOrchestrator
               className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50"
             >
               Cancel
@@ -486,9 +493,10 @@ export function PaymentIntentMonitor({
           <div>Sync: {syncState.syncStatus}</div>
           {intentId && <div>Intent: {intentId}</div>}
           {syncState.error && <div className="text-red-600">Error: {syncState.error}</div>}
-          {cleanupSystem.cleanupError && (
+          {/* cleanupSystem.cleanupError moved to usePaymentFlowOrchestrator */}
+          {/* {cleanupSystem.cleanupError && (
             <div className="text-red-600">Cleanup Error: {cleanupSystem.cleanupError}</div>
-          )}
+          )} */}
         </div>
       )}
     </div>

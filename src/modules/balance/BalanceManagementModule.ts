@@ -2,7 +2,7 @@
  * BalanceManagementModule - Unified Balance Management System
  * 
  * This module provides a sophisticated abstraction layer for token balance management
- * that bridges the gap between OrchestratedContentPurchaseCard and OrchestratedContentPurchaseCard.
+ * that bridges the gap between usePaymentFlowOrchestrator and other payment components.
  * It combines the performance-optimized caching strategies from the Smart component
  * with the health-aware, production-hardened approaches of the Orchestrated component.
  * 
@@ -133,7 +133,7 @@ class BalanceCacheManager {
 
   /**
    * Get cached balance with staleness checking
-   * Implements the 30-second TTL strategy from OrchestratedContentPurchaseCard
+   * Implements the 30-second TTL strategy from usePaymentFlowOrchestrator
    */
   getCachedBalance(tokenAddress: Address, userAddress: Address): BalanceCacheEntry | null {
     const key = `${tokenAddress}-${userAddress}`.toLowerCase()
@@ -232,7 +232,7 @@ class BalanceCacheManager {
 /**
  * Use Unified Balance Management Hook
  * 
- * This is the main hook that both OrchestratedContentPurchaseCard and OrchestratedContentPurchaseCard
+ * This is the main hook that both usePaymentFlowOrchestrator and other payment components
  * will use for balance management. It provides intelligent caching, health-aware fetching,
  * and comprehensive purchase analysis.
  */
@@ -539,7 +539,7 @@ export function useUnifiedBalanceManagement(
 // =============================================================================
 
 /**
- * Adapter function for OrchestratedContentPurchaseCard integration
+ * Adapter function for usePaymentFlowOrchestrator integration
  * Converts the unified balance management to the expected interface
  */
 export function useSmartCardBalanceAdapter(config?: Partial<BalanceManagementConfig>) {
@@ -550,7 +550,7 @@ export function useSmartCardBalanceAdapter(config?: Partial<BalanceManagementCon
   })
 
   return {
-    // OrchestratedContentPurchaseCard expected interface
+    // usePaymentFlowOrchestrator expected interface
     tokens: balanceManager.managedTokens,
     isLoading: balanceManager.isLoading,
     refreshBalances: balanceManager.refreshBalances,
@@ -563,7 +563,7 @@ export function useSmartCardBalanceAdapter(config?: Partial<BalanceManagementCon
 }
 
 /**
- * Adapter function for OrchestratedContentPurchaseCard integration
+ * Adapter function for usePaymentFlowOrchestrator integration
  * Provides health-aware balance management with system monitoring
  */
 export function useOrchestratedCardBalanceAdapter(config?: Partial<BalanceManagementConfig>) {
@@ -575,7 +575,7 @@ export function useOrchestratedCardBalanceAdapter(config?: Partial<BalanceManage
   })
 
   return {
-    // OrchestratedContentPurchaseCard expected interface
+    // usePaymentFlowOrchestrator expected interface
     ...balanceManager,
     // Health-aware features
     isHealthy: balanceManager.systemHealth.overallStatus === 'healthy',

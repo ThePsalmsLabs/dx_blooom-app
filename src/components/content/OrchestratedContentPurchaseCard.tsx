@@ -89,7 +89,7 @@ import { cn } from '@/lib/utils'
 
 // Import business logic hooks and utilities
 import { useContentById, useHasContentAccess, useTokenBalance, useTokenAllowance } from '@/hooks/contracts/core'
-import { useUnifiedContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
+import { PaymentMethod } from '@/hooks/business/workflows'
 import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
 
 // Import the orchestrated payment system
@@ -759,12 +759,7 @@ export function OrchestratedContentPurchaseCard({
     }
   }, [transactionHash, paymentState.intentPhase])
   
-  // Legacy USDC purchase flow (still used for USDC direct payments)
-  // Only initialize when needed to prevent unnecessary RPC calls
-  const usdcPurchaseFlow = useUnifiedContentPurchaseFlow(
-    paymentDataEnabled ? contentId : undefined, 
-    paymentDataEnabled ? effectiveUserAddress : undefined
-  )
+
   
   // Memoize orchestrator callbacks to prevent unnecessary re-initialization
   const orchestratorCallbacks = useMemo(() => ({

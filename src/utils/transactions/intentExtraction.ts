@@ -17,7 +17,7 @@
  * - This utility provides the critical link between transaction completion and workflow continuation
  * 
  * Integration Points:
- * - Used by usePaymentIntentFlow to extract IDs after intent creation
+ * - Used by usePaymentFlowOrchestrator to extract IDs after intent creation
  * - Integrates with wagmi transaction receipt data
  * - Works with your existing Commerce Protocol Integration events
  * 

@@ -36,7 +36,7 @@ import {
   IntelligentSignaturePollingError 
 } from '@/hooks/web3/useIntelligentSignaturePolling'
 import { BackendHealthError } from '@/hooks/web3/useBackendHealthMonitor'
-import { PaymentIntentFlowError } from '@/hooks/web3/usePaymentIntentFlow'
+import { PaymentIntentFlowError } from '@/hooks/web3/usePaymentFlowOrchestrator'
 
 /**
  * Error Classification Types

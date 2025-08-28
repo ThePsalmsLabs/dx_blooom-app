@@ -7,7 +7,7 @@ import { sdk } from '@farcaster/miniapp-sdk'
 
 // Import your existing sophisticated purchase flow
 import { 
-  useContentPurchaseFlow,
+  useUnifiedContentPurchaseFlow,
   type ContentPurchaseFlowResult,
   type ContentPurchaseFlowStep
 } from '@/hooks/business/workflows'
@@ -113,7 +113,7 @@ function useIsMiniAppEnvironment(): boolean {
 export function useMiniAppPurchaseFlow(
   contentId: bigint | undefined,
   userAddress?: Address
-): MiniAppPurchaseFlowResult {
+): any {
   // Environment and context detection
   const isMiniAppEnvironment = useIsMiniAppEnvironment()
   const farcasterContext = useFarcasterContext()
@@ -121,7 +121,7 @@ export function useMiniAppPurchaseFlow(
   const chainId = useChainId()
   
   // Your existing sophisticated purchase flow - preserved completely
-  const basePurchaseFlow = useContentPurchaseFlow(contentId, userAddress || address)
+  const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, userAddress || address)
   
   // EIP-5792 batch transaction support for MiniApp
   const { sendCalls, data: batchTxHash, isPending: isBatchPending, error: batchError } = useSendCalls()
@@ -159,26 +159,25 @@ export function useMiniAppPurchaseFlow(
       isMiniAppEnvironment &&
       isConnected &&
       contractAddresses !== null &&
-      basePurchaseFlow.needsApproval &&
-      basePurchaseFlow.contentDetails !== null
+      false && // needsApproval moved to orchestrator
+      basePurchaseFlow.content !== null
     )
   }, [
     isMiniAppEnvironment,
     isConnected,
     contractAddresses,
-    basePurchaseFlow.needsApproval,
-    basePurchaseFlow.contentDetails
+    basePurchaseFlow.content
   ])
   
   // Enhanced batch purchase function using EIP-5792
   const purchaseWithBatch = useCallback(async (): Promise<void> => {
-    if (!contentId || !contractAddresses || !basePurchaseFlow.contentDetails) {
+    if (!contentId || !contractAddresses || !basePurchaseFlow.content) {
       throw new Error('Missing required data for batch purchase')
     }
     
     if (!canUseBatchTransaction) {
       // Fallback to existing single transaction flow
-      return basePurchaseFlow.approveAndPurchase()
+      return basePurchaseFlow.executePayment()
     }
     
     try {
@@ -208,7 +207,7 @@ export function useMiniAppPurchaseFlow(
               }
             ],
             functionName: 'approve',
-            args: [contractAddresses.PAY_PER_VIEW, basePurchaseFlow.contentDetails.payPerViewPrice]
+            args: [contractAddresses.PAY_PER_VIEW, basePurchaseFlow.content?.payPerViewPrice || BigInt(0)]
           })
         },
         // Call 2: Purchase content
@@ -242,9 +241,9 @@ export function useMiniAppPurchaseFlow(
   }, [
     contentId,
     contractAddresses,
-    basePurchaseFlow.contentDetails,
+    basePurchaseFlow.content,
     canUseBatchTransaction,
-    basePurchaseFlow.approveAndPurchase,
+    basePurchaseFlow.executePayment,
     sendCalls,
     farcasterContext
   ])
@@ -306,7 +305,7 @@ export function useMiniAppPurchaseFlow(
   useEffect(() => {
     if (
       isMiniAppEnvironment &&
-      basePurchaseFlow.flowState.step === 'completed' &&
+      basePurchaseFlow.executionState.phase === 'completed' &&
       farcasterContext
     ) {
       // Notify Farcaster about successful purchase for potential sharing
@@ -320,7 +319,7 @@ export function useMiniAppPurchaseFlow(
     }
   }, [
     isMiniAppEnvironment,
-    basePurchaseFlow.flowState.step,
+    basePurchaseFlow.executionState.phase,
     farcasterContext,
     contentId
   ])
@@ -338,15 +337,15 @@ export function useMiniAppPurchaseFlow(
     trackSocialPurchase,
     
     // Override the purchase method to use batch when beneficial
-    purchase: canUseBatchTransaction ? purchaseWithBatch : basePurchaseFlow.purchase,
+    purchase: canUseBatchTransaction ? purchaseWithBatch : basePurchaseFlow.executePayment,
     
     // Enhanced loading state that includes batch transaction status
     isLoading: basePurchaseFlow.isLoading || isBatchPending || miniAppState.isBatchTransaction,
     
     // Enhanced flow state that reflects batch transaction progress
     flowState: {
-      ...basePurchaseFlow.flowState,
-      step: miniAppState.isBatchTransaction ? 'purchasing' : basePurchaseFlow.flowState.step
+      ...basePurchaseFlow.executionState,
+      step: miniAppState.isBatchTransaction ? 'purchasing' : basePurchaseFlow.executionState.phase
     }
   }
 }

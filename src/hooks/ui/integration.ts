@@ -34,7 +34,7 @@ import { type Address } from 'viem'
 import { formatAddress } from '@/lib/utils'
 // Import our business logic hooks to compose them into UI-focused interfaces
 import {
-  useContentPurchaseFlow,
+  useUnifiedContentPurchaseFlow,
   useContentPublishingFlow,
   useCreatorOnboarding,
   type ContentPublishingData
@@ -772,25 +772,25 @@ export function useContentPurchaseUI(
   contentId: bigint | undefined,
   userAddress: Address | undefined
 ): ContentPurchaseUI {
-  const purchaseFlow = useContentPurchaseFlow(contentId, userAddress)
+  const purchaseFlow = useUnifiedContentPurchaseFlow(contentId, userAddress)
 
   // Map step to human-readable text
   const currentStepText = useMemo(() => {
-    switch (purchaseFlow.flowState.step) {
-      case 'checking_access':
-        return 'Checking access status...'
-      case 'loading_content':
-        return 'Loading content information...'
-      case 'insufficient_balance':
-        return 'Insufficient balance'
-      case 'need_approval':
-        return 'Token approval required'
-      case 'can_purchase':
+    switch (purchaseFlow.executionState.phase) {
+      case 'idle':
         return 'Ready to purchase'
-      case 'approving_tokens':
-        return 'Approving token spending...'
-      case 'purchasing':
+      case 'calculating':
+        return 'Calculating costs...'
+      case 'approving':
+        return 'Approving tokens...'
+      case 'creating_intent':
+        return 'Creating payment intent...'
+      case 'waiting_signature':
+        return 'Waiting for authorization...'
+      case 'executing':
         return 'Processing purchase...'
+      case 'confirming':
+        return 'Confirming transaction...'
       case 'completed':
         return 'Purchase complete - access granted!'
       case 'error':
@@ -798,35 +798,35 @@ export function useContentPurchaseUI(
       default:
         return 'Unknown status'
     }
-  }, [purchaseFlow.flowState.step])
+  }, [purchaseFlow.executionState.phase])
 
   // Content display
   const contentDisplay = useMemo(() => {
-    const c = purchaseFlow.contentDetails
+    const c = purchaseFlow.content
     if (!c) return null
     return {
       title: c.title,
       description: c.description,
-      formattedPrice: formatCurrency(c.payPerViewPrice),
+      formattedPrice: formatCurrency(purchaseFlow.estimatedCost || BigInt(0)),
       category: formatContentCategory(c.category),
       creatorName: formatAddress(c.creator),
       publishDate: '-',
     }
-  }, [purchaseFlow.contentDetails])
+  }, [purchaseFlow.content, purchaseFlow.estimatedCost])
 
   // Balance text
   const balanceText = useMemo(() => {
-    const bal = purchaseFlow.userBalance
-    if (!bal) return 'Balance: Unknown'
-    return `Balance: ${formatCurrency(bal)}`
-  }, [purchaseFlow.userBalance])
+    const selectedToken = purchaseFlow.selectedToken
+    if (!selectedToken || !selectedToken.balance) return 'Balance: Unknown'
+    return `Balance: ${formatCurrency(selectedToken.balance)}`
+  }, [purchaseFlow.selectedToken])
 
-  // Transaction status from flow state
+  // Transaction status from execution state
   const transactionStatus: TransactionStatusUI = useMemo(() => {
-    const step = purchaseFlow.flowState.step
-    const hash = purchaseFlow.flowState.transactionHash || null
+    const phase = purchaseFlow.executionState.phase
+    const hash = purchaseFlow.executionState.transactionHash || null
     const status: TransactionStatusUI['status'] =
-      step === 'purchasing' ? 'submitting' : step === 'completed' ? 'confirmed' : step === 'error' ? 'failed' : 'idle'
+      phase === 'executing' ? 'submitting' : phase === 'completed' ? 'confirmed' : phase === 'error' ? 'failed' : 'idle'
     const formattedStatus =
       status === 'submitting'
         ? 'Processing purchase...'
@@ -841,7 +841,7 @@ export function useContentPurchaseUI(
         : status === 'confirmed'
           ? 'Content access granted'
           : status === 'failed'
-            ? (purchaseFlow.flowState.error ? formatWeb3Error(purchaseFlow.flowState.error) : 'Transaction failed')
+            ? (purchaseFlow.executionState.error ? formatWeb3Error(purchaseFlow.executionState.error) : 'Transaction failed')
             : ''
     return {
       status,
@@ -854,8 +854,8 @@ export function useContentPurchaseUI(
         confirmed: status === 'confirmed',
         progressText,
       },
-      retry: purchaseFlow.reset,
-      reset: purchaseFlow.reset,
+      retry: purchaseFlow.retryPayment,
+      reset: purchaseFlow.resetPayment,
       viewTransaction: () => {
         if (hash) {
           const baseUrl = 'https://basescan.org/tx/'
@@ -863,12 +863,12 @@ export function useContentPurchaseUI(
         }
       },
     }
-  }, [purchaseFlow.flowState, purchaseFlow.reset])
+  }, [purchaseFlow.executionState, purchaseFlow.retryPayment, purchaseFlow.resetPayment])
 
-  // Approval status approximated from step
+  // Approval status approximated from execution state
   const approvalStatus: TransactionStatusUI = useMemo(() => {
-    const step = purchaseFlow.flowState.step
-    const status: TransactionStatusUI['status'] = step === 'approving_tokens' ? 'submitting' : step === 'can_purchase' ? 'confirmed' : 'idle'
+    const phase = purchaseFlow.executionState.phase
+    const status: TransactionStatusUI['status'] = phase === 'approving' ? 'submitting' : phase === 'completed' ? 'confirmed' : 'idle'
     const formattedStatus =
       status === 'submitting' ? 'Processing approval...' : status === 'confirmed' ? 'Approval confirmed!' : 'Approval required'
     const progressText = status === 'submitting' ? 'Please confirm the approval transaction' : ''
@@ -887,30 +887,30 @@ export function useContentPurchaseUI(
       reset: () => {},
       viewTransaction: () => {},
     }
-  }, [purchaseFlow.flowState.step])
+  }, [purchaseFlow.executionState.phase])
 
   const successMessage = purchaseFlow.hasAccess ? 'You now have access to this content!' : null
-  const errorMessage = purchaseFlow.flowState.step === 'error' && purchaseFlow.flowState.error ? formatWeb3Error(purchaseFlow.flowState.error) : null
+  const errorMessage = purchaseFlow.executionState.phase === 'error' && purchaseFlow.executionState.error ? formatWeb3Error(purchaseFlow.executionState.error) : null
 
   const canAfford = useMemo(() => {
-    const bal = purchaseFlow.userBalance || BigInt(0)
-    const req = purchaseFlow.requiredAmount || BigInt(0)
-    return bal >= req
-  }, [purchaseFlow.userBalance, purchaseFlow.requiredAmount])
+    const selectedToken = purchaseFlow.selectedToken
+    if (!selectedToken || !purchaseFlow.estimatedCost) return false
+    return (selectedToken.balance || BigInt(0)) >= purchaseFlow.estimatedCost
+  }, [purchaseFlow.selectedToken, purchaseFlow.estimatedCost])
 
   return {
     hasAccess: purchaseFlow.hasAccess,
-    canPurchase: purchaseFlow.flowState.step === 'can_purchase',
+    canPurchase: purchaseFlow.canExecutePayment,
     isLoading: purchaseFlow.isLoading,
     currentStepText,
     content: contentDisplay,
     purchaseActions: {
       canAfford,
-      needsApproval: purchaseFlow.needsApproval,
+      needsApproval: false, // This is handled by the orchestrator
       balanceText,
-      purchaseAction: purchaseFlow.purchase,
-      approveAndPurchaseAction: purchaseFlow.approveAndPurchase,
-      isProcessing: purchaseFlow.isLoading || ['approving_tokens', 'purchasing'].includes(purchaseFlow.flowState.step),
+      purchaseAction: purchaseFlow.executePayment,
+      approveAndPurchaseAction: purchaseFlow.executePayment,
+      isProcessing: purchaseFlow.isLoading || ['approving', 'executing'].includes(purchaseFlow.executionState.phase),
     },
     transactionStatus,
     approvalStatus,

@@ -358,7 +358,7 @@ class SwapPriceCalculator {
  * Use Unified Swap Integration Hook
  * 
  * This is the main hook that provides complete swap orchestration for both
- * OrchestratedContentPurchaseCard and OrchestratedContentPurchaseCard components.
+ * usePaymentFlowOrchestrator and other payment components.
  * It unifies your existing swap infrastructure with production-grade reliability.
  */
 export function useUnifiedSwapIntegration(
@@ -931,7 +931,7 @@ export function useUnifiedSwapIntegration(
 // =============================================================================
 
 /**
- * Adapter for OrchestratedContentPurchaseCard Integration
+ * Adapter for usePaymentFlowOrchestrator Integration
  * Provides swap functionality with emphasis on UX optimization
  */
 export function useSmartCardSwapAdapter(config?: Partial<SwapIntegrationConfig>) {
@@ -943,7 +943,7 @@ export function useSmartCardSwapAdapter(config?: Partial<SwapIntegrationConfig>)
   })
 
   return {
-    // OrchestratedContentPurchaseCard expected interface
+    // usePaymentFlowOrchestrator expected interface
     calculateSwap: swapManager.calculateSwapAnalysis,
     executeSwap: swapManager.executeSwap,
     swapState: swapManager.executionState,
@@ -964,7 +964,7 @@ export function useSmartCardSwapAdapter(config?: Partial<SwapIntegrationConfig>)
 }
 
 /**
- * Adapter for OrchestratedContentPurchaseCard Integration  
+ * Adapter for usePaymentFlowOrchestrator Integration  
  * Provides swap functionality with health-aware orchestration
  */
 export function useOrchestratedCardSwapAdapter(config?: Partial<SwapIntegrationConfig>) {
@@ -977,7 +977,7 @@ export function useOrchestratedCardSwapAdapter(config?: Partial<SwapIntegrationC
   })
 
   return {
-    // OrchestratedContentPurchaseCard expected interface
+    // usePaymentFlowOrchestrator expected interface
     ...swapManager,
     
     // Health-aware features
