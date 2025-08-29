@@ -88,6 +88,7 @@ export interface SubscriptionPurchaseWithApprovalResult {
   readonly startApproval: () => Promise<void>
   readonly executeSubscription: () => Promise<void>
   readonly reset: () => void
+  readonly resetWithRecovery: () => void
   
   // Convenience flags for UI
   readonly isApproving: boolean
@@ -420,6 +421,33 @@ export function useSubscriptionPurchaseWithApproval(
       throw new Error('Requirements not met for subscription')
     }
 
+    // Enhanced validation: Double-check allowance after approval with retry logic
+    if (approveToken.isConfirmed) {
+      let retryCount = 0
+      const maxRetries = 3
+      let allowanceValid = false
+      
+      while (retryCount < maxRetries && !allowanceValid) {
+        // Wait for allowance query to refresh and validate
+        await usdcAllowance.refetch()
+        
+        const currentAllowance = usdcAllowance.data || BigInt(0)
+        if (currentAllowance >= requirements.subscriptionPrice) {
+          allowanceValid = true
+        } else {
+          retryCount++
+          if (retryCount < maxRetries) {
+            // Wait 2 seconds before retrying
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
+        }
+      }
+      
+      if (!allowanceValid) {
+        throw new Error('Allowance not yet updated on-chain after multiple attempts. Please try again in a few moments.')
+      }
+    }
+
     try {
       setPurchaseState(prev => ({
         ...prev,
@@ -448,7 +476,7 @@ export function useSubscriptionPurchaseWithApproval(
       }))
       throw error
     }
-  }, [contractAddresses, creatorAddress, requirements, subscriptionWrite])
+  }, [contractAddresses, creatorAddress, requirements, subscriptionWrite, approveToken.isConfirmed, usdcAllowance])
 
   /**
    * Reset Purchase Flow
@@ -495,6 +523,57 @@ export function useSubscriptionPurchaseWithApproval(
     }
   }, [subscriptionConfirmation.isSuccess, queryClient])
 
+  // ===== TRANSACTION MONITORING =====
+  
+  // Monitor for transaction failures and provide recovery options
+  useEffect(() => {
+    if (subscriptionConfirmation.isError) {
+      const error = subscriptionConfirmation.error
+      let userFriendlyMessage = 'Subscription transaction failed'
+      
+      // Provide specific error messages for common issues
+      if (error?.message?.includes('insufficient funds')) {
+        userFriendlyMessage = 'Insufficient USDC balance for subscription'
+      } else if (error?.message?.includes('allowance')) {
+        userFriendlyMessage = 'USDC allowance insufficient. Please approve again.'
+      } else if (error?.message?.includes('already subscribed')) {
+        userFriendlyMessage = 'You are already subscribed to this creator'
+      } else if (error?.message?.includes('creator not registered')) {
+        userFriendlyMessage = 'Creator is not registered on the platform'
+      }
+      
+      setPurchaseState(prev => ({
+        ...prev,
+        currentStep: SubscriptionPurchaseStep.ERROR,
+        error: new Error(userFriendlyMessage)
+      }))
+    }
+  }, [subscriptionConfirmation.isError, subscriptionConfirmation.error])
+
+  // ===== RECOVERY MECHANISMS =====
+  
+  /**
+   * Enhanced Reset with Recovery Options
+   * 
+   * This function provides intelligent reset based on the current error state
+   */
+  const resetWithRecovery = useCallback(() => {
+    // If we failed during subscription, we might need to re-approve
+    if (purchaseState.currentStep === SubscriptionPurchaseStep.ERROR && 
+        subscriptionConfirmation.isError) {
+      
+      // Check if the error was related to allowance
+      const error = subscriptionConfirmation.error
+      if (error?.message?.includes('allowance')) {
+        // Reset approval state to allow re-approval
+        approveToken.reset()
+      }
+    }
+    
+    // Standard reset
+    reset()
+  }, [purchaseState.currentStep, subscriptionConfirmation.isError, subscriptionConfirmation.error, approveToken, reset])
+
   // ===== RETURN INTERFACE =====
   
   return {
@@ -518,6 +597,7 @@ export function useSubscriptionPurchaseWithApproval(
     startApproval,
     executeSubscription,
     reset,
+    resetWithRecovery, 
 
     // Convenience flags for UI rendering
     isApproving: purchaseState.currentStep === SubscriptionPurchaseStep.APPROVING,

@@ -122,6 +122,20 @@ export const SUBSCRIPTION_MANAGER_ABI = [
   },
   {
     type: 'function',
+    name: 'subscribeToCreatorWithPermit',
+    inputs: [
+      { name: 'creator', type: 'address', internalType: 'address' },
+      { name: 'value', type: 'uint256', internalType: 'uint256' },
+      { name: 'deadline', type: 'uint256', internalType: 'uint256' },
+      { name: 'v', type: 'uint8', internalType: 'uint8' },
+      { name: 'r', type: 'bytes32', internalType: 'bytes32' },
+      { name: 's', type: 'bytes32', internalType: 'bytes32' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
     name: 'cancelSubscription',
     inputs: [
       { name: 'creator', type: 'address', internalType: 'address' },

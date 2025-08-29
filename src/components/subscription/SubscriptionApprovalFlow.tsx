@@ -269,8 +269,8 @@ export function SubscriptionApprovalFlow({
           break
 
         case SubscriptionPurchaseStep.ERROR:
-          // Reset the flow to try again
-          subscriptionFlow.reset()
+          // Use enhanced recovery reset
+          subscriptionFlow.resetWithRecovery()
           break
 
         case SubscriptionPurchaseStep.INSUFFICIENT_BALANCE:
@@ -376,7 +376,7 @@ export function SubscriptionApprovalFlow({
         {/* Secondary Actions */}
         {subscriptionFlow.hasError && (
           <button
-            onClick={subscriptionFlow.reset}
+            onClick={subscriptionFlow.resetWithRecovery}
             className="ml-3 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
             Reset Flow
