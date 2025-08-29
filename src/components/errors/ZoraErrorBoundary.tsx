@@ -22,6 +22,7 @@ import {
   getErrorCategory,
   type ZoraError
 } from '@/lib/utils/zora-errors'
+import { enhancedToast, handleUIError } from '@/lib/utils/toast'
 
 // ===== PROPS INTERFACES =====
 
@@ -282,55 +283,15 @@ export function ZoraErrorDisplay({
   const userMessage = getUserErrorMessage(error)
   const recoverySuggestion = getRecoverySuggestion(error)
 
-  return (
-    <Alert className="border-red-200 bg-red-50">
-      <XCircle className="h-4 w-4 text-red-600" />
-      <AlertDescription className="text-red-800">
-        <div className="space-y-2">
-          <div className="font-medium">{userMessage}</div>
-          
-          {recoverySuggestion && (
-            <div className="text-sm text-red-600">
-              💡 {recoverySuggestion}
-            </div>
-          )}
+  // Show error as toast instead of inline Alert to avoid UI disruption
+  React.useEffect(() => {
+    const message = recoverySuggestion ? `${userMessage}. ${recoverySuggestion}` : userMessage
+    
+    handleUIError(error, 'Zora', onRetry || onReset || undefined)
+  }, [error, userMessage, recoverySuggestion, onRetry, onReset])
 
-          {showDetails && (
-            <details className="text-xs text-gray-600">
-              <summary className="cursor-pointer">Technical Details</summary>
-              <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
-                {error.stack}
-              </pre>
-            </details>
-          )}
-
-          {(onRetry || onReset) && (
-            <div className="flex gap-2 pt-2">
-              {onRetry && (
-                <Button 
-                  onClick={onRetry}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-              )}
-              {onReset && (
-                <Button 
-                  onClick={onReset}
-                  variant="outline"
-                  size="sm"
-                >
-                  Reset
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </AlertDescription>
-    </Alert>
-  )
+  // Return null to avoid rendering anything inline
+  return null
 }
 
 /**

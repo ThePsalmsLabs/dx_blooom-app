@@ -59,6 +59,7 @@ import { cn } from '@/lib/utils'
 // Import your actual hooks and providers
 import { useMiniApp } from '@/contexts/MiniAppProvider'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing sophisticated components
 import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
@@ -301,7 +302,6 @@ function MiniAppHomeLoadingSkeleton() {
 function MiniAppHomeCore() {
   // Production state management
   const router = useRouter()
-  const { address, isConnected } = useAccount()
   const [homeState, setHomeState] = useState<MiniAppHomeState>({
     selectedQuickAction: null,
     showStats: true,
@@ -317,9 +317,14 @@ function MiniAppHomeCore() {
     hasSocialContext 
   } = useMiniApp()
   
-  // Only check creator registration if wallet is connected
+  // Get wallet connection status using MiniApp-specific hook
+  const walletUI = useMiniAppWalletUI()
+  const fullAddress = walletUI.address
+  const isConnected = walletUI.isConnected
+  
+  // Only check creator registration if wallet is connected - use full address
   const { data: isCreator, isLoading: creatorLoading } = useIsCreatorRegistered(
-    isConnected ? address : undefined
+    isConnected ? (fullAddress as `0x${string}` | undefined) : undefined
   )
   
   const { trackInteraction } = useMiniAppAnalytics()

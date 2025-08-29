@@ -96,6 +96,7 @@ import {
 
 // Import utilities and types
 import { cn, formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
+import { enhancedToast, handleUIError } from '@/lib/utils/toast'
 import { categoryToString } from '@/types/contracts'
 import type { Address } from 'viem'
 
@@ -786,15 +787,14 @@ export function UnifiedPurchaseFlow({
             </Alert>
           )}
 
-          {/* Error Display */}
-          {flowState.error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {flowState.error.message}
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* Error handling via toast - no inline UI disruption */}
+          {flowState.error && (() => {
+            handleUIError(flowState.error, 'Transaction', () => {
+              // Reset error state to allow retry
+              // This would need to be implemented in the flow state management
+            })
+            return null // Don't render anything inline
+          })()}
         </div>
 
         <DialogFooter className="flex-col space-y-2">

@@ -99,7 +99,8 @@ import React, {
   
   // Import your existing hooks for seamless integration
   import { useIsCreatorRegistered } from '@/hooks/contracts/core'
-  import { useWalletConnectionUI } from '@/hooks/ui/integration'
+  import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+  import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
   
   // ================================================
   // ENHANCED MINIAPP LAYOUT TYPES
@@ -605,14 +606,19 @@ import React, {
    * your existing AppLayout while adding MiniApp-specific optimizations.
    */
   function MiniAppLayoutContent({ children }: { children: ReactNode }) {
-	const { address, isConnected } = useAccount()
 	const chainId = useChainId()
 	const pathname = usePathname()
 	const router = useRouter()
 	
-	// Integration with your existing hooks
-	const { data: isCreatorRegistered } = useIsCreatorRegistered(address || '0x0')
-	const walletUI = useWalletConnectionUI()
+	// Use MiniApp-specific wallet UI hook for proper state synchronization
+	const walletUI = useMiniAppWalletUI()
+	
+	// Get the FULL address from walletUI, not the formatted one
+	const fullAddress = walletUI.address
+	const isConnected = walletUI.isConnected
+	
+	// Integration with your existing hooks - use full address for contract calls
+	const { data: isCreatorRegistered } = useIsCreatorRegistered(fullAddress as `0x${string}` | undefined)
 	
 	// MiniApp-specific hooks
 	const miniAppState = useMiniAppState()
@@ -708,10 +714,10 @@ import React, {
 	
 	// Determine user role using your existing patterns
 	const userRole = useMemo(() => {
-	  if (!isConnected || !address) return 'disconnected'
+	  if (!isConnected || !fullAddress) return 'disconnected'
 	  if (isCreatorRegistered) return 'creator'
 	  return 'consumer'
-	}, [isConnected, address, isCreatorRegistered])
+	}, [isConnected, fullAddress, isCreatorRegistered])
 	
 	// Apply device-specific optimizations
 	const layoutClassName = useMemo(() => {
@@ -754,33 +760,34 @@ import React, {
 		{/* Performance Monitor (development only) */}
 		<PerformanceMonitor onPerformanceUpdate={handlePerformanceUpdate} />
 		
-		{/* Your existing AppLayout enhanced for MiniApp */}
-		<AppLayout
-		  className="miniapp-layout"
-		  showNavigation={!deviceContext.isMobile || layoutState.connectionQuality !== 'poor'}
-		  showHeader={true}
-		  headerContent={
-			layoutState.socialContext.isAvailable && socialProfile ? (
-			  <div className="flex items-center space-x-2">
-				<Avatar className="h-6 w-6">
-				  <AvatarImage src={socialProfile.farcasterProfile?.pfpUrl} />
-				  <AvatarFallback>
-					{socialProfile.farcasterProfile?.displayName?.charAt(0) || '?'}
-				  </AvatarFallback>
-				</Avatar>
-				<span className="text-sm font-medium hidden sm:inline">
-				  {socialProfile.farcasterProfile?.displayName}
-				</span>
-				{layoutState.capabilities.canShare && (
-				  <Badge variant="secondary" className="text-xs">
-					<Share2 className="h-3 w-3 mr-1" />
-					Social
-				  </Badge>
-				)}
-			  </div>
-			) : undefined
-		  }
-		>
+		{/* Your existing AppLayout enhanced for MiniApp with wallet context */}
+		<MiniAppWalletProvider>
+		  <AppLayout
+			className="miniapp-layout"
+			showNavigation={!deviceContext.isMobile || layoutState.connectionQuality !== 'poor'}
+			showHeader={true}
+			headerContent={
+			  layoutState.socialContext.isAvailable && socialProfile ? (
+				<div className="flex items-center space-x-2">
+				  <Avatar className="h-6 w-6">
+					<AvatarImage src={socialProfile.farcasterProfile?.pfpUrl} />
+					<AvatarFallback>
+					  {socialProfile.farcasterProfile?.displayName?.charAt(0) || '?'}
+					</AvatarFallback>
+				  </Avatar>
+				  <span className="text-sm font-medium hidden sm:inline">
+					{socialProfile.farcasterProfile?.displayName}
+				  </span>
+				  {layoutState.capabilities.canShare && (
+					<Badge variant="secondary" className="text-xs">
+					  <Share2 className="h-3 w-3 mr-1" />
+					  Social
+					</Badge>
+				  )}
+				</div>
+			  ) : undefined
+			}
+		  >
 		  {/* Enhanced content area with MiniApp optimizations */}
 		  <div className="relative">
 			{/* Enhanced content wrapper */}
@@ -823,7 +830,8 @@ import React, {
 			  </div>
 			)}
 		  </div>
-		</AppLayout>
+		  </AppLayout>
+		</MiniAppWalletProvider>
 		
 		{/* Enhanced toast notifications for MiniApp */}
 		<Toaster />
@@ -929,6 +937,41 @@ import React, {
 	  
 	  const initializeConfig = async () => {
 		try {
+		  // Pre-clear any potentially corrupted wagmi state
+		  if (typeof window !== 'undefined') {
+			const wagmiKeys = [
+			  'wagmi.store',
+			  'wagmi.cache', 
+			  'wagmi.connections',
+			  'wagmi.state',
+			  'wagmi.account',
+			  'wagmi.chainId',
+			  'wagmi.connector',
+			  'dxbloom-miniapp-wagmi'
+			]
+			
+			// Clear any corrupted state before initializing
+			wagmiKeys.forEach(key => {
+			  try {
+				localStorage.removeItem(key)
+				sessionStorage.removeItem(key)
+			  } catch (e) {
+				// Ignore individual key removal errors
+			  }
+			})
+			
+			// Clear any other wagmi-related items
+			Object.keys(localStorage).forEach(key => {
+			  if (key.includes('wagmi') || key.includes('wallet') || key.includes('connector')) {
+				try {
+				  localStorage.removeItem(key)
+				} catch (e) {
+				  // Ignore errors
+				}
+			  }
+			})
+		  }
+		  
 		  const config = await getEnhancedWagmiConfig()
 		  
 		  if (mounted) {

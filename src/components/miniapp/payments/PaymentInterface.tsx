@@ -55,6 +55,7 @@ import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
 // Import utilities following your patterns
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
+import { enhancedToast, handleUIError } from '@/lib/utils/toast'
 
 // ===== PAYMENT INTERFACE TYPES =====
 
@@ -809,63 +810,39 @@ export function PaymentInterface({
     )
   }
   
-  // ===== ERROR DISPLAY =====
+  // ===== ERROR HANDLING WITH TOASTS =====
   
-  const ErrorDisplay = () => {
-    const hasErrors = purchaseFlow.flowState.error || purchaseError || shareError
-    
-    if (!hasErrors) return null
-    
-    return (
-      <div className="space-y-2">
-        {/* Purchase flow errors */}
-        {purchaseFlow.flowState.error && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-sm">
-              {purchaseFlow.flowState.error.message}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {/* Component-level purchase errors */}
-        {purchaseError && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-sm">
-              {purchaseError}
-              <Button
-                variant="link"
-                size="sm"
-                className="p-0 h-auto text-red-600 hover:text-red-700 ml-2"
-                onClick={() => setPurchaseError(null)}
-              >
-                Dismiss
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {/* Share errors */}
-        {shareError && (
-          <Alert className="border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-sm">
-              {shareError}
-              <Button
-                variant="link"
-                size="sm"
-                className="p-0 h-auto text-orange-600 hover:text-orange-700 ml-2"
-                onClick={() => setShareError(null)}
-              >
-                Dismiss
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-    )
-  }
+  // Handle purchase flow errors with toast notifications
+  React.useEffect(() => {
+    if (purchaseFlow.flowState.error) {
+      handleUIError(purchaseFlow.flowState.error, 'Purchase', () => {
+        // Retry purchase flow
+        purchaseFlow.retryPurchase?.()
+      })
+    }
+  }, [purchaseFlow.flowState.error, purchaseFlow.retryPurchase])
+  
+  // Handle component-level purchase errors
+  React.useEffect(() => {
+    if (purchaseError) {
+      enhancedToast.paymentError(purchaseError, () => {
+        setPurchaseError(null)
+        // Could add retry logic here
+      })
+    }
+  }, [purchaseError])
+  
+  // Handle share errors
+  React.useEffect(() => {
+    if (shareError) {
+      enhancedToast.warning(shareError, {
+        action: {
+          label: 'Dismiss',
+          onClick: () => setShareError(null)
+        }
+      })
+    }
+  }, [shareError])
   
   // ===== MAIN RENDER =====
   
@@ -897,7 +874,7 @@ export function PaymentInterface({
           
           <PurchaseStrategyDisplay />
           
-          <ErrorDisplay />
+          {/* Error handling now done via toast notifications - no inline UI disruption */}
           
           {variant === 'expanded' && <PerformanceMetrics />}
         </CardContent>

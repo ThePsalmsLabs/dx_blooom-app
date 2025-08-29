@@ -103,6 +103,7 @@ import {
 } from '@/components/ui/sheet'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn, formatCurrency, formatNumber } from '@/lib/utils'
+import { enhancedToast, handleUIError } from '@/lib/utils/toast'
 
 // Import our architectural layers
 import { useAdvancedContentManagement } from '@/hooks/contracts/content/useAdvancedContentManagement'
@@ -447,6 +448,25 @@ export function ContentManagementDashboard({
     }
   }, [selectedContent, contentManagement, creatorContent])
 
+  // Transaction Status - Now handled via toast notifications
+  React.useEffect(() => {
+    if (contentManagement.isLoading) {
+      enhancedToast.loading('Processing content update...')
+    }
+  }, [contentManagement.isLoading])
+
+  React.useEffect(() => {
+    if (contentManagement.isConfirmed) {
+      enhancedToast.success('Content updated successfully!')
+    }
+  }, [contentManagement.isConfirmed])
+
+  React.useEffect(() => {
+    if (contentManagement.error) {
+      handleUIError(contentManagement.error, 'Content Update')
+    }
+  }, [contentManagement.error])
+
   // Loading state
   if (creatorContent.isLoading) {
     return (
@@ -789,33 +809,6 @@ export function ContentManagementDashboard({
         </Card>
       )}
 
-      {/* Transaction Status Display */}
-      {contentManagement.isLoading && (
-        <Alert>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <AlertDescription>
-            Processing content update...
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {contentManagement.isConfirmed && (
-        <Alert className="border-green-200 bg-green-50">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            Content updated successfully!
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {contentManagement.error && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
-            {contentManagement.error.message}
-          </AlertDescription>
-        </Alert>
-      )}
     </div>
   )
 }

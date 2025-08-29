@@ -48,6 +48,7 @@ import { SocialContextIntegration } from '@/components/miniapp/MiniAppContentPur
 
 // Import your existing UI components and utilities
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { enhancedToast, handleUIError } from '@/lib/utils/toast'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -560,27 +561,18 @@ export function MiniAppBrowseIntegration({
   }
   
   /**
-   * Error State Rendering
+   * Error State Handling
    * 
-   * This provides comprehensive error handling that integrates with
-   * your existing error boundary system while offering recovery options.
+   * Show error as toast notification instead of inline Alert
+   * to avoid UI disruption.
    */
-  if (contentError) {
-    return (
-      <div className={`miniapp-browse-integration-error ${className}`}>
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>Unable to load content. Please try again.</span>
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
+  React.useEffect(() => {
+    if (contentError) {
+      handleUIError(contentError, 'Content Loading', handleRefresh)
+    }
+  }, [contentError, handleRefresh])
+  
+  // Don't render error state inline - handled by toast
   
   // ===== MAIN COMPONENT RENDERING =====
   

@@ -750,6 +750,7 @@ function ContentDisplayCard({
               content={content}
               creatorAddress={content.creator}
               contentId={contentId}
+              userAddress={userAddress} // Pass userAddress for access control
               onMintSuccess={(contractAddress, tokenId) => {
                 console.log('Content minted as NFT:', { contractAddress, tokenId })
                 // Refresh data after successful mint

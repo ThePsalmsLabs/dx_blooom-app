@@ -161,6 +161,101 @@ function categorizeError(error: Error): ConnectionError {
  */
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+/**
+ * Enhanced wagmi state reset function
+ * This function performs a comprehensive reset of wagmi's internal state
+ * to fix the connections.get error and other state corruption issues
+ */
+const resetWagmiState = async (config: any) => {
+  try {
+    console.log('🔄 Performing comprehensive wagmi state reset...')
+    
+    // Step 1: Clear wagmi storage
+    const storage = config.storage
+    if (storage) {
+      try {
+        await storage.removeItem('dxbloom-miniapp-wagmi')
+        await storage.removeItem('wagmi.store')
+        await storage.removeItem('wagmi.cache')
+        await storage.removeItem('wagmi.connections')
+        await storage.removeItem('wagmi.state')
+      } catch (storageError) {
+        console.warn('Could not clear wagmi storage:', storageError)
+      }
+    }
+
+    // Step 2: Clear browser storage
+    if (typeof window !== 'undefined') {
+      try {
+        // Clear all wagmi-related localStorage items
+        const keysToRemove = [
+          'dxbloom-miniapp-wagmi',
+          'wagmi.store',
+          'wagmi.cache',
+          'wagmi.connections',
+          'wagmi.state',
+          'wagmi.account',
+          'wagmi.chainId',
+          'wagmi.connector'
+        ]
+        
+        keysToRemove.forEach(key => {
+          try {
+            localStorage.removeItem(key)
+          } catch (e) {
+            // Ignore individual key removal errors
+          }
+        })
+        
+        // Clear any connection-specific storage
+        Object.keys(localStorage).forEach(key => {
+          if (key.includes('wagmi') || key.includes('wallet') || key.includes('connector')) {
+            try {
+              localStorage.removeItem(key)
+            } catch (e) {
+              // Ignore individual key removal errors
+            }
+          }
+        })
+        
+        // Clear sessionStorage as well
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes('wagmi') || key.includes('wallet') || key.includes('connector')) {
+            try {
+              sessionStorage.removeItem(key)
+            } catch (e) {
+              // Ignore individual key removal errors
+            }
+          }
+        })
+      } catch (storageError) {
+        console.warn('Could not clear browser storage:', storageError)
+      }
+    }
+
+    // Step 3: Reset wagmi internal state if possible
+    if (config.state && typeof config.state.set === 'function') {
+      try {
+        // Reset to initial state
+        config.state.set({
+          connections: new Map(),
+          accounts: [],
+          chainId: undefined,
+          connector: undefined,
+          status: 'disconnected'
+        })
+      } catch (stateError) {
+        console.warn('Could not reset wagmi internal state:', stateError)
+      }
+    }
+
+    console.log('✅ Wagmi state reset completed')
+  } catch (resetError) {
+    console.error('Failed to reset wagmi state:', resetError)
+    throw resetError
+  }
+}
+
 // =============================================================================
 // MAIN HOOK IMPLEMENTATION
 // =============================================================================
@@ -179,51 +274,22 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
   const [isRecovering, setIsRecovering] = useState(false)
   const [recoveryAttempts, setRecoveryAttempts] = useState(0)
   const lastErrorRef = useRef<string>('')
+  const recoveryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // =============================================================================
   // ERROR HANDLING AND RECOVERY
   // =============================================================================
 
   /**
-   * Reset the wagmi store when it gets corrupted
-   */
-  const resetWagmiStore = useCallback(async () => {
-    try {
-      // Clear the wagmi storage
-      const storage = config.storage
-      if (storage) {
-        await storage.removeItem('dxbloom-miniapp-wagmi')
-      }
-
-      // Clear any browser storage that might be corrupted
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.removeItem('dxbloom-miniapp-wagmi')
-          localStorage.removeItem('wagmi.store')
-          localStorage.removeItem('wagmi.cache')
-          
-          // Clear any connection-specific storage
-          Object.keys(localStorage).forEach(key => {
-            if (key.includes('wagmi') || key.includes('wallet') || key.includes('connector')) {
-              localStorage.removeItem(key)
-            }
-          })
-        } catch (storageError) {
-          console.warn('Could not clear localStorage:', storageError)
-        }
-      }
-
-      console.log('Wagmi store reset completed')
-    } catch (resetError) {
-      console.error('Failed to reset wagmi store:', resetError)
-      throw resetError
-    }
-  }, [config])
-
-  /**
-   * Recovery mechanism for connection errors
+   * Enhanced recovery mechanism for connection errors
    */
   const recover = useCallback(async () => {
+    // Clear any existing recovery timeout
+    if (recoveryTimeoutRef.current) {
+      clearTimeout(recoveryTimeoutRef.current)
+      recoveryTimeoutRef.current = null
+    }
+
     // Use a ref to track current recovery attempts to avoid dependency issues
     const currentAttempts = recoveryAttempts
     if (currentAttempts >= MAX_RECOVERY_ATTEMPTS) {
@@ -235,12 +301,12 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
     setRecoveryAttempts(prev => prev + 1)
 
     try {
-      console.log(`Recovery attempt ${currentAttempts + 1}/${MAX_RECOVERY_ATTEMPTS}`)
+      console.log(`🔄 Recovery attempt ${currentAttempts + 1}/${MAX_RECOVERY_ATTEMPTS}`)
 
-      // Step 1: Reset the wagmi store
-      await resetWagmiStore()
+      // Step 1: Perform comprehensive wagmi state reset
+      await resetWagmiState(config)
 
-      // Step 2: Wait a bit for the reset to take effect
+      // Step 2: Wait for the reset to take effect
       await delay(RECOVERY_DELAY)
 
       // Step 3: Try to reconnect using the last successful configuration
@@ -253,7 +319,7 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
       // Step 4: Clear the error if we got this far
       setError(null)
       
-      console.log('Recovery completed successfully')
+      console.log('✅ Recovery completed successfully')
 
     } catch (recoveryError) {
       console.error('Recovery failed:', recoveryError)
@@ -261,7 +327,7 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
     } finally {
       setIsRecovering(false)
     }
-  }, [resetWagmiStore, reconnect]) // Removed recoveryAttempts dependency
+  }, [config, reconnect, recoveryAttempts])
 
   /**
    * Enhanced error handling with automatic recovery
@@ -281,14 +347,15 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
 
       // Auto-recovery for specific errors
       if (categorized.code === 'CONNECTIONS_MAP_ERROR' && recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
-        console.log('Automatically attempting recovery for connections.get error')
+        console.log('🚨 Automatically attempting recovery for connections.get error')
+        
         // Use setTimeout with a stable reference to avoid dependency issues
-        setTimeout(() => {
+        recoveryTimeoutRef.current = setTimeout(() => {
           recover()
         }, 500)
       }
     }
-  }, [connectError, recoveryAttempts]) // Removed recover dependency
+  }, [connectError, recoveryAttempts, recover])
 
   // Reset recovery attempts on successful connection
   useEffect(() => {
@@ -296,8 +363,23 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
       setError(null)
       setRecoveryAttempts(0)
       lastErrorRef.current = ''
+      
+      // Clear any pending recovery timeout
+      if (recoveryTimeoutRef.current) {
+        clearTimeout(recoveryTimeoutRef.current)
+        recoveryTimeoutRef.current = null
+      }
     }
   }, [isConnected, error])
+
+  // Cleanup recovery timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (recoveryTimeoutRef.current) {
+        clearTimeout(recoveryTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // =============================================================================
   // CONNECTION ACTIONS
@@ -321,18 +403,24 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
 
       // Auto-recover for specific errors
       if (categorized.recoverable && recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
-        setTimeout(() => {
+        recoveryTimeoutRef.current = setTimeout(() => {
           recover()
         }, 1000)
       }
     }
-  }, [wagmiConnect, connectors, recoveryAttempts]) // Removed recover dependency
+  }, [wagmiConnect, connectors, recoveryAttempts, recover])
 
   const disconnect = useCallback(async () => {
     try {
       setError(null)
       await wagmiDisconnect()
       setRecoveryAttempts(0)
+      
+      // Clear any pending recovery timeout
+      if (recoveryTimeoutRef.current) {
+        clearTimeout(recoveryTimeoutRef.current)
+        recoveryTimeoutRef.current = null
+      }
     } catch (disconnectError) {
       setError(categorizeError(disconnectError as Error))
     }
@@ -356,11 +444,17 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
     if (error?.recoverable) {
       await recover()
     }
-  }, [error]) // Removed recover dependency
+  }, [error, recover])
 
   const clearError = useCallback(() => {
     setError(null)
     lastErrorRef.current = ''
+    
+    // Clear any pending recovery timeout
+    if (recoveryTimeoutRef.current) {
+      clearTimeout(recoveryTimeoutRef.current)
+      recoveryTimeoutRef.current = null
+    }
   }, [])
 
   // =============================================================================

@@ -26,8 +26,9 @@
 "use client";
 
 import { useMemo, useCallback, useState, useEffect } from 'react'
-import { useAccount, useChainId, useDisconnect, useSwitchChain, useConnect } from 'wagmi'
-import { useLogin } from '@privy-io/react-auth'
+import { useChainId } from 'wagmi'
+import { useLogin, useLogout, usePrivy } from '@privy-io/react-auth'
+import { useMiniAppWalletContext } from '@/contexts/MiniAppWalletContext'
 import { type Address } from 'viem'
 
 // Import utility functions for data formatting
@@ -338,7 +339,8 @@ export interface CreatorDashboardUI {
 export interface EnhancedWalletConnectionUI {
   readonly isConnected: boolean
   readonly isConnecting: boolean
-  readonly formattedAddress: string | null
+  readonly address?: string | null // Full address for contract calls
+  readonly formattedAddress: string | null // Formatted address for UI display
   readonly chainName: string
   readonly isCorrectNetwork: boolean
   readonly accountType: 'disconnected' | 'eoa' | 'smart_account'
@@ -377,38 +379,41 @@ export interface EnhancedWalletConnectionUI {
  * Both switches look the same, but only one actually turns on the lights.
  */
 export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
-  // Core Wagmi hooks for wallet state
-  const { address, isConnected, isConnecting } = useAccount()
-  const { disconnect } = useDisconnect()
+  // Always call all hooks first to avoid conditional hook calls
+  const miniAppContext = useMiniAppWalletContext()
+  
+  // Use ONLY Privy hooks for wallet management
+  const { user, ready, authenticated, login, logout } = usePrivy()
+  
+  // Get chainId from wagmi for network info (read-only)
   const chainId = useChainId()
-  const { switchChain } = useSwitchChain()
-  const { connectAsync, connectors } = useConnect()
   
-  // Privy modal control
-  // This hook provides the login function that actually
-  // displays the wallet selection modal to users
-  const { login } = useLogin()
+  // If we're in MiniApp context, use the MiniApp wallet UI
+  if (miniAppContext?.isMiniAppContext) {
+    return miniAppContext.walletUI
+  }
   
-  // Debug logging to help identify the issue (disabled for production)
-  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
-    console.log('🔍 useWalletConnectionUI Debug:', {
-      login: !!login,
-      loginType: typeof login,
-      connectors: connectors?.length,
+  // Extract wallet info from Privy user object
+  const isConnected = authenticated && Boolean(user?.wallet?.address)
+  const isConnecting = !ready
+  const address = user?.wallet?.address || null
+  
+  // Debug logging to help identify the issue (always enabled in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 useWalletConnectionUI Debug (Privy-only):', {
+      ready,
+      authenticated,
       isConnected,
       isConnecting,
-      address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null
+      userWallet: user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : null,
+      userEmail: user?.email?.address || null,
+      hasUser: !!user,
+      userLinkedAccounts: user?.linkedAccounts?.length || 0
     })
   }
   
-  const hasWalletConnectProjectId = Boolean(
-    (process.env.NEXT_PUBLIC_REOWN_PROJECT_ID && process.env.NEXT_PUBLIC_REOWN_PROJECT_ID.length > 0) ||
-    (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID.length > 0)
-  )
-  
   // State for user feedback and error handling
   const [error, setError] = useState<string | null>(null)
-  const [showWalletModal, setShowWalletModal] = useState(false)
   
   /**
    * Network Detection and Validation
@@ -450,101 +455,72 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
    * more user-friendly version (like 0x742d...AF3f) for display.
    */
   const formattedAddress = useMemo(() => {
-    return address ? formatAddress(address) : null
+    return address ? formatAddress(address as `0x${string}`) : null
   }, [address])
   
   /**
-   * Connection Action - The Core Fix
+   * Pure Privy Connection Action
    * 
-   * This is where the magic happens. Previously, your hook just logged
-    * to console. Now it checks if the Privy modal is available and
- * actually opens it when users click "Connect Wallet".
- * 
- * The conditional check ensures we don't crash if Privy isn't
- * properly configured, and provides helpful error messages for debugging.
+   * This function uses ONLY Privy's login system for wallet connection.
+   * No more hybrid wagmi + Privy approach.
    */
   const handleConnect = useCallback(() => {
-    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
-      console.log('🚀 handleConnect called', {
-        login: !!login,
-        hasWalletConnectProjectId,
-        environment: process.env.NODE_ENV
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚀 Privy-only connect called', {
+        ready,
+        authenticated,
+        hasLogin: !!login
       })
     }
     
     try {
       setError(null)
       
-      // Prefer custom modal if WalletConnect project ID is missing to avoid Privy runtime issues
-      if (process.env.NODE_ENV === 'development' && !hasWalletConnectProjectId) {
-        if (process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
-          console.log('⚠️ Using custom modal due to missing WalletConnect project ID')
-        }
-        setShowWalletModal(true)
-        return
-      }
-
-      // Check if Privy login is available
+      // Use Privy login exclusively
       if (login) {
-        if (process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
-          console.log('✅ Privy login available, opening...')
-        }
-        // This actually opens the wallet selection modal!
+        console.log('✅ Opening Privy login modal')
         login()
       } else {
-        if (process.env.NEXT_PUBLIC_DEBUG_WALLET === 'true') {
-          console.log('❌ Privy login not available, falling back to custom modal')
-        }
-        // If login isn't available, fall back to custom modal
-        if (process.env.NODE_ENV === 'development') {
-          setShowWalletModal(true)
-        }
+        console.error('❌ Privy login not available')
+        setError('Wallet connection system not available')
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet. Please try again.'
-      console.error('💥 Wallet connection error:', err)
-      setError(errorMessage)
-      // Fallback to custom modal only in dev
-      if (process.env.NODE_ENV === 'development') {
-        setShowWalletModal(true)
-      }
-    }
-  }, [login, hasWalletConnectProjectId])
-
-  /**
-   * Handle Connector Selection for Custom Modal
-   */
-  const handleConnectorSelect = useCallback(async (connector: Connector) => {
-    try {
-      setError(null)
-      await connectAsync({ connector })
-      setShowWalletModal(false)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet'
+      console.error('💥 Privy connection error:', err)
       setError(errorMessage)
-      console.error('Connector selection error:', err)
     }
-  }, [connectAsync])
+  }, [login, ready, authenticated])
+
+  /**
+   * Handle Connector Selection (Privy-only, no more wagmi connectors)
+   */
+  const handleConnectorSelect = useCallback((connector: Connector) => {
+    // In pure Privy mode, we don't use wagmi connectors
+    // Just trigger Privy login directly
+    console.log('🔗 Connector selected, using Privy login instead')
+    handleConnect()
+  }, [handleConnect])
   
   /**
-   * Network Switching Action
+   * Network Switching Action (Privy-only)
    * 
-   * This function helps users switch to a supported network if they're
-   * connected to the wrong one. It uses Wagmi's switchChain function
-   * to prompt their wallet to change networks.
+   * In Privy-only mode, we can't directly switch networks via wagmi.
+   * We'll ask users to switch manually in their wallet.
    */
   const handleSwitchNetwork = useCallback(() => {
     try {
       setError(null)
       
-      // Default to Base Sepolia (chain ID 84532) for testing
-      // Change to 8453 for Base Mainnet when contracts are deployed
-      switchChain({ chainId: 84532 })
+      console.log('📡 Network switch requested - asking user to switch manually')
+      
+      // Show user-friendly message about manual network switching
+      alert('Please switch to Base Sepolia (Chain ID: 84532) in your wallet')
+      
     } catch (err) {
       setError('Failed to switch networks. Please try manually in your wallet.')
       console.error('Network switch error:', err)
     }
-  }, [switchChain])
+  }, [])
   
   /**
    * Error Recovery Action
@@ -582,14 +558,51 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     isConnected,
     isConnecting,
     
-    // Display formatting
-    formattedAddress,
+    // Address information
+    address, // Full address for contract calls
+    formattedAddress, // Formatted address for UI display
     chainName,
     isCorrectNetwork,
     
-    // Action functions - these now actually work!
-          connect: handleConnect,        // This opens the Privy modal or custom modal
-    disconnect: () => disconnect(), // This disconnects the wallet
+    // Action functions - Pure Privy only!
+    connect: handleConnect,        // Opens Privy login modal
+    disconnect: async () => {
+      console.log('🔌 Pure Privy disconnect called', {
+        authenticated,
+        hasUser: !!user,
+        userWallet: user?.wallet?.address,
+        ready
+      })
+      
+      try {
+        // Check if user is actually authenticated before trying to logout
+        if (!authenticated) {
+          console.log('⚠️ User already logged out, skipping logout call')
+          return
+        }
+        
+        if (!ready) {
+          console.log('⚠️ Privy not ready, skipping logout call')
+          return
+        }
+        
+        // Use ONLY Privy logout - no more wagmi disconnect
+        console.log('📤 Calling Privy logout...')
+        await logout()
+        console.log('✅ Successfully logged out from Privy')
+      } catch (error) {
+        console.error('❌ Error during Privy logout:', error)
+        
+        // Check if it's a 400 error (session already invalid)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
+          console.log('ℹ️ Session was already invalid (400 error), treating as successful logout')
+          return // Don't show error for invalid session
+        }
+        
+        setError('Failed to disconnect. Please try again.')
+      }
+    }, // Pure Privy disconnect with enhanced debugging
     switchNetwork: handleSwitchNetwork, // This prompts network switching
     
     // Error handling
@@ -608,10 +621,10 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     isUpgrading: false,
     showSmartAccountBenefits: false,
     
-    // Custom modal state
-    showWalletModal,
-    setShowWalletModal,
-    connectors,
+    // Custom modal state (disabled in pure Privy mode)
+    showWalletModal: false, // Always false since we only use Privy modal
+    setShowWalletModal: () => {}, // No-op since we don't use custom modal
+    connectors: [], // Empty array since we don't use wagmi connectors
     handleConnectorSelect
   }
 }

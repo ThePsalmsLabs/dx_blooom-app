@@ -107,7 +107,7 @@ import { useContentById, useCreatorProfile } from '@/hooks/contracts/core'
 import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 import { type Address } from 'viem'
 import { categoryToString, type ContentWithMetadata } from '@/types/contracts'
-import { ContentNFTPromotion } from '@/components/content/ContentNFTPromotion'
+import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
 import { toast } from 'sonner'
 
 // ===== COMPONENT INTERFACE DEFINITIONS =====
@@ -828,10 +828,12 @@ function ContentCard({
                     <Badge variant="secondary">
                       {categoryToString(content.category)}
                     </Badge>
-                    {isCreator && contentWithMetadata && (
-                      <ContentNFTPromotion
-                        content={contentWithMetadata}
+                    {isCreator && (
+                      <ContentNFTPromotionAdapter
+                        content={content}
                         creatorAddress={content.creator}
+                        contentId={contentId}
+                        userAddress={connectedAddress}
                         onMintSuccess={(contractAddress, tokenId) => {
                           toast.success('Content minted as NFT!')
                         }}
@@ -895,11 +897,13 @@ function ContentCard({
             {formatRelativeTime(content.creationTime)}
           </div>
           
-          {isCreator && contentWithMetadata && (
+          {isCreator && (
             <div className="flex justify-center">
-              <ContentNFTPromotion
-                content={contentWithMetadata}
+              <ContentNFTPromotionAdapter
+                content={content}
                 creatorAddress={content.creator}
+                contentId={contentId}
+                userAddress={connectedAddress}
                 onMintSuccess={(contractAddress, tokenId) => {
                   toast.success('Content minted as NFT!')
                 }}

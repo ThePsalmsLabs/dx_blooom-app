@@ -63,6 +63,7 @@ interface ContentNFTPromotionAdapterProps {
   readonly className?: string
   readonly onMintSuccess?: (contractAddress: Address, tokenId: bigint) => void
   readonly contentId?: bigint // Optional: if you have the contentId from elsewhere
+  readonly userAddress?: string // Required for access control verification
 }
 
 export function ContentNFTPromotionAdapter({
@@ -70,14 +71,16 @@ export function ContentNFTPromotionAdapter({
   creatorAddress,
   className,
   onMintSuccess,
-  contentId
+  contentId,
+  userAddress
 }: ContentNFTPromotionAdapterProps) {
   
   // Use the hook to handle type transformation and validation
   const { contentWithMetadata, isReady, error, canMint } = useContentNFTPromotion({
     content,
     contentId,
-    creatorAddress
+    creatorAddress,
+    userAddress
   })
 
   // Show loading state while hook is processing

@@ -8,7 +8,7 @@
 
 import { useCallback, useMemo } from 'react'
 import { type Address } from 'viem'
-import { useCreatorProfile } from '@/hooks/contracts/core'
+import { useCreatorProfile, useHasContentAccess } from '@/hooks/contracts/core'
 import type { Content, ContentWithMetadata } from '@/types/contracts'
 import { formatCurrency, formatRelativeTime } from '@/lib/utils'
 
@@ -16,6 +16,7 @@ interface UseContentNFTPromotionProps {
   readonly content: Content
   readonly contentId?: bigint
   readonly creatorAddress?: Address
+  readonly userAddress?: string // Required for access control
 }
 
 interface UseContentNFTPromotionReturn {
@@ -28,11 +29,18 @@ interface UseContentNFTPromotionReturn {
 export function useContentNFTPromotion({
   content,
   contentId,
-  creatorAddress
+  creatorAddress,
+  userAddress
 }: UseContentNFTPromotionProps): UseContentNFTPromotionReturn {
   
   // Get creator profile if we have a creator address
   const creatorProfileQuery = useCreatorProfile(creatorAddress)
+  
+  // Check if user has access to the content - CRITICAL for security
+  const accessControl = useHasContentAccess(
+    userAddress as Address | undefined, 
+    contentId
+  )
   
   // Transform content to ContentWithMetadata format
   const contentWithMetadata = useMemo((): ContentWithMetadata | null => {
@@ -85,8 +93,9 @@ export function useContentNFTPromotion({
   // Determine if the component is ready to render
   const isReady = useMemo(() => {
     return contentWithMetadata !== null && 
-           (!creatorAddress || creatorProfileQuery.isSuccess || creatorProfileQuery.isError)
-  }, [contentWithMetadata, creatorAddress, creatorProfileQuery.isSuccess, creatorProfileQuery.isError])
+           (!creatorAddress || creatorProfileQuery.isSuccess || creatorProfileQuery.isError) &&
+           (!userAddress || !contentId || accessControl.isSuccess || accessControl.isError)
+  }, [contentWithMetadata, creatorAddress, creatorProfileQuery.isSuccess, creatorProfileQuery.isError, userAddress, contentId, accessControl.isSuccess, accessControl.isError])
   
   // Check for errors
   const error = useMemo(() => {
@@ -102,16 +111,30 @@ export function useContentNFTPromotion({
       return 'Creator address mismatch'
     }
     
+    if (userAddress && contentId && accessControl.error) {
+      return 'Failed to verify content access'
+    }
+    
     return null
-  }, [content, creatorAddress, creatorProfileQuery.error])
+  }, [content, creatorAddress, creatorProfileQuery.error, userAddress, contentId, accessControl.error])
   
-  // Determine if content can be minted as NFT
+  // Determine if content can be minted as NFT - CRITICAL SECURITY CHECK
   const canMint = useMemo(() => {
-    return isReady && 
-           error === null && 
-           contentWithMetadata !== null &&
-           content.isActive
-  }, [isReady, error, contentWithMetadata, content.isActive])
+    // Basic validation
+    if (!isReady || error !== null || !contentWithMetadata || !content.isActive) {
+      return false
+    }
+    
+    // If userAddress and contentId are provided, verify access control
+    if (userAddress && contentId) {
+      // User must have access to the content to mint it as NFT
+      if (!accessControl.data) {
+        return false
+      }
+    }
+    
+    return true
+  }, [isReady, error, contentWithMetadata, content.isActive, userAddress, contentId, accessControl.data])
   
   return {
     contentWithMetadata,

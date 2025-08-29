@@ -24,8 +24,9 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { useAccount, useChainId, useDisconnect } from 'wagmi'
+import { useChainId } from 'wagmi'
 import { usePathname, useRouter } from 'next/navigation'
+import { usePrivy } from '@privy-io/react-auth'
 import {
   Menu,
   User,
@@ -69,7 +70,7 @@ import {
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-config'
 import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
-import { WalletConnectButton } from '@/components/web3/WalletConnectButton'
+import { WalletConnectionButton } from '@/components/web3/WalletConnect'
 import { RPCHealthMonitor } from '@/components/debug/RPCHealthMonitor'
 
 /**
@@ -142,17 +143,36 @@ export function AppLayout({
   showHeader = true,
   headerContent
 }: AppLayoutProps) {
-  // Wallet and network state
-  const { address, isConnected } = useAccount()
+  // Use ONLY Privy state for wallet connection (no more wagmi state)
+  const walletUI = useWalletConnectionUI()
+  
+  // Get the FULL address from Privy, not the formatted one
+  const { user } = usePrivy()
+  const fullAddress = user?.wallet?.address || null
+  
+  const { address, isConnected } = { 
+    address: fullAddress, // Use full address for contract calls
+    isConnected: walletUI.isConnected 
+  }
+  
   const chainId = useChainId()
-  const { disconnect } = useDisconnect()
   const router = useRouter()
   const pathname = usePathname()
 
-  // Creator and role detection using our architectural layers
-  const creatorRegistration = useIsCreatorRegistered(address)
-  const creatorProfile = useCreatorProfile(address)
-  const walletUI = useWalletConnectionUI()
+  // Creator and role detection using our architectural layers  
+  const creatorRegistration = useIsCreatorRegistered(address as `0x${string}` | undefined)
+  const creatorProfile = useCreatorProfile(address as `0x${string}` | undefined)
+  
+  // Debug connection state synchronization
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 AppLayout connection state:', {
+      privyConnected: walletUI.isConnected,
+      fullAddress: fullAddress,
+      formattedAddress: walletUI.formattedAddress,
+      derivedIsConnected: isConnected,
+      addressBeingPassedToContracts: address
+    })
+  }
 
   // Layout state management
   const [layoutState, setLayoutState] = useState<LayoutState>({
@@ -276,9 +296,10 @@ export function AppLayout({
 
   // Handle user actions
   const handleDisconnect = useCallback(() => {
-    disconnect()
+    console.log('🔌 AppLayout handleDisconnect triggered via dropdown')
+    walletUI.disconnect()
     router.push('/')
-  }, [disconnect, router])
+  }, [walletUI, router])
 
   const handleProfileClick = useCallback(() => {
     if (userRole === 'creator') {
@@ -300,7 +321,7 @@ export function AppLayout({
           <AppHeader
             userRole={userRole}
             isConnected={isConnected}
-            address={address}
+            address={address || undefined}
             creatorProfile={creatorProfile.data}
             isNetworkSupported={isNetworkSupported}
             isNavigationOpen={layoutState.isNavigationOpen}
@@ -378,6 +399,7 @@ function AppHeader({
   onNavigationToggle,
   onDisconnect,
   onProfileClick,
+  walletUI,
   headerContent
 }: AppHeaderProps) {
   // Avoid hydration mismatches by rendering client-only bits after mount
@@ -481,13 +503,14 @@ function AppHeader({
                 <UserProfileDropdown
                   userRole={userRole}
                   address={address}
+                  formattedAddress={walletUI.formattedAddress}
                   creatorProfile={creatorProfile}
                   isNetworkSupported={isNetworkSupported}
                   onProfileClick={onProfileClick}
                   onDisconnect={onDisconnect}
                 />
               ) : (
-                <WalletConnectButton variant="outline" size="sm" />
+                <WalletConnectionButton variant="button" />
               )
             ) : (
               <div className="h-9 w-24 rounded-md bg-muted animate-pulse" />
@@ -507,6 +530,7 @@ function AppHeader({
 interface UserProfileDropdownProps {
   userRole: UserRole
   address: string
+  formattedAddress?: string | null
   creatorProfile?: NonNullable<ReturnType<typeof useCreatorProfile>['data']>
   isNetworkSupported: boolean
   onProfileClick: () => void
@@ -516,6 +540,7 @@ interface UserProfileDropdownProps {
 function UserProfileDropdown({
   userRole,
   address,
+  formattedAddress,
   creatorProfile,
   isNetworkSupported,
   onProfileClick,
@@ -527,7 +552,7 @@ function UserProfileDropdown({
         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarFallback>
-              {formatAddress(address as `0x${string}`).slice(0, 2).toUpperCase()}
+              {(formattedAddress || formatAddress(address as `0x${string}`)).slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           {!isNetworkSupported && (
@@ -553,7 +578,7 @@ function UserProfileDropdown({
               {userRole === 'creator' ? 'Creator Account' : 'User Account'}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {formatAddress(address as `0x${string}`)}
+              {formattedAddress || formatAddress(address as `0x${string}`)}
             </p>
             {creatorProfile?.isVerified && (
               <Badge variant="secondary" className="w-fit text-xs">

@@ -35,7 +35,7 @@ import React, {
   useEffect,
   useMemo 
 } from 'react'
-import { RefreshCw, AlertTriangle, Home, ArrowLeft, ExternalLink, Wifi, Zap } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Home, ArrowLeft, ExternalLink, Wifi, Zap, AlertCircle } from 'lucide-react'
 
 // Import design system components for consistent UI
 import {
@@ -47,14 +47,15 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  Progress
 } from '@/components/ui'
 
 // Import our previous components for integration
 import { useMiniApp, type EnhancedMiniAppContextValue } from '@/contexts/MiniAppProvider'
 import { 
   useCompatibilityTesting, 
-  type CompatibilityTestSuiteResult 
+  type CompatibilityTestSuiteResult
 } from '@/utils/miniapp/compatibility'
 
 // ================================================
@@ -825,6 +826,289 @@ function DefaultErrorUI({
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {errorInfo.userMessage}
         {isRetrying && "Attempting to recover from the error..."}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Enhanced MiniApp Error Fallback Component
+ * 
+ * This component provides a comprehensive error recovery interface specifically
+ * designed for MiniApp environments, with special handling for the connections.get error.
+ */
+function MiniAppErrorFallback({
+  error,
+  resetErrorBoundary,
+  miniAppContext,
+  compatibilityInfo
+}: {
+  error: Error
+  resetErrorBoundary: () => void
+  miniAppContext?: EnhancedMiniAppContextValue
+  compatibilityInfo?: CompatibilityTestSuiteResult
+}) {
+  const [isRecovering, setIsRecovering] = useState(false)
+  const [recoveryStep, setRecoveryStep] = useState<'analyzing' | 'resetting' | 'reconnecting' | 'complete'>('analyzing')
+  const [canRetry, setCanRetry] = useState(true)
+  const [retryCount, setRetryCount] = useState(0)
+  const maxRetries = 3
+
+  // Check if this is the specific connections.get error
+  const isConnectionsError = error.message.includes('connections.get is not a function')
+  const isMiniAppEnvironment = miniAppContext?.environment?.isMiniApp || false
+
+  // Enhanced error analysis
+  const errorAnalysis = useMemo(() => {
+    if (isConnectionsError) {
+      return {
+        type: 'WAGMI_STATE_CORRUPTION',
+        severity: 'high',
+        userFriendlyMessage: 'Wallet connection system needs to be reset',
+        technicalDetails: 'The internal wallet state has become corrupted and needs to be cleared.',
+        recoverySteps: [
+          'Clear corrupted wallet state',
+          'Reset connection cache',
+          'Reinitialize wallet system'
+        ],
+        canAutoRecover: true
+      }
+    }
+
+    if (error.message.includes('MiniKit') || error.message.includes('Farcaster SDK')) {
+      return {
+        type: 'MINIKIT_ERROR',
+        severity: 'medium',
+        userFriendlyMessage: 'Social features are temporarily unavailable',
+        technicalDetails: 'The Farcaster integration encountered an error.',
+        recoverySteps: [
+          'Check Farcaster client compatibility',
+          'Refresh MiniApp context',
+          'Fall back to web mode if needed'
+        ],
+        canAutoRecover: true
+      }
+    }
+
+    return {
+      type: 'UNKNOWN_ERROR',
+      severity: 'medium',
+      userFriendlyMessage: 'Something went wrong',
+      technicalDetails: error.message,
+      recoverySteps: [
+        'Refresh the page',
+        'Check your connection',
+        'Try again later'
+      ],
+      canAutoRecover: false
+    }
+  }, [error.message, isConnectionsError])
+
+  // Enhanced recovery function
+  const performRecovery = useCallback(async () => {
+    if (retryCount >= maxRetries) {
+      setCanRetry(false)
+      return
+    }
+
+    setIsRecovering(true)
+    setRetryCount(prev => prev + 1)
+
+    try {
+      setRecoveryStep('analyzing')
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      if (isConnectionsError) {
+        setRecoveryStep('resetting')
+        
+        // Clear all wagmi-related storage
+        if (typeof window !== 'undefined') {
+          const keysToRemove = [
+            'wagmi.store',
+            'wagmi.cache',
+            'wagmi.connections',
+            'wagmi.state',
+            'wagmi.account',
+            'wagmi.chainId',
+            'wagmi.connector',
+            'dxbloom-miniapp-wagmi'
+          ]
+          
+          keysToRemove.forEach(key => {
+            try {
+              localStorage.removeItem(key)
+              sessionStorage.removeItem(key)
+            } catch (e) {
+              // Ignore individual key removal errors
+            }
+          })
+          
+          // Clear any other wagmi-related items
+          Object.keys(localStorage).forEach(key => {
+            if (key.includes('wagmi') || key.includes('wallet') || key.includes('connector')) {
+              try {
+                localStorage.removeItem(key)
+              } catch (e) {
+                // Ignore errors
+              }
+            }
+          })
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        setRecoveryStep('reconnecting')
+        
+        // Wait a bit more for the reset to take effect
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
+      setRecoveryStep('complete')
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Reset the error boundary
+      resetErrorBoundary()
+
+    } catch (recoveryError) {
+      console.error('Recovery failed:', recoveryError)
+      setCanRetry(false)
+    } finally {
+      setIsRecovering(false)
+      setRecoveryStep('analyzing')
+    }
+  }, [isConnectionsError, retryCount, maxRetries, resetErrorBoundary])
+
+  // Auto-recovery for specific errors
+  useEffect(() => {
+    if (errorAnalysis.canAutoRecover && isConnectionsError && retryCount === 0) {
+      const timer = setTimeout(() => {
+        performRecovery()
+      }, 2000) // Auto-recover after 2 seconds
+
+      return () => clearTimeout(timer)
+    }
+  }, [errorAnalysis.canAutoRecover, isConnectionsError, retryCount, performRecovery])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="max-w-md w-full space-y-6">
+        {/* Error Icon */}
+        <div className="flex justify-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+          </div>
+        </div>
+
+        {/* Error Title */}
+        <div className="text-center">
+          <h1 className="text-xl font-semibold text-foreground">
+            MiniApp Error
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {errorAnalysis.userFriendlyMessage}
+          </p>
+        </div>
+
+        {/* Error Details */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-muted-foreground">
+                Something went wrong loading the MiniApp. This might be due to network connectivity or compatibility issues.
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Technical Details */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Error Details:</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <code className="text-xs text-muted-foreground break-all">
+              {error.message}
+            </code>
+          </CardContent>
+        </Card>
+
+        {/* Recovery Progress */}
+        {isRecovering && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Recovery Progress</span>
+                  <span className="text-muted-foreground">
+                    {retryCount}/{maxRetries}
+                  </span>
+                </div>
+                <Progress value={
+                  recoveryStep === 'analyzing' ? 25 :
+                  recoveryStep === 'resetting' ? 50 :
+                  recoveryStep === 'reconnecting' ? 75 :
+                  recoveryStep === 'complete' ? 100 : 0
+                } />
+                <p className="text-xs text-muted-foreground capitalize">
+                  {recoveryStep.replace(/([A-Z])/g, ' $1').trim()}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {canRetry && !isRecovering && (
+            <Button 
+              onClick={performRecovery}
+              className="w-full"
+              disabled={retryCount >= maxRetries}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+          )}
+
+          {isMiniAppEnvironment && (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => {
+                // Open in web browser
+                if (typeof window !== 'undefined') {
+                  const webUrl = window.location.href.replace('/mini/', '/')
+                  window.open(webUrl, '_blank')
+                }
+              }}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Open Web Version
+            </Button>
+          )}
+
+          <button 
+            onClick={() => {
+              // Hide technical details by toggling state
+              const detailsCard = document.querySelector('[data-error-details]')
+              if (detailsCard) {
+                detailsCard.classList.toggle('hidden')
+              }
+            }}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Hide Technical Details
+          </button>
+        </div>
+
+        {/* Environment Info */}
+        {compatibilityInfo && (
+          <div className="text-xs text-muted-foreground text-center space-y-1">
+            <p>Compatibility Level: {compatibilityInfo.compatibilityLevel}</p>
+            <p>Tests Passed: {compatibilityInfo.passedTests}/{compatibilityInfo.totalTests}</p>
+            <p>Status: {compatibilityInfo.criticalFailures > 0 ? '❌ Critical Issues' : '✅ Compatible'}</p>
+          </div>
+        )}
       </div>
     </div>
   )

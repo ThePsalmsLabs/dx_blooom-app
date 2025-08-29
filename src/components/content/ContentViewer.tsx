@@ -716,6 +716,7 @@ function AccessDeniedState({
               content={content}
               creatorAddress={content.creator}
               contentId={contentId}
+              userAddress={userAddress} // Pass userAddress for access control
               onMintSuccess={(contractAddress, tokenId) => {
                 toast.success('Content minted as NFT successfully!')
                 console.log('Content minted as NFT:', { contractAddress, tokenId })

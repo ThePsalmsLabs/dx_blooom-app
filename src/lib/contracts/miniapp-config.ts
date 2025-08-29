@@ -334,34 +334,87 @@ function createEnhancedStorage(environmentDetection: MiniAppEnvironmentDetection
     key: storageKey,
     // Enhanced configuration for MiniApp contexts
     serialize: (value) => {
-      // Add environment metadata to stored data
-      const enhancedValue = {
-        ...value,
-        _context: environmentDetection?.environment || 'web',
-        _timestamp: Date.now(),
-        _capabilities: environmentDetection?.capabilities ? {
-          hasWallet: environmentDetection.capabilities.wallet.canConnect,
-          hasSocial: environmentDetection.capabilities.social.canShare,
-          hasBatch: environmentDetection.capabilities.wallet.canBatchTransactions
-        } : null
+      try {
+        // Add validation to prevent corrupted state from being stored
+        if (value && typeof value === 'object') {
+          // Ensure connections is always a Map or null
+          if (value.connections && !(value.connections instanceof Map)) {
+            console.warn('Invalid connections state detected, resetting to null')
+            value.connections = null
+          }
+          
+          // Ensure other critical state properties are valid
+          if (value.accounts && !Array.isArray(value.accounts)) {
+            value.accounts = []
+          }
+          
+          if (value.chainId && typeof value.chainId !== 'number') {
+            value.chainId = undefined
+          }
+        }
+        
+        return JSON.stringify(value)
+      } catch (serializeError) {
+        console.warn('Failed to serialize storage value:', serializeError)
+        // Return a safe default state
+        return JSON.stringify({
+          connections: null,
+          accounts: [],
+          chainId: undefined,
+          connector: undefined,
+          status: 'disconnected'
+        })
       }
-      return JSON.stringify(enhancedValue)
     },
     deserialize: (value) => {
       try {
         const parsed = JSON.parse(value)
-        // Validate stored data against current environment
-        const currentEnvironment = environmentDetection?.environment || 'web'
         
-        if (parsed._context && parsed._context !== currentEnvironment) {
-          console.warn(`Storage context mismatch: stored ${parsed._context}, current ${currentEnvironment}`)
-          // Could implement migration logic here if needed
+        // Validate and fix corrupted state
+        if (parsed && typeof parsed === 'object') {
+          // Ensure connections is properly handled
+          if (parsed.connections && typeof parsed.connections === 'object') {
+            // Convert back to Map if it was serialized as an object
+            if (!(parsed.connections instanceof Map)) {
+              try {
+                parsed.connections = new Map(Object.entries(parsed.connections))
+              } catch (mapError) {
+                console.warn('Failed to reconstruct connections Map, resetting:', mapError)
+                parsed.connections = null
+              }
+            }
+          } else {
+            parsed.connections = null
+          }
+          
+          // Ensure accounts is an array
+          if (!Array.isArray(parsed.accounts)) {
+            parsed.accounts = []
+          }
+          
+          // Ensure chainId is a number or undefined
+          if (parsed.chainId && typeof parsed.chainId !== 'number') {
+            parsed.chainId = undefined
+          }
+          
+          // Ensure status is valid
+          const validStatuses = ['disconnected', 'connecting', 'connected', 'reconnecting']
+          if (!validStatuses.includes(parsed.status)) {
+            parsed.status = 'disconnected'
+          }
         }
         
         return parsed
-      } catch (error) {
-        console.warn('Failed to deserialize enhanced storage value:', error)
-        return null
+      } catch (deserializeError) {
+        console.warn('Failed to deserialize storage value, using default state:', deserializeError)
+        // Return a safe default state
+        return {
+          connections: null,
+          accounts: [],
+          chainId: undefined,
+          connector: undefined,
+          status: 'disconnected'
+        }
       }
     }
   })

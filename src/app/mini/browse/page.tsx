@@ -81,6 +81,7 @@ import { cn } from '@/lib/utils'
 import { useMiniApp } from '@/contexts/MiniAppProvider'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing content components
 import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
@@ -360,7 +361,6 @@ function MiniAppBrowseCore() {
   // Production state management
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { address, isConnected } = useAccount()
   const [browseState, setBrowseState] = useState<MiniAppBrowseState>({
     activeTab: (searchParams?.get('tab') as any) || 'featured',
     selectedCategory: 'all',
@@ -381,7 +381,14 @@ function MiniAppBrowseCore() {
     socialUser,
     hasSocialContext 
   } = useMiniApp()
-  const { data: isCreator } = useIsCreatorRegistered(address)
+  
+  // Get wallet connection status using MiniApp-specific hook
+  const walletUI = useMiniAppWalletUI()
+  const fullAddress = walletUI.address
+  const isConnected = walletUI.isConnected
+  
+  // Use full address for contract calls
+  const { data: isCreator } = useIsCreatorRegistered(fullAddress as `0x${string}` | undefined)
   
   // Enhanced content data with your existing patterns
   const {
