@@ -311,7 +311,7 @@ export function parseMintedEvent(
 // ===== INTERNAL PARSING FUNCTIONS =====
 
 /**
- * Parse SetupNewContract log data
+ * Parse SetupNewContract log data with enhanced validation and error recovery
  */
 function parseSetupNewContractLog(
   log: Log,
@@ -319,29 +319,122 @@ function parseSetupNewContractLog(
   transactionHash: Hash
 ): SetupNewContractEvent | null {
   try {
-    // Validate topics
-    if (log.topics.length < 3) {
-      console.warn('SetupNewContract event has insufficient topics')
+    // Step 1: Comprehensive log validation
+    if (!validateEventLog(log)) {
+      console.warn('SetupNewContract event log validation failed:', {
+        hasAddress: !!log.address,
+        hasTopics: !!log.topics,
+        topicsLength: log.topics?.length || 0,
+        hasData: !!log.data
+      })
       return null
     }
 
-    // Parse indexed parameters from topics
-    // SetupNewContract(address indexed newContract, address indexed creator, string contractURI, string name)
-    const newContract = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
-    const creator = `0x${log.topics[2]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
+    // Step 2: Validate topics count for SetupNewContract event
+    if (!log.topics || log.topics.length < 3) {
+      console.warn('SetupNewContract event has insufficient topics:', {
+        expected: 3,
+        actual: log.topics?.length || 0,
+        transactionHash
+      })
+      return null
+    }
 
-    // Parse non-indexed parameters from data
+    // Step 3: Validate event signature
+    const eventSignature = log.topics[0]
+    if (!eventSignature || !validateEventSignature(eventSignature, ZORA_EVENT_SIGNATURES.SETUP_NEW_CONTRACT)) {
+      console.warn('SetupNewContract event signature mismatch:', {
+        expected: ZORA_EVENT_SIGNATURES.SETUP_NEW_CONTRACT,
+        actual: eventSignature,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 4: Parse indexed parameters from topics with validation
+    let newContract: Address
+    let creator: Address
+
+    try {
+      const newContractRaw = log.topics[1]?.slice(26) // Remove 0x prefix and event signature
+      const creatorRaw = log.topics[2]?.slice(26)
+
+      if (!newContractRaw || !creatorRaw) {
+        console.warn('SetupNewContract event missing indexed parameters:', {
+          newContractRaw: !!newContractRaw,
+          creatorRaw: !!creatorRaw,
+          transactionHash
+        })
+        return null
+      }
+
+      newContract = `0x${newContractRaw.padStart(40, '0')}` as Address
+      creator = `0x${creatorRaw.padStart(40, '0')}` as Address
+
+      // Validate parsed addresses
+      if (!validateAddress(newContract) || !validateAddress(creator)) {
+        console.warn('SetupNewContract event has invalid addresses:', {
+          newContract,
+          creator,
+          transactionHash
+        })
+        return null
+      }
+    } catch (addressError) {
+      console.error('Failed to parse addresses from SetupNewContract event:', addressError, {
+        topics: log.topics,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 5: Parse non-indexed parameters from data with validation
     const data = log.data
-    if (!data || data === '0x') {
-      console.warn('SetupNewContract event has no data')
+    if (!data || data === '0x' || data.length < 128) { // Minimum 128 chars for two strings
+      console.warn('SetupNewContract event has insufficient data:', {
+        dataLength: data?.length || 0,
+        transactionHash
+      })
       return null
     }
 
-    // Decode contractURI and name from data
-    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.SETUP_NEW_CONTRACT, data)
-    const [contractURI, name] = decodedData
+    // Step 6: Decode contractURI and name from data with error recovery
+    let contractURI: string
+    let name: string
 
-    return {
+    try {
+      const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.SETUP_NEW_CONTRACT, data)
+
+      if (!Array.isArray(decodedData) || decodedData.length < 2) {
+        console.warn('SetupNewContract event decoded data is invalid:', {
+          decodedLength: decodedData?.length || 0,
+          transactionHash
+        })
+        return null
+      }
+
+      contractURI = decodedData[0] as string
+      name = decodedData[1] as string
+
+      // Validate decoded strings
+      if (!contractURI || !name || contractURI.trim().length === 0 || name.trim().length === 0) {
+        console.warn('SetupNewContract event has empty strings:', {
+          contractURI: !!contractURI,
+          name: !!name,
+          transactionHash
+        })
+        return null
+      }
+    } catch (decodeError) {
+      console.error('Failed to decode SetupNewContract event data:', decodeError, {
+        data,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 7: Create and validate the event object
+    const event: SetupNewContractEvent = {
       eventName: 'SetupNewContract',
       contractAddress: newContract,
       creator,
@@ -352,14 +445,36 @@ function parseSetupNewContractLog(
       transactionHash,
       logIndex: log.logIndex || 0
     }
+
+    // Step 8: Final event validation
+    if (!validateZoraEvent(event)) {
+      console.warn('SetupNewContract event validation failed:', {
+        event,
+        transactionHash
+      })
+      return null
+    }
+
+    console.log('✅ Successfully parsed SetupNewContract event:', {
+      contractAddress: newContract,
+      creator,
+      name,
+      transactionHash
+    })
+
+    return event
   } catch (error) {
-    console.error('Failed to parse SetupNewContract log:', error)
+    console.error('❌ Critical error parsing SetupNewContract log:', error, {
+      log,
+      blockNumber,
+      transactionHash
+    })
     return null
   }
 }
 
 /**
- * Parse UpdatedToken log data
+ * Parse UpdatedToken log data with enhanced validation and error recovery
  */
 function parseUpdatedTokenLog(
   log: Log,
@@ -367,36 +482,181 @@ function parseUpdatedTokenLog(
   transactionHash: Hash
 ): UpdatedTokenEvent | null {
   try {
-    // Validate topics
-    if (log.topics.length < 3) {
-      console.warn('UpdatedToken event has insufficient topics')
+    // Step 1: Comprehensive log validation
+    if (!validateEventLog(log)) {
+      console.warn('UpdatedToken event log validation failed:', {
+        hasAddress: !!log.address,
+        hasTopics: !!log.topics,
+        topicsLength: log.topics?.length || 0,
+        hasData: !!log.data
+      })
       return null
     }
 
-    // Parse indexed parameters from topics
-    // UpdatedToken(address indexed sender, uint256 indexed tokenId, tuple tokenData)
-    const sender = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
-    const tokenId = BigInt(log.topics[2] || '0')
+    // Step 2: Validate topics count for UpdatedToken event
+    if (!log.topics || log.topics.length < 3) {
+      console.warn('UpdatedToken event has insufficient topics:', {
+        expected: 3,
+        actual: log.topics?.length || 0,
+        transactionHash
+      })
+      return null
+    }
 
-    // Parse non-indexed parameters from data
+    // Step 3: Validate event signature
+    const eventSignature = log.topics[0]
+    if (!eventSignature || !validateEventSignature(eventSignature, ZORA_EVENT_SIGNATURES.UPDATED_TOKEN)) {
+      console.warn('UpdatedToken event signature mismatch:', {
+        expected: ZORA_EVENT_SIGNATURES.UPDATED_TOKEN,
+        actual: eventSignature,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 4: Parse indexed parameters from topics with validation
+    let sender: Address
+    let tokenId: bigint
+
+    try {
+      const senderRaw = log.topics[1]?.slice(26) // Remove 0x prefix and event signature
+      const tokenIdHex = log.topics[2]
+
+      if (!senderRaw || !tokenIdHex) {
+        console.warn('UpdatedToken event missing indexed parameters:', {
+          senderRaw: !!senderRaw,
+          tokenIdHex: !!tokenIdHex,
+          transactionHash
+        })
+        return null
+      }
+
+      sender = `0x${senderRaw.padStart(40, '0')}` as Address
+      tokenId = BigInt(tokenIdHex)
+
+      // Validate parsed sender address
+      if (!validateAddress(sender)) {
+        console.warn('UpdatedToken event has invalid sender address:', {
+          sender,
+          transactionHash
+        })
+        return null
+      }
+
+      // Validate token ID
+      if (tokenId < BigInt(0)) {
+        console.warn('UpdatedToken event has invalid token ID:', {
+          tokenId,
+          transactionHash
+        })
+        return null
+      }
+    } catch (paramError) {
+      console.error('Failed to parse parameters from UpdatedToken event:', paramError, {
+        topics: log.topics,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 5: Parse non-indexed parameters from data with validation
     const data = log.data
-    if (!data || data === '0x') {
-      console.warn('UpdatedToken event has no data')
+    if (!data || data === '0x' || data.length < 192) { // Minimum 192 chars for tuple with 3 uint256 fields
+      console.warn('UpdatedToken event has insufficient data:', {
+        dataLength: data?.length || 0,
+        transactionHash
+      })
       return null
     }
 
-    // Decode tokenData from data
-    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.UPDATED_TOKEN, data)
-    const [tokenDataTuple] = decodedData
-    const tokenData = {
-      uri: tokenDataTuple.uri,
-      maxSupply: tokenDataTuple.maxSupply,
-      totalMinted: tokenDataTuple.totalMinted
+    // Step 6: Decode tokenData from data with error recovery
+    let tokenData: {
+      uri: string
+      maxSupply: bigint
+      totalMinted: bigint
     }
 
-    return {
+    try {
+      const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.UPDATED_TOKEN, data)
+
+      if (!Array.isArray(decodedData) || decodedData.length < 1) {
+        console.warn('UpdatedToken event decoded data is invalid:', {
+          decodedLength: decodedData?.length || 0,
+          transactionHash
+        })
+        return null
+      }
+
+      const tokenDataTuple = decodedData[0]
+
+      if (!tokenDataTuple || typeof tokenDataTuple !== 'object') {
+        console.warn('UpdatedToken event tokenData tuple is invalid:', {
+          tokenDataTuple,
+          transactionHash
+        })
+        return null
+      }
+
+      const { uri, maxSupply, totalMinted } = tokenDataTuple
+
+      // Validate decoded values
+      if (!uri || typeof uri !== 'string' || uri.trim().length === 0) {
+        console.warn('UpdatedToken event has invalid URI:', {
+          uri,
+          transactionHash
+        })
+        return null
+      }
+
+      if (typeof maxSupply !== 'bigint' || maxSupply < BigInt(0)) {
+        console.warn('UpdatedToken event has invalid maxSupply:', {
+          maxSupply,
+          transactionHash
+        })
+        return null
+      }
+
+      if (typeof totalMinted !== 'bigint' || totalMinted < BigInt(0)) {
+        console.warn('UpdatedToken event has invalid totalMinted:', {
+          totalMinted,
+          transactionHash
+        })
+        return null
+      }
+
+      // Validate logical consistency
+      if (totalMinted > maxSupply) {
+        console.warn('UpdatedToken event has inconsistent minting data:', {
+          totalMinted,
+          maxSupply,
+          transactionHash
+        })
+        return null
+      }
+
+      tokenData = { uri, maxSupply, totalMinted }
+    } catch (decodeError) {
+      console.error('Failed to decode UpdatedToken event data:', decodeError, {
+        data,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 7: Validate contract address
+    const contractAddress = log.address
+    if (!contractAddress || !validateAddress(contractAddress)) {
+      console.warn('UpdatedToken event has invalid contract address:', {
+        contractAddress,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 8: Create and validate the event object
+    const event: UpdatedTokenEvent = {
       eventName: 'UpdatedToken',
-      contractAddress: log.address || '0x0000000000000000000000000000000000000000' as Address,
+      contractAddress: contractAddress as Address,
       tokenId,
       sender,
       tokenData,
@@ -404,14 +664,37 @@ function parseUpdatedTokenLog(
       transactionHash,
       logIndex: log.logIndex || 0
     }
+
+    // Step 9: Final event validation
+    if (!validateZoraEvent(event)) {
+      console.warn('UpdatedToken event validation failed:', {
+        event,
+        transactionHash
+      })
+      return null
+    }
+
+    console.log('✅ Successfully parsed UpdatedToken event:', {
+      contractAddress,
+      tokenId,
+      sender,
+      uri: tokenData.uri,
+      transactionHash
+    })
+
+    return event
   } catch (error) {
-    console.error('Failed to parse UpdatedToken log:', error)
+    console.error('❌ Critical error parsing UpdatedToken log:', error, {
+      log,
+      blockNumber,
+      transactionHash
+    })
     return null
   }
 }
 
 /**
- * Parse Purchased log data
+ * Parse Purchased log data with enhanced validation and error recovery
  */
 function parsePurchasedLog(
   log: Log,
@@ -419,32 +702,154 @@ function parsePurchasedLog(
   transactionHash: Hash
 ): PurchasedEvent | null {
   try {
-    // Validate topics
-    if (log.topics.length < 4) {
-      console.warn('Purchased event has insufficient topics')
+    // Step 1: Comprehensive log validation
+    if (!validateEventLog(log)) {
+      console.warn('Purchased event log validation failed:', {
+        hasAddress: !!log.address,
+        hasTopics: !!log.topics,
+        topicsLength: log.topics?.length || 0,
+        hasData: !!log.data
+      })
       return null
     }
 
-    // Parse indexed parameters from topics
-    // Purchased(address indexed sender, address indexed minterModule, uint256 indexed tokenId, uint256 quantity, uint256 value)
-    const sender = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
-    const minterModule = `0x${log.topics[2]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
-    const tokenId = BigInt(log.topics[3] || '0')
+    // Step 2: Validate topics count for Purchased event
+    if (!log.topics || log.topics.length < 4) {
+      console.warn('Purchased event has insufficient topics:', {
+        expected: 4,
+        actual: log.topics?.length || 0,
+        transactionHash
+      })
+      return null
+    }
 
-    // Parse non-indexed parameters from data
+    // Step 3: Validate event signature
+    const eventSignature = log.topics[0]
+    if (!eventSignature || !validateEventSignature(eventSignature, ZORA_EVENT_SIGNATURES.PURCHASED)) {
+      console.warn('Purchased event signature mismatch:', {
+        expected: ZORA_EVENT_SIGNATURES.PURCHASED,
+        actual: eventSignature,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 4: Parse indexed parameters from topics with validation
+    let sender: Address
+    let minterModule: Address
+    let tokenId: bigint
+
+    try {
+      const senderRaw = log.topics[1]?.slice(26)
+      const minterModuleRaw = log.topics[2]?.slice(26)
+      const tokenIdHex = log.topics[3]
+
+      if (!senderRaw || !minterModuleRaw || !tokenIdHex) {
+        console.warn('Purchased event missing indexed parameters:', {
+          senderRaw: !!senderRaw,
+          minterModuleRaw: !!minterModuleRaw,
+          tokenIdHex: !!tokenIdHex,
+          transactionHash
+        })
+        return null
+      }
+
+      sender = `0x${senderRaw.padStart(40, '0')}` as Address
+      minterModule = `0x${minterModuleRaw.padStart(40, '0')}` as Address
+      tokenId = BigInt(tokenIdHex)
+
+      // Validate parsed addresses
+      if (!validateAddress(sender) || !validateAddress(minterModule)) {
+        console.warn('Purchased event has invalid addresses:', {
+          sender,
+          minterModule,
+          transactionHash
+        })
+        return null
+      }
+
+      // Validate token ID
+      if (tokenId < BigInt(0)) {
+        console.warn('Purchased event has invalid token ID:', {
+          tokenId,
+          transactionHash
+        })
+        return null
+      }
+    } catch (paramError) {
+      console.error('Failed to parse parameters from Purchased event:', paramError, {
+        topics: log.topics,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 5: Parse non-indexed parameters from data with validation
     const data = log.data
-    if (!data || data === '0x') {
-      console.warn('Purchased event has no data')
+    if (!data || data === '0x' || data.length < 128) { // Minimum 128 chars for two uint256 fields
+      console.warn('Purchased event has insufficient data:', {
+        dataLength: data?.length || 0,
+        transactionHash
+      })
       return null
     }
 
-    // Decode quantity and value from data
-    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.PURCHASED, data)
-    const [quantity, value] = decodedData
+    // Step 6: Decode quantity and value from data with error recovery
+    let quantity: bigint
+    let value: bigint
 
-    return {
+    try {
+      const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.PURCHASED, data)
+
+      if (!Array.isArray(decodedData) || decodedData.length < 2) {
+        console.warn('Purchased event decoded data is invalid:', {
+          decodedLength: decodedData?.length || 0,
+          transactionHash
+        })
+        return null
+      }
+
+      quantity = decodedData[0] as bigint
+      value = decodedData[1] as bigint
+
+      // Validate decoded values
+      if (typeof quantity !== 'bigint' || quantity <= BigInt(0)) {
+        console.warn('Purchased event has invalid quantity:', {
+          quantity,
+          transactionHash
+        })
+        return null
+      }
+
+      if (typeof value !== 'bigint' || value < BigInt(0)) {
+        console.warn('Purchased event has invalid value:', {
+          value,
+          transactionHash
+        })
+        return null
+      }
+    } catch (decodeError) {
+      console.error('Failed to decode Purchased event data:', decodeError, {
+        data,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 7: Validate contract address
+    const contractAddress = log.address
+    if (!contractAddress || !validateAddress(contractAddress)) {
+      console.warn('Purchased event has invalid contract address:', {
+        contractAddress,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 8: Create and validate the event object
+    const event: PurchasedEvent = {
       eventName: 'Purchased',
-      contractAddress: log.address || '0x0000000000000000000000000000000000000000' as Address,
+      contractAddress: contractAddress as Address,
       tokenId,
       sender,
       minterModule,
@@ -454,14 +859,38 @@ function parsePurchasedLog(
       transactionHash,
       logIndex: log.logIndex || 0
     }
+
+    // Step 9: Final event validation
+    if (!validateZoraEvent(event)) {
+      console.warn('Purchased event validation failed:', {
+        event,
+        transactionHash
+      })
+      return null
+    }
+
+    console.log('✅ Successfully parsed Purchased event:', {
+      contractAddress,
+      tokenId,
+      sender,
+      quantity,
+      value,
+      transactionHash
+    })
+
+    return event
   } catch (error) {
-    console.error('Failed to parse Purchased log:', error)
+    console.error('❌ Critical error parsing Purchased log:', error, {
+      log,
+      blockNumber,
+      transactionHash
+    })
     return null
   }
 }
 
 /**
- * Parse Minted log data
+ * Parse Minted log data with enhanced validation and error recovery
  */
 function parseMintedLog(
   log: Log,
@@ -469,31 +898,149 @@ function parseMintedLog(
   transactionHash: Hash
 ): MintedEvent | null {
   try {
-    // Validate topics
-    if (log.topics.length < 3) {
-      console.warn('Minted event has insufficient topics')
+    // Step 1: Comprehensive log validation
+    if (!validateEventLog(log)) {
+      console.warn('Minted event log validation failed:', {
+        hasAddress: !!log.address,
+        hasTopics: !!log.topics,
+        topicsLength: log.topics?.length || 0,
+        hasData: !!log.data
+      })
       return null
     }
 
-    // Parse indexed parameters from topics
-    // Minted(address indexed minter, uint256 indexed tokenId, uint256 quantity, uint256 value)
-    const minter = `0x${log.topics[1]?.slice(26) || '0000000000000000000000000000000000000000'}` as Address
-    const tokenId = BigInt(log.topics[2] || '0')
+    // Step 2: Validate topics count for Minted event
+    if (!log.topics || log.topics.length < 3) {
+      console.warn('Minted event has insufficient topics:', {
+        expected: 3,
+        actual: log.topics?.length || 0,
+        transactionHash
+      })
+      return null
+    }
 
-    // Parse non-indexed parameters from data
+    // Step 3: Validate event signature
+    const eventSignature = log.topics[0]
+    if (!eventSignature || !validateEventSignature(eventSignature, ZORA_EVENT_SIGNATURES.MINTED)) {
+      console.warn('Minted event signature mismatch:', {
+        expected: ZORA_EVENT_SIGNATURES.MINTED,
+        actual: eventSignature,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 4: Parse indexed parameters from topics with validation
+    let minter: Address
+    let tokenId: bigint
+
+    try {
+      const minterRaw = log.topics[1]?.slice(26)
+      const tokenIdHex = log.topics[2]
+
+      if (!minterRaw || !tokenIdHex) {
+        console.warn('Minted event missing indexed parameters:', {
+          minterRaw: !!minterRaw,
+          tokenIdHex: !!tokenIdHex,
+          transactionHash
+        })
+        return null
+      }
+
+      minter = `0x${minterRaw.padStart(40, '0')}` as Address
+      tokenId = BigInt(tokenIdHex)
+
+      // Validate parsed minter address
+      if (!validateAddress(minter)) {
+        console.warn('Minted event has invalid minter address:', {
+          minter,
+          transactionHash
+        })
+        return null
+      }
+
+      // Validate token ID
+      if (tokenId < BigInt(0)) {
+        console.warn('Minted event has invalid token ID:', {
+          tokenId,
+          transactionHash
+        })
+        return null
+      }
+    } catch (paramError) {
+      console.error('Failed to parse parameters from Minted event:', paramError, {
+        topics: log.topics,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 5: Parse non-indexed parameters from data with validation
     const data = log.data
-    if (!data || data === '0x') {
-      console.warn('Minted event has no data')
+    if (!data || data === '0x' || data.length < 128) { // Minimum 128 chars for two uint256 fields
+      console.warn('Minted event has insufficient data:', {
+        dataLength: data?.length || 0,
+        transactionHash
+      })
       return null
     }
 
-    // Decode quantity and value from data
-    const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.MINTED, data)
-    const [quantity, value] = decodedData
+    // Step 6: Decode quantity and value from data with error recovery
+    let quantity: bigint
+    let value: bigint
 
-    return {
+    try {
+      const decodedData = decodeAbiParameters(EVENT_ABI_PARAMETERS.MINTED, data)
+
+      if (!Array.isArray(decodedData) || decodedData.length < 2) {
+        console.warn('Minted event decoded data is invalid:', {
+          decodedLength: decodedData?.length || 0,
+          transactionHash
+        })
+        return null
+      }
+
+      quantity = decodedData[0] as bigint
+      value = decodedData[1] as bigint
+
+      // Validate decoded values
+      if (typeof quantity !== 'bigint' || quantity <= BigInt(0)) {
+        console.warn('Minted event has invalid quantity:', {
+          quantity,
+          transactionHash
+        })
+        return null
+      }
+
+      if (typeof value !== 'bigint' || value < BigInt(0)) {
+        console.warn('Minted event has invalid value:', {
+          value,
+          transactionHash
+        })
+        return null
+      }
+    } catch (decodeError) {
+      console.error('Failed to decode Minted event data:', decodeError, {
+        data,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 7: Validate contract address
+    const contractAddress = log.address
+    if (!contractAddress || !validateAddress(contractAddress)) {
+      console.warn('Minted event has invalid contract address:', {
+        contractAddress,
+        transactionHash
+      })
+      return null
+    }
+
+    // Step 8: Create and validate the event object
+    const event: MintedEvent = {
       eventName: 'Minted',
-      contractAddress: log.address || '0x0000000000000000000000000000000000000000' as Address,
+      contractAddress: contractAddress as Address,
       tokenId,
       minter,
       quantity,
@@ -502,8 +1049,32 @@ function parseMintedLog(
       transactionHash,
       logIndex: log.logIndex || 0
     }
+
+    // Step 9: Final event validation
+    if (!validateZoraEvent(event)) {
+      console.warn('Minted event validation failed:', {
+        event,
+        transactionHash
+      })
+      return null
+    }
+
+    console.log('✅ Successfully parsed Minted event:', {
+      contractAddress,
+      tokenId,
+      minter,
+      quantity,
+      value,
+      transactionHash
+    })
+
+    return event
   } catch (error) {
-    console.error('Failed to parse Minted log:', error)
+    console.error('❌ Critical error parsing Minted log:', error, {
+      log,
+      blockNumber,
+      transactionHash
+    })
     return null
   }
 }

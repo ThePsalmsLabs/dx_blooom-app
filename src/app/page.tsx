@@ -52,11 +52,13 @@ import {
   AvatarFallback,
   AvatarImage
 } from '@/components/ui/index'
+import { CreatorsCarousel, ContentCarousel } from '@/components/ui/carousel'
 
 // Import architectural layers following established patterns
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
+import { ContentCarouselWrapper } from '@/components/content/ContentCarouselWrapper'
 
 // Import business logic and UI integration hooks
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
@@ -173,36 +175,79 @@ function CreatorsSection() {
           </div>
         </div>
 
-        {/* Featured Creators Grid */}
+        {/* Featured Creators - Responsive Carousel/Grid */}
         {(allCreators.isLoading || (allCreators.totalCount > 0 && featuredCreators.length === 0)) ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 bg-muted rounded-full" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-3/4" />
-                      <div className="h-3 bg-muted rounded w-1/2" />
-                      <div className="h-3 bg-muted rounded w-2/3" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : featuredCreators.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {featuredCreators.map((creator) => (
-              <CreatorCard
-                key={creator.address}
-                creatorAddress={creator.address}
-                variant="featured"
-                showSubscribeButton={true}
-                className="hover:shadow-lg transition-shadow"
+          <>
+            {/* Mobile/Tablet Loading */}
+            <div className="block lg:hidden">
+              <CreatorsCarousel
+                creators={Array.from({ length: 6 }, (_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-16 h-16 bg-muted rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-muted rounded w-3/4" />
+                          <div className="h-3 bg-muted rounded w-1/2" />
+                          <div className="h-3 bg-muted rounded w-2/3" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                autoPlay={false}
               />
-            ))}
-          </div>
+            </div>
+
+            {/* Desktop Loading */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }, (_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 bg-muted rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-muted rounded w-3/4" />
+                        <div className="h-3 bg-muted rounded w-1/2" />
+                        <div className="h-3 bg-muted rounded w-2/3" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        ) : featuredCreators.length > 0 ? (
+          <>
+            {/* Mobile/Tablet: Carousel */}
+            <div className="block lg:hidden mb-8">
+              <CreatorsCarousel
+                creators={featuredCreators.map((creator) => (
+                  <CreatorCard
+                    key={creator.address}
+                    creatorAddress={creator.address}
+                    variant="featured"
+                    showSubscribeButton={true}
+                    className="hover:shadow-lg transition-shadow"
+                  />
+                ))}
+                autoPlay={true}
+              />
+            </div>
+
+            {/* Desktop: Grid */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-6 mb-8">
+              {featuredCreators.map((creator) => (
+                <CreatorCard
+                  key={creator.address}
+                  creatorAddress={creator.address}
+                  variant="featured"
+                  showSubscribeButton={true}
+                  className="hover:shadow-lg transition-shadow"
+                />
+              ))}
+            </div>
+          </>
         ) : !allCreators.isLoading && allCreators.totalCount === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
@@ -587,21 +632,33 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* Content Grid - Leverages existing ContentDiscoveryGrid */}
+            {/* Content Display - Responsive Carousel/Grid */}
             <div className="min-h-[400px]">
-              <ContentDiscoveryGrid
-                initialFilters={
-                  pageState.activeContentTab === 'featured' 
-                    ? {} 
-                    : { category: pageState.activeContentTab }
-                }
-                onContentSelect={(contentId) => {
-                  router.push(`/content/${contentId}`)
-                }}
-                showCreatorInfo={true}
-                itemsPerPage={8}
-                className="min-h-[400px]"
-              />
+              {/* Mobile/Tablet: Carousel */}
+              <div className="block lg:hidden">
+                <ContentCarouselWrapper
+                  category={pageState.activeContentTab}
+                  itemsPerView={8}
+                  autoPlay={true}
+                />
+              </div>
+
+              {/* Desktop: Full Grid */}
+              <div className="hidden lg:block">
+                <ContentDiscoveryGrid
+                  initialFilters={
+                    pageState.activeContentTab === 'featured'
+                      ? {}
+                      : { category: pageState.activeContentTab }
+                  }
+                  onContentSelect={(contentId) => {
+                    router.push(`/content/${contentId}`)
+                  }}
+                  showCreatorInfo={true}
+                  itemsPerPage={8}
+                  className="min-h-[400px]"
+                />
+              </div>
             </div>
 
             <div className="text-center">
@@ -626,7 +683,57 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            {/* Mobile/Tablet: Carousel */}
+            <div className="block lg:hidden">
+              <CreatorsCarousel
+                creators={featuredCreators.map((creator, index) => (
+                  <Card key={creator.address} className="hover:shadow-lg transition-shadow">
+                    <CardHeader className="text-center space-y-4">
+                      <Avatar className="w-16 h-16 mx-auto">
+                        <AvatarImage src={creator.avatar} alt={creator.displayName} />
+                        <AvatarFallback>
+                          {creator.displayName.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-semibold text-lg">{creator.displayName}</h3>
+                        <Badge variant="secondary">{creator.category}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground text-center">
+                        {creator.bio}
+                      </p>
+                      <div className="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                          <div className="text-lg font-bold text-green-600">
+                            {creator.earnings}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Earned</div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold text-blue-600">
+                            {creator.subscriberCount}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Subscribers</div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => router.push(`/creator/${creator.address}`)}
+                      >
+                        View Profile
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+                autoPlay={true}
+              />
+            </div>
+
+            {/* Desktop: Grid */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-6">
               {featuredCreators.map((creator, index) => (
                 <Card key={creator.address} className="hover:shadow-lg transition-shadow">
                   <CardHeader className="text-center space-y-4">
@@ -659,8 +766,8 @@ export default function HomePage() {
                         <div className="text-xs text-muted-foreground">Subscribers</div>
                       </div>
                     </div>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="w-full"
                       onClick={() => router.push(`/creator/${creator.address}`)}
                     >

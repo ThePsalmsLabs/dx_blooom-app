@@ -113,10 +113,10 @@ export function useCreatorZoraCollection() {
         // Invalidate queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ['creator-collections'] })
 
-        // Store collection address in database
+        // Store collection address in database with atomic transaction
         try {
           const dbService = new ZoraDatabaseService()
-          await dbService.storeCreatorCollection({
+          const collectionData = {
             creatorAddress: userAddress,
             creatorProfile: {
               isRegistered: true,
@@ -139,9 +139,19 @@ export function useCreatorZoraCollection() {
             totalCollectionVolume: BigInt(0),
             totalMints: BigInt(0),
             averageMintPrice: BigInt(0),
-            collectionStatus: 'active',
+            collectionStatus: 'active' as const,
+            collectionCreatedAt: new Date(),
+            lastMintDate: undefined,
             lastUpdated: new Date()
-          })
+          }
+
+          const dbResult = await dbService.storeCreatorCollection(collectionData)
+          if (!dbResult.success) {
+            console.error('Failed to store collection atomically:', dbResult.error)
+            // Don't throw here as the collection was created successfully on-chain
+          } else {
+            console.log('✅ Collection stored atomically:', dbResult.transactionId)
+          }
         } catch (error) {
           console.error('Error storing collection in database:', error)
           // Don't throw here as the collection was created successfully
@@ -259,10 +269,10 @@ export function useContentNFTMinting(collectionAddress?: Address) {
         
         setMintResult(mintData)
 
-        // Store NFT record in database
+        // Store NFT record in database with atomic transaction
         try {
           const dbService = new ZoraDatabaseService()
-          await dbService.storeContentNFTRecord({
+          const nftRecord = {
             contentId: BigInt(contentData.contentId),
             creatorAddress: contentData.creatorAddress,
             originalContent: {
@@ -288,9 +298,17 @@ export function useContentNFTMinting(collectionAddress?: Address) {
             nftMints: 1,
             nftRevenue: mintPrice,
             lastMintDate: new Date(),
-            nftStatus: 'minted',
+            nftStatus: 'minted' as const,
             lastUpdated: new Date()
-          })
+          }
+
+          const dbResult = await dbService.storeContentNFTRecord(nftRecord)
+          if (!dbResult.success) {
+            console.error('Failed to store NFT record atomically:', dbResult.error)
+            // Don't throw here as the NFT was minted successfully on-chain
+          } else {
+            console.log('✅ NFT record stored atomically:', dbResult.transactionId)
+          }
         } catch (dbError) {
           console.error('Error storing NFT record in database:', dbError)
           // Don't throw here as the NFT was minted successfully
@@ -601,8 +619,8 @@ export function useIntegratedContentPublishing() {
             tokenId: mintResult.tokenId
           }
 
-          // Store NFT record in database
-          await dbService.storeContentNFTRecord({
+          // Store NFT record in database with atomic transaction
+          const nftRecord = {
             contentId,
             creatorAddress: userAddress,
             originalContent: {
@@ -628,9 +646,17 @@ export function useIntegratedContentPublishing() {
             nftMints: 1,
             nftRevenue: nftOptions.mintPrice || BigInt(0),
             lastMintDate: new Date(),
-            nftStatus: 'minted',
+            nftStatus: 'minted' as const,
             lastUpdated: new Date()
-          })
+          }
+
+          const dbResult = await dbService.storeContentNFTRecord(nftRecord)
+          if (!dbResult.success) {
+            console.error('Failed to store NFT record atomically:', dbResult.error)
+            // Don't throw here as the NFT was minted successfully on-chain
+          } else {
+            console.log('✅ NFT record stored atomically:', dbResult.transactionId)
+          }
         }
       }
 

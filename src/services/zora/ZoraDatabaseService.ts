@@ -26,7 +26,7 @@ import type {
 
 /**
  * Database Storage Interface
- * 
+ *
  * This interface abstracts the storage layer so we can easily switch
  * between different storage backends (localStorage, IPFS, database, etc.)
  */
@@ -38,38 +38,71 @@ interface StorageBackend {
 }
 
 /**
- * Local Storage Backend Implementation
- * 
- * Uses browser localStorage for development and testing
+ * Transaction Context for atomic operations
+ */
+interface TransactionContext {
+  id: string
+  operations: Array<{
+    type: 'set' | 'delete'
+    key: string
+    value?: any
+    previousValue?: any
+  }>
+  timestamp: number
+  status: 'pending' | 'committed' | 'rolled_back'
+}
+
+/**
+ * Atomic Operation Result
+ */
+interface AtomicOperationResult<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+  transactionId?: string
+}
+
+/**
+ * Enhanced Local Storage Backend with Atomic Operations
+ *
+ * Uses browser localStorage for development and testing with transaction safety
  */
 class LocalStorageBackend implements StorageBackend {
   private prefix = 'zora_integration_'
+  private transactions = new Map<string, TransactionContext>()
+  private locks = new Map<string, Promise<any>>()
 
   async get(key: string): Promise<any> {
-    try {
-      const item = localStorage.getItem(this.prefix + key)
-      return item ? JSON.parse(item) : null
-    } catch (error) {
-      console.error('Error reading from localStorage:', error)
-      return null
-    }
+    return this.withLock(key, async () => {
+      try {
+        const item = localStorage.getItem(this.prefix + key)
+        return item ? JSON.parse(item) : null
+      } catch (error) {
+        console.error('Error reading from localStorage:', error)
+        return null
+      }
+    })
   }
 
   async set(key: string, value: any): Promise<void> {
-    try {
-      localStorage.setItem(this.prefix + key, JSON.stringify(value))
-    } catch (error) {
-      console.error('Error writing to localStorage:', error)
-      throw error
-    }
+    return this.withLock(key, async () => {
+      try {
+        localStorage.setItem(this.prefix + key, JSON.stringify(value))
+      } catch (error) {
+        console.error('Error writing to localStorage:', error)
+        throw error
+      }
+    })
   }
 
   async delete(key: string): Promise<void> {
-    try {
-      localStorage.removeItem(this.prefix + key)
-    } catch (error) {
-      console.error('Error deleting from localStorage:', error)
-    }
+    return this.withLock(key, async () => {
+      try {
+        localStorage.removeItem(this.prefix + key)
+      } catch (error) {
+        console.error('Error deleting from localStorage:', error)
+      }
+    })
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -87,32 +120,212 @@ class LocalStorageBackend implements StorageBackend {
       return []
     }
   }
+
+  /**
+   * Execute operation with key-based locking to prevent race conditions
+   */
+  private async withLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    const lockKey = this.prefix + key
+
+    // Wait for any existing operation on this key to complete
+    if (this.locks.has(lockKey)) {
+      await this.locks.get(lockKey)
+    }
+
+    // Create a new lock for this operation
+    const lockPromise = operation().finally(() => {
+      this.locks.delete(lockKey)
+    })
+
+    this.locks.set(lockKey, lockPromise)
+    return lockPromise
+  }
+
+  /**
+   * Start a new transaction
+   */
+  startTransaction(): string {
+    const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const transaction: TransactionContext = {
+      id: transactionId,
+      operations: [],
+      timestamp: Date.now(),
+      status: 'pending'
+    }
+    this.transactions.set(transactionId, transaction)
+    return transactionId
+  }
+
+  /**
+   * Add operation to transaction (for rollback purposes)
+   */
+  async addToTransaction(transactionId: string, type: 'set' | 'delete', key: string, value?: any): Promise<void> {
+    const transaction = this.transactions.get(transactionId)
+    if (!transaction || transaction.status !== 'pending') {
+      throw new Error(`Invalid or inactive transaction: ${transactionId}`)
+    }
+
+    // Capture previous value for rollback
+    let previousValue: any = undefined
+    if (type === 'set' || type === 'delete') {
+      previousValue = await this.get(key)
+    }
+
+    transaction.operations.push({
+      type,
+      key,
+      value,
+      previousValue
+    })
+  }
+
+  /**
+   * Commit transaction atomically
+   */
+  async commitTransaction(transactionId: string): Promise<void> {
+    const transaction = this.transactions.get(transactionId)
+    if (!transaction || transaction.status !== 'pending') {
+      throw new Error(`Invalid or inactive transaction: ${transactionId}`)
+    }
+
+    try {
+      // Execute all operations in sequence
+      for (const operation of transaction.operations) {
+        if (operation.type === 'set') {
+          await this.set(operation.key, operation.value)
+        } else if (operation.type === 'delete') {
+          await this.delete(operation.key)
+        }
+      }
+
+      transaction.status = 'committed'
+      console.log(`✅ Transaction ${transactionId} committed successfully`)
+    } catch (error) {
+      console.error(`❌ Transaction ${transactionId} commit failed, rolling back:`, error)
+      await this.rollbackTransaction(transactionId)
+      throw error
+    }
+  }
+
+  /**
+   * Rollback transaction
+   */
+  async rollbackTransaction(transactionId: string): Promise<void> {
+    const transaction = this.transactions.get(transactionId)
+    if (!transaction) {
+      console.warn(`Transaction ${transactionId} not found for rollback`)
+      return
+    }
+
+    if (transaction.status === 'committed') {
+      console.warn(`Cannot rollback committed transaction: ${transactionId}`)
+      return
+    }
+
+    try {
+      // Reverse operations in reverse order
+      for (let i = transaction.operations.length - 1; i >= 0; i--) {
+        const operation = transaction.operations[i]
+
+        if (operation.type === 'set') {
+          if (operation.previousValue !== undefined) {
+            await this.set(operation.key, operation.previousValue)
+          } else {
+            await this.delete(operation.key)
+          }
+        } else if (operation.type === 'delete') {
+          if (operation.previousValue !== undefined) {
+            await this.set(operation.key, operation.previousValue)
+          }
+        }
+      }
+
+      transaction.status = 'rolled_back'
+      console.log(`🔄 Transaction ${transactionId} rolled back successfully`)
+    } catch (rollbackError) {
+      console.error(`❌ Transaction ${transactionId} rollback failed:`, rollbackError)
+      throw rollbackError
+    }
+  }
+
+  /**
+   * Clean up old transactions
+   */
+  cleanupOldTransactions(maxAgeMs: number = 300000): void { // 5 minutes default
+    const cutoffTime = Date.now() - maxAgeMs
+
+    for (const [transactionId, transaction] of this.transactions.entries()) {
+      if (transaction.timestamp < cutoffTime && transaction.status === 'pending') {
+        console.warn(`Cleaning up stale transaction: ${transactionId}`)
+        this.rollbackTransaction(transactionId).catch(error => {
+          console.error(`Failed to cleanup transaction ${transactionId}:`, error)
+        })
+      }
+    }
+  }
 }
 
 /**
  * Zora Database Service Class
- * 
+ *
  * Provides comprehensive database operations for Zora NFT integration
- * with fallback mechanisms and error handling.
+ * with atomic transactions, fallback mechanisms, and error handling.
  */
 export class ZoraDatabaseService {
   private storage: StorageBackend
+  private localStorageBackend: LocalStorageBackend
 
   constructor(storage?: StorageBackend) {
     this.storage = storage || new LocalStorageBackend()
+    this.localStorageBackend = this.storage as LocalStorageBackend
+
+    // Clean up old transactions periodically
+    if (typeof window !== 'undefined') {
+      setInterval(() => {
+        if (this.localStorageBackend && 'cleanupOldTransactions' in this.localStorageBackend) {
+          this.localStorageBackend.cleanupOldTransactions()
+        }
+      }, 60000) // Clean up every minute
+    }
   }
 
   // ===== CONTENT NFT TRACKING =====
 
   /**
-   * Store NFT record for a piece of content
+   * Store NFT record for a piece of content with atomic transaction
    */
-  async storeContentNFTRecord(record: ContentNFTRecord): Promise<void> {
+  async storeContentNFTRecord(record: ContentNFTRecord): Promise<AtomicOperationResult<void>> {
+    const transactionId = this.localStorageBackend.startTransaction()
     const key = `content_nft_${record.contentId}`
-    await this.storage.set(key, {
-      ...record,
-      lastUpdated: new Date().toISOString()
-    })
+
+    try {
+      // Add operation to transaction for rollback capability
+      await this.localStorageBackend.addToTransaction(
+        transactionId,
+        'set',
+        key,
+        {
+          ...record,
+          lastUpdated: new Date().toISOString()
+        }
+      )
+
+      // Commit the transaction
+      await this.localStorageBackend.commitTransaction(transactionId)
+
+      console.log(`✅ NFT record stored atomically: ${record.contentId}`)
+      return {
+        success: true,
+        transactionId
+      }
+    } catch (error) {
+      console.error(`❌ Failed to store NFT record atomically:`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to store NFT record',
+        transactionId
+      }
+    }
   }
 
   /**
@@ -158,14 +371,21 @@ export class ZoraDatabaseService {
   }
 
   /**
-   * Update NFT analytics for a piece of content
+   * Update NFT analytics for a piece of content with atomic transaction
    */
   async updateNFTAnalytics(
-    contentId: bigint, 
+    contentId: bigint,
     analytics: Partial<NFTAnalytics>
-  ): Promise<void> {
-    const record = await this.getContentNFTRecord(contentId)
-    if (record) {
+  ): Promise<AtomicOperationResult<void>> {
+    const transactionId = this.localStorageBackend.startTransaction()
+    const key = `content_nft_${contentId}`
+
+    try {
+      const record = await this.getContentNFTRecord(contentId)
+      if (!record) {
+        throw new Error(`NFT record not found for content ID: ${contentId}`)
+      }
+
       const updatedRecord: ContentNFTRecord = {
         ...record,
         nftViews: analytics.totalMints ? Number(analytics.totalMints) : record.nftViews,
@@ -174,21 +394,73 @@ export class ZoraDatabaseService {
         lastMintDate: analytics.totalMints ? new Date() : record.lastMintDate,
         lastUpdated: new Date()
       }
-      await this.storeContentNFTRecord(updatedRecord)
+
+      // Add operation to transaction for rollback capability
+      await this.localStorageBackend.addToTransaction(
+        transactionId,
+        'set',
+        key,
+        {
+          ...updatedRecord,
+          lastUpdated: new Date().toISOString()
+        }
+      )
+
+      // Commit the transaction
+      await this.localStorageBackend.commitTransaction(transactionId)
+
+      console.log(`✅ NFT analytics updated atomically: ${contentId}`)
+      return {
+        success: true,
+        transactionId
+      }
+    } catch (error) {
+      console.error(`❌ Failed to update NFT analytics atomically:`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update NFT analytics',
+        transactionId
+      }
     }
   }
 
   // ===== CREATOR COLLECTION MANAGEMENT =====
 
   /**
-   * Store creator's Zora collection information
+   * Store creator's Zora collection information with atomic transaction
    */
-  async storeCreatorCollection(collection: CreatorZoraCollection): Promise<void> {
+  async storeCreatorCollection(collection: CreatorZoraCollection): Promise<AtomicOperationResult<void>> {
+    const transactionId = this.localStorageBackend.startTransaction()
     const key = `creator_collection_${collection.creatorAddress.toLowerCase()}`
-    await this.storage.set(key, {
-      ...collection,
-      lastUpdated: new Date().toISOString()
-    })
+
+    try {
+      // Add operation to transaction for rollback capability
+      await this.localStorageBackend.addToTransaction(
+        transactionId,
+        'set',
+        key,
+        {
+          ...collection,
+          lastUpdated: new Date().toISOString()
+        }
+      )
+
+      // Commit the transaction
+      await this.localStorageBackend.commitTransaction(transactionId)
+
+      console.log(`✅ Creator collection stored atomically: ${collection.creatorAddress}`)
+      return {
+        success: true,
+        transactionId
+      }
+    } catch (error) {
+      console.error(`❌ Failed to store creator collection atomically:`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to store creator collection',
+        transactionId
+      }
+    }
   }
 
   /**
@@ -702,6 +974,117 @@ export class ZoraDatabaseService {
   }
 
   /**
+   * Batch operation for multiple related database operations
+   */
+  async batchOperation<T>(
+    operations: Array<{
+      type: 'store_nft' | 'store_collection' | 'update_analytics'
+      data: any
+    }>
+  ): Promise<AtomicOperationResult<T[]>> {
+    const transactionId = this.localStorageBackend.startTransaction()
+    const results: T[] = []
+
+    try {
+      for (const operation of operations) {
+        switch (operation.type) {
+          case 'store_nft':
+            await this.localStorageBackend.addToTransaction(
+              transactionId,
+              'set',
+              `content_nft_${operation.data.contentId}`,
+              {
+                ...operation.data,
+                lastUpdated: new Date().toISOString()
+              }
+            )
+            results.push(operation.data as T)
+            break
+
+          case 'store_collection':
+            await this.localStorageBackend.addToTransaction(
+              transactionId,
+              'set',
+              `creator_collection_${operation.data.creatorAddress.toLowerCase()}`,
+              {
+                ...operation.data,
+                lastUpdated: new Date().toISOString()
+              }
+            )
+            results.push(operation.data as T)
+            break
+
+          case 'update_analytics':
+            const key = `content_nft_${operation.data.contentId}`
+            const existing = await this.getContentNFTRecord(operation.data.contentId)
+            if (existing) {
+              const updated = {
+                ...existing,
+                ...operation.data.analytics,
+                lastUpdated: new Date().toISOString()
+              }
+              await this.localStorageBackend.addToTransaction(
+                transactionId,
+                'set',
+                key,
+                updated
+              )
+              results.push(updated as T)
+            }
+            break
+        }
+      }
+
+      // Commit all operations atomically
+      await this.localStorageBackend.commitTransaction(transactionId)
+
+      console.log(`✅ Batch operation completed atomically: ${operations.length} operations`)
+      return {
+        success: true,
+        data: results,
+        transactionId
+      }
+    } catch (error) {
+      console.error(`❌ Batch operation failed, rolling back:`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Batch operation failed',
+        transactionId
+      }
+    }
+  }
+
+  /**
+   * Retry mechanism for failed operations
+   */
+  async withRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    delayMs: number = 1000
+  ): Promise<T> {
+    let lastError: Error
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation()
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error')
+
+        if (attempt === maxRetries) {
+          console.error(`❌ Operation failed after ${maxRetries} attempts:`, lastError)
+          throw lastError
+        }
+
+        console.warn(`⚠️ Operation attempt ${attempt} failed, retrying in ${delayMs}ms:`, lastError.message)
+        await new Promise(resolve => setTimeout(resolve, delayMs))
+        delayMs *= 2 // Exponential backoff
+      }
+    }
+
+    throw lastError!
+  }
+
+  /**
    * Export all NFT data for backup or migration
    */
   async exportAllData(): Promise<{
@@ -752,6 +1135,125 @@ export class ZoraDatabaseService {
 
     for (const collection of data.creatorCollections) {
       await this.storeCreatorCollection(collection)
+    }
+  }
+
+  // ===== BACKWARD COMPATIBILITY METHODS =====
+
+  /**
+   * Legacy method for storing NFT records (without atomic result)
+   * @deprecated Use storeContentNFTRecord() for new implementations
+   */
+  async storeContentNFTRecordLegacy(record: ContentNFTRecord): Promise<void> {
+    const result = await this.storeContentNFTRecord(record)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to store NFT record')
+    }
+  }
+
+  /**
+   * Legacy method for storing creator collections (without atomic result)
+   * @deprecated Use storeCreatorCollection() for new implementations
+   */
+  async storeCreatorCollectionLegacy(collection: CreatorZoraCollection): Promise<void> {
+    const result = await this.storeCreatorCollection(collection)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to store creator collection')
+    }
+  }
+
+  /**
+   * Legacy method for updating NFT analytics (without atomic result)
+   * @deprecated Use updateNFTAnalytics() for new implementations
+   */
+  async updateNFTAnalyticsLegacy(
+    contentId: bigint,
+    analytics: Partial<NFTAnalytics>
+  ): Promise<void> {
+    const result = await this.updateNFTAnalytics(contentId, analytics)
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to update NFT analytics')
+    }
+  }
+
+  // ===== UTILITY METHODS =====
+
+  /**
+   * Health check for the database service
+   */
+  async healthCheck(): Promise<{
+    status: 'healthy' | 'degraded' | 'unhealthy'
+    operations: {
+      read: boolean
+      write: boolean
+      transaction: boolean
+    }
+    metrics: {
+      totalNFTs: number
+      totalCollections: number
+      activeTransactions: number
+    }
+  }> {
+    try {
+      // Test basic read/write operations
+      const testKey = `health_check_${Date.now()}`
+      const testData = { test: true, timestamp: new Date().toISOString() }
+
+      await this.storage.set(testKey, testData)
+      const retrieved = await this.storage.get(testKey)
+
+      const readWorks = retrieved !== null
+      const writeWorks = retrieved?.test === true
+
+      // Test transaction functionality
+      let transactionWorks = false
+      try {
+        const txId = this.localStorageBackend.startTransaction()
+        await this.localStorageBackend.addToTransaction(txId, 'set', testKey, testData)
+        await this.localStorageBackend.commitTransaction(txId)
+        transactionWorks = true
+      } catch {
+        transactionWorks = false
+      }
+
+      // Clean up test data
+      await this.storage.delete(testKey)
+
+      // Get metrics
+      const nftKeys = await this.storage.list('content_nft_')
+      const collectionKeys = await this.storage.list('creator_collection_')
+
+      const status = (readWorks && writeWorks && transactionWorks) ? 'healthy' :
+                    (readWorks || writeWorks) ? 'degraded' : 'unhealthy'
+
+      return {
+        status,
+        operations: {
+          read: readWorks,
+          write: writeWorks,
+          transaction: transactionWorks
+        },
+        metrics: {
+          totalNFTs: nftKeys.length,
+          totalCollections: collectionKeys.length,
+          activeTransactions: this.localStorageBackend['transactions']?.size || 0
+        }
+      }
+    } catch (error) {
+      console.error('Health check failed:', error)
+      return {
+        status: 'unhealthy',
+        operations: {
+          read: false,
+          write: false,
+          transaction: false
+        },
+        metrics: {
+          totalNFTs: 0,
+          totalCollections: 0,
+          activeTransactions: 0
+        }
+      }
     }
   }
 }

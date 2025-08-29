@@ -7,18 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { 
-  Users, 
-  TrendingUp, 
-  Star, 
-  Grid3X3, 
-  List, 
+import {
+  Users,
+  TrendingUp,
+  Star,
+  Grid3X3,
+  List,
   Smartphone,
   Crown,
   Zap,
   Filter,
   RefreshCw
 } from 'lucide-react'
+import { CreatorsCarousel } from '@/components/ui/carousel'
 
 import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { CreatorsFilter, type CreatorFilters } from '@/components/creators/CreatorsFilter'
@@ -213,7 +214,23 @@ export default function CreatorsDirectoryPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {/* Mobile/Tablet: Carousel */}
+              <div className="block lg:hidden">
+                <CreatorsCarousel
+                  creators={topCreators.map((creator) => (
+                    <CreatorCard
+                      key={creator.address}
+                      creatorAddress={creator.address}
+                      variant="compact"
+                      showSubscribeButton={true}
+                    />
+                  ))}
+                  autoPlay={true}
+                />
+              </div>
+
+              {/* Desktop: Grid */}
+              <div className="hidden lg:grid lg:grid-cols-3 gap-4">
                 {topCreators.map((creator) => (
                   <CreatorCard
                     key={creator.address}

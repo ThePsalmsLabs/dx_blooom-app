@@ -17,11 +17,12 @@ import { PublicClient, WalletClient, Address, parseEther } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { ZORA_CREATOR_1155_FACTORY_ABI, ZORA_CREATOR_1155_IMPL_ABI } from '@/lib/contracts/abis/zora'
 import { ZORA_ADDRESSES } from '@/lib/contracts/addresses/zora'
-import { 
+import {
   extractContractAddressFromSetupEvent,
   extractTokenIdFromUpdatedEvent
 } from '@/lib/utils/zora-events'
 import { type ZoraNFTMetadata, type ZoraCollectionAnalytics } from '@/types/zora'
+import { zoraMonitor, withMonitoring } from './zora-monitoring'
 
 // Get Zora addresses from the centralized configuration
 function getZoraAddresses(chainId: number) {
@@ -89,90 +90,93 @@ export class ZoraIntegrationService {
 
   /**
    * Create a new Zora collection for a creator
-   * 
+   *
    * This creates a dedicated 1155 contract where the creator can mint
    * multiple pieces of content as NFTs with unified branding.
    */
-  async createCreatorCollection(
-    config: ZoraCollectionConfig
-  ): Promise<{ success: boolean; contractAddress?: Address; error?: string }> {
-    if (!this.walletClient) {
-      return { success: false, error: 'Wallet client required for minting' }
-    }
-
-    try {
-      const addresses = getZoraAddresses(this.chainId)
-      
-      // Prepare royalty configuration according to Zora V3 spec
-      const defaultRoyaltyConfiguration = {
-        royaltyMintSchedule: 0, // No royalty on mint
-        royaltyBPS: config.royaltyBPS,
-        royaltyRecipient: config.creator
+  createCreatorCollection = withMonitoring(
+    'create_collection',
+    async (config: ZoraCollectionConfig): Promise<{ success: boolean; contractAddress?: Address; error?: string }> => {
+      if (!this.walletClient) {
+        return { success: false, error: 'Wallet client required for minting' }
       }
 
-      // Create the collection contract using correct Zora V3 factory ABI
-      const hash = await this.walletClient.writeContract({
-        address: addresses.ZORA_CREATOR_1155_FACTORY_IMPL,
-        abi: ZORA_CREATOR_1155_FACTORY_ABI,
-        functionName: 'createContract',
-        args: [
-          config.contractURI,
-          config.name,
-          defaultRoyaltyConfiguration,
-          config.creator, // defaultAdmin
-          [] // setupActions - empty for basic setup
-        ],
-        account: config.creator,
-        chain: this.chainId === base.id ? base : baseSepolia
-      })
-
-      // Wait for transaction confirmation
-      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
-      
-      if (receipt.status === 'success') {
-        // Extract contract address from SetupNewContract event using proper parsing
+      try {
         const addresses = getZoraAddresses(this.chainId)
-        const contractAddress = extractContractAddressFromSetupEvent(receipt, addresses.ZORA_CREATOR_1155_FACTORY_IMPL)
-        
-        if (contractAddress) {
-          return {
-            success: true,
-            contractAddress
+
+        // Prepare royalty configuration according to Zora V3 spec
+        const defaultRoyaltyConfiguration = {
+          royaltyMintSchedule: 0, // No royalty on mint
+          royaltyBPS: config.royaltyBPS,
+          royaltyRecipient: config.creator
+        }
+
+        // Create the collection contract using correct Zora V3 factory ABI
+        const hash = await this.walletClient.writeContract({
+          address: addresses.ZORA_CREATOR_1155_FACTORY_IMPL,
+          abi: ZORA_CREATOR_1155_FACTORY_ABI,
+          functionName: 'createContract',
+          args: [
+            config.contractURI,
+            config.name,
+            defaultRoyaltyConfiguration,
+            config.creator, // defaultAdmin
+            [] // setupActions - empty for basic setup
+          ],
+          account: config.creator,
+          chain: this.chainId === base.id ? base : baseSepolia
+        })
+
+        // Wait for transaction confirmation
+        const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+
+        if (receipt.status === 'success') {
+          // Extract contract address from SetupNewContract event using proper parsing
+          const addresses = getZoraAddresses(this.chainId)
+          const contractAddress = extractContractAddressFromSetupEvent(receipt, addresses.ZORA_CREATOR_1155_FACTORY_IMPL)
+
+          if (contractAddress) {
+            return {
+              success: true,
+              contractAddress
+            }
+          } else {
+            return {
+              success: false,
+              error: 'Failed to extract contract address from transaction logs'
+            }
           }
         } else {
           return {
             success: false,
-            error: 'Failed to extract contract address from transaction logs'
+            error: 'Collection creation failed'
           }
         }
-      } else {
+
+      } catch (error) {
+        console.error('Error creating Zora collection:', error)
         return {
           success: false,
-          error: 'Collection creation failed'
+          error: error instanceof Error ? error.message : 'Unknown error occurred'
         }
       }
-
-    } catch (error) {
-      console.error('Error creating Zora collection:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      }
     }
-  }
+  )
 
   /**
    * Mint content as NFT in existing collection
-   * 
+   *
    * This takes content from your platform and mints it as an NFT on Zora,
    * creating a bridge between subscription content and collectible assets.
    */
-  async mintContentAsNFT(
-    collectionAddress: Address,
-    metadata: ZoraNFTMetadata,
-    mintPrice: bigint = parseEther('0.000777'), // Default Zora mint price
-    maxSupply: number = 100
-  ): Promise<NFTMintResult> {
+  mintContentAsNFT = withMonitoring(
+    'mint_nft',
+    async (
+      collectionAddress: Address,
+      metadata: ZoraNFTMetadata,
+      mintPrice: bigint = parseEther('0.000777'), // Default Zora mint price
+      maxSupply: number = 100
+    ): Promise<NFTMintResult> => {
     if (!this.walletClient) {
       return { success: false, error: 'Wallet client required for minting' }
     }
@@ -248,7 +252,8 @@ export class ZoraIntegrationService {
         error: error instanceof Error ? error.message : 'Unknown error occurred'
       }
     }
-  }
+    }
+  )
 
   /**
    * Get NFT information from Zora collection
