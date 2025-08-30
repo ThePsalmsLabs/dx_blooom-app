@@ -157,16 +157,17 @@ function CreatorsSection() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4">
             <Users className="h-4 w-4" />
-            Discover Amazing Creators
+            Bloom Creator Community
           </div>
-          
+
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Meet Our Top Creators
+            Creative Minds Flourishing in Web3
           </h2>
-          
+
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Discover talented creators who are monetizing their content on our platform. 
-            From educational content to entertainment, find creators that match your interests.
+            Meet the real-life visionaries blooming on our platform. From artists crafting digital masterpieces
+            to educators sharing life-changing knowledge, discover creators who are transforming passions into
+            sustainable livelihoods through authentic Web3 connections.
           </p>
 
           {/* Quick Stats - Now Real-Time from Blockchain */}
@@ -517,15 +518,15 @@ export default function HomePage() {
                   Web3 Content Economy
                 </Badge>
                 <h1 className="text-5xl font-bold tracking-tight sm:text-6xl leading-tight">
-                   Create, Share,
+                   Bloom into
                   <span className="bg-gradient-to-r from-primary via-accent to-cyan-500 bg-clip-text text-transparent ml-2 block sm:inline">
-                    Earn
+                    Creative Freedom
                   </span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
-                  The decentralized platform where creators own their content,
-                  build direct relationships with their audience, and earn fairly
-                  through blockchain-powered micropayments and NFTs.
+                  Where real-life creativity meets Web3 magic. Bloom empowers creators to own their story,
+                  connect authentically with their audience, and earn through transparent blockchain innovation.
+                  Your content, your rules, your future.
                 </p>
               </div>
 
@@ -630,10 +631,11 @@ export default function HomePage() {
           {/* Featured Content Discovery */}
           <section className="space-y-8">
             <div className="text-center space-y-4">
-              <h2 className="text-3xl font-bold">Discover Amazing Content</h2>
+              <h2 className="text-3xl font-bold">Bloom into New Perspectives</h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Explore high-quality content from talented creators across various categories.
-                Support creators directly with blockchain-powered micropayments.
+                Immerse yourself in a garden of creative content blooming across Web3. From thought-provoking articles
+                to captivating videos, discover authentic stories and ideas that resonate with your real-life journey.
+                Support creators directly through transparent blockchain connections.
               </p>
             </div>
 
@@ -696,10 +698,11 @@ export default function HomePage() {
           {/* Creator Spotlight */}
           <section className="space-y-8">
             <div className="text-center space-y-4">
-              <h2 className="text-3xl font-bold">Creator Spotlight</h2>
+              <h2 className="text-3xl font-bold">Bloom Success Stories</h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Meet successful creators who are building thriving businesses 
-                on our platform through direct fan support.
+                Real creators, real impact. Discover the authentic journeys of visionaries who have blossomed
+                on our platform, turning creative passions into thriving livelihoods through genuine Web3 connections
+                and direct community support.
               </p>
             </div>
 
@@ -804,11 +807,12 @@ export default function HomePage() {
             <div className="max-w-4xl mx-auto text-center space-y-8">
               <div className="space-y-4">
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Why Creators Choose Our Platform
+                  Why Visionaries Bloom on Bloom
                 </h2>
                 <p className="text-lg text-muted-foreground">
-                  Join thousands of creators who&apos;ve discovered the power of
-                  Web3 content monetization and true digital ownership.
+                  Join thousands of creators who have blossomed into their full potential through
+                  Web3 innovation. Experience true digital ownership, authentic connections, and
+                  transparent monetization that empowers your creative journey.
                 </p>
               </div>
 
@@ -866,10 +870,11 @@ export default function HomePage() {
           {/* Final CTA Section */}
           <section className="text-center py-16 space-y-8 animate-slide-in-up animate-delay-700">
             <div className="space-y-4">
-              <h2 className="text-4xl font-bold">Ready to Join the Creator Economy?</h2>
+              <h2 className="text-4xl font-bold">Ready to Bloom into Your Creative Future?</h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Whether you&apos;re here to discover amazing content or share your own creations,
-                our Web3 platform gives you the tools to participate in the new digital economy.
+                Whether you're here to discover inspiring content or share your unique voice with the world,
+                Bloom gives you the Web3 tools to participate authentically in the creator economy.
+                Your story deserves to flourish.
               </p>
             </div>
             

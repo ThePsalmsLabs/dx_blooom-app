@@ -171,15 +171,16 @@ export default function CreatorsDirectoryPage() {
         <div className="text-center space-y-3 sm:space-y-4">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium">
             <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-            Discover Amazing Creators
+            Bloom Creator Ecosystem
           </div>
-          
+
           <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-tight px-2">
-            Explore our vibrant community of creators building the future of decentralized content.
+            Where Creative Souls Bloom Together in Web3 Harmony
           </h1>
-          
+
           <p className="text-sm sm:text-base lg:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
-            Support your favorites with subscriptions and unlock exclusive access.
+            Discover passionate creators transforming real-life experiences into digital art, education, and entertainment.
+            Support their authentic journeys through meaningful subscriptions and unlock exclusive content that matters.
           </p>
 
           {/* Quick Stats - Mobile Optimized */}
@@ -206,7 +207,7 @@ export default function CreatorsDirectoryPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base sm:text-lg lg:text-xl">
                   <Crown className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-                  Featured Creators
+                  Bloom Spotlight Creators
                 </CardTitle>
                 <Button variant="outline" size="sm" className="self-start sm:self-auto text-xs sm:text-sm">
                   View All Featured
@@ -530,13 +531,14 @@ export default function CreatorsDirectoryPage() {
         {/* Call to Action for Creators */}
         <Card className="bg-gradient-to-r from-primary/10 to-blue-500/10 border-primary/20">
           <CardContent className="p-6 sm:p-8 text-center">
-            <h3 className="text-lg sm:text-xl font-semibold mb-2">Become a Creator</h3>
+            <h3 className="text-lg sm:text-xl font-semibold mb-2">Ready to Bloom as a Creator?</h3>
             <p className="text-sm sm:text-base text-muted-foreground mb-4">
-              Join thousands of creators earning from their content with transparent, instant payments on the blockchain.
+              Join thousands of creators flourishing on Bloom with transparent Web3 monetization.
+              Turn your creative passion into a sustainable livelihood through authentic connections and fair earnings.
             </p>
             <Button size="lg" className="text-sm sm:text-base">
               <Zap className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-              Become a Creator
+              Start Your Bloom Journey
             </Button>
           </CardContent>
         </Card>

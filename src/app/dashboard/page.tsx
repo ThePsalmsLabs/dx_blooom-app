@@ -552,7 +552,7 @@ function DashboardHeader({
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">Creator Dashboard</h1>
+          <h1 className="text-3xl font-bold">Bloom Creator Hub</h1>
           {creatorProfile?.isVerified && (
             <Badge variant="default" className="bg-blue-100 text-blue-800">
               <CheckCircle className="h-3 w-3 mr-1" />

@@ -363,11 +363,11 @@ function OnboardingContent() {
       <div className="text-center mb-6 sm:mb-8">
         <div className="flex items-center justify-center gap-2 mb-3 sm:mb-4">
           <Sparkles className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
-          <h1 className="text-2xl sm:text-4xl font-bold leading-tight">Become a Creator</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold leading-tight">Bloom as a Creator</h1>
         </div>
         <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-1">
-          Join the decentralized creator economy. Set up your profile, define your subscription pricing, 
-          and start monetizing your content on the blockchain.
+          Transform your creative passion into a flourishing livelihood. Join Bloom's vibrant ecosystem where
+          authentic creators thrive through transparent Web3 connections and fair blockchain-powered monetization.
         </p>
       </div>
       
@@ -375,7 +375,7 @@ function OnboardingContent() {
       <Card className="mb-6 sm:mb-8">
         <CardContent className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-semibold">Setup Progress</h2>
+            <h2 className="text-base sm:text-lg font-semibold">Bloom Setup Progress</h2>
             <span className="text-xs sm:text-sm text-muted-foreground">
               Step {Math.max(1, currentStepIndex + 1)} of {onboardingSteps.length}
               {showSuccessDialog && " - Complete!"}

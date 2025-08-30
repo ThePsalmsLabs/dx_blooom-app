@@ -382,10 +382,12 @@ function BrowsePageClient() {
             {/* Page Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-foreground mb-2">
-                Discover Premium Content
+                Bloom Content Garden
               </h1>
               <p className="text-muted-foreground">
-                Explore and purchase high-quality content from verified creators using USDC, ETH, WETH, cbETH, DAI, or other supported tokens.
+                Wander through a curated collection of creative brilliance blooming across Web3.
+                Discover authentic stories, innovative ideas, and transformative content from real creators.
+                Support their journeys with transparent blockchain payments using your preferred tokens.
               </p>
             </div>
 
@@ -397,7 +399,7 @@ function BrowsePageClient() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search content, creators, or topics..."
+                      placeholder="Search for creative inspiration, blooming ideas, or passionate creators..."
                       value={filters.search}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
                       className="pl-9"

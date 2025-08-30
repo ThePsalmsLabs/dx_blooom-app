@@ -51,11 +51,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-// import { Separator } from '@/components/ui/separator' // Component not available in current UI library
+import { Separator } from '@/components/ui/seperator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 // Import utilities
-import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
+import { formatCurrency, formatAddress, formatRelativeTime, formatAbsoluteTime } from '@/lib/utils'
 
 export default function CreatorProfilePage() {
   const params = useParams()
@@ -480,7 +480,7 @@ export default function CreatorProfilePage() {
                         </div>
                       </div>
 
-                      <div className="border-t border-border my-4" />
+                      <Separator />
 
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">

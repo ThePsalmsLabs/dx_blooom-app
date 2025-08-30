@@ -28,10 +28,11 @@ export default function VerificationPage() {
           <div className="text-center space-y-4">
             <div className="flex items-center justify-center gap-2">
               <Shield className="h-8 w-8 text-blue-600" />
-              <h1 className="text-4xl font-bold">Creator Verification System</h1>
+              <h1 className="text-4xl font-bold">Bloom Trust & Verification</h1>
             </div>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              A comprehensive verification system that helps creators build trust and gain access to exclusive platform features.
+              Cultivate authentic connections in Bloom's trusted ecosystem. Our verification system helps creators
+              build genuine relationships and unlocks premium features for flourishing creative journeys.
             </p>
           </div>
 
@@ -60,7 +61,7 @@ export default function VerificationPage() {
             <div className="space-y-8">
               {/* Creator Verification Status */}
               <div>
-                <h2 className="text-2xl font-bold mb-4">Your Verification Status</h2>
+                <h2 className="text-2xl font-bold mb-4">Your Bloom Verification Status</h2>
                 <CreatorVerificationStatus userAddress={address} />
               </div>
 
@@ -70,7 +71,7 @@ export default function VerificationPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Shield className="h-5 w-5 text-blue-600" />
-                      Verification Benefits
+                      Bloom Benefits
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

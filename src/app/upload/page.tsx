@@ -85,10 +85,10 @@ function UploadTips() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5" />
-          Creator Success Tips
+          Bloom Growth Strategies
         </CardTitle>
         <CardDescription>
-          Maximize your content&apos;s impact with these proven strategies
+          Cultivate your creative garden with these strategies for maximum impact and sustainable growth
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -136,10 +136,11 @@ function UploadPageHeader() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <UploadIcon className="h-8 w-8" />
-          Upload Content
+          Bloom Your Content
         </h1>
         <p className="text-lg text-muted-foreground">
-          Share your creativity with the world and start earning from your work
+          Transform your creative vision into a flourishing digital asset. Share authentic stories, innovative ideas,
+          and transformative content that resonates with real audiences in the Web3 creator economy.
         </p>
       </div>
     </div>
