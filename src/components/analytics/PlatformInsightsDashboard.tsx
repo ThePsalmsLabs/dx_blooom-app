@@ -714,7 +714,7 @@ export function PlatformInsightsDashboard({
                 value={dashboardState.currentView} 
                 onValueChange={(value) => handleViewChange(value as AdminDashboardView)}
               >
-                <TabsList className="grid w-full grid-cols-6">
+                <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
                   <TabsTrigger value="creators">Creators</TabsTrigger>

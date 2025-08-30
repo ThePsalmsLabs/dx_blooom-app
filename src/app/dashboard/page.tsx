@@ -432,7 +432,7 @@ export default function SubscriptionManagementPage() {
 
           {/* Main Dashboard Tabs */}
           <Tabs value={managementState.activeTab} onValueChange={handleTabChange as (value: string) => void}>
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-6">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
               <TabsTrigger value="content">Content</TabsTrigger>
@@ -584,7 +584,7 @@ function DashboardHeader({
           Refresh
         </Button>
 
-        <Button size="sm">
+        <Button size="sm" onClick={() => router.push('/upload')}>
           <PlusCircle className="h-4 w-4 mr-2" />
           New Content
         </Button>

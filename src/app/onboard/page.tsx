@@ -34,7 +34,10 @@ import {
   Sparkles,
   ChevronLeft,
   ExternalLink,
-  CheckCircle
+  CheckCircle,
+  Zap,
+  Heart,
+  Target
 } from 'lucide-react'
 
 import {
@@ -55,7 +58,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  useToast
+  useToast,
+  Badge
 } from '@/components/ui/index'
 
 // Import our architectural layers - this shows the power of our modular approach
@@ -367,7 +371,8 @@ function OnboardingContent() {
         </div>
         <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto px-1">
           Transform your creative passion into a flourishing livelihood. Join Bloom's vibrant ecosystem where
-          authentic creators thrive through transparent Web3 connections and fair blockchain-powered monetization.
+          authentic creators thrive through transparent Web3 connections, fair blockchain-powered monetization,
+          and seamless Zora NFT integration.
         </p>
       </div>
       
@@ -507,6 +512,94 @@ function OnboardingContent() {
         </div>
         
         <div className="space-y-6">
+          {/* Zora NFT Integration Showcase */}
+          <Card className="bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-cyan-500/5 border-purple-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                Unlock NFT Superpowers with Zora
+                <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-600 bg-purple-500/10">
+                  <Zap className="h-3 w-3 mr-1" />
+                  New Creators
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Transform your content into collectible NFTs and unlock additional revenue streams
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3 p-3 bg-purple-500/10 rounded-lg">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Multiple Revenue Streams</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Earn from subscriptions, NFT sales, and royalties simultaneously
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-cyan-500/10 rounded-lg">
+                  <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Heart className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Collector Community</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Build lasting relationships with NFT collectors who value your work
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-pink-500/10 rounded-lg">
+                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Target className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Instant Settlements</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Get paid immediately when your NFTs are purchased on Base network
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 bg-green-500/10 rounded-lg">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Creator-First Platform</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Zora is built by creators, for creators - with no platform fees on primary sales
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-purple-500/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Ready to mint your first NFT?</p>
+                    <p className="text-xs text-muted-foreground">
+                      Access Zora tools from your creator dashboard after registration
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push('/collections')}
+                    className="border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Explore NFTs
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <BenefitsCard />
           <HelpCard />
         </div>
@@ -668,7 +761,7 @@ function AlreadyRegisteredCard({ profile }: AlreadyRegisteredCardProps) {
         )}
         
         <Button onClick={() => router.push('/dashboard')} className="w-full">
-          Go to Creator Dashboard
+          Go to Dashboard
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </CardContent>
@@ -826,11 +919,11 @@ function CreatorProfileSetupCard({
           {registrationProgress.isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Registering on Blockchain...
+              Registering...
             </>
           ) : (
             <>
-              Complete Creator Registration
+              Register as Creator
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
@@ -889,7 +982,7 @@ function HelpCard() {
             <ExternalLink className="ml-2 h-3 w-3" />
           </Button>
           <Button variant="outline" size="sm" className="w-full justify-start">
-            Smart Account Setup
+            Account Setup
             <ExternalLink className="ml-2 h-3 w-3" />
           </Button>
           <Button variant="outline" size="sm" className="w-full justify-start">

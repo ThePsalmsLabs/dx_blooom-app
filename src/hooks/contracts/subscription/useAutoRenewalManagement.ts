@@ -282,21 +282,22 @@ import {
     // ===== READ OPERATIONS - AUTO-RENEWAL STATUS FETCHING =====
   
     /**
-     * Get Auto-Renewal Status for Specific Creator
-     * 
-     * Fetches the auto-renewal configuration and status for a specific creator subscription.
+     * Create Auto-Renewal Status Configuration for Specific Creator
+     *
+     * Creates configuration object for auto-renewal status fetching for a specific creator subscription.
+     * This returns the configuration that can be used with useReadContract.
      * Optimized for frequent status checks and real-time monitoring.
      */
-    const useAutoRenewalStatus = useCallback((creatorAddress: Address) => {
-      return useReadContract({
+    const createAutoRenewalStatusConfig = useCallback((creatorAddress: Address) => {
+      return {
         address: contractAddresses?.SUBSCRIPTION_MANAGER,
         abi: SUBSCRIPTION_MANAGER_ABI,
         functionName: 'getAutoRenewalConfig',
         args: effectiveUserAddress && creatorAddress ? [effectiveUserAddress, creatorAddress] : undefined,
         query: {
           enabled: Boolean(
-            effectiveUserAddress && 
-            creatorAddress && 
+            effectiveUserAddress &&
+            creatorAddress &&
             contractAddresses?.SUBSCRIPTION_MANAGER
           ),
           staleTime: 1000 * 60 * 2,      // 2 minutes - status needs to be reasonably fresh
@@ -304,7 +305,7 @@ import {
           retry: 2,
           refetchInterval: 1000 * 60 * 5, // Auto-refresh every 5 minutes
         }
-      })
+      }
     }, [contractAddresses, effectiveUserAddress])
   
     /**

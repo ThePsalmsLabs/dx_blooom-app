@@ -81,24 +81,24 @@ function UploadTips() {
   ]
 
   return (
-    <Card className="mb-8">
+    <Card className="mb-6 md:mb-8">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5" />
-          Bloom Growth Strategies
+        <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+          <Lightbulb className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+          <span className="leading-tight">Bloom Growth Strategies</span>
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-sm md:text-base">
           Cultivate your creative garden with these strategies for maximum impact and sustainable growth
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-3 md:gap-4">
           {tips.map((tip, index) => (
-            <div key={index} className="flex gap-3 p-3 rounded-lg bg-muted/50">
-              <tip.icon className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium text-sm">{tip.title}</h4>
-                <p className="text-sm text-muted-foreground mt-1">
+            <div key={index} className="flex gap-3 p-3 md:p-4 rounded-lg bg-muted/50">
+              <tip.icon className="h-4 w-4 md:h-5 md:w-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <h4 className="font-medium text-sm md:text-base">{tip.title}</h4>
+                <p className="text-xs md:text-sm text-muted-foreground mt-1 leading-relaxed">
                   {tip.description}
                 </p>
               </div>
@@ -120,25 +120,25 @@ function UploadPageHeader() {
   const router = useRouter()
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-4 mb-4">
+    <div className="mb-6 md:mb-8">
+      <div className="flex items-center gap-2 md:gap-4 mb-4">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => router.back()}
-          className="flex items-center gap-2"
+          className="flex items-center gap-1 md:gap-2 text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          <span className="hidden sm:inline">Back</span>
         </Button>
       </div>
-      
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <UploadIcon className="h-8 w-8" />
-          Bloom Your Content
+
+      <div className="space-y-3 md:space-y-2">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2 md:gap-3">
+          <UploadIcon className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0" />
+          <span className="leading-tight">Bloom Your Content</span>
         </h1>
-        <p className="text-lg text-muted-foreground">
+        <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
           Transform your creative vision into a flourishing digital asset. Share authentic stories, innovative ideas,
           and transformative content that resonates with real audiences in the Web3 creator economy.
         </p>
@@ -157,16 +157,17 @@ function CreatorOnboardingAlert() {
   const router = useRouter()
 
   return (
-    <Alert className="mb-6">
+    <Alert className="mb-4 md:mb-6">
       <UploadIcon className="h-4 w-4" />
-      <AlertDescription className="flex items-center justify-between">
-        <span>
+      <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <span className="text-sm">
           New to creating? Learn how to set up your creator profile and start earning.
         </span>
         <Button
           variant="outline"
           size="sm"
           onClick={() => router.push('/onboard')}
+          className="self-start sm:self-auto"
         >
           Get Started
         </Button>
@@ -209,11 +210,11 @@ export default function UploadPage() {
           category: 'creator'
         }}
       >
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="container mx-auto px-4 py-4 md:py-8 max-w-6xl">
           {/* Page Header */}
           <UploadPageHeader />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
             {/* Main Upload Area */}
             <div className="lg:col-span-2">
               {/* Creator Onboarding Help */}
@@ -236,35 +237,35 @@ export default function UploadPage() {
               {/* Additional Information Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Upload Guidelines</CardTitle>
+                  <CardTitle className="text-base md:text-lg">Upload Guidelines</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="text-sm space-y-2">
-                    <p><strong>Supported Formats:</strong></p>
-                    <p className="text-muted-foreground">
-                      Documents: PDF, TXT, MD<br />
-                      Images: JPG, PNG, GIF<br />
-                      Videos: MP4, WEBM<br />
-                      Audio: MP3, WAV
-                    </p>
+                <CardContent className="space-y-4 md:space-y-3">
+                  <div className="text-xs md:text-sm space-y-2">
+                    <p className="font-medium">Supported Formats:</p>
+                    <div className="text-muted-foreground space-y-1">
+                      <p><strong className="text-foreground">Documents:</strong> PDF, TXT, MD</p>
+                      <p><strong className="text-foreground">Images:</strong> JPG, PNG, GIF</p>
+                      <p><strong className="text-foreground">Videos:</strong> MP4, WEBM</p>
+                      <p><strong className="text-foreground">Audio:</strong> MP3, WAV</p>
+                    </div>
                   </div>
-                  
+
                   <Separator />
-                  
-                  <div className="text-sm space-y-2">
-                    <p><strong>File Size Limits:</strong></p>
-                    <p className="text-muted-foreground">
-                      Maximum file size: 100MB<br />
-                      For larger files, consider compression or contact support
-                    </p>
+
+                  <div className="text-xs md:text-sm space-y-2">
+                    <p className="font-medium">File Size Limits:</p>
+                    <div className="text-muted-foreground space-y-1">
+                      <p>Maximum file size: <strong className="text-foreground">100MB</strong></p>
+                      <p>For larger files, consider compression or contact support</p>
+                    </div>
                   </div>
-                  
+
                   <Separator />
-                  
-                  <div className="text-sm space-y-2">
-                    <p><strong>Content Policy:</strong></p>
-                    <p className="text-muted-foreground">
-                      All content must be original or properly licensed. 
+
+                  <div className="text-xs md:text-sm space-y-2">
+                    <p className="font-medium">Content Policy:</p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      All content must be original or properly licensed.
                       Respect copyright and community guidelines.
                     </p>
                   </div>

@@ -941,6 +941,7 @@ export function useContentPurchaseUI(
  * interface with validation feedback and publishing status tracking.
  */
 export function useContentPublishingUI(userAddress: Address | undefined): ContentPublishingUI {
+  // Always call hooks in the same order to avoid React hooks violations
   const publishingFlow = useContentPublishingFlow(userAddress);
   const creatorRegistration = useIsCreatorRegistered(userAddress);
 

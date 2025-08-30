@@ -171,7 +171,7 @@ export default function CreatorProfilePage() {
 
                 {/* Content Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-3">
                     <TabsTrigger value="content" className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Content ({creatorContent.data?.length || 0})

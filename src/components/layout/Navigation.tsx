@@ -53,6 +53,7 @@ export interface NavigationSection {
   readonly id: string
   readonly label: string
   readonly description?: string
+  readonly icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>
   readonly items: readonly NavigationItem[]
   readonly roles: readonly UserRole[]
   readonly isCollapsible?: boolean
@@ -67,6 +68,7 @@ export interface NavigationItem {
   readonly description?: string
   readonly roles: readonly UserRole[]
   readonly badge?: string
+  readonly badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'purple' | 'green' | 'gold'
   readonly isNew?: boolean
   readonly isActive?: boolean
   readonly disabled?: boolean
@@ -130,12 +132,69 @@ export function useAppNavigation(userRole: UserRole): readonly NavigationSection
           icon: Sparkles,
           description: 'Browse and collect NFT content on Zora',
           roles: ['disconnected', 'consumer', 'creator', 'admin'],
-          isNew: true, // New NFT feature
+          badge: 'Zora',
+          badgeVariant: 'purple' as const,
           isActive: pathname.startsWith('/collections')
         }
       ],
       roles: ['disconnected', 'consumer', 'creator', 'admin'],
       defaultExpanded: true
+    })
+
+    // ===== ZORA NFT ECOSYSTEM SECTION =====
+    // Dedicated section for Zora NFT features and marketplace
+    sections.push({
+      id: 'zora-ecosystem',
+      label: 'Zora NFT Marketplace',
+      description: 'Create, collect, and trade NFTs on Zora',
+      icon: Sparkles,
+      items: [
+        {
+          id: 'zora-collections',
+          label: 'My Collections',
+          href: '/collections',
+          icon: Sparkles,
+          description: 'Manage your NFT collections on Zora',
+          roles: ['creator', 'consumer', 'admin'],
+          badge: 'Zora',
+          badgeVariant: 'purple' as const,
+          isActive: pathname.startsWith('/collections')
+        },
+        {
+          id: 'zora-marketplace',
+          label: 'NFT Marketplace',
+          href: '/marketplace',
+          icon: Zap,
+          description: 'Browse and purchase NFTs from creators',
+          roles: ['disconnected', 'consumer', 'creator', 'admin'],
+          badge: 'Live',
+          badgeVariant: 'green' as const,
+          isActive: pathname.startsWith('/marketplace')
+        },
+        {
+          id: 'zora-analytics',
+          label: 'NFT Analytics',
+          href: '/analytics/nft',
+          icon: BarChart3,
+          description: 'Track your NFT performance and earnings',
+          roles: ['creator', 'admin'],
+          isActive: pathname.startsWith('/analytics/nft')
+        },
+        {
+          id: 'zora-tools',
+          label: 'Creator Tools',
+          href: '/tools/zora',
+          icon: Target,
+          description: 'Advanced NFT creation and management tools',
+          roles: ['creator', 'admin'],
+          badge: 'Pro',
+          badgeVariant: 'gold' as const,
+          isActive: pathname.startsWith('/tools/zora')
+        }
+      ],
+      roles: ['disconnected', 'consumer', 'creator', 'admin'],
+      isCollapsible: true,
+      defaultExpanded: false
     })
 
     // ===== CONTENT DISCOVERY SECTION =====

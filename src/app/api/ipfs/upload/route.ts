@@ -274,7 +274,7 @@ function validateIPFSHash(hash: string): boolean {
  */
 export async function GET() {
   const pinataJWT = process.env.PINATA_JWT
-  
+
   if (!pinataJWT) {
     return NextResponse.json({
       status: 'error',
@@ -288,34 +288,87 @@ export async function GET() {
       ]
     }, { status: 500 })
   }
-  
+
   try {
-    // Test Pinata connection
+    console.log('🔍 Testing IPFS service connectivity...')
+
+    // Test basic connectivity first
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
     const testResponse = await fetch('https://api.pinata.cloud/data/testAuthentication', {
+      method: 'GET',
       headers: {
-        'Authorization': `Bearer ${pinataJWT}`
-      }
+        'Authorization': `Bearer ${pinataJWT}`,
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal,
     })
-    
+
+    clearTimeout(timeoutId)
+
     if (testResponse.ok) {
       return NextResponse.json({
         status: 'success',
         message: 'IPFS service is properly configured and accessible',
         provider: 'Pinata',
-        endpoint: '/api/ipfs/upload'
+        endpoint: '/api/ipfs/upload',
+        connectivity: 'good',
+        timestamp: new Date().toISOString()
       })
     } else {
+      const errorText = await testResponse.text()
+      console.error('❌ Pinata authentication failed:', errorText)
+
       return NextResponse.json({
         status: 'error',
         message: 'IPFS service authentication failed',
-        details: 'Check your PINATA_JWT token'
-      }, { status: 401 })
+        details: `HTTP ${testResponse.status}: ${errorText || testResponse.statusText}`,
+        suggestions: [
+          'Verify your PINATA_JWT token is correct',
+          'Check your Pinata account status',
+          'Ensure your token has the required permissions'
+        ]
+      }, { status: testResponse.status })
     }
   } catch (error) {
+    // Type guard to check if error is an instance of Error
+    const isError = error instanceof Error
+    const errorMessage = isError ? error.message : 'Unknown error occurred'
+
+    console.error('❌ IPFS connectivity test failed:', errorMessage)
+
+    // Provide helpful diagnostics for different error types
+    let responseErrorMessage = 'Failed to connect to IPFS service'
+    let suggestions = [
+      'Check your internet connection',
+      'Try again in a few moments',
+      'Contact support if the issue persists'
+    ]
+
+    if (isError && error.name === 'AbortError') {
+      responseErrorMessage = 'Connection timeout to IPFS service'
+      suggestions = [
+        'Check your internet connection speed',
+        'The service might be temporarily unavailable',
+        'Try again later'
+      ]
+    } else if (isError && (errorMessage.includes('ENOTFOUND') || errorMessage.includes('ECONNREFUSED'))) {
+      responseErrorMessage = 'DNS resolution or network connectivity issue'
+      suggestions = [
+        'Check your DNS settings',
+        'Verify your firewall/proxy settings',
+        'Try using a different network'
+      ]
+    }
+
     return NextResponse.json({
       status: 'error',
-      message: 'Failed to connect to IPFS service',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+      message: responseErrorMessage,
+      details: errorMessage,
+      suggestions: suggestions,
+      timestamp: new Date().toISOString(),
+      nodeEnv: process.env.NODE_ENV
+    }, { status: 503 })
   }
 }

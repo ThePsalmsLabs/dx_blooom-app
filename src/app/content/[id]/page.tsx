@@ -32,7 +32,11 @@ import {
   Lock,
   CheckCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Sparkles,
+  Zap,
+  DollarSign,
+  Heart
 } from 'lucide-react'
 
 import {
@@ -189,7 +193,7 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
    * This function manages the post-purchase experience, updating local state
    * and providing user feedback when a purchase is successfully completed.
    */
-  const handlePurchaseSuccess = React.useCallback((contentId: bigint, result: PaymentResult) => {
+  const handlePurchaseSuccess = React.useCallback((contentId: bigint, _result: PaymentResult) => {
     setPurchaseCompleted(true)
     
     // Refresh access query to ensure UI reflects new access state
@@ -495,23 +499,68 @@ function ContentPreviewSection({
               </div>
             </div>
 
-            {/* NFT Minting for Content Creators */}
+            {/* Enhanced Zora NFT Minting Section */}
             {contentId && userAddress && content?.creator.toLowerCase() === userAddress.toLowerCase() && (
-              <div className="mt-6">
-                <ContentNFTPromotionAdapter
-                  content={content}
-                  creatorAddress={content.creator}
-                  contentId={contentId}
-                  userAddress={userAddress}
-                  onMintSuccess={(contractAddress, tokenId) => {
-                    toast.success('Content minted as NFT successfully!', {
-                      description: `Contract: ${contractAddress}, Token ID: ${tokenId}`,
-                      duration: 5000,
-                    })
-                    console.log('Content minted as NFT:', { contractAddress, tokenId })
-                  }}
-                  className="w-full"
-                />
+              <div className="mt-8">
+                <Card className="bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-cyan-500/5 border-purple-500/20">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                          <Sparkles className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            Mint as NFT on Zora
+                            <Badge variant="outline" className="text-xs border-purple-500/50 text-purple-600 bg-purple-500/10">
+                              <Zap className="h-3 w-3 mr-1" />
+                              Zora
+                            </Badge>
+                          </CardTitle>
+                          <CardDescription>
+                            Transform this content into a collectible NFT and unlock new revenue streams
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Creator Only
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <ContentNFTPromotionAdapter
+                      content={content}
+                      creatorAddress={content.creator}
+                      contentId={contentId}
+                      userAddress={userAddress}
+                      onMintSuccess={(contractAddress, tokenId) => {
+                        toast.success('Content minted as NFT successfully!', {
+                          description: `Contract: ${contractAddress}, Token ID: ${tokenId}`,
+                          duration: 5000,
+                        })
+                        console.log('Content minted as NFT:', { contractAddress, tokenId })
+                      }}
+                      className="w-full"
+                    />
+
+                    {/* Zora Benefits */}
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-3 w-3 text-green-600" />
+                        <span>Earn from NFT sales & royalties</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-3 w-3 text-pink-600" />
+                        <span>Build lasting collector relationships</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-3 w-3 text-purple-600" />
+                        <span>Instant settlements on Base</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </div>
@@ -693,7 +742,7 @@ function AccessStatusCard({
  * 
  * This component provides additional actions users can take with content.
  */
-function ContentActionsCard({ contentId }: { contentId: bigint }) {
+function ContentActionsCard({ contentId: _contentId }: { contentId: bigint }) {
   return (
     <Card>
       <CardContent className="p-6">

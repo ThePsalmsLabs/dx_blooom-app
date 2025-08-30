@@ -860,7 +860,7 @@ function ApplicationCard({
       </CardHeader>
       <CardContent>
         <Tabs value={currentTab} onValueChange={(val) => setCurrentTab(val as 'basic' | 'social' | 'verification')}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-3">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="social">Social Links</TabsTrigger>
             <TabsTrigger value="verification">Verification</TabsTrigger>

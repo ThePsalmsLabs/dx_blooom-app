@@ -568,10 +568,25 @@ export function RouteGuards({
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
 
-  // Creator registration and verification state
+  // ===== OPTIMIZATION: LAZY LOAD EXPENSIVE CREATOR CHECKS =====
+  const [hasCheckedBasicAccess, setHasCheckedBasicAccess] = useState(false)
+
+  // Auto-enable basic access checks after a brief delay
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setHasCheckedBasicAccess(true)
+    }, 200) // Very short delay for basic access checks
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Always call hooks in the same order - use conditional logic after they return
   const creatorRegistration = useIsCreatorRegistered(address)
   const creatorProfile = useCreatorProfile(address)
   const creatorOnboarding = useCreatorOnboardingUI(address as `0x${string}`)
+
+  // Only use hook data when we're ready to check creator status
+  const shouldLoadCreatorChecks = hasCheckedBasicAccess && requiredLevel !== 'public'
 
   // Route configuration with intelligent defaults
   const effectiveRouteConfig: RouteConfig = useMemo(() => {
@@ -620,24 +635,30 @@ export function RouteGuards({
 
     // Enhanced creator registration check with fresh registration handling
     if (requiredLevel === 'creator_basic' || requiredLevel === 'creator_verified') {
-      // Special handling for users who just completed registration
-      if (isNewRegistration && isConnected) {
-        console.log('🔍 New registration detected, allowing access pending data refresh...')
-        // Allow access for newly registered users while data refreshes
-        // The registration hooks should refresh automatically
-      } else if (isConnected && !creatorRegistration.data) {
-        blockers.push({
-          type: 'registration',
-          message: 'Creator registration required to access creator features',
-          action: 'Complete creator registration to continue',
-          canResolve: true,
-          resolutionPath: 'creator-onboarding'
-        })
+      if (!shouldLoadCreatorChecks) {
+        // If we haven't loaded creator checks yet, allow access temporarily
+        // This prevents the access denied state during initial load
+        console.log('🔄 Creator checks not loaded yet, allowing temporary access...')
+      } else {
+        // Special handling for users who just completed registration
+        if (isNewRegistration && isConnected) {
+          console.log('🔍 New registration detected, allowing access pending data refresh...')
+          // Allow access for newly registered users while data refreshes
+          // The registration hooks should refresh automatically
+        } else if (isConnected && creatorRegistration.data === false) {
+          blockers.push({
+            type: 'registration',
+            message: 'Creator registration required to access creator features',
+            action: 'Complete creator registration to continue',
+            canResolve: true,
+            resolutionPath: 'creator-onboarding'
+          })
+        }
       }
     }
 
     // Check creator verification requirements
-    if (requiredLevel === 'creator_verified') {
+    if (requiredLevel === 'creator_verified' && shouldLoadCreatorChecks) {
       if (isConnected && creatorRegistration.data && !creatorProfile.data?.isVerified) {
         blockers.push({
           type: 'verification',
@@ -659,7 +680,7 @@ export function RouteGuards({
         isPrimary: true
       } : undefined
     }
-  }, [requiredLevel, isConnected, chainId, creatorRegistration.data, creatorProfile.data])
+  }, [requiredLevel, isConnected, chainId, creatorRegistration.data, creatorProfile.data, shouldLoadCreatorChecks])
 
   // Permission resolution handler
   const handlePermissionResolution = useCallback((resolutionPath: string) => {

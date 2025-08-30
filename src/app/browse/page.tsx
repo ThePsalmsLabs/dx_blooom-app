@@ -211,8 +211,8 @@ function BrowsePageClient() {
     showFiltersModal: false
   })
 
-  // Items per page
-  const itemsPerPage = 12
+  // Items per page - optimized for 2x2 grid layout
+  const itemsPerPage = 8
 
   // Map Browse sort to discovery sort
   const toDiscoverySort = (s: ContentFilters['sortBy']): DiscoverySortBy => {
@@ -313,12 +313,12 @@ function BrowsePageClient() {
     // Basic suggestion set; in production, fetch from subgraph by category
     const suggestions: Record<string, string[]> = {
       all: ['popular', 'new', 'free', 'premium', 'short', 'long'],
-      '0': ['writing', 'guide', 'tech', 'opinion'],
-      '1': ['tutorial', 'review', 'shorts', 'stream'],
-      '2': ['podcast', 'music', 'interview'],
-      '3': ['art', 'photo', 'design'],
-      '4': ['doc', 'pdf'],
-      '5': ['course', 'lesson'],
+      '0': ['writing', 'guide', 'tech', 'opinion', 'article', 'blog'],
+      '1': ['tutorial', 'review', 'shorts', 'stream', 'video', 'education'],
+      '2': ['podcast', 'music', 'interview', 'audio', 'sound'],
+      '3': ['art', 'photo', 'design', 'image', 'photography', 'graphic'],
+      '4': ['doc', 'pdf', 'document', 'research', 'paper', 'report'],
+      '5': ['course', 'lesson', 'tutorial', 'education'],
       '6': ['misc']
     }
     const key = selectedCategory === 'all' ? 'all' : String(selectedCategory)
@@ -326,14 +326,14 @@ function BrowsePageClient() {
 
     return (
       <div className="-mx-4 px-4 mb-6">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 pb-2">
           {tags.map(tag => {
             const active = selectedTags.includes(tag)
             return (
               <button
                 key={tag}
                 onClick={() => onToggle(tag)}
-                className={`px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap border transition-colors ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 border-border hover:bg-muted'}`}
+                className={`px-2 py-1 sm:px-3 rounded-full text-xs sm:text-sm whitespace-nowrap border transition-colors shrink-0 ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/30 border-border hover:bg-muted'}`}
               >
                 #{tag}
               </button>
@@ -376,15 +376,15 @@ function BrowsePageClient() {
   return (
     <AppLayout>
       <RouteGuards requiredLevel="public">
-        <div className="min-h-screen bg-background">
-          <div className="container mx-auto px-4 py-8">
-            
+                  <div className="min-h-screen bg-background">
+            <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
+
             {/* Page Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground mb-2">
+            <div className="mb-6 sm:mb-8">
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
                 Bloom Content Garden
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Wander through a curated collection of creative brilliance blooming across Web3.
                 Discover authentic stories, innovative ideas, and transformative content from real creators.
                 Support their journeys with transparent blockchain payments using your preferred tokens.
@@ -392,23 +392,23 @@ function BrowsePageClient() {
             </div>
 
             {/* Search and Controls Header */}
-            <div className="bg-card border border-border rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+            <div className="bg-card border border-border rounded-lg shadow-sm p-3 sm:p-4 lg:p-6 mb-6">
               <div className="flex flex-col gap-3">
                 {/* Search Input */}
-                <div className="flex-1 max-w-full sm:max-w-md">
+                <div className="flex-1 min-w-0">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search for creative inspiration, blooming ideas, or passionate creators..."
+                      placeholder="Search for creative inspiration..."
                       value={filters.search}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearchChange(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 pr-3 text-sm"
                     />
                   </div>
                 </div>
 
                 {/* Results and Controls */}
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                   {/* Results Count */}
                   <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground shrink-0">
                     <span>{(discovery.data?.totalCount || BigInt(0)).toString()}</span>
@@ -440,36 +440,39 @@ function BrowsePageClient() {
                   )}
 
                   {/* Spacer pushes controls right on small screens */}
-                  <div className="flex-1" />
+                  <div className="flex-1 hidden sm:block" />
 
                   {/* View Mode Toggle */}
-                  <div className="flex items-center border border-border rounded-md bg-transparent order-3 sm:order-none shrink-0">
+                  <div className="flex items-center border border-border rounded-md bg-transparent justify-center sm:justify-start shrink-0 w-full sm:w-auto">
                     <Button
                       variant={viewMode === 'grid' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => handleViewModeChange('grid')}
-                      className="rounded-r-none"
+                      className="rounded-r-none flex-1 sm:flex-initial"
                       aria-label="Grid view"
                     >
-                      <Grid3x3 className="h-4 w-4" />
+                      <Grid3x3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline ml-1">Grid</span>
                     </Button>
                     <Button
                       variant={viewMode === 'list' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => handleViewModeChange('list')}
-                      className="rounded-none border-x"
+                      className="rounded-none border-x flex-1 sm:flex-initial"
                       aria-label="List view"
                     >
-                      <List className="h-4 w-4" />
+                      <List className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline ml-1">List</span>
                     </Button>
                     <Button
                       variant={viewMode === 'compact' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => handleViewModeChange('compact')}
-                      className="rounded-l-none"
+                      className="rounded-l-none flex-1 sm:flex-initial"
                       aria-label="Compact view"
                     >
-                      <Users className="h-4 w-4" />
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline ml-1">Compact</span>
                     </Button>
                   </div>
 
@@ -477,11 +480,11 @@ function BrowsePageClient() {
                   <Button
                     variant="outline"
                     onClick={() => setInteractionState(prev => ({ ...prev, showFiltersModal: true }))}
-                    className="shrink-0"
+                    className="shrink-0 w-full sm:w-auto"
                     aria-label="Open filters"
                   >
-                    <SlidersHorizontal className="h-4 w-4 mr-0 sm:mr-2" />
-                    <span className="hidden sm:inline">Filters</span>
+                    <SlidersHorizontal className="h-4 w-4 mr-2" />
+                    <span>Filters</span>
                     {hasActiveFilters && (
                       <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0.5">
                         Active
@@ -494,51 +497,57 @@ function BrowsePageClient() {
 
             {/* Quick Filter Tabs - responsive, scrollable with icons */}
             <div className="mb-6 -mx-4 px-4">
-              <Tabs 
-                value={filters.category === 'all' ? 'all' : filters.category.toString()} 
-                onValueChange={(value) => handleFilterChange({ 
-                  category: value === 'all' ? 'all' : parseInt(value) as ContentCategory 
+              <Tabs
+                value={filters.category === 'all' ? 'all' : filters.category.toString()}
+                onValueChange={(value) => handleFilterChange({
+                  category: value === 'all' ? 'all' : parseInt(value) as ContentCategory
                 })}
               >
-                <TabsList className="flex gap-2 overflow-x-auto no-scrollbar md:grid md:w-full md:grid-cols-6">
-                  <TabsTrigger 
-                    value="all" 
-                    className="min-w-[92px] md:min-w-0 px-3 py-2 data-[state=active]:ring-1 data-[state=active]:ring-primary"
+                <TabsList className="grid grid-cols-2 gap-1 sm:grid-cols-3 sm:gap-1 md:flex md:gap-2 md:overflow-x-auto md:no-scrollbar lg:grid lg:w-full lg:grid-cols-6">
+                  <TabsTrigger
+                    value="all"
+                    className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3 data-[state=active]:ring-1 data-[state=active]:ring-primary"
                     title="All Content"
                   >
-                    <span className="flex items-center gap-2 text-xs md:text-sm">
-                      <Grid3x3 className="h-4 w-4" />
-                      <span>All</span>
+                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                      <Grid3x3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">All</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="0" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Articles">
-                    <span className="flex items-center gap-2 text-xs md:text-sm">
-                      <FileText className="h-4 w-4" />
-                      <span>Articles</span>
+                  <TabsTrigger value="0" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Articles">
+                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                      <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Articles</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="1" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Videos">
-                    <span className="flex items-center gap-2 text-xs md:text-sm">
-                      <VideoIcon className="h-4 w-4" />
-                      <span>Videos</span>
+                  <TabsTrigger value="1" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Videos">
+                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                      <VideoIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Videos</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="2" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Audio">
-                    <span className="flex items-center gap-2 text-xs md:text-sm">
-                      <Music className="h-4 w-4" />
-                      <span>Audio</span>
+                  <TabsTrigger value="2" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Audio">
+                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                      <Music className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Audio</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="3" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Images">
-                    <span className="flex items-center gap-2 text-xs md:text-sm">
-                      <ImageIcon className="h-4 w-4" />
-                      <span>Images</span>
+                  <TabsTrigger value="3" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Images">
+                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                      <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Images</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="4" className="min-w-[92px] md:min-w-0 px-3 py-2" title="Other">
-                    <span className="flex items-center gap-2 text-xs md:text-sm">
-                      <Folder className="h-4 w-4" />
-                      <span>Other</span>
+                  <TabsTrigger value="4" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Documents">
+                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                      <Folder className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Docs</span>
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger value="5" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Courses">
+                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                      <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Courses</span>
                     </span>
                   </TabsTrigger>
                 </TabsList>
@@ -590,21 +599,25 @@ function BrowsePageClient() {
 
             {/* Pagination */}
             {(discovery.data?.contentIds.length || 0) > 0 && (
-              <div className="flex justify-center gap-4">
+              <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
                   disabled={currentPage === 0}
+                  className="w-full sm:w-auto"
                 >
                   Previous
                 </Button>
-                <span className="flex items-center px-4 py-2 text-sm text-gray-600">
+                <span className="flex items-center justify-center px-4 py-2 text-xs sm:text-sm text-muted-foreground order-first sm:order-none">
                   Page {currentPage + 1} of {discovery.data?.totalPages || 1}
                 </span>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setCurrentPage(p => p + 1)}
                   disabled={!discovery.data?.hasNextPage}
+                  className="w-full sm:w-auto"
                 >
                   Next
                 </Button>
@@ -620,12 +633,12 @@ function BrowsePageClient() {
           open={interactionState.showFiltersModal}
           onOpenChange={(open) => setInteractionState(prev => ({ ...prev, showFiltersModal: open }))}
         >
-          <SheetContent side="right" isNavigation className="w-[90vw] sm:w-[440px]">
+          <SheetContent side="bottom" isNavigation className="h-[90vh] sm:h-auto sm:side-right sm:w-[440px] lg:w-[480px]">
             <SheetHeader>
               <SheetTitle>Advanced Filters</SheetTitle>
               <SheetDescription>Refine your search with detailed filtering options.</SheetDescription>
             </SheetHeader>
-            <div className="space-y-4 mt-4">
+            <div className="space-y-4 mt-4 max-h-[calc(90vh-120px)] sm:max-h-none overflow-y-auto">
               {/* Price Range Filter */}
               <div>
                 <label className="text-sm font-medium">Price Range (USDC)</label>
@@ -724,13 +737,13 @@ function ContentGrid({
   const gridClassName = useMemo(() => {
     switch (viewMode) {
       case 'grid':
-        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+        return 'grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'
       case 'list':
         return 'space-y-4'
       case 'compact':
-        return 'grid grid-cols-1 lg:grid-cols-2 gap-3'
+        return 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'
       default:
-        return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+        return 'grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'
     }
   }, [viewMode])
 
@@ -754,12 +767,12 @@ function ContentGrid({
  */
 function ContentGridSkeleton({ viewMode }: { viewMode: ViewMode }) {
   const items = Array.from({ length: 12 }, (_, i) => i)
-  
-  const gridClassName = viewMode === 'grid' 
-    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+
+  const gridClassName = viewMode === 'grid'
+    ? 'grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'
     : viewMode === 'list'
     ? 'space-y-4'
-    : 'grid grid-cols-1 lg:grid-cols-2 gap-3'
+    : 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'
 
   return (
     <div className={gridClassName}>

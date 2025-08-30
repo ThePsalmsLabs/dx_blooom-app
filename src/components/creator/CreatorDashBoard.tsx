@@ -403,7 +403,7 @@ export function EnhancedCreatorDashboard({
 
       {/* Enhanced Dashboard Navigation with Social Tab */}
       <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as DashboardView)}>
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>

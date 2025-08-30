@@ -648,7 +648,7 @@ function MiniAppBrowseCore() {
   
   const ContentTabs = React.memo(() => (
     <Tabs value={browseState.activeTab} onValueChange={(value) => handleTabChange(value as MiniAppBrowseState['activeTab'])} className="w-full">
-      <TabsList className="grid grid-cols-4 w-full">
+      <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:grid-cols-4 md:w-full">
         {CONTENT_TABS.map((tab) => (
           <TabsTrigger 
             key={tab.id} 

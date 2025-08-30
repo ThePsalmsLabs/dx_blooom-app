@@ -620,7 +620,7 @@ export function MiniAppBrowseIntegration({
           onValueChange={handleTabChange}
           className="mb-4"
         >
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-4">
             {BROWSE_TABS.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} className="text-xs">
                 <tab.icon className="h-4 w-4 mr-1" />

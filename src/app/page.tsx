@@ -39,7 +39,10 @@ import {
   Globe,
   ChevronRight,
   Plus,
-  Users
+  Users,
+  Zap,
+  Target,
+  Heart
 } from 'lucide-react'
 
 import {
@@ -52,7 +55,7 @@ import {
   AvatarFallback,
   AvatarImage
 } from '@/components/ui/index'
-import { CreatorsCarousel, ContentCarousel } from '@/components/ui/carousel'
+import { CreatorsCarousel } from '@/components/ui/carousel'
 
 // Import architectural layers following established patterns
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -63,7 +66,7 @@ import { ContentCarouselWrapper } from '@/components/content/ContentCarouselWrap
 // Import business logic and UI integration hooks
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
-import { WalletConnectButton } from '@/components/web3/WalletConnectButton'
+
 import { useWalletConnect } from '@/hooks/web3/useWalletConnect'
 
 // Import UI components
@@ -392,9 +395,9 @@ export default function HomePage() {
   const { address, isConnected } = useAccount()
   
   // Use Privy-based wallet connection
-  const { login, isAuthenticated } = useWalletConnect()
+  const { login, isAuthenticated: _isAuthenticated } = useWalletConnect()
   const { data: isCreator } = useIsCreatorRegistered(address)
-  const { data: creatorProfile } = useCreatorProfile(address)
+  const { data: _creatorProfile } = useCreatorProfile(address)
   const allCreators = useAllCreators()
 
   // Component state management
@@ -513,10 +516,20 @@ export default function HomePage() {
           <section className="relative py-20 text-center bg-gradient-to-br from-background via-background to-muted/20 rounded-2xl overflow-hidden bg-web3-glow bg-blockchain-pattern border border-border/50 shadow-xl animate-slide-in-up">
             <div className="mx-auto max-w-4xl space-y-8">
               <div className="space-y-4">
-                <Badge variant="secondary" className="text-sm bg-primary/10 text-primary border-primary/20">
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Web3 Content Economy
-                </Badge>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <Badge variant="secondary" className="text-sm bg-primary/10 text-primary border-primary/20">
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Web3 Content Economy
+                  </Badge>
+                  <Badge variant="outline" className="text-sm border-purple-500/50 text-purple-600 bg-purple-500/10">
+                    <Zap className="mr-2 h-4 w-4" />
+                    Powered by Zora
+                  </Badge>
+                  <Badge variant="outline" className="text-sm border-cyan-500/50 text-cyan-600 bg-cyan-500/10">
+                    <Target className="mr-2 h-4 w-4" />
+                    Base Network
+                  </Badge>
+                </div>
                 <h1 className="text-5xl font-bold tracking-tight sm:text-6xl leading-tight">
                    Bloom into
                   <span className="bg-gradient-to-r from-primary via-accent to-cyan-500 bg-clip-text text-transparent ml-2 block sm:inline">
@@ -525,8 +538,8 @@ export default function HomePage() {
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
                   Where real-life creativity meets Web3 magic. Bloom empowers creators to own their story,
-                  connect authentically with their audience, and earn through transparent blockchain innovation.
-                  Your content, your rules, your future.
+                  connect authentically with their audience, and earn through transparent blockchain innovation
+                  with seamless Zora NFT integration. Your content, your rules, your future.
                 </p>
               </div>
 
@@ -709,7 +722,7 @@ export default function HomePage() {
             {/* Mobile/Tablet: Carousel */}
             <div className="block lg:hidden">
               <CreatorsCarousel
-                creators={featuredCreators.map((creator, index) => (
+                creators={featuredCreators.map((creator, _index) => (
                   <Card key={creator.address} className="hover:shadow-lg transition-shadow">
                     <CardHeader className="text-center space-y-4">
                       <Avatar className="w-16 h-16 mx-auto">
@@ -757,7 +770,7 @@ export default function HomePage() {
 
             {/* Desktop: Grid */}
             <div className="hidden lg:grid lg:grid-cols-3 gap-6">
-              {featuredCreators.map((creator, index) => (
+              {featuredCreators.map((creator, _index) => (
                 <Card key={creator.address} className="hover:shadow-lg transition-shadow">
                   <CardHeader className="text-center space-y-4">
                     <Avatar className="w-16 h-16 mx-auto">
@@ -799,6 +812,92 @@ export default function HomePage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          </section>
+
+          {/* Zora NFT Integration Showcase */}
+          <section className="bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-cyan-500/5 rounded-2xl p-8 border border-purple-500/20">
+            <div className="max-w-6xl mx-auto text-center space-y-8">
+              <div className="space-y-4">
+                <Badge variant="outline" className="text-sm border-purple-500/50 text-purple-600 bg-purple-500/10">
+                  <Zap className="mr-2 h-4 w-4" />
+                  Zora-Powered Features
+                </Badge>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                  Transform Content into Collectible NFTs
+                </h2>
+                <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                  Every piece of content on Bloom can be minted as an NFT on Zora, creating new revenue streams
+                  and building your digital asset portfolio. Join creators who are turning their work into lasting value.
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20">
+                  <CardContent className="p-6 text-center space-y-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mx-auto">
+                      <Sparkles className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">One-Click Minting</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Transform any content into an NFT with our seamless Zora integration.
+                        No complex setup required.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border-cyan-500/20">
+                  <CardContent className="p-6 text-center space-y-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center mx-auto">
+                      <DollarSign className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Multiple Revenue Streams</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Earn from subscriptions, NFT sales, and royalties simultaneously.
+                        Maximize your creator income.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/20">
+                  <CardContent className="p-6 text-center space-y-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto">
+                      <Heart className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-2">Community Ownership</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Build lasting relationships with collectors who truly value your work.
+                        Own your digital legacy.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  size="lg"
+                  onClick={() => router.push('/collections')}
+                  className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+                >
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Explore NFT Collections
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => router.push('/onboard')}
+                  className="border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
+                >
+                  Become a Creator
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </section>
 
@@ -872,7 +971,7 @@ export default function HomePage() {
             <div className="space-y-4">
               <h2 className="text-4xl font-bold">Ready to Bloom into Your Creative Future?</h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Whether you're here to discover inspiring content or share your unique voice with the world,
+                Whether you&apos;re here to discover inspiring content or share your unique voice with the world,
                 Bloom gives you the Web3 tools to participate authentically in the creator economy.
                 Your story deserves to flourish.
               </p>

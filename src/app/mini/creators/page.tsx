@@ -655,7 +655,7 @@ function MiniAppCreatorsCore() {
   
   const CategoryTabs = React.memo(() => (
     <Tabs value={creatorsState.activeTab} onValueChange={(value) => handleTabChange(value as MiniAppCreatorsState['activeTab'])} className="w-full">
-      <TabsList className="grid grid-cols-4 w-full">
+      <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:grid-cols-4 md:w-full">
         {CREATOR_CATEGORIES.map((category) => (
           <TabsTrigger 
             key={category.id} 

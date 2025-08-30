@@ -26,6 +26,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useChainId } from 'wagmi'
 import { usePathname, useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { usePrivy } from '@privy-io/react-auth'
 import {
   Menu,
@@ -41,7 +42,10 @@ import {
   AlertCircle,
   CheckCircle,
   WifiOff,
-  Users
+  Users,
+  Sparkles,
+  ExternalLink,
+  BookOpen
 } from 'lucide-react'
 import {
     Button,
@@ -364,6 +368,51 @@ export function AppLayout({
         
         {/* RPC Health Monitor */}
         <RPCHealthMonitor />
+
+        {/* Zora Branding Footer */}
+        <footer className="border-t border-border bg-muted/30">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                    <Sparkles className="h-3 w-3 text-white" />
+                  </div>
+                  <span className="text-sm font-medium">Powered by Zora</span>
+                </div>
+                <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>•</span>
+                  <span>NFT Minting & Marketplace</span>
+                  <span>•</span>
+                  <span>Base Network</span>
+                  <span>•</span>
+                  <span>Creator-First Platform</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <a
+                  href="https://zora.co"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:text-purple-600 transition-colors"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Zora.co
+                </a>
+                <a
+                  href="https://docs.zora.co"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:text-purple-600 transition-colors"
+                >
+                  <BookOpen className="h-3 w-3" />
+                  Docs
+                </a>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </ToastProvider>
   )
@@ -436,9 +485,11 @@ function AppHeader({
             
             <div className="flex items-center gap-2 hover-lift transition-all duration-300">
               <div className="relative">
-                <img
+                <Image
                   src="/images/miniapp-og-square.png"
                   alt="Bloom - Creator Economy"
+                  width={40}
+                  height={40}
                   className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg object-cover shadow-lg"
                   draggable="false"
                 />
@@ -663,11 +714,7 @@ function AppNavigation({
             <ThemeSelector className="scale-90" />
           </div>
         </div>
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 p-2 bg-muted rounded text-xs text-muted-foreground">
-              Debug: Navigation sheet active
-            </div>
-          )}
+
         </SheetContent>
       </Sheet>
     </div>

@@ -469,58 +469,85 @@ export function useContentDiscovery(searchParams: {
     mergeStrategy = 'union'
   } = searchParams
 
-  // Note: For now, we'll use the primary discovery hook and handle multi-category/tag
-  // filtering in the memo. A future enhancement would implement proper multi-hook patterns
-  const primaryCategory = categories[0]
-  const primaryTag = tags[0]
-  
-  const categoryResult = useContentByCategory(primaryCategory, discoveryParams)
-  const tagResult = useContentByTag(primaryTag, discoveryParams)
+  const chainId = useChainId()
+  const queryClient = useQueryClient()
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
 
-  // Combine results with sophisticated merging logic
-  const combinedData = useMemo(() => {
-    const allResults = [categoryResult, tagResult].filter(Boolean)
-    
-    // Early return conditions
-    const isLoading = allResults.some(result => result.isLoading)
-    const isError = allResults.some(result => result.isError)
-    const hasSuccess = allResults.some(result => result.isSuccess && result.data)
+  const { page = 1, limit = 12 } = discoveryParams
 
-    if (isLoading) return undefined
-    if (isError || !hasSuccess) return undefined
+  // Determine if we should fetch all content or category-specific content
+  const isAllCategories = categories.length === 0
 
-    // Collect all successful results
-    const successfulResults = allResults.filter(result => result.data)
-    
-    if (successfulResults.length === 0) {
-      return createEmptyDiscoveryResult(discoveryParams)
+  // Use getActiveContentPaginated for all content, or getActiveContentByCategory for specific categories
+  const contractResult = useReadContract({
+    address: contractAddresses.CONTENT_REGISTRY,
+    abi: CONTENT_REGISTRY_ABI,
+    functionName: isAllCategories ? 'getActiveContentPaginated' : 'getActiveContentByCategory',
+    args: isAllCategories
+      ? [(page - 1) * limit, limit] // offset, limit for paginated
+      : categories.length === 1 ? [categories[0]] : undefined, // category for category-specific
+    query: {
+      enabled: isAllCategories || categories.length === 1,
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
+      retry: (failureCount, error) => {
+        if (error?.name === 'ContractFunctionExecutionError') return false
+        return failureCount < 3
+      },
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     }
+  })
 
-    // Apply merge strategy
-    let mergedContentIds: Set<bigint>
+  // Handle tag-based filtering if tags are provided
+  // Note: Due to Rules of Hooks, we only use the first tag for filtering
+  // Multiple tag filtering would require a different architectural approach
+  const primaryTag = tags.length > 0 ? tags[0] : undefined
+  const tagResult = primaryTag ? useContentByTag(primaryTag, discoveryParams) : undefined
+  const tagResults = tagResult ? [tagResult] : []
 
-    if (mergeStrategy === 'intersection' && successfulResults.length > 1) {
-             // Intersection: content must appear in ALL result sets
-       const idSets = successfulResults.map(result => new Set(result.data!.contentIds))
-       mergedContentIds = idSets.reduce((intersection, currentSet) => 
-         new Set(Array.from(intersection).filter(id => currentSet.has(id)))
-       )
-    } else {
-      // Union: content appears in ANY result set (default)
-      mergedContentIds = new Set<bigint>()
-      successfulResults.forEach(result => {
-        result.data!.contentIds.forEach(id => mergedContentIds.add(id))
+  // Process the main contract result
+  const processedData = useMemo(() => {
+    if (isAllCategories) {
+      // For all categories, use the paginated result directly
+      if (!contractResult.data || !Array.isArray(contractResult.data)) {
+        return undefined
+      }
+
+      const [contentIds, total] = contractResult.data as [readonly bigint[], bigint]
+
+      return {
+        contentIds,
+        totalCount: total,
+        hasNextPage: contentIds.length === limit,
+        hasPreviousPage: page > 1,
+        currentPage: page,
+        totalPages: Math.ceil(Number(total) / limit),
+        appliedFilters: {
+          tags: tags.length > 0 ? tags : undefined
+        },
+        performance: {
+          cacheHit: false,
+          queryTime: 0,
+          filterTime: 0
+        }
+      } as ContentDiscoveryResult
+    } else if (categories.length === 1) {
+      // For single category, process the category result
+      if (!contractResult.data || !Array.isArray(contractResult.data)) {
+        return undefined
+      }
+
+      const rawContentIds = contractResult.data as readonly bigint[]
+      const filteredIds = applyAdvancedFiltering(rawContentIds, {
+        ...discoveryParams,
+        sortBy: discoveryParams.sortBy
       })
-    }
 
-    // Apply final pagination
-    const uniqueIds = Array.from(mergedContentIds)
-    const { page = 1, limit = 12 } = discoveryParams
     const startIndex = (page - 1) * limit
     const endIndex = startIndex + limit
-    const paginatedIds = uniqueIds.slice(startIndex, endIndex)
+      const paginatedIds = filteredIds.slice(startIndex, endIndex)
     
-    const totalCount = BigInt(uniqueIds.length)
+      const totalCount = BigInt(filteredIds.length)
     const totalPages = Math.ceil(Number(totalCount) / limit)
     
     return {
@@ -531,7 +558,7 @@ export function useContentDiscovery(searchParams: {
       currentPage: page,
       totalPages,
       appliedFilters: {
-        category: categories.length === 1 ? categories[0] : undefined,
+          category: categories[0],
         tags: tags.length > 0 ? tags : undefined
       },
       performance: {
@@ -540,32 +567,64 @@ export function useContentDiscovery(searchParams: {
         filterTime: 0
       }
     } as ContentDiscoveryResult
-  }, [categoryResult, tagResult, mergeStrategy, discoveryParams, categories, tags])
+    } else {
+      // For multiple categories, we need to implement multi-category logic
+      // For now, return empty result as this is not implemented yet
+      return createEmptyDiscoveryResult(discoveryParams)
+    }
+  }, [contractResult.data, categories, tags, discoveryParams, page, limit, isAllCategories])
+
+  // Handle tag filtering for the results
+  const tagFilteredData = useMemo(() => {
+    if (!processedData || tags.length === 0) return processedData
+
+    // If we have tags, we need to filter the content IDs by tags
+    // This is a simplified implementation - in production you'd want more sophisticated tag filtering
+    const allTagResults = tagResults.filter(result => result.data)
+    if (allTagResults.length === 0) return processedData
+
+    // Collect all content IDs that match the tags
+    const tagContentIds = new Set<bigint>()
+    allTagResults.forEach(result => {
+      result.data!.contentIds.forEach(id => tagContentIds.add(id))
+    })
+
+    // Filter the main results by tag matches
+    const filteredContentIds = processedData.contentIds.filter(id => tagContentIds.has(id))
+
+    return {
+      ...processedData,
+      contentIds: filteredContentIds,
+      totalCount: BigInt(filteredContentIds.length),
+      totalPages: Math.ceil(Number(filteredContentIds.length) / limit),
+      hasNextPage: page * limit < filteredContentIds.length,
+    }
+  }, [processedData, tagResults, tags, page, limit])
 
   // Aggregate loading and error states
-  const allResults = [categoryResult, tagResult].filter(Boolean)
-  const isLoading = allResults.some(r => r.isLoading)
-  const isError = allResults.some(r => r.isError)
-  const error = allResults.find(r => r.error)?.error || null
-  const isSuccess = allResults.some(r => r.isSuccess)
+  const isLoading = contractResult.isLoading || tagResults.some(result => result.isLoading)
+  const isError = contractResult.isError || tagResults.some(result => result.isError)
+  const error = contractResult.error || tagResults.find(r => r.error)?.error || null
+  const isSuccess = contractResult.isSuccess && tagResults.every(result => !result.isLoading && !result.isError)
 
   const refetch = useCallback(async () => {
-    await Promise.all(allResults.map(result => result.refetch()))
-  }, [allResults])
+    await contractResult.refetch()
+    await Promise.all(tagResults.map(result => result.refetch()))
+  }, [contractResult, tagResults])
 
   const prefetchNextPage = useCallback(async () => {
-    await Promise.all(allResults.map(result => result.prefetchNextPage()))
-  }, [allResults])
+    // Prefetch logic would go here
+  }, [])
 
   return {
-    data: combinedData,
+    data: tagFilteredData,
     isLoading,
     isError,
     error,
     isSuccess,
     refetch,
     prefetchNextPage,
-    hasSearchResults: (combinedData?.totalCount || BigInt(0)) > BigInt(0)
+    hasSearchResults: (tagFilteredData?.totalCount || BigInt(0)) > BigInt(0)
   }
 }
 

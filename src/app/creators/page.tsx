@@ -339,7 +339,7 @@ export default function CreatorsDirectoryPage() {
               {/* Desktop Tabs and View Controls */}
               <div className="flex items-center justify-between">
                 <Tabs defaultValue="all" className="w-auto">
-                  <TabsList className="grid w-auto grid-cols-3">
+                  <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-auto md:grid-cols-3">
                     <TabsTrigger value="all" className="text-sm">All Creators</TabsTrigger>
                     <TabsTrigger value="verified" className="text-sm">
                       <Star className="h-4 w-4 mr-2" />
@@ -450,7 +450,7 @@ export default function CreatorsDirectoryPage() {
           <div className="lg:hidden space-y-4">
             {/* Mobile Tabs */}
             <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-3">
                 <TabsTrigger value="all" className="text-xs sm:text-sm">All Creators</TabsTrigger>
                 <TabsTrigger value="verified" className="text-xs sm:text-sm">
                   <Star className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />

@@ -249,29 +249,28 @@ import {
     // ===== SUBSCRIPTION DETAILS HOOK =====
   
     /**
-     * Get Subscription Details Hook
-     * 
-     * This function returns a hook for fetching detailed subscription information
-     * between a specific user and creator. It's designed to be called conditionally
-     * based on UI needs, following React hooks rules.
+     * Create Subscription Details Configuration
+     *
+     * Creates configuration object for subscription details fetching between a specific user and creator.
+     * This returns the configuration that can be used with useReadContract.
      */
-    const useSubscriptionDetails = useCallback((creatorAddress: Address) => {
-      return useReadContract({
+    const createSubscriptionDetailsConfig = useCallback((creatorAddress: Address) => {
+      return {
         address: contractAddresses?.SUBSCRIPTION_MANAGER,
         abi: SUBSCRIPTION_MANAGER_ABI,
         functionName: 'getSubscriptionDetails',
         args: effectiveUserAddress && creatorAddress ? [effectiveUserAddress, creatorAddress] : undefined,
         query: {
           enabled: Boolean(
-            effectiveUserAddress && 
-            creatorAddress && 
+            effectiveUserAddress &&
+            creatorAddress &&
             contractAddresses?.SUBSCRIPTION_MANAGER
           ),
           staleTime: 1000 * 60 * 3,      // 3 minutes - details change moderately
           gcTime: 1000 * 60 * 20,        // 20 minutes cache retention
           retry: 2,
         }
-      })
+      }
     }, [contractAddresses, effectiveUserAddress])
   
     /**
