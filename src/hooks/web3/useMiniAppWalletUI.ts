@@ -16,6 +16,12 @@ import { useAccount, useChainId, useDisconnect } from 'wagmi'
 import { formatAddress } from '@/lib/utils'
 import { useMiniAppWalletConnect } from './useMiniAppWalletConnect'
 import type { EnhancedWalletConnectionUI } from '@/hooks/ui/integration'
+import {
+  storeWalletState,
+  sendWalletStateToParent,
+  isMiniAppContext,
+  getWalletState
+} from '@/lib/utils/miniapp-communication'
 
 /**
  * MiniApp Wallet UI Hook
@@ -104,6 +110,25 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
     miniAppWallet.connect(connector)
   }, [miniAppWallet])
   
+  // MiniApp communication - send wallet state to parent window
+  useEffect(() => {
+    if (isMiniAppContext() && miniAppWallet.isConnected && address) {
+      const walletState = {
+        isConnected: miniAppWallet.isConnected,
+        address: address,
+        chainId: chainId
+      }
+
+      // Store in localStorage for persistence
+      storeWalletState(walletState)
+
+      // Send to parent window for immediate communication
+      sendWalletStateToParent(walletState)
+
+      console.log('📤 Sent wallet state to parent:', walletState)
+    }
+  }, [miniAppWallet.isConnected, address, chainId])
+
   // Debug logging to track state synchronization
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -114,7 +139,8 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
         wagmiConnecting: isConnecting,
         address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null,
         miniAppError: miniAppWallet.error?.message,
-        miniAppStatus: miniAppWallet.status
+        miniAppStatus: miniAppWallet.status,
+        isMiniAppContext: isMiniAppContext()
       })
     }
   }, [

@@ -76,6 +76,7 @@ import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-con
 import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
 import { WalletConnectionButton } from '@/components/web3/WalletConnect'
 import { RPCHealthMonitor } from '@/components/debug/RPCHealthMonitor'
+import { MiniAppRedirectPrompt } from '@/components/miniapp/MiniAppRedirectPrompt'
 
 /**
  * User Role Types
@@ -363,9 +364,12 @@ export function AppLayout({
           </main>
         </div>
 
+        {/* MiniApp Redirect Prompt */}
+        <MiniAppRedirectPrompt />
+
         {/* Toast Notifications */}
         <ToastViewport />
-        
+
         {/* RPC Health Monitor */}
         <RPCHealthMonitor />
 

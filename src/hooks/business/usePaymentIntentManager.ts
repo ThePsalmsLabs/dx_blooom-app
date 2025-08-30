@@ -399,7 +399,10 @@ export const useConditionalTokenBalance = (
   userAddress: Address | undefined,
   enabled: boolean
 ) => {
-  // Only call the hook if enabled, otherwise return undefined values
+  // Always call the hook to maintain hooks order
+  const tokenBalanceQuery = useTokenBalance(tokenAddress, userAddress)
+
+  // Only return data if enabled
   if (!enabled) {
     return {
       data: undefined,
@@ -410,7 +413,7 @@ export const useConditionalTokenBalance = (
       refetch: () => {}
     }
   }
-  return useTokenBalance(tokenAddress, userAddress)
+  return tokenBalanceQuery
 }
 
 export const useConditionalTokenAllowance = (
@@ -419,7 +422,10 @@ export const useConditionalTokenAllowance = (
   spenderAddress: Address | undefined,
   enabled: boolean
 ) => {
-  // Only call the hook if enabled, otherwise return undefined values
+  // Always call the hook to maintain hooks order
+  const tokenAllowanceQuery = useTokenAllowance(tokenAddress, userAddress, spenderAddress)
+
+  // Only return data if enabled
   if (!enabled) {
     return {
       data: undefined,
@@ -430,5 +436,5 @@ export const useConditionalTokenAllowance = (
       refetch: () => {}
     }
   }
-  return useTokenAllowance(tokenAddress, userAddress, spenderAddress)
+  return tokenAllowanceQuery
 }

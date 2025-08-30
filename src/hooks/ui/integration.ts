@@ -33,6 +33,13 @@ import { type Address } from 'viem'
 
 // Import utility functions for data formatting
 import { formatAddress } from '@/lib/utils'
+import {
+  storeWalletState,
+  sendWalletStateToParent,
+  isMiniAppContext,
+  listenForWalletState,
+  shouldRedirectToMiniApp
+} from '@/lib/utils/miniapp-communication'
 // Import our business logic hooks to compose them into UI-focused interfaces
 import {
   useUnifiedContentPurchaseFlow,
@@ -379,58 +386,24 @@ export interface EnhancedWalletConnectionUI {
  * Both switches look the same, but only one actually turns on the lights.
  */
 export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
-  // Always call all hooks first to avoid conditional hook calls
+  // Always call ALL hooks first to avoid conditional hook calls
   const miniAppContext = useMiniAppWalletContext()
-  
+
   // Use ONLY Privy hooks for wallet management
   const { user, ready, authenticated, login, logout } = usePrivy()
-  
+
   // Get chainId from wagmi for network info (read-only)
   const chainId = useChainId()
-  
-  // If we're in MiniApp context, use the MiniApp wallet UI
-  if (miniAppContext?.isMiniAppContext) {
-    return miniAppContext.walletUI
-  }
-  
-  // Extract wallet info from Privy user object
-  const isConnected = authenticated && Boolean(user?.wallet?.address)
-  const isConnecting = !ready
-  const address = user?.wallet?.address || null
-  
-  // Debug logging to help identify the issue (always enabled in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 useWalletConnectionUI Debug (Privy-only):', {
-      ready,
-      authenticated,
-      isConnected,
-      isConnecting,
-      userWallet: user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : null,
-      userEmail: user?.email?.address || null,
-      hasUser: !!user,
-      userLinkedAccounts: user?.linkedAccounts?.length || 0
-    })
-  }
-  
-  // State for user feedback and error handling
+
+    // State for user feedback and error handling (must be called before any conditional logic)
   const [error, setError] = useState<string | null>(null)
-  
-  /**
-   * Network Detection and Validation
-   * 
-   * This logic determines which blockchain network the user is connected to
-   * and whether it's one of our supported networks. We support both Base
-   * mainnet (for production) and Base Sepolia (for testing).
-   * 
-   * The network check is important because your smart contracts are deployed
-   * on specific networks, and users need to be on the right network to
-   * interact with your platform.
-   */
+
+  // ALL hooks must be called before any conditional logic or early returns
   const { chainName, isCorrectNetwork } = useMemo(() => {
     // Define which chain IDs we support
     const supportedChains = [8453, 84532] // Base Mainnet and Base Sepolia
     const isCorrect = supportedChains.includes(chainId)
-    
+
     // Map chain IDs to human-readable names
     let name: string
     switch (chainId) {
@@ -443,27 +416,15 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
       default:
         name = 'Unsupported Network'
     }
-    
+
     return { chainName: name, isCorrectNetwork: isCorrect }
   }, [chainId])
-  
-  /**
-   * Address Formatting for Display
-   * 
-   * Wallet addresses are long hex strings (like 0x742d35Cc6aF3...) that
-   * don't fit well in UI components. This formats them into a shorter,
-   * more user-friendly version (like 0x742d...AF3f) for display.
-   */
+
   const formattedAddress = useMemo(() => {
+    const address = user?.wallet?.address || null
     return address ? formatAddress(address as `0x${string}`) : null
-  }, [address])
-  
-  /**
-   * Pure Privy Connection Action
-   * 
-   * This function uses ONLY Privy's login system for wallet connection.
-   * No more hybrid wagmi + Privy approach.
-   */
+  }, [user?.wallet?.address])
+
   const handleConnect = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('🚀 Privy-only connect called', {
@@ -472,10 +433,10 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
         hasLogin: !!login
       })
     }
-    
+
     try {
       setError(null)
-      
+
       // Use Privy login exclusively
       if (login) {
         console.log('✅ Opening Privy login modal')
@@ -491,60 +452,82 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
     }
   }, [login, ready, authenticated])
 
-  /**
-   * Handle Connector Selection (Privy-only, no more wagmi connectors)
-   */
   const handleConnectorSelect = useCallback((connector: Connector) => {
     // In pure Privy mode, we don't use wagmi connectors
     // Just trigger Privy login directly
     console.log('🔗 Connector selected, using Privy login instead')
     handleConnect()
   }, [handleConnect])
-  
-  /**
-   * Network Switching Action (Privy-only)
-   * 
-   * In Privy-only mode, we can't directly switch networks via wagmi.
-   * We'll ask users to switch manually in their wallet.
-   */
+
   const handleSwitchNetwork = useCallback(() => {
     try {
       setError(null)
-      
+
       console.log('📡 Network switch requested - asking user to switch manually')
-      
+
       // Show user-friendly message about manual network switching
       alert('Please switch to Base Sepolia (Chain ID: 84532) in your wallet')
-      
+
     } catch (err) {
       setError('Failed to switch networks. Please try manually in your wallet.')
       console.error('Network switch error:', err)
     }
   }, [])
-  
-  /**
-   * Error Recovery Action
-   * 
-   * Simple function to clear error messages and let users try again.
-   * This improves user experience by not leaving error messages stuck
-   * on screen after users have acknowledged them.
-   */
+
   const clearError = useCallback(() => {
     setError(null)
   }, [])
-  
-  /**
-   * Automatic Error Clearing
-   * 
-   * This effect automatically clears errors when the connection state
-   * changes successfully. For example, if a user gets an error and then
-   * successfully connects their wallet, we clear the error automatically.
-   */
+
+  // Extract wallet info from Privy user object (needed for useEffect)
+  const isConnected = authenticated && Boolean(user?.wallet?.address)
+
   useEffect(() => {
     if (isConnected && error) {
       setError(null)
     }
   }, [isConnected, error])
+
+  // Web context communication - send wallet state when connected
+  useEffect(() => {
+    if (!isMiniAppContext() && isConnected && user?.wallet?.address) {
+      const walletState = {
+        isConnected: isConnected,
+        address: user.wallet.address,
+        chainId: chainId
+      }
+
+      // Store in localStorage for MiniApp communication
+      storeWalletState(walletState)
+
+      // Send to parent window (in case we're in an iframe)
+      sendWalletStateToParent(walletState)
+
+      console.log('🌐 Web wallet state updated:', walletState)
+    }
+  }, [isConnected, user?.wallet?.address, chainId])
+
+  // If we're in MiniApp context, use the MiniApp wallet UI (AFTER all hooks are called)
+  if (miniAppContext?.isMiniAppContext) {
+    return miniAppContext.walletUI
+  }
+
+  // Extract wallet info from Privy user object
+  const isConnecting = !ready
+  const address = user?.wallet?.address || null
+
+  // Debug logging to help identify the issue (always enabled in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 useWalletConnectionUI Debug (Privy-only):', {
+      ready,
+      authenticated,
+      isConnected,
+      isConnecting,
+      userWallet: user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : null,
+      userEmail: user?.email?.address || null,
+      hasUser: !!user,
+      userLinkedAccounts: user?.linkedAccounts?.length || 0
+    })
+  }
   
   /**
    * Return the Complete UI Interface

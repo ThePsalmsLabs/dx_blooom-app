@@ -1067,14 +1067,15 @@ function MiniAppErrorFallback({
           )}
 
           {isMiniAppEnvironment && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full"
               onClick={() => {
-                // Open in web browser
+                // Open in web browser with communication channel
                 if (typeof window !== 'undefined') {
                   const webUrl = window.location.href.replace('/mini/', '/')
-                  window.open(webUrl, '_blank')
+                  const communicationUrl = `${webUrl}?miniapp=true&return_url=${encodeURIComponent(window.location.href)}`
+                  window.open(communicationUrl, '_blank')
                 }
               }}
             >

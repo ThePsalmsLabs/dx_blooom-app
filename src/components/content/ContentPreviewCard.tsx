@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
+
 import { useRouter } from 'next/navigation'
 import {
   Eye,
@@ -10,7 +11,9 @@ import {
   Clock,
   DollarSign,
   ArrowRight,
-  Tag
+  Tag,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import {
   Card,
@@ -58,6 +61,7 @@ export function ContentPreviewCard({
   userAddress
 }: ContentPreviewCardProps) {
   const router = useRouter()
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
   // Get content data and access control information
   const contentQuery = useContentById(contentId)
@@ -71,6 +75,27 @@ export function ContentPreviewCard({
   const handleViewContent = useCallback(() => {
     router.push(`/content/${contentId}`)
   }, [router, contentId])
+
+  // Truncate description to 100 characters and check if it needs "read more"
+  const getTruncatedDescription = useCallback((description: string) => {
+    if (!description) return { text: '', needsReadMore: false }
+
+    const maxLength = 100
+    if (description.length <= maxLength) {
+      return { text: description, needsReadMore: false }
+    }
+
+    return {
+      text: isDescriptionExpanded ? description : `${description.slice(0, maxLength)}...`,
+      needsReadMore: description.length > maxLength
+    }
+  }, [isDescriptionExpanded])
+
+  // Handle description expand/collapse
+  const handleDescriptionToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click navigation
+    setIsDescriptionExpanded(prev => !prev)
+  }, [])
 
   // Loading state for individual cards
   if (contentQuery.isLoading) {
@@ -112,9 +137,34 @@ export function ContentPreviewCard({
                   </h3>
                 </div>
 
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {content.description}
-                </p>
+                <div className="text-sm text-muted-foreground">
+                  {(() => {
+                    const { text, needsReadMore } = getTruncatedDescription(content.description)
+                    return (
+                      <div className="space-y-1">
+                        <p className={isDescriptionExpanded ? '' : 'line-clamp-2'}>
+                          {text}
+                        </p>
+                        {needsReadMore && (
+                          <button
+                            onClick={handleDescriptionToggle}
+                            className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors"
+                          >
+                            {isDescriptionExpanded ? (
+                              <>
+                                Read less <ChevronUp className="h-3 w-3" />
+                              </>
+                            ) : (
+                              <>
+                                Read more <ChevronDown className="h-3 w-3" />
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
 
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <Badge variant="secondary" className="text-xs">
@@ -181,9 +231,34 @@ export function ContentPreviewCard({
                 </h3>
               </div>
 
-              <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                {content.description}
-              </p>
+              <div className="text-xs text-muted-foreground mb-2">
+                {(() => {
+                  const { text, needsReadMore } = getTruncatedDescription(content.description)
+                  return (
+                    <div className="space-y-1">
+                      <p className={isDescriptionExpanded ? '' : 'line-clamp-1'}>
+                        {text}
+                      </p>
+                      {needsReadMore && (
+                        <button
+                          onClick={handleDescriptionToggle}
+                          className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors"
+                        >
+                          {isDescriptionExpanded ? (
+                            <>
+                              Read less <ChevronUp className="h-3 w-3" />
+                            </>
+                          ) : (
+                            <>
+                              Read more <ChevronDown className="h-3 w-3" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -236,9 +311,34 @@ export function ContentPreviewCard({
           </CardTitle>
         </div>
 
-        <CardDescription className="line-clamp-2 text-sm">
-          {content.description}
-        </CardDescription>
+        <div className="text-sm text-muted-foreground">
+          {(() => {
+            const { text, needsReadMore } = getTruncatedDescription(content.description)
+            return (
+              <div className="space-y-1">
+                <p className={isDescriptionExpanded ? '' : 'line-clamp-2'}>
+                  {text}
+                </p>
+                {needsReadMore && (
+                  <button
+                    onClick={handleDescriptionToggle}
+                    className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors"
+                  >
+                    {isDescriptionExpanded ? (
+                      <>
+                        Read less <ChevronUp className="h-3 w-3" />
+                      </>
+                    ) : (
+                      <>
+                        Read more <ChevronDown className="h-3 w-3" />
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
+        </div>
       </CardHeader>
 
       <CardContent className="pt-0 space-y-3">

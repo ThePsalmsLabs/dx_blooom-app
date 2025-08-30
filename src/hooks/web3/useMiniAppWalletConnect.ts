@@ -15,10 +15,10 @@
  */
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import { 
-  useAccount, 
-  useChainId, 
-  useDisconnect, 
+import {
+  useAccount,
+  useChainId,
+  useDisconnect,
   useConnect,
   useConfig,
   useReconnect
@@ -27,6 +27,11 @@ import { base, baseSepolia } from 'viem/chains'
 import { formatAddress } from '../../lib/utils'
 import type { Connector } from 'wagmi'
 import type { Address } from 'viem'
+import {
+  getWalletState,
+  listenForWalletState,
+  isMiniAppContext
+} from '@/lib/utils/miniapp-communication'
 
 // =============================================================================
 // TYPES AND INTERFACES
@@ -380,6 +385,39 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
       }
     }
   }, [])
+
+  // MiniApp communication - listen for wallet state from web version
+  useEffect(() => {
+    if (!isMiniAppContext()) return
+
+    const cleanup = listenForWalletState((state) => {
+      console.log('📨 MiniApp received wallet state from web:', state)
+
+      // If web version is connected and we have the same address, update our state
+      if (state.isConnected && state.address && !isConnected) {
+        console.log('🔄 MiniApp syncing wallet state from web version')
+
+        // Try to reconnect with the same address if possible
+        // This is a simplified approach - in production you'd want more sophisticated sync
+        if (connectors.length > 0) {
+          // Trigger a reconnect to sync state
+          reconnect()
+        }
+      }
+    })
+
+    // Also check localStorage on mount for any stored state
+    const storedState = getWalletState()
+    if (storedState?.isConnected && storedState.address && !isConnected) {
+      console.log('📦 MiniApp found stored wallet state:', storedState)
+      // Similar sync logic as above
+      if (connectors.length > 0) {
+        reconnect()
+      }
+    }
+
+    return cleanup
+  }, [isConnected, connectors.length, reconnect])
 
   // =============================================================================
   // CONNECTION ACTIONS

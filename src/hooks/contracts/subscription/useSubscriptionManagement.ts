@@ -273,30 +273,28 @@ import {
       }
     }, [contractAddresses, effectiveUserAddress])
   
-    /**
-     * Get Subscription Status Hook
-     * 
-     * Lightweight hook for checking subscription status without full details.
-     * Optimized for frequent polling and status checks.
-     */
+
+
     const useSubscriptionStatus = useCallback((creatorAddress: Address) => {
-      return useReadContract({
+      // Create a dynamic query for the specific creator address
+      const statusQuery = useReadContract({
         address: contractAddresses?.SUBSCRIPTION_MANAGER,
         abi: SUBSCRIPTION_MANAGER_ABI,
         functionName: 'getSubscriptionStatus',
         args: effectiveUserAddress && creatorAddress ? [effectiveUserAddress, creatorAddress] : undefined,
         query: {
           enabled: Boolean(
-            effectiveUserAddress && 
-            creatorAddress && 
+            effectiveUserAddress &&
+            creatorAddress &&
             contractAddresses?.SUBSCRIPTION_MANAGER
           ),
           staleTime: 1000 * 60 * 1,      // 1 minute - status needs to be fresh
           gcTime: 1000 * 60 * 10,        // 10 minutes cache retention
           retry: 2,
-          refetchInterval: 1000 * 60 * 2, // Auto-refresh every 2 minutes
         }
       })
+
+      return statusQuery
     }, [contractAddresses, effectiveUserAddress])
   
     // ===== DATA PROCESSING AND TRANSFORMATION =====
@@ -658,7 +656,6 @@ import {
     error,
     
     // Conditional hooks for specific subscriptions
-    useSubscriptionDetails,
     useSubscriptionStatus,
     
     // Write operations

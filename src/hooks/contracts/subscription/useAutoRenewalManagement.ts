@@ -601,9 +601,6 @@ import {
       handlePaymentFailure,
       getRenewalAnalytics,
       
-      // Conditional hooks for specific subscriptions
-      useAutoRenewalStatus,
-      
       // Overall state
       isLoading,
       isError,

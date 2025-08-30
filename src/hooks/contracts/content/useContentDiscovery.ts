@@ -484,8 +484,8 @@ export function useContentDiscovery(searchParams: {
     abi: CONTENT_REGISTRY_ABI,
     functionName: isAllCategories ? 'getActiveContentPaginated' : 'getActiveContentByCategory',
     args: isAllCategories
-      ? [(page - 1) * limit, limit] // offset, limit for paginated
-      : categories.length === 1 ? [categories[0]] : undefined, // category for category-specific
+      ? [BigInt((page - 1) * limit), BigInt(limit)] // offset, limit for paginated (as bigint)
+      : categories.length === 1 ? [Number(categories[0])] : undefined, // category for category-specific (as number)
     query: {
       enabled: isAllCategories || categories.length === 1,
       staleTime: 1000 * 60 * 5,
@@ -502,18 +502,23 @@ export function useContentDiscovery(searchParams: {
   // Note: Due to Rules of Hooks, we only use the first tag for filtering
   // Multiple tag filtering would require a different architectural approach
   const primaryTag = tags.length > 0 ? tags[0] : undefined
-  const tagResult = primaryTag ? useContentByTag(primaryTag, discoveryParams) : undefined
-  const tagResults = tagResult ? [tagResult] : []
+
+  // Always call the hook to maintain hooks order - handle conditional logic in useMemo
+  const tagResult = useContentByTag(primaryTag, discoveryParams)
+  const tagResults = primaryTag ? [tagResult] : []
 
   // Process the main contract result
   const processedData = useMemo(() => {
+    // Type-safe data access
+    const resultData = contractResult.data as any
+
     if (isAllCategories) {
       // For all categories, use the paginated result directly
-      if (!contractResult.data || !Array.isArray(contractResult.data)) {
+      if (!resultData || !Array.isArray(resultData)) {
         return undefined
       }
 
-      const [contentIds, total] = contractResult.data as [readonly bigint[], bigint]
+      const [contentIds, total] = resultData as [readonly bigint[], bigint]
 
       return {
         contentIds,
@@ -533,11 +538,11 @@ export function useContentDiscovery(searchParams: {
       } as ContentDiscoveryResult
     } else if (categories.length === 1) {
       // For single category, process the category result
-      if (!contractResult.data || !Array.isArray(contractResult.data)) {
+      if (!resultData || !Array.isArray(resultData)) {
         return undefined
       }
 
-      const rawContentIds = contractResult.data as readonly bigint[]
+      const rawContentIds = resultData as readonly bigint[]
       const filteredIds = applyAdvancedFiltering(rawContentIds, {
         ...discoveryParams,
         sortBy: discoveryParams.sortBy

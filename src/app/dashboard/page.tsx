@@ -420,6 +420,7 @@ export default function SubscriptionManagementPage() {
             onRefresh={handleDataRefresh}
             onTimePeriodChange={handleTimePeriodChange}
             currentPeriod={managementState.timePeriod}
+            router={router}
           />
 
           {/* Quick Metrics Cards */}
@@ -539,14 +540,16 @@ interface DashboardHeaderProps {
   readonly onRefresh: () => void
   readonly onTimePeriodChange: (period: AnalyticsTimePeriod) => void
   readonly currentPeriod: AnalyticsTimePeriod
+  readonly router: any // Next.js router instance
 }
 
-function DashboardHeader({ 
-  creatorProfile, 
-  quickMetrics, 
-  onRefresh, 
-  onTimePeriodChange, 
-  currentPeriod 
+function DashboardHeader({
+  creatorProfile,
+  quickMetrics,
+  onRefresh,
+  onTimePeriodChange,
+  currentPeriod,
+  router
 }: DashboardHeaderProps) {
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
