@@ -306,6 +306,97 @@ button:hover,
   overflow: hidden;
 }
 
+/* ===== SUBSCRIPTION MODAL STYLES ===== */
+/* Custom styling for the subscription purchase modal */
+.subscription-modal .custom-modal-content {
+  background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted) / 0.3) 100%);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+              0 0 0 1px hsl(var(--border) / 0.1);
+}
+
+.dark .subscription-modal .custom-modal-content {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
+              0 0 0 1px hsl(var(--border) / 0.2);
+}
+
+/* Crown icon animation */
+.subscription-modal .crown-icon {
+  animation: crown-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes crown-glow {
+  from {
+    filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.3));
+  }
+  to {
+    filter: drop-shadow(0 0 16px hsl(var(--primary) / 0.6));
+  }
+}
+
+/* Price highlight gradient background */
+.subscription-modal .price-highlight {
+  background: linear-gradient(135deg,
+    hsl(var(--primary) / 0.05) 0%,
+    hsl(var(--primary) / 0.1) 100%);
+  border: 1px solid hsl(var(--primary) / 0.2);
+}
+
+.dark .subscription-modal .price-highlight {
+  background: linear-gradient(135deg,
+    hsl(var(--primary) / 0.1) 0%,
+    hsl(var(--primary) / 0.2) 100%);
+}
+
+/* Benefits grid animation */
+.subscription-modal .benefits-grid > div {
+  animation: benefit-fade-in 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.subscription-modal .benefits-grid > div:nth-child(1) { animation-delay: 0.1s; }
+.subscription-modal .benefits-grid > div:nth-child(2) { animation-delay: 0.2s; }
+.subscription-modal .benefits-grid > div:nth-child(3) { animation-delay: 0.3s; }
+.subscription-modal .benefits-grid > div:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes benefit-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Enhanced button styling for subscription modal */
+.subscription-modal [data-slot="button"] {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+  transition: all 0.2s ease;
+}
+
+.subscription-modal [data-slot="button"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px hsl(var(--primary) / 0.4);
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--primary) / 0.7) 100%);
+}
+
+.subscription-modal [data-slot="button"]:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+}
+
+/* Footer social proof styling */
+.subscription-modal .social-proof {
+  background: linear-gradient(135deg,
+    hsl(var(--accent) / 0.1) 0%,
+    hsl(var(--accent) / 0.05) 100%);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.5rem;
+}
+
 /* ===== LEGACY DIALOG SUPPORT ===== */
 /* Keep some legacy support for existing Dialog components during transition */
 [data-slot="dialog-overlay"] {
