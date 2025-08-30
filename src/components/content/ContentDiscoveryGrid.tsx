@@ -37,7 +37,8 @@ import {
   Unlock,
   Users,
   X,
-  RefreshCw
+  RefreshCw,
+  ArrowRight
 } from 'lucide-react'
 import {
   Card,
@@ -74,8 +75,8 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 import { useAccount } from 'wagmi'
-import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
-import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
+import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
+
 import { ContentCategory, categoryToString } from '@/types/contracts'
 
 /**
@@ -726,39 +727,18 @@ function ContentDisplayCard({
       </CardContent>
       
       <CardFooter className="pt-0">
-        <div className="w-full space-y-3">
-          <OrchestratedContentPurchaseCard
-            contentId={contentId}
-            userAddress={userAddress as `0x${string}` | undefined}
-            onPurchaseSuccess={() => {
-              // Refresh access control data
-              accessControl.refetch()
-            }}
-            onViewContent={handleViewContent}
-            variant="full"
-            showCreatorInfo={true}
-            showPurchaseDetails={true}
-            enableMultiPayment={true}
-            showSystemHealth={true}
-            enablePerformanceMetrics={false}
+        {/* View Content Button */}
+        <div className="w-full">
+          <Button
             className="w-full"
-          />
-          
-          {/* NFT Promotion for Content Creators */}
-          {userAddress && content.creator.toLowerCase() === userAddress.toLowerCase() && (
-            <ContentNFTPromotionAdapter
-              content={content}
-              creatorAddress={content.creator}
-              contentId={contentId}
-              userAddress={userAddress} // Pass userAddress for access control
-              onMintSuccess={(contractAddress, tokenId) => {
-                console.log('Content minted as NFT:', { contractAddress, tokenId })
-                // Refresh data after successful mint
-                accessControl.refetch()
-              }}
-              className="w-full"
-            />
-          )}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleViewContent(contentId)
+            }}
+          >
+            View Full Content
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
         </div>
       </CardFooter>
     </Card>

@@ -42,15 +42,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { CustomModal } from '@/components/ui/custom-modal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -445,15 +437,26 @@ export function ZoraCollectionManager({
             </p>
           </div>
 
-          <Dialog open={showCreateDialog} onOpenChange={handleDialogClose}>
-            <DialogTrigger asChild>
-              <Button disabled={!canManageCollections}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Collection
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <CollectionCreationDialog
+          <Button
+            disabled={!canManageCollections}
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Collection
+          </Button>
+
+          <CustomModal
+            isOpen={showCreateDialog}
+            onClose={() => handleDialogClose(false)}
+            title="Create NFT Collection"
+            description="Set up your NFT collection for minting content"
+            maxWidth="sm:max-w-2xl"
+            mobileBottomSheet={false}
+            closeOnOverlayClick={true}
+            closeOnEscape={true}
+            zIndex={50}
+          >
+            <CollectionCreationDialog
               formData={formData}
               onFormDataChange={setFormData}
               onSubmit={handleCreateCollection}
@@ -461,8 +464,7 @@ export function ZoraCollectionManager({
               isFormValid={isFormValid}
               newCollectionAddress={newCollectionAddress}
             />
-          </DialogContent>
-        </Dialog>
+          </CustomModal>
       </div>
 
       {/* Collections Grid */}
@@ -554,74 +556,65 @@ function CollectionCreationDialog({
 
   if (creationState === 'success') {
     return (
-      <>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            Collection Created Successfully!
-          </DialogTitle>
-          <DialogDescription>
-            Your NFT collection has been deployed and is ready to use.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          <div className="p-4 bg-muted rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Collection Address:</span>
-              <div className="flex items-center gap-2">
-                <code className="text-sm">{newCollectionAddress && formatAddress(newCollectionAddress)}</code>
-                <Button size="sm" variant="ghost">
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-4">
+          <CheckCircle className="h-5 w-5 text-green-500" />
+          <h3 className="text-lg font-semibold">Collection Created Successfully!</h3>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-4">
+          Your NFT collection has been deployed and is ready to use.
+        </p>
+
+        <div className="p-4 bg-muted rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Collection Address:</span>
+            <div className="flex items-center gap-2">
+              <code className="text-sm">{newCollectionAddress && formatAddress(newCollectionAddress)}</code>
+              <Button size="sm" variant="ghost">
+                <Copy className="h-3 w-3" />
+              </Button>
             </div>
           </div>
-          
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              You can now create NFTs within this collection from your dashboard.
-            </AlertDescription>
-          </Alert>
         </div>
-      </>
+
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+            You can now create NFTs within this collection from your dashboard.
+          </AlertDescription>
+        </Alert>
+      </div>
     )
   }
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>Create NFT Collection</DialogTitle>
-        <DialogDescription>
-          Deploy a new Zora ERC-1155 collection for your NFTs
-        </DialogDescription>
-      </DialogHeader>
-
       <div className="space-y-6">
-        {/* Progress Indicator */}
-        {creationState !== 'idle' && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Creating collection...</span>
-              <span>
-                {creationState === 'creating' && 'Preparing transaction'}
-                {creationState === 'uploading-metadata' && 'Uploading to IPFS'}
-                {creationState === 'confirming' && 'Confirming on blockchain'}
-                {creationState === 'error' && 'Failed'}
-              </span>
-            </div>
-            <Progress 
-              value={
-                creationState === 'creating' ? 25 : 
-                creationState === 'uploading-metadata' ? 50 :
-                creationState === 'confirming' ? 75 : 100
-              } 
-            />
+      {/* Progress Indicator */}
+      {creationState !== 'idle' && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Creating collection...</span>
+            <span>
+              {creationState === 'creating' && 'Preparing transaction'}
+              {creationState === 'uploading-metadata' && 'Uploading to IPFS'}
+              {creationState === 'confirming' && 'Confirming on blockchain'}
+              {creationState === 'error' && 'Failed'}
+            </span>
           </div>
-        )}
+          <Progress
+            value={
+              creationState === 'creating' ? 25 :
+              creationState === 'uploading-metadata' ? 50 :
+              creationState === 'confirming' ? 75 : 100
+            }
+            className="w-full"
+          />
+        </div>
+      )}
 
-        {/* Form Fields */}
+      {/* Form Fields */}
         <div className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="collection-name">Collection Name</Label>
@@ -688,26 +681,26 @@ function CollectionCreationDialog({
         </div>
       </div>
 
-      <DialogFooter>
-        <Button
-          onClick={onSubmit}
-          disabled={!isFormValid || creationState !== 'idle'}
-        >
-          {creationState === 'idle' && 'Create Collection'}
-          {creationState === 'creating' && (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Creating...
-            </>
-          )}
-          {creationState === 'confirming' && (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Confirming...
-            </>
-          )}
-        </Button>
-      </DialogFooter>
+        <div className="flex justify-end">
+          <Button
+            onClick={onSubmit}
+            disabled={!isFormValid || creationState !== 'idle'}
+          >
+            {creationState === 'idle' && 'Create Collection'}
+            {creationState === 'creating' && (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            )}
+            {creationState === 'confirming' && (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Confirming...
+              </>
+            )}
+          </Button>
+      </div>
     </>
   )
 }

@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import { CustomModal } from '@/components/ui/custom-modal'
+import { Button } from '@/components/ui/button'
 
 interface SocialShareModalProps {
 	open?: boolean
@@ -11,52 +13,71 @@ interface SocialShareModalProps {
 	onCast?: () => Promise<void> | void
 }
 
-export default function SocialShareModal({ open = false, onClose, title, url, creator, onCast }: SocialShareModalProps): React.ReactElement | null {
-	if (!open) return null
+export default function SocialShareModal({
+	open = false,
+	onClose,
+	title,
+	url,
+	creator,
+	onCast
+}: SocialShareModalProps): React.ReactElement | null {
+	const handleCast = async () => {
+		try {
+			if (onCast) {
+				await onCast()
+			} else if (window?.miniapp?.sdk && window.miniapp.sdk.actions.share) {
+				await window.miniapp.sdk.actions.share({
+					text: title ? `Check this out: ${title}` : 'Check this out',
+					url,
+					embeds: url ? [{ url }] : undefined,
+				})
+			}
+		} catch (error) {
+			console.error('Failed to share:', error)
+		}
+		onClose?.()
+	}
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40">
-			<div className="w-full md:max-w-sm bg-white rounded-t-2xl md:rounded-2xl p-4 shadow-lg">
-				<div className="text-center">
-					<div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-3 md:hidden" />
-					<h3 className="text-base font-semibold text-slate-900 mb-1">Share on Farcaster</h3>
-					<p className="text-xs text-slate-600 mb-3">Let others discover this content</p>
+		<CustomModal
+			isOpen={open}
+			onClose={onClose || (() => {})}
+			title="Share on Farcaster"
+			description="Let others discover this content"
+			maxWidth="sm:max-w-sm"
+			mobileBottomSheet={true}
+			closeOnOverlayClick={true}
+			closeOnEscape={true}
+			zIndex={50}
+		>
+			{/* Content Preview */}
+			<div className="space-y-4">
+				<div className="bg-muted/50 rounded-lg p-4 border">
+					<p className="font-medium text-foreground line-clamp-2">{title}</p>
+					{creator && (
+						<p className="text-sm text-muted-foreground mt-1">by {creator}</p>
+					)}
+					{url && (
+						<p className="text-sm text-blue-600 truncate mt-2 font-mono bg-muted px-2 py-1 rounded">
+							{url}
+						</p>
+					)}
 				</div>
 
-				<div className="space-y-2 text-sm">
-					<div className="bg-slate-50 rounded-xl p-3">
-						<p className="font-medium text-slate-900 line-clamp-2">{title}</p>
-						{creator && <p className="text-xs text-slate-600">by {creator}</p>}
-						{url && (
-							<p className="text-xs text-blue-600 truncate mt-1">{url}</p>
-						)}
-					</div>
-				</div>
-
-				<div className="mt-4 grid grid-cols-2 gap-2">
-					<button
-						className="py-2 px-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
-						onClick={async () => {
-							try {
-								if (onCast) {
-									await onCast()
-							} else if (window?.miniapp?.sdk && window.miniapp.sdk.actions.share) {
-								await window.miniapp.sdk.actions.share({
-										text: title ? `Check this out: ${title}` : 'Check this out',
-										url,
-										embeds: url ? [{ url }] : undefined,
-									})
-								}
-							} catch {}
-							onClose?.()
-						}}
+				{/* Action Buttons */}
+				<div className="grid grid-cols-2 gap-3">
+					<Button
+						onClick={handleCast}
+						className="bg-blue-600 hover:bg-blue-700 text-white"
 					>
 						Cast
-					</button>
-					<button className="py-2 px-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200" onClick={onClose}>Cancel</button>
+					</Button>
+					<Button variant="outline" onClick={onClose}>
+						Cancel
+					</Button>
 				</div>
 			</div>
-		</div>
+		</CustomModal>
 	)
 }
 

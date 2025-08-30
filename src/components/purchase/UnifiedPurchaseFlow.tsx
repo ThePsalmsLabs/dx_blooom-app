@@ -72,14 +72,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   TooltipProvider,
 } from '@/components/ui/tooltip'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { CustomModal } from '@/components/ui/custom-modal'
 import { Separator } from '@/components/ui/seperator'
 import {
   Collapsible,
@@ -750,82 +743,86 @@ export function UnifiedPurchaseFlow({
    * Renders transaction progress modal
    */
   const renderTransactionModal = () => (
-    <Dialog open={isTransactionModalOpen} onOpenChange={setIsTransactionModalOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-component-gap-sm">
-            {getStepIcon(flowState.step)}
-            <span>{getStepTitle(flowState.step)}</span>
-          </DialogTitle>
-          <DialogDescription>
-            {getStepDescription(flowState.step, enableBatchTransactions)}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Progress Indicator */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progress</span>
-              <span>{getProgressPercentage(flowState.step)}%</span>
-            </div>
-            <Progress value={getProgressPercentage(flowState.step)} className="h-2" />
-          </div>
-
-          {/* Transaction Details */}
-          {flowState.transactionHash && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                <div className="space-y-1">
-                  <p>Transaction Hash:</p>
-                  <code className="bg-muted px-2 py-1 rounded text-xs break-all">
-                    {flowState.transactionHash}
-                  </code>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Error handling via toast - no inline UI disruption */}
-          {flowState.error && (() => {
-            handleUIError(flowState.error, 'Transaction', () => {
-              // Reset error state to allow retry
-              // This would need to be implemented in the flow state management
-            })
-            return null // Don't render anything inline
-          })()}
-        </div>
-
-        <DialogFooter className="flex-col space-y-2">
+    <CustomModal
+      isOpen={isTransactionModalOpen}
+      onClose={() => setIsTransactionModalOpen(false)}
+      title={getStepTitle(flowState.step)}
+      description={getStepDescription(flowState.step, enableBatchTransactions)}
+      maxWidth="sm:max-w-md"
+      mobileBottomSheet={true}
+      closeOnOverlayClick={!flowState.isProcessing}
+      closeOnEscape={!flowState.isProcessing}
+      zIndex={50}
+      footer={
+        <div className="flex-col space-y-2">
           {flowState.step === 'error' && flowState.retryAttempts < config.maxRetryAttempts && (
             <Button onClick={handleRetryPurchase} className="w-full">
               <RefreshCw className="nav-icon-adaptive mr-2" />
               Retry Purchase
             </Button>
           )}
-          
+
           {flowState.step === 'success' && (
-            <Button 
+            <Button
               onClick={() => setIsTransactionModalOpen(false)}
               className="w-full"
             >
               Continue
             </Button>
           )}
-          
+
           {flowState.isProcessing && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handlePurchaseCancel}
               className="w-full"
             >
               Cancel
             </Button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {/* Step Icon */}
+        <div className="flex justify-center">
+          {getStepIcon(flowState.step)}
+        </div>
+
+        {/* Progress Indicator */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Progress</span>
+            <span>{getProgressPercentage(flowState.step)}%</span>
+          </div>
+          <Progress value={getProgressPercentage(flowState.step)} className="h-2" />
+        </div>
+
+        {/* Transaction Details */}
+        {flowState.transactionHash && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              <div className="space-y-1">
+                <p>Transaction Hash:</p>
+                <code className="bg-muted px-2 py-1 rounded text-xs break-all">
+                  {flowState.transactionHash}
+                </code>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Error handling via toast - no inline UI disruption */}
+        {flowState.error && (() => {
+          handleUIError(flowState.error, 'Transaction', () => {
+            // Reset error state to allow retry
+            // This would need to be implemented in the flow state management
+          })
+          return null // Don't render anything inline
+        })()}
+      </div>
+    </CustomModal>
   )
 
   // ===== LOADING AND ERROR STATES =====

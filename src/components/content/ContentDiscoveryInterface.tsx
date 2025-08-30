@@ -107,7 +107,7 @@ import { useContentById, useCreatorProfile } from '@/hooks/contracts/core'
 import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 import { type Address } from 'viem'
 import { categoryToString, type ContentWithMetadata } from '@/types/contracts'
-import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
+
 import { toast } from 'sonner'
 
 // ===== COMPONENT INTERFACE DEFINITIONS =====
@@ -763,27 +763,11 @@ function ContentCard({
     if (isConnected && connectedAddress) {
       console.log('🔄 ContentDiscoveryInterface: Wallet connected, refreshing UI for:', connectedAddress)
       // Force a re-render by updating the component state
-      // This will trigger the isCreator calculation and show/hide NFT promotion
     } else if (!isConnected) {
       console.log('🔄 ContentDiscoveryInterface: Wallet disconnected, clearing creator state')
       // The isCreator will automatically become false when connectedAddress is null
     }
   }, [isConnected, connectedAddress])
-
-  // Create ContentWithMetadata from Content for NFT promotion
-  const contentWithMetadata = useMemo(() => {
-    if (!content) return null
-    
-    return {
-      ...content,
-      contentId: contentId,
-      formattedPrice: formatCurrency(content.payPerViewPrice, 6),
-      relativeTime: formatRelativeTime(content.creationTime),
-      creatorProfile: creator,
-      accessCount: BigInt(0), // This would need to come from a separate query
-      tags: [] // This would need to come from a separate query
-    } as ContentWithMetadata
-  }, [content, contentId, creator])
 
   if (contentLoading || !content) {
     return <ContentCardSkeleton displayMode={displayMode} />
@@ -828,17 +812,6 @@ function ContentCard({
                     <Badge variant="secondary">
                       {categoryToString(content.category)}
                     </Badge>
-                    {isCreator && (
-                      <ContentNFTPromotionAdapter
-                        content={content}
-                        creatorAddress={content.creator}
-                        contentId={contentId}
-                        userAddress={connectedAddress}
-                        onMintSuccess={(contractAddress, tokenId) => {
-                          toast.success('Content minted as NFT!')
-                        }}
-                      />
-                    )}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-4">
@@ -896,20 +869,6 @@ function ContentCard({
           <div className={cn("text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
             {formatRelativeTime(content.creationTime)}
           </div>
-          
-          {isCreator && (
-            <div className="flex justify-center">
-              <ContentNFTPromotionAdapter
-                content={content}
-                creatorAddress={content.creator}
-                contentId={contentId}
-                userAddress={connectedAddress}
-                onMintSuccess={(contractAddress, tokenId) => {
-                  toast.success('Content minted as NFT!')
-                }}
-              />
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

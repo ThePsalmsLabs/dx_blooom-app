@@ -20,7 +20,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CustomModal } from '@/components/ui/custom-modal'
 import { useSwapCalculation } from '@/hooks/web3/useSwapCalculation'
 import { useEnhancedTokenBalances, type TokenInfo } from '@/hooks/web3/useEnhancedTokenBalances'
 import { parseUnits, type Address } from 'viem'
@@ -523,36 +523,61 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   
   return (
     <div className="swap-modal-container">
-      <Dialog open={isOpen} onOpenChange={handleClose} modal={true}>
-        <DialogContent 
-          className={cn(
-            "sm:max-w-md max-w-[95vw]",
-            "!fixed !top-[50%] !left-[50%] !transform !-translate-x-1/2 !-translate-y-1/2",
-            "!z-[10000] bg-background border shadow-xl"
-          )}
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10000,
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}
-        >
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <ArrowUpDown className="h-5 w-5" />
-              Swap Tokens
-            </DialogTitle>
+      <CustomModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="Swap Tokens"
+        maxWidth="sm:max-w-md"
+        mobileBottomSheet={true}
+        zIndex={10000}
+      >
+          <div className="space-y-3">
+            {/* Settings button in footer on mobile */}
+            <div className="flex justify-end md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setState(prev => ({ ...prev, showSettings: true }))}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </div>
+
+            {/* Action Button */}
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setState(prev => ({ ...prev, showSettings: true }))}
+              onClick={actionButton.action}
+              disabled={actionButton.disabled}
+              className={cn(
+                "w-full",
+                actionButton.warning && "bg-yellow-600 hover:bg-yellow-700"
+              )}
+              size="lg"
             >
-              <Settings className="h-4 w-4" />
+              {actionButton.loading && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {actionButton.text}
             </Button>
-          </DialogHeader>
+
+            {/* Success State */}
+            {state.stage === 'success' && (
+              <div className="text-center text-sm text-muted-foreground">
+                Swap completed successfully!
+              </div>
+            )}
+          </div>
+
+        {/* Desktop settings button */}
+        <div className="hidden md:flex justify-end mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setState(prev => ({ ...prev, showSettings: true }))}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
           
           <div className="space-y-4">
             {/* Contextual Message */}
@@ -772,37 +797,23 @@ export const SwapModal: React.FC<SwapModalProps> = ({
               </Card>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+      </CustomModal>
 
-      {/* Token Selection Dialog */}
-      <Dialog open={!!state.showTokenSelector} onOpenChange={() => setState(prev => ({ ...prev, showTokenSelector: null }))} modal={true}>
-        <DialogContent 
-          className={cn(
-            "sm:max-w-md max-w-[95vw]",
-            "!fixed !top-[50%] !left-[50%] !transform !-translate-x-1/2 !-translate-y-1/2",
-            "!z-[10001] bg-background border shadow-xl"
-          )}
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10001,
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Select Token</DialogTitle>
-          </DialogHeader>
-          <TokenSelector
-            tokens={tokens}
-            onSelect={(token) => handleTokenSelect(token, state.showTokenSelector!)}
-            selectedToken={state.showTokenSelector === 'from' ? state.fromToken : state.toToken}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Token Selection Modal */}
+      <CustomModal
+        isOpen={!!state.showTokenSelector}
+        onClose={() => setState(prev => ({ ...prev, showTokenSelector: null }))}
+        title="Select Token"
+        maxWidth="sm:max-w-md"
+        mobileBottomSheet={true}
+        zIndex={10001}
+      >
+        <TokenSelector
+          tokens={tokens}
+          onSelect={(token) => handleTokenSelect(token, state.showTokenSelector!)}
+          selectedToken={state.showTokenSelector === 'from' ? state.fromToken : state.toToken}
+        />
+      </CustomModal>
     </div>
   )
 }

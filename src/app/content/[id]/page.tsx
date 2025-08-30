@@ -61,6 +61,7 @@ import { RouteGuards } from '@/components/layout/RouteGuards'
 
 // Import the enhanced ContentPurchaseCard
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
+import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
 
 // Import business logic hooks
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
@@ -306,6 +307,8 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
                 content={contentQuery.data}
                 accessState={accessState}
                 isLoading={contentQuery.isLoading}
+                contentId={contentId}
+                userAddress={userAddress}
               />
 
               <ContentMetadataSection
@@ -438,11 +441,15 @@ function ContentHeaderSection({
 function ContentPreviewSection({
   content,
   accessState,
-  isLoading
+  isLoading,
+  contentId,
+  userAddress
 }: {
   content: Content | undefined
   accessState: ContentAccessState
   isLoading: boolean
+  contentId?: bigint
+  userAddress?: string
 }) {
   if (isLoading) {
     return (
@@ -487,6 +494,26 @@ function ContentPreviewSection({
                 </p>
               </div>
             </div>
+
+            {/* NFT Minting for Content Creators */}
+            {contentId && userAddress && content?.creator.toLowerCase() === userAddress.toLowerCase() && (
+              <div className="mt-6">
+                <ContentNFTPromotionAdapter
+                  content={content}
+                  creatorAddress={content.creator}
+                  contentId={contentId}
+                  userAddress={userAddress}
+                  onMintSuccess={(contractAddress, tokenId) => {
+                    toast.success('Content minted as NFT successfully!', {
+                      description: `Contract: ${contractAddress}, Token ID: ${tokenId}`,
+                      duration: 5000,
+                    })
+                    console.log('Content minted as NFT:', { contractAddress, tokenId })
+                  }}
+                  className="w-full"
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-12">

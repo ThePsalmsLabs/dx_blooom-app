@@ -1,16 +1,313 @@
 /**
- * Modal Positioning Fixes
- * 
- * This CSS file ensures that modals (especially the SwapModal) are always 
- * properly positioned and visible with the correct overlay.
+ * Custom Modal System - Enhanced Modal Positioning and Styling
+ *
+ * This CSS file provides comprehensive modal styling that works with the new
+ * CustomModal component. It ensures proper positioning, responsive design,
+ * and light/dark mode compatibility.
  */
 
-/* Force modal containers to the highest z-index */
-[data-radix-portal] {
-  z-index: 10000 !important;
+/* ===== CUSTOM MODAL OVERLAY ===== */
+.custom-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 40;
+  animation: modal-fade-in 0.2s ease-out;
 }
 
-/* Ensure overlay is always visible and covers the entire viewport */
+.dark .custom-modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* ===== CUSTOM MODAL CONTAINER ===== */
+.custom-modal-container {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+/* Mobile bottom sheet styles */
+.custom-modal-mobile-bottom {
+  align-items: flex-end;
+}
+
+.custom-modal-mobile-bottom .custom-modal-content {
+  margin-top: auto;
+  margin-bottom: 0;
+  border-radius: 0.75rem 0.75rem 0 0;
+  max-height: 85vh;
+}
+
+/* ===== CUSTOM MODAL CONTENT ===== */
+.custom-modal-content {
+  position: relative;
+  background-color: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-height: 90vh;
+  max-width: 95vw;
+  overflow: hidden;
+  animation: modal-slide-in 0.2s ease-out;
+}
+
+.dark .custom-modal-content {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== MOBILE BOTTOM SHEET HANDLE ===== */
+.custom-modal-handle {
+  display: none;
+  justify-content: center;
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
+.custom-modal-mobile-bottom .custom-modal-handle {
+  display: flex;
+}
+
+.custom-modal-handle-bar {
+  width: 3rem;
+  height: 0.25rem;
+  background-color: hsl(var(--muted-foreground));
+  border-radius: 9999px;
+  opacity: 0.3;
+}
+
+/* ===== MODAL HEADER ===== */
+.custom-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.custom-modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0;
+}
+
+.custom-modal-description {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin: 0.5rem 0 0 0;
+}
+
+.custom-modal-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  color: hsl(var(--muted-foreground));
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-modal-close:hover {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--muted));
+}
+
+.custom-modal-close:focus {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ===== MODAL CONTENT ===== */
+.custom-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.custom-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-modal-body::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+
+.custom-modal-body::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground));
+  border-radius: 3px;
+  opacity: 0.5;
+}
+
+.custom-modal-body::-webkit-scrollbar-thumb:hover {
+  opacity: 0.8;
+}
+
+/* ===== MODAL FOOTER ===== */
+.custom-modal-footer {
+  flex-shrink: 0;
+  padding: 1.5rem;
+  border-top: 1px solid hsl(var(--border));
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 640px) {
+  .custom-modal-container {
+    padding: 0.5rem;
+  }
+
+  .custom-modal-content {
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0.5rem;
+  }
+
+  .custom-modal-mobile-bottom .custom-modal-content {
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+
+  .custom-modal-header {
+    padding: 1rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .custom-modal-body {
+    padding: 1rem;
+  }
+
+  .custom-modal-footer {
+    padding: 1rem;
+  }
+
+  .custom-modal-title {
+    font-size: 1rem;
+  }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-modal-mobile-bottom .custom-modal-content {
+  animation: modal-slide-up 0.3s ease-out;
+}
+
+/* ===== BODY SCROLL LOCK ===== */
+body:has(.custom-modal-overlay) {
+  overflow: hidden;
+}
+
+/* ===== FOCUS MANAGEMENT ===== */
+.custom-modal-content:focus {
+  outline: none;
+}
+
+/* ===== HOVER STATE FIXES ===== */
+/* Prevent text blur on hover for buttons and interactive elements */
+button:hover,
+.custom-modal-close:hover,
+[data-slot="button"]:hover,
+[role="button"]:hover {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Fix hover states for content cards and preview cards */
+[data-slot="card"]:hover,
+.group:hover {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ensure button hover states maintain good contrast and prevent darkening */
+[data-slot="button"]:hover {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Prevent problematic dark hover backgrounds that reduce readability */
+[data-slot="button"]:not([class*="bg-accent"]):hover {
+  filter: brightness(0.98);
+}
+
+/* Specific fixes for gradient buttons to prevent text blur */
+.btn-gradient-primary:hover,
+.btn-gradient-secondary:hover,
+.btn-web3-glow:hover {
+  transform: none !important;
+  filter: brightness(1.05);
+}
+
+/* Ensure smooth hover transitions without layout shifts */
+[data-slot="button"] {
+  will-change: transform, box-shadow;
+  transform: translateZ(0);
+}
+
+[data-slot="button"]:hover {
+  transform: translateZ(0);
+}
+
+/* Prevent layout shifts on card hover */
+[data-slot="card"] {
+  will-change: box-shadow, border-color;
+  transform: translateZ(0);
+}
+
+[data-slot="card"]:hover {
+  transform: translateZ(0);
+}
+
+/* Fix for any potential overflow issues on hover */
+.custom-modal-content:hover {
+  overflow: hidden;
+}
+
+/* ===== LEGACY DIALOG SUPPORT ===== */
+/* Keep some legacy support for existing Dialog components during transition */
 [data-slot="dialog-overlay"] {
   position: fixed !important;
   top: 0 !important;
@@ -25,7 +322,6 @@
   pointer-events: auto !important;
 }
 
-/* Ensure modal content is centered and above overlay */
 [data-slot="dialog-content"] {
   position: fixed !important;
   top: 50% !important;
@@ -36,107 +332,6 @@
   max-width: 95vw !important;
   overflow-y: auto !important;
   pointer-events: auto !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Special handling for SwapModal specifically */
-.swap-modal-container [data-slot="dialog-content"] {
-  min-width: 400px !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* Ensure modals work on mobile devices */
-@media (max-width: 640px) {
-  [data-slot="dialog-content"] {
-    max-width: 95vw !important;
-    margin: 1rem !important;
-  }
-  
-  .swap-modal-container [data-slot="dialog-content"] {
-    min-width: auto !important;
-    width: calc(100vw - 2rem) !important;
-  }
-}
-
-/* Fix for potential z-index stacking contexts */
-body:has([data-state="open"][data-slot="dialog-overlay"]) {
-  overflow: hidden;
-}
-
-/* Ensure modal backgrounds work correctly */
-[data-state="open"][data-slot="dialog-overlay"] {
-  animation: fade-in 0.2s ease-out;
-}
-
-[data-state="closed"][data-slot="dialog-overlay"] {
-  animation: fade-out 0.15s ease-in;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-/* Debug styles - uncomment to troubleshoot modal positioning issues */
-/*
-[data-slot="dialog-overlay"] {
-  border: 3px solid red !important;
-}
-
-[data-slot="dialog-content"] {
-  border: 3px solid blue !important;
-}
-*/
-
-/* Sheet Component Fixes */
-[data-radix-dialog-overlay] {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 9998 !important;
-  background-color: rgba(0, 0, 0, 0.4) !important;
-  backdrop-filter: blur(4px) !important;
-  pointer-events: auto !important;
-}
-
-[data-radix-dialog-content] {
-  position: fixed !important;
-  z-index: 9999 !important;
-  pointer-events: auto !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Ensure sheet content is visible */
-.navigation-sheet-content {
-  z-index: 9999 !important;
-  position: fixed !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Fix for sheet overlay */
-.navigation-sheet-overlay {
-  z-index: 9998 !important;
-  position: fixed !important;
   visibility: visible !important;
   opacity: 1 !important;
 }

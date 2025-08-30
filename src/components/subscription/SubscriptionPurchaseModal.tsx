@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CustomModal } from '@/components/ui/custom-modal'
 import { CreatorSubscriptionPurchase } from './CreatorSubscriptionPurchase'
 import { type Address } from 'viem'
 
@@ -22,18 +22,23 @@ export function SubscriptionPurchaseModal({
   }, [onSubscriptionSuccess, onClose])
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Subscribe to Creator</DialogTitle>
-        </DialogHeader>
-        <CreatorSubscriptionPurchase
-          creatorAddress={creatorAddress}
-          onSubscriptionSuccess={handleSuccess}
-          showCreatorInfo={true}
-          variant="embedded"
-        />
-      </DialogContent>
-    </Dialog>
+    <CustomModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Subscribe to Creator"
+      description="Support this creator with a subscription"
+      maxWidth="sm:max-w-md"
+      mobileBottomSheet={true}
+      closeOnOverlayClick={true}
+      closeOnEscape={true}
+      zIndex={50}
+    >
+      <CreatorSubscriptionPurchase
+        creatorAddress={creatorAddress}
+        onSubscriptionSuccess={handleSuccess}
+        showCreatorInfo={true}
+        variant="embedded"
+      />
+    </CustomModal>
   )
 }

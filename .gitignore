@@ -61,11 +61,104 @@ next-env.d.ts
 
 
 
-src/components/content/ContentPurchaseCard.backup.tsx
-src/components/examples
+# ================================================
+# DEVELOPMENT & DEMO FILES - NOT FOR PRODUCTION
+# ================================================
+
+# Demo pages and components (development/testing only)
+src/app/demo/
+src/components/demo/
+src/components/examples/
+
+# Debug and testing components
+src/components/debug/
+src/lib/utils/debug.tsx
+debug-scan-report.json
+
+# Development test files
+test-wagmi-config.js
+src/app/rpc-test/
+
+# Modules (development/experimental features)
+src/modules/
+
+# Utility scripts (development tools)
+scripts/check-price-oracle.ts
+scripts/check-rpc-health.ts
+scripts/diagnose-rpc.ts
+scripts/find-debug-info.js
+scripts/test-miniapp-connection.ts
+scripts/validate-rpc-config.ts
+
+# Backup files and directories
+**/backup*/
+**/*.backup
+**/*.bak
+backup/
+backup-mini/
+backup_20250822_203616/
+
+# Production-specific overrides (remove if needed for prod)
 src/lib/utils/zora-events-production.ts
-src/modules
-/Users/mac/onchain-content-platform/backup-mini
-/Users/mac/onchain-content-platform/backup_20250822_203616
-backup
-/Users/mac/onchain-content-platform/backup-mini
+
+# ================================================
+# EXISTING IGNORED PATTERNS
+# ================================================
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+**/__tests__/
+**/*jest.config.js
+**/*jest.setup.js
+jest.config.js
+jest.setup.js
+__mocks__/
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+.env.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# local smart contracts (do not commit)
+/contracts/

@@ -23,14 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { CustomModal } from '@/components/ui/custom-modal'
 import { Separator } from '@/components/ui/seperator'
 import {
   TooltipProvider,
@@ -657,49 +650,51 @@ export default function ZoraUserExperienceFlow() {
           {currentStep === 'success' && renderSuccessStep()}
         </div>
 
-        {/* Share Dialog */}
-        <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Share Your NFT</DialogTitle>
-              <DialogDescription>
-                Let the world know about your new collectible!
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
+        {/* Share Modal */}
+        <CustomModal
+          isOpen={showShareDialog}
+          onClose={() => setShowShareDialog(false)}
+          title="Share Your NFT"
+          description="Let the world know about your new collectible!"
+          maxWidth="sm:max-w-md"
+          mobileBottomSheet={true}
+          closeOnOverlayClick={true}
+          closeOnEscape={true}
+          zIndex={50}
+          footer={
+            <Button onClick={() => setShowShareDialog(false)}>
+              Done
+            </Button>
+          }
+        >
+          <div className="space-y-4">
+            <div className="flex space-x-2">
+              <Button variant="outline" className="flex-1">
+                <span className="mr-2">𝕏</span> Twitter
+              </Button>
+              <Button variant="outline" className="flex-1">
+                <span className="mr-2">📘</span> Facebook
+              </Button>
+              <Button variant="outline" className="flex-1">
+                <span className="mr-2">💼</span> LinkedIn
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Direct Link</Label>
               <div className="flex space-x-2">
-                <Button variant="outline" className="flex-1">
-                  <span className="mr-2">𝕏</span> Twitter
+                <Input
+                  value={`https://zora.co/collect/${collectionAddress}/1`}
+                  readOnly
+                  className="flex-1"
+                />
+                <Button size="icon" onClick={handleCopyLink}>
+                  <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" className="flex-1">
-                  <span className="mr-2">📘</span> Facebook
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  <span className="mr-2">💼</span> LinkedIn
-                </Button>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Direct Link</Label>
-                <div className="flex space-x-2">
-                  <Input
-                    value={`https://zora.co/collect/${collectionAddress}/1`}
-                    readOnly
-                    className="flex-1"
-                  />
-                  <Button size="icon" onClick={handleCopyLink}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button onClick={() => setShowShareDialog(false)}>
-                Done
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </CustomModal>
       </div>
     </TooltipProvider>
   )

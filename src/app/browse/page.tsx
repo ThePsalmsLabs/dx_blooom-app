@@ -37,7 +37,6 @@ import {
   AlertCircle,
   X,
   Users,
-  CheckCircle,
   FileText,
   Video as VideoIcon,
   Music,
@@ -56,11 +55,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Dialog, // keep for purchase modal
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+
   Input,
   Select,
   SelectContent,
@@ -78,7 +73,7 @@ import {
 // Import our architectural layers - demonstrating clean separation
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
-import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
+import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 // Import utility functions and types that ensure type safety
 import type { ContentCategory } from '@/types/contracts'
@@ -130,15 +125,11 @@ interface BrowsePageParams {
 
 /**
  * Content Interaction State
- * 
+ *
  * Manages modal states and user interactions within the browse experience.
  */
 interface ContentInteractionState {
-  readonly selectedContentId: bigint | null
-  readonly showPurchaseModal: boolean
   readonly showFiltersModal: boolean
-  readonly showContentPreview: boolean
-  readonly lastPurchaseSuccess: boolean
 }
 
 /**
@@ -217,11 +208,7 @@ function BrowsePageClient() {
   const [viewMode, setViewMode] = useState<ViewMode>(urlParams.view || 'grid')
   const [currentPage, setCurrentPage] = useState(0)
   const [interactionState, setInteractionState] = useState<ContentInteractionState>({
-    selectedContentId: null,
-    showPurchaseModal: false,
-    showFiltersModal: false,
-    showContentPreview: false,
-    lastPurchaseSuccess: false
+    showFiltersModal: false
   })
 
   // Items per page
@@ -359,34 +346,9 @@ function BrowsePageClient() {
 
   /**
    * Content Interaction Handlers
-   * 
-   * These functions manage user interactions with individual content items,
-   * including purchase flows and content viewing.
+   *
+   * These functions manage user interactions with individual content items.
    */
-  
-  const handleContentSelect = useCallback((contentId: bigint) => {
-    setInteractionState(prev => ({
-      ...prev,
-      selectedContentId: contentId,
-      showPurchaseModal: true
-    }))
-  }, [])
-
-  const handlePurchaseSuccess = useCallback((contentId: bigint) => {
-    setInteractionState(prev => ({
-      ...prev,
-      lastPurchaseSuccess: true,
-      showPurchaseModal: false
-    }))
-    
-    // Refetch content data to update access status
-    discovery.refetch()
-    
-    // Show success feedback
-    setTimeout(() => {
-      setInteractionState(prev => ({ ...prev, lastPurchaseSuccess: false }))
-    }, 3000)
-  }, [discovery])
 
   const handleViewContent = useCallback((contentId: bigint) => {
     router.push(`/content/${contentId}`)
@@ -596,15 +558,7 @@ function BrowsePageClient() {
               }}
             />
 
-            {/* Success Message */}
-            {interactionState.lastPurchaseSuccess && (
-              <Alert className="mb-6">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Content purchased successfully! You now have access to view it.
-                </AlertDescription>
-              </Alert>
-            )}
+
 
             {/* Content Grid */}
             <div className="mb-8">
@@ -627,8 +581,6 @@ function BrowsePageClient() {
                   contentIds={discovery.data?.contentIds || []}
                   viewMode={viewMode}
                   userAddress={userAddress}
-                  onContentSelect={handleContentSelect}
-                  onPurchaseSuccess={handlePurchaseSuccess}
                   onViewContent={handleViewContent}
                 />
               )}
@@ -659,36 +611,7 @@ function BrowsePageClient() {
           </div>
         </div>
 
-        {/* Purchase Modal */}
-        <Dialog 
-          open={interactionState.showPurchaseModal} 
-          onOpenChange={(open) => setInteractionState(prev => ({ ...prev, showPurchaseModal: open }))}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Purchase Content</DialogTitle>
-              <DialogDescription>
-                Complete your purchase to gain immediate access to this premium content.
-              </DialogDescription>
-            </DialogHeader>
-            {interactionState.selectedContentId && (
-              <OrchestratedContentPurchaseCard
-                contentId={interactionState.selectedContentId}
-                userAddress={userAddress}
-                onPurchaseSuccess={() => {
-                  handlePurchaseSuccess(interactionState.selectedContentId!)
-                }}
-                onViewContent={handleViewContent}
-                variant="full"
-                showCreatorInfo={true}
-                showPurchaseDetails={true}
-                enableMultiPayment={true}
-                showSystemHealth={true}
-                enablePerformanceMetrics={false}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+
 
         {/* Filters Panel - use a responsive Sheet for proper placement */}
         <Sheet
@@ -782,22 +705,18 @@ export default function BrowsePage() {
 
 /**
  * Content Grid Component
- * 
- * Renders the actual content items using our fixed OrchestratedContentPurchaseCard component.
+ *
+ * Renders the actual content items using our ContentPreviewCard component.
  */
 function ContentGrid({
   contentIds,
   viewMode,
   userAddress,
-  onContentSelect,
-  onPurchaseSuccess,
   onViewContent
 }: {
   contentIds: readonly bigint[]
   viewMode: ViewMode
   userAddress?: Address
-  onContentSelect: (id: bigint) => void
-  onPurchaseSuccess: (id: bigint) => void
   onViewContent: (id: bigint) => void
 }) {
   const gridClassName = useMemo(() => {
@@ -816,18 +735,12 @@ function ContentGrid({
   return (
     <div className={gridClassName}>
       {contentIds.map((contentId) => (
-        <OrchestratedContentPurchaseCard
+        <ContentPreviewCard
           key={contentId.toString()}
           contentId={contentId}
-          userAddress={userAddress}
-          onPurchaseSuccess={() => onPurchaseSuccess(contentId)}
-          onViewContent={onViewContent}
-          variant="full"
+          viewMode={viewMode === 'grid' ? 'grid' : viewMode === 'list' ? 'list' : 'compact'}
           showCreatorInfo={true}
-          showPurchaseDetails={true}
-          enableMultiPayment={true}
-          showSystemHealth={true}
-          enablePerformanceMetrics={false}
+          userAddress={userAddress}
         />
       ))}
     </div>
