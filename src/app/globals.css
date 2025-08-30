@@ -615,7 +615,7 @@ body:has([data-state="open"][data-radix-dialog-content].navigation-sidebar) {
 
   /* Focus animations */
   .focus-scale {
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease-in-out;
   }
   .focus-scale:focus-visible {
     transform: scale(1.02);
