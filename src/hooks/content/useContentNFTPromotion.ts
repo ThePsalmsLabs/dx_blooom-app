@@ -124,17 +124,33 @@ export function useContentNFTPromotion({
     if (!isReady || error !== null || !contentWithMetadata || !content.isActive) {
       return false
     }
-    
-    // If userAddress and contentId are provided, verify access control
-    if (userAddress && contentId) {
-      // User must have access to the content to mint it as NFT
-      if (!accessControl.data) {
+
+    // Only content creator can mint their content as NFT
+    if (!userAddress || !creatorAddress || userAddress.toLowerCase() !== creatorAddress.toLowerCase()) {
+      return false
+    }
+
+    // Creator must have access to their own content (purchased or free)
+    if (contentId && content.payPerViewPrice !== BigInt(0)) {
+      // If content has a price, creator must have purchased it
+      if (accessControl.data !== true) {
         return false
       }
     }
-    
+
+    // All checks passed - creator can mint
     return true
-  }, [isReady, error, contentWithMetadata, content.isActive, userAddress, contentId, accessControl.data])
+  }, [
+    isReady,
+    error,
+    contentWithMetadata,
+    content.isActive,
+    content.payPerViewPrice,
+    userAddress,
+    creatorAddress,
+    contentId,
+    accessControl.data
+  ])
   
   return {
     contentWithMetadata,

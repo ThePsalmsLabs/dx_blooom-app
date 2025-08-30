@@ -29,13 +29,10 @@ import {
   Loader2,
   ExternalLink,
   DollarSign,
-  Users,
-  Infinity,
   AlertTriangle,
   CheckCircle,
   Copy,
   Share,
-  Eye,
   TrendingUp
 } from 'lucide-react'
 
@@ -56,9 +53,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
-import { X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -81,7 +76,7 @@ import {
 
 // Import your established hooks and services
 import { useZoraService } from '@/hooks/zora/useZoraIntegration'
-import { useCreatorProfile } from '@/hooks/contracts/core'
+import { useCreatorProfile, useHasContentAccess } from '@/hooks/contracts/core'
 import { cn, formatAddress } from '@/lib/utils'
 
 // Import Zora types
@@ -179,6 +174,12 @@ export function ContentNFTPromotion({
   // Zora integration hooks
   const { service: zoraService, isReady: zoraReady } = useZoraService()
   const { data: creatorProfile } = useCreatorProfile(creatorAddress)
+
+  // Access control - check if user has purchased content or if it's free
+  const { data: hasAccess, isLoading: accessLoading } = useHasContentAccess(
+    connectedAddress,
+    content.contentId
+  )
   
   // Component state
   const [showConfigDialog, setShowConfigDialog] = useState<boolean>(false)
@@ -197,14 +198,30 @@ export function ContentNFTPromotion({
     transactionHash: string
   } | null>(null)
 
-  // Permission checks
+  // Permission checks - Enhanced security
+  // User can mint if they have access to content (purchased or free) AND are the creator
   const canMint = useMemo(() => {
+    // Check if user has access to content or content is free
+    const hasContentAccess = hasAccess === true || content.payPerViewPrice === BigInt(0)
+
     return (
       zoraReady &&
-      connectedAddress === creatorAddress &&
-      creatorProfile?.isRegistered
+      !accessLoading && // Wait for access check to complete
+      hasContentAccess &&
+      connectedAddress?.toLowerCase() === creatorAddress?.toLowerCase() &&
+      creatorProfile?.isRegistered &&
+      content.isActive
     )
-  }, [zoraReady, connectedAddress, creatorAddress, creatorProfile])
+  }, [
+    zoraReady,
+    accessLoading,
+    hasAccess,
+    content.payPerViewPrice,
+    connectedAddress,
+    creatorAddress,
+    creatorProfile?.isRegistered,
+    content.isActive
+  ])
 
   // Check if content is already minted as NFT
   const [isAlreadyMinted, setIsAlreadyMinted] = useState<boolean>(false)
@@ -316,7 +333,7 @@ export function ContentNFTPromotion({
   // Don't render if already minted or can't mint
   if (isAlreadyMinted) {
     return (
-      <Badge variant="secondary" className="gap-2">
+      <Badge variant="secondary" className="gap-2 bg-green-100 text-green-800 border-green-200">
         <CheckCircle className="h-3 w-3" />
         Minted as NFT
       </Badge>
@@ -324,66 +341,66 @@ export function ContentNFTPromotion({
   }
 
   if (!canMint) {
+    // Show different messages based on why they can't mint
+    if (!zoraReady) {
+      return (
+        <Badge variant="outline" className="gap-2 text-orange-600 border-orange-200">
+          <AlertTriangle className="h-3 w-3" />
+          Zora Service Unavailable
+        </Badge>
+      )
+    }
+    if (connectedAddress !== creatorAddress) {
+      return null // Don't show anything for non-creators
+    }
+
+    // Show access requirement message for creators who don't have access
+    if (hasAccess === false && content.payPerViewPrice !== BigInt(0)) {
+      return (
+        <Badge variant="outline" className="gap-2 text-yellow-600 border-yellow-200">
+          <AlertTriangle className="h-3 w-3" />
+          Purchase Required to Mint
+        </Badge>
+      )
+    }
+
+    if (!creatorProfile?.isRegistered) {
+      return (
+        <Badge variant="outline" className="gap-2 text-orange-600 border-orange-200">
+          <AlertTriangle className="h-3 w-3" />
+          Creator Not Registered
+        </Badge>
+      )
+    }
+    if (!content.isActive) {
+      return (
+        <Badge variant="outline" className="gap-2 text-gray-600 border-gray-200">
+          <AlertTriangle className="h-3 w-3" />
+          Content Inactive
+        </Badge>
+      )
+    }
     return null
   }
 
   return (
     <>
-      {/* Custom Modal Overlay */}
-      {showConfigDialog && (
-        <div 
-          className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowConfigDialog(false)}
-        />
-      )}
-      
-      {/* Custom Modal Content */}
-      {showConfigDialog && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10000,
-            background: 'hsl(var(--background))',
-            border: '1px solid hsl(var(--border))',
-            borderRadius: '0.5rem',
-            padding: '1.5rem',
-            maxWidth: 'min(90vw, 600px)',
-            maxHeight: 'min(80vh, 700px)',
-            width: '90vw',
-            display: 'flex',
-            flexDirection: 'column',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          }}
-        >
-          {/* Header */}
-          <div className="flex-shrink-0 mb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-yellow-500" />
-                <div>
-                  <h2 className="text-lg font-semibold">Promote Content as NFT</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Transform your subscription content into a collectible NFT on Zora marketplace.
-                  </p>
-                </div>
+      {/* NFT Minting Dialog */}
+      <Dialog open={showConfigDialog} onOpenChange={handleDialogClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col w-[95vw] sm:w-full mx-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-yellow-500" />
+              <div>
+                <DialogTitle>Promote Content as NFT</DialogTitle>
+                <DialogDescription>
+                  Transform your subscription content into a collectible NFT on Zora marketplace.
+                </DialogDescription>
               </div>
-              <button
-                onClick={() => setShowConfigDialog(false)}
-                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </button>
             </div>
-          </div>
-          
-          {/* Content */}
-          <div className="space-y-6 flex-1 overflow-y-auto min-h-0">
+          </DialogHeader>
+
+          <div className="space-y-6 flex-1 overflow-y-auto min-h-0 px-1">
 
         {mintingState === 'idle' && (
           <div className="space-y-6">
@@ -612,9 +629,10 @@ export function ContentNFTPromotion({
         )}
 
           </div>
-          
-          {/* Footer */}
-          <div className="flex-shrink-0 mt-6 flex justify-end gap-2">
+
+          <Separator className="my-4" />
+
+          <DialogFooter className="flex-shrink-0">
             {mintingState === 'idle' && (
               <>
                 <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
@@ -626,16 +644,16 @@ export function ContentNFTPromotion({
                 </Button>
               </>
             )}
-            
+
             {mintingState === 'success' && (
               <Button onClick={() => setShowConfigDialog(false)}>
                 Done
               </Button>
             )}
-          </div>
-        </div>
-      )}
-      
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Trigger Button */}
       <Button
         variant="outline"

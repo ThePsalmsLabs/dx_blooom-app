@@ -96,6 +96,7 @@ import React, {
 	getEnhancedWagmiConfig 
   } from '@/lib/contracts/miniapp-config'
   import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
+import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   
   // Import your existing hooks for seamless integration
   import { useIsCreatorRegistered } from '@/hooks/contracts/core'
@@ -931,10 +932,15 @@ import React, {
 	  }
 	}))
 	
+	// Initialize error recovery system
+	useEffect(() => {
+	  initializeErrorRecovery()
+	}, [])
+
 	// Initialize wagmi configuration
 	useEffect(() => {
 	  let mounted = true
-	  
+
 	  const initializeConfig = async () => {
 		try {
 		  // Pre-clear any potentially corrupted wagmi state
@@ -1051,6 +1057,15 @@ import React, {
 	  >
 		<WagmiProvider config={wagmiConfig}>
 		  <QueryClientProvider client={queryClient}>
+			{/* DEBUG: Log config state for troubleshooting */}
+			{showDebugInfo && wagmiConfig && (
+			  <div className="fixed top-0 left-0 bg-red-500 text-white p-2 text-xs z-50">
+				Config: {wagmiConfig ? 'OK' : 'FAILED'}
+				{wagmiConfig && wagmiConfig._enhancedMetadata && (
+				  <div>Fallback: {wagmiConfig._enhancedMetadata.fallbackUsed ? 'YES' : 'NO'}</div>
+				)}
+			  </div>
+			)}
 			<FastRPCProvider>
 			  <EnhancedMiniAppProvider
 				enableAnalytics={enableAnalytics}

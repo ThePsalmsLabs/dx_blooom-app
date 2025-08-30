@@ -113,8 +113,8 @@ const privyConfig = {
     logo: undefined, // Add your logo URL here if you have one
   },
   
-  // Default chain configuration - CRITICAL: This must match your app's needs
-  defaultChain: baseSepolia, // Change to base for production
+  // Default chain configuration - FIXED: Use mainnet by default
+  defaultChain: base, // Changed from baseSepolia to base (mainnet)
   supportedChains: [base, baseSepolia],
   
   // Additional configuration for better UX

@@ -409,7 +409,7 @@ function AppHeader({
   // Portfolio integration for header display
   const { totalPortfolioValue, isLoading: balancesLoading } = useEnhancedTokenBalances()
   return (
-    <header className="border-b bg-background relative z-40">
+    <header className="border-b border-border/60 bg-background/95 backdrop-blur-lg relative z-40 shadow-sm">
       <div className="container mx-auto px-2 sm:px-4">
         <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Left side - Logo and navigation toggle */}
@@ -434,14 +434,19 @@ function AppHeader({
               <Menu className="h-5 w-5" />
             </Button>
             
-            <div className="flex items-center gap-2">
-              <img 
-                src="/images/miniapp-og-square.png" 
-                alt="Bloom - Creator Economy" 
-                className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg object-cover shadow-sm"
-                draggable="false"
-              />
-              <span className="font-bold text-base sm:text-lg hidden sm:inline">Bloom</span>
+            <div className="flex items-center gap-2 hover-lift transition-all duration-300">
+              <div className="relative">
+                <img
+                  src="/images/miniapp-og-square.png"
+                  alt="Bloom - Creator Economy"
+                  className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg object-cover shadow-lg"
+                  draggable="false"
+                />
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-lg opacity-20 blur-sm"></div>
+              </div>
+              <span className="font-bold text-base sm:text-lg hidden sm:inline bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Bloom
+              </span>
             </div>
           </div>
 
@@ -489,9 +494,11 @@ function AppHeader({
 
             {/* Portfolio Value Display */}
             {isMounted && isConnected && !balancesLoading && totalPortfolioValue > 0 && (
-              <div className="hidden lg:flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-lg border border-green-200">
-                <BarChart3 className="h-4 w-4" />
-                <span className="text-sm font-medium">
+              <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-600 dark:text-green-400 rounded-xl border border-green-500/20 hover:border-green-500/40 transition-all duration-300 animate-pulse-web3">
+                <div className="p-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+                  <BarChart3 className="h-3 w-3 text-white" />
+                </div>
+                <span className="text-sm font-semibold">
                   {formatUSDValue(totalPortfolioValue)}
                 </span>
               </div>
@@ -668,7 +675,7 @@ function AppNavigation({
 
   // Desktop navigation (sidebar)
   const desktopNav = (
-    <aside className="hidden md:flex w-64 flex-col border-r bg-background/95 backdrop-blur">
+    <aside className="hidden md:flex w-64 flex-col border-r border-border/60 bg-background/95 backdrop-blur-lg shadow-lg">
       <nav className="flex flex-col gap-2 p-4">
         {visibleItems.map((item) => (
           <NavigationItem key={item.href} item={item} />
@@ -706,14 +713,20 @@ function NavigationItem({ item, onSelect }: NavigationItemProps) {
   return (
     <Button
       variant={item.isActive ? "secondary" : "ghost"}
-      className="justify-start gap-3 h-10"
+      className={cn(
+        "justify-start gap-3 h-10 transition-all duration-300 hover-lift",
+        item.isActive && "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15"
+      )}
       onClick={handleClick}
       disabled={item.disabled}
     >
-      <item.icon className="h-4 w-4" />
-      <span>{item.label}</span>
+      <item.icon className={cn(
+        "h-4 w-4 transition-colors duration-300",
+        item.isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+      )} />
+      <span className="font-medium">{item.label}</span>
       {item.badge && (
-        <Badge variant="secondary" className="ml-auto">
+        <Badge variant="secondary" className="ml-auto bg-accent/20 text-accent border-accent/30">
           {item.badge}
         </Badge>
       )}

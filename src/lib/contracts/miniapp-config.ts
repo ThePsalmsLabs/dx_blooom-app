@@ -64,28 +64,33 @@ import {
 
 /**
  * Enhanced Environment Configuration
- * 
+ *
  * This extends your existing environment variable handling with MiniApp-specific
  * configuration while maintaining backward compatibility and validation.
  */
 const ENVIRONMENT_CONFIG = {
   // Existing environment variables preserved from your configuration
-  WALLETCONNECT_PROJECT_ID: 
+  WALLETCONNECT_PROJECT_ID:
     process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ||
     process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ||
     '',
   ALCHEMY_API_KEY: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '',
   COINBASE_PROJECT_ID: process.env.NEXT_PUBLIC_COINBASE_PROJECT_ID || '',
-  
+
   // Enhanced MiniApp-specific configuration
   MINIAPP_ENABLED: process.env.NEXT_PUBLIC_MINIAPP_ENABLED === 'true',
   MINIAPP_DOMAIN: process.env.NEXT_PUBLIC_MINIAPP_DOMAIN || '',
   FARCASTER_WEBHOOK_SECRET: process.env.FARCASTER_WEBHOOK_SECRET || '',
-  
+
   // Performance and optimization flags
   ENABLE_WEBSOCKET_FALLBACK: process.env.NEXT_PUBLIC_ENABLE_WEBSOCKET_FALLBACK === 'true',
   ENABLE_BATCH_OPTIMIZATION: process.env.NEXT_PUBLIC_ENABLE_BATCH_OPTIMIZATION !== 'false',
-  ENABLE_SMART_CACHING: process.env.NEXT_PUBLIC_ENABLE_SMART_CACHING !== 'false'
+  ENABLE_SMART_CACHING: process.env.NEXT_PUBLIC_ENABLE_SMART_CACHING !== 'false',
+
+  // Enhanced RPC configurations for better reliability
+  INFURA_PROJECT_ID: process.env.NEXT_PUBLIC_INFURA_PROJECT_ID || '',
+  ANKR_API_KEY: process.env.NEXT_PUBLIC_ANKR_API_KEY || '',
+  PUBLIC_RPC_FALLBACK: true
 } as const
 
 /**
@@ -167,28 +172,49 @@ export const ENHANCED_SUPPORTED_CHAINS = [base, baseSepolia] as const
  * fallback strategies, WebSocket support, and performance optimizations.
  */
 function createEnhancedTransports(capabilities: ReturnType<typeof validateEnhancedEnvironment>['capabilities']) {
-  // Your existing RPC configuration enhanced with additional fallback strategies
+  // Enhanced RPC configuration with multiple reliable providers
   const baseRpcEndpoints = [
     // Primary: Alchemy (if available) - your existing pattern
     ...(ENVIRONMENT_CONFIG.ALCHEMY_API_KEY ? [
       `https://base-mainnet.g.alchemy.com/v2/${ENVIRONMENT_CONFIG.ALCHEMY_API_KEY}`
     ] : []),
-    // Secondary: Public RPC - your existing fallback
-    'https://mainnet.base.org',
-    // Tertiary: Additional public endpoints for enhanced reliability
+    // Secondary: Infura (if available)
+    ...(ENVIRONMENT_CONFIG.INFURA_PROJECT_ID ? [
+      `https://base-mainnet.infura.io/v3/${ENVIRONMENT_CONFIG.INFURA_PROJECT_ID}`
+    ] : []),
+    // Tertiary: Ankr (if available)
+    ...(ENVIRONMENT_CONFIG.ANKR_API_KEY ? [
+      `https://rpc.ankr.com/base/${ENVIRONMENT_CONFIG.ANKR_API_KEY}`
+    ] : []),
+    // Public RPC fallbacks with rate limiting protection
+    'https://base.llamarpc.com',
+    'https://base.drpc.org',
+    'https://base.blockpi.network/v1/rpc/public',
     'https://base.publicnode.com',
-    'https://1rpc.io/base'
+    'https://1rpc.io/base',
+    // Original fallback (moved to end to prevent 403 issues)
+    'https://mainnet.base.org'
   ]
-  
+
   const baseSepoliaRpcEndpoints = [
     // Primary: Alchemy (if available)
     ...(ENVIRONMENT_CONFIG.ALCHEMY_API_KEY ? [
       `https://base-sepolia.g.alchemy.com/v2/${ENVIRONMENT_CONFIG.ALCHEMY_API_KEY}`
     ] : []),
-    // Secondary: Public RPC
-    'https://sepolia.base.org',
-    // Tertiary: Additional public endpoints
-    'https://base-sepolia.publicnode.com'
+    // Secondary: Infura (if available)
+    ...(ENVIRONMENT_CONFIG.INFURA_PROJECT_ID ? [
+      `https://base-sepolia.infura.io/v3/${ENVIRONMENT_CONFIG.INFURA_PROJECT_ID}`
+    ] : []),
+    // Tertiary: Ankr (if available)
+    ...(ENVIRONMENT_CONFIG.ANKR_API_KEY ? [
+      `https://rpc.ankr.com/base_sepolia/${ENVIRONMENT_CONFIG.ANKR_API_KEY}`
+    ] : []),
+    // Public RPC fallbacks
+    'https://base-sepolia.llamarpc.com',
+    'https://base-sepolia.drpc.org',
+    'https://base-sepolia.blockpi.network/v1/rpc/public',
+    'https://base-sepolia.publicnode.com',
+    'https://sepolia.base.org'
   ]
   
   // Enhanced transport creation with fallback strategies
@@ -433,7 +459,51 @@ function createEnhancedStorage(environmentDetection: MiniAppEnvironmentDetection
 export async function createEnhancedWagmiConfig(
   forceEnvironment?: MiniAppEnvironment
 ): Promise<ReturnType<typeof createConfig>> {
-  
+
+  // FIXED: Clear any corrupted state before creating new config
+  if (typeof window !== 'undefined') {
+    try {
+      // Clear ALL wagmi-related localStorage keys that might be corrupted
+      const keysToClear = [
+        'wagmi.store',
+        'wagmi.connections',
+        'wagmi.state',
+        'wagmi.account',
+        'wagmi.chainId',
+        'wagmi.recentConnectorId',
+        'dxbloom-miniapp-wagmi',
+        'dxbloom-miniapp-wagmi-unified',
+        'onchain-content-wagmi',
+        'onchain-content-wagmi-miniapp'
+      ]
+
+      // Clear all wagmi-related keys
+      keysToClear.forEach(key => {
+        try {
+          localStorage.removeItem(key)
+          sessionStorage.removeItem(key)
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      })
+
+      // Also clear any keys that contain 'wagmi' in the name
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('wagmi') || key.includes('wallet') || key.includes('connector')) {
+          try {
+            localStorage.removeItem(key)
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }
+      })
+
+      console.log('✅ Cleared ALL potentially corrupted wagmi storage')
+    } catch (error) {
+      console.warn('Failed to clear corrupted wagmi storage:', error)
+    }
+  }
+
   // Validate environment configuration
   const environmentValidation = validateEnhancedEnvironment()
   
@@ -529,20 +599,53 @@ export async function createEnhancedWagmiConfig(
     environmentDetection = null
   }
   
-  // Create enhanced components
-  const transports = createEnhancedTransports(environmentValidation.capabilities)
-  const connectors = await createEnhancedConnectors(environmentDetection)
-  const storage = createEnhancedStorage(environmentDetection)
+  // Create enhanced components with fallback handling
+  let transports, connectors, storage
+
+  try {
+    transports = createEnhancedTransports(environmentValidation.capabilities)
+    connectors = await createEnhancedConnectors(environmentDetection)
+    storage = createEnhancedStorage(environmentDetection)
+  } catch (componentError) {
+    console.warn('Failed to create enhanced components, using minimal fallback:', componentError)
+
+    // Fallback: Create minimal, reliable configuration
+    transports = {
+      [base.id]: http('https://mainnet.base.org'),
+      [baseSepolia.id]: http('https://sepolia.base.org')
+    }
+
+    connectors = [
+      metaMask(),
+      walletConnect({
+        projectId: ENVIRONMENT_CONFIG.WALLETCONNECT_PROJECT_ID || 'default',
+        metadata: {
+          name: 'OnChain Content Platform',
+          description: 'Decentralized content platform',
+          url: 'https://dxbloom.com',
+          icons: ['https://dxbloom.com/favicon.ico']
+        }
+      })
+    ]
+
+    storage = createStorage({
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      key: 'dxbloom-miniapp-fallback'
+    })
+  }
   
-  // Create the enhanced wagmi configuration
-  const config = createConfig({
-    chains: ENHANCED_SUPPORTED_CHAINS,
-    connectors,
-    transports,
-    storage,
-    
-    // Enhanced SSR configuration building on your existing patterns
-    ssr: true,
+  // Create the enhanced wagmi configuration with error handling
+  let config
+
+  try {
+    config = createConfig({
+      chains: ENHANCED_SUPPORTED_CHAINS,
+      connectors,
+      transports,
+      storage,
+
+      // Enhanced SSR configuration building on your existing patterns
+      ssr: true,
     
     // Enhanced batching configuration for optimal performance
     batch: {
@@ -575,19 +678,53 @@ export async function createEnhancedWagmiConfig(
         : undefined // Your existing setting
     })
   })
-  
+
+  } catch (configError) {
+    console.error('Failed to create wagmi config, using emergency fallback:', configError)
+
+    // EMERGENCY FALLBACK: Create the most basic, reliable configuration possible
+    config = createConfig({
+      chains: [base],
+      connectors: [
+        metaMask(),
+        walletConnect({
+          projectId: 'default-emergency-fallback',
+          metadata: {
+            name: 'OnChain Content Platform',
+            description: 'Emergency fallback configuration',
+            url: 'https://dxbloom.com',
+            icons: []
+          }
+        })
+      ],
+      transports: {
+        [base.id]: http('https://mainnet.base.org')
+      },
+      storage: createStorage({
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        key: 'dxbloom-emergency-fallback'
+      }),
+      ssr: true
+    })
+
+    console.log('✅ Created emergency fallback wagmi configuration')
+  }
+
   // Attach metadata for debugging and monitoring
-  Object.defineProperty(config, '_enhancedMetadata', {
-    value: {
-      environmentDetection,
-      environmentValidation,
-      configurationTimestamp: new Date().toISOString(),
-      version: '1.0.0'
-    },
-    enumerable: false,
-    writable: false
-  })
-  
+  if (config) {
+    Object.defineProperty(config, '_enhancedMetadata', {
+      value: {
+        environmentDetection,
+        environmentValidation,
+        configurationTimestamp: new Date().toISOString(),
+        version: '1.0.0',
+        fallbackUsed: !transports || !connectors || !storage
+      },
+      enumerable: false,
+      writable: false
+    })
+  }
+
   return config
 }
 

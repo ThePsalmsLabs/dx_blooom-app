@@ -1,62 +1,58 @@
 /**
- * MiniApp Error Boundary System - Component 3: Phase 1 Foundation
+ * MiniApp Error Boundary System - Updated to use Toast-based Error Handling
  * File: src/components/errors/MiniAppErrorBoundary.tsx
- * 
- * This component extends existing error handling patterns with MiniApp-specific
- * error boundaries that provide contextual error recovery and intelligent fallback
- * experiences. It integrates with Components 1 and 2 to provide context-aware
- * error handling that understands the capabilities and limitations of each environment.
- * 
- * Architecture Integration:
- * - Builds on Enhanced MiniAppProvider (Component 1) for context awareness
- * - Uses Compatibility Testing (Component 2) for capability-based recovery
- * - Integrates with existing design token system for consistent error UI
- * - Provides foundation for Components 4 and 5 error handling needs
- * - Maintains compatibility with existing error handling patterns
- * - Supports progressive enhancement and graceful degradation
- * 
+ *
+ * This component now uses the new platform error handler with toast notifications
+ * instead of traditional error boundaries, providing better user experience across
+ * mobile, web, and miniapp contexts.
+ *
  * Key Features:
- * - Context-aware error classification and recovery strategies
- * - Intelligent fallback recommendations based on available capabilities
- * - User-friendly error messages tailored to social commerce contexts
- * - Performance monitoring and error analytics for continuous improvement
- * - Accessibility-first error communication with screen reader support
- * - Integration with social platform error reporting when appropriate
+ * - Toast-based error notifications with context awareness
+ * - Platform-specific error handling (mobile/web/miniapp)
+ * - Automatic error classification and recovery suggestions
+ * - No more intrusive error UI blocking the interface
+ * - Better accessibility with screen reader announcements
+ * - Performance optimized with lazy loading and minimal re-renders
  */
 
 'use client'
 
-import React, { 
-  Component, 
-  ReactNode, 
-  ErrorInfo, 
-  useState, 
-  useCallback, 
-  useEffect,
-  useMemo 
-} from 'react'
-import { RefreshCw, AlertTriangle, Home, ArrowLeft, ExternalLink, Wifi, Zap, AlertCircle } from 'lucide-react'
-
-// Import design system components for consistent UI
+import React, { Component, ErrorInfo, ReactNode, useState, useMemo, useEffect, useCallback } from 'react'
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
+  MiniAppErrorBoundary as ErrorBoundaryReplacement,
+  ErrorBoundaryProvider,
+  useErrorBoundary
+} from './ErrorBoundaryReplacement'
+import type { EnhancedMiniAppContextValue } from '@/contexts/MiniAppProvider'
+
+// Import UI components
+import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Progress
-} from '@/components/ui'
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 
-// Import our previous components for integration
-import { useMiniApp, type EnhancedMiniAppContextValue } from '@/contexts/MiniAppProvider'
-import { 
-  useCompatibilityTesting, 
-  type CompatibilityTestSuiteResult
-} from '@/utils/miniapp/compatibility'
+// Import icons
+import {
+  RefreshCw,
+  Home,
+  ArrowLeft,
+  ExternalLink,
+  AlertTriangle,
+  Wifi,
+  Zap,
+  AlertCircle
+} from 'lucide-react'
+
+// Import hooks and types
+import { useMiniApp } from '@/contexts/MiniAppProvider'
+import type { CompatibilityTestSuiteResult } from '@/utils/miniapp/compatibility'
+import { useCompatibilityTesting } from '@/utils/miniapp/compatibility'
 
 // ================================================
 // TYPE DEFINITIONS FOR ERROR BOUNDARY SYSTEM

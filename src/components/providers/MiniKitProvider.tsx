@@ -31,31 +31,30 @@ import { getX402MiddlewareConfig } from '@/lib/web3/x402-config'
  * we create type-safe interfaces that allow the code to compile and run gracefully.
  */
 
-// Define the MiniKit interface based on the expected API
-// This allows TypeScript to understand the structure even if the package isn't available
+// FIXED: Updated MiniKit interface to match current SDK v0.1.8 API
 interface MiniKitAPI {
-  install: (config: {
-    theme: 'light' | 'dark' | 'auto'
-    enablePayments: boolean
-    supportedChains: number[]
-    supportedTokens: string[]
-  }) => Promise<void>
-  getContext: () => {
-    user?: {
-      fid: number
-      username: string
-      verifications?: unknown[]
-      followerCount?: number
-      verifiedAddresses?: unknown[]
-    }
-    client?: {
-      name: string
-      version: string
-      supportedFeatures?: string[]
-    }
-    frame?: boolean
-    referrer?: string
-  } | null
+  // Core MiniKit functions from the current SDK
+  Ready: (options?: { disableNativeGestures?: boolean }) => Promise<void>
+  Context: {
+    Get: () => Promise<{
+      user?: {
+        fid: number
+        username: string
+        verifications?: unknown[]
+        followerCount?: number
+        verifiedAddresses?: unknown[]
+      }
+      client?: {
+        name: string
+        version: string
+        supportedFeatures?: string[]
+      }
+      frame?: boolean
+      referrer?: string
+    } | null>
+  }
+  SignIn?: (options?: unknown) => Promise<unknown>
+  // Add other functions as needed from the SDK
 }
 
 /**
@@ -71,25 +70,33 @@ interface MiniKitAPI {
  * Dynamically loads MiniKit when available, otherwise falls back to `null`.
  * Avoids runtime errors in unsupported environments.
  */
+// FIXED: Updated to use correct MiniKit SDK v0.1.8 API
 async function getMiniKit(): Promise<MiniKitAPI | null> {
-    try {
-      if (typeof window === 'undefined') return null;
-  
-      const mod = await import('@farcaster/miniapp-sdk').catch(() => null);
-      if (mod && 'sdk' in mod && mod.sdk) {
-        return (mod.sdk as unknown) as MiniKitAPI;
-      }
+  try {
+    if (typeof window === 'undefined') return null;
 
-      const win = window as unknown as { miniapp?: { sdk?: unknown } }
-      if (win.miniapp?.sdk) {
-        return win.miniapp.sdk as unknown as MiniKitAPI;
-      }
-  
-      return null;
-    } catch (error) {
-      console.warn('MiniKit not available:', error);
-      return null;
+    // Import the MiniKit SDK with correct API structure
+    const mod = await import('@farcaster/miniapp-sdk').catch(() => null);
+    if (mod) {
+      // Return the module directly as it contains Ready, Context, etc.
+      return mod as unknown as MiniKitAPI;
     }
+
+    // Fallback to global MiniKit if available
+    const win = window as unknown as { MiniKit?: unknown; miniapp?: { sdk?: unknown } }
+    if (win.MiniKit) {
+      return win.MiniKit as unknown as MiniKitAPI;
+    }
+
+    if (win.miniapp?.sdk) {
+      return win.miniapp.sdk as unknown as MiniKitAPI;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('MiniKit not available:', error);
+    return null;
+  }
 }
   
 
@@ -158,6 +165,7 @@ export interface MiniKitProviderProps {
  * readonly modifiers and strict typing. The readonly arrays demonstrate
  * immutable data patterns that prevent accidental mutations.
  */
+// FIXED: Updated MiniKit config interface for v0.1.8 API
 export interface MiniKitConfig {
   readonly theme: 'light' | 'dark' | 'auto'
   readonly enablePayments: boolean
@@ -165,6 +173,8 @@ export interface MiniKitConfig {
   readonly supportedTokens: readonly Address[]
   readonly debugMode: boolean
   readonly manifestUrl: string
+  // New options for Ready() API
+  readonly disableNativeGestures?: boolean
 }
 
 /**
@@ -286,6 +296,7 @@ export function createMiniKitConfig(): MiniKitConfig {
  * This function demonstrates how to initialize external libraries safely,
  * with proper error handling that doesn't crash the application.
  */
+// FIXED: Updated to use correct MiniKit SDK v0.1.8 API
 export async function initializeMiniKit(config: MiniKitConfig): Promise<void> {
   try {
     if (typeof window === 'undefined') {
@@ -297,15 +308,18 @@ export async function initializeMiniKit(config: MiniKitConfig): Promise<void> {
       throw new Error('MiniKit is not available in this environment')
     }
 
-    await miniKit.install({
-      theme: config.theme,
-      enablePayments: config.enablePayments,
-      supportedChains: [...config.supportedChains], // Convert readonly to mutable for external API
-      supportedTokens: config.supportedTokens.map(String),
+    // Check if Ready method exists before calling it
+    if (typeof miniKit.Ready !== 'function') {
+      throw new Error('MiniKit.Ready is not a function - SDK may not be properly loaded')
+    }
+
+    // Use Ready() instead of install() for the new API
+    await miniKit.Ready({
+      disableNativeGestures: false // You can make this configurable if needed
     })
 
     if (config.debugMode) {
-      console.log('✅ MiniKit initialized successfully', {
+      console.log('✅ MiniKit initialized successfully with Ready()', {
         supportedChains: config.supportedChains,
         supportedTokens: config.supportedTokens.length,
         enablePayments: config.enablePayments,
@@ -314,6 +328,7 @@ export async function initializeMiniKit(config: MiniKitConfig): Promise<void> {
   } catch (error) {
     console.warn('⚠️ MiniKit initialization failed:', error)
     // Graceful degradation - don't throw, just log the warning
+    // This allows the app to continue working even without MiniKit
   }
 }
 
@@ -324,6 +339,7 @@ export async function initializeMiniKit(config: MiniKitConfig): Promise<void> {
  * This function provides an async version for extracting Farcaster context
  * when we can properly await the MiniKit initialization.
  */
+// FIXED: Updated to use correct MiniKit SDK v0.1.8 API
 async function extractFarcasterContextAsync(): Promise<FarcasterContext | null> {
   try {
     if (typeof window === 'undefined') {
@@ -335,7 +351,13 @@ async function extractFarcasterContextAsync(): Promise<FarcasterContext | null> 
       return null
     }
 
-    const context = miniKit.getContext()
+    // Check if Context.Get method exists before calling it
+    if (!miniKit.Context || typeof miniKit.Context.Get !== 'function') {
+      console.warn('MiniKit.Context.Get is not available')
+      return null
+    }
+
+    const context = await miniKit.Context.Get()
     if (!context) {
       return null
     }

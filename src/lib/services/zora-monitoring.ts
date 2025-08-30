@@ -522,10 +522,10 @@ export function withMonitoring<T extends any[], R>(
 
     try {
       const result = await fn(...args)
-      endTimer(true)
+      endTimer()
       return result
     } catch (error) {
-      endTimer(false, { error: error instanceof Error ? error.message : 'Unknown error' })
+      endTimer()
 
       // Track the error
       await zoraMonitor.trackError(

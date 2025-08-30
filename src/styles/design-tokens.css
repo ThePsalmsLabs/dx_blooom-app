@@ -308,7 +308,7 @@
   --font-family-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
 
-  /* Enhanced font weight scale */
+  /* Enhanced font weight scale with semantic naming */
   --font-weight-thin: 100;
   --font-weight-extralight: 200;
   --font-weight-light: 300;
@@ -319,22 +319,29 @@
   --font-weight-extrabold: 800;
   --font-weight-black: 900;
 
-  /* Enhanced text size scale with precise scaling */
-  --text-scale-ratio: 1.125;                     /* 1.125 - Perfect fourth scale */
+  /* Semantic font weights for consistent usage */
+  --font-weight-body: var(--font-weight-normal);
+  --font-weight-body-medium: var(--font-weight-medium);
+  --font-weight-heading: var(--font-weight-semibold);
+  --font-weight-heading-bold: var(--font-weight-bold);
+  --font-weight-display: var(--font-weight-extrabold);
 
-  --text-xs: 0.75rem;                             /* 12px */
-  --text-sm: 0.875rem;                            /* 14px */
-  --text-base: 1rem;                              /* 16px */
-  --text-lg: calc(var(--text-base) * var(--text-scale-ratio));                     /* 18px */
-  --text-xl: calc(var(--text-lg) * var(--text-scale-ratio));                       /* 20px */
-  --text-2xl: calc(var(--text-xl) * var(--text-scale-ratio));                      /* 22px */
-  --text-3xl: calc(var(--text-2xl) * var(--text-scale-ratio));                     /* 25px */
-  --text-4xl: calc(var(--text-3xl) * var(--text-scale-ratio));                     /* 28px */
-  --text-5xl: calc(var(--text-4xl) * var(--text-scale-ratio));                     /* 32px */
-  --text-6xl: calc(var(--text-5xl) * var(--text-scale-ratio));                     /* 36px */
-  --text-7xl: calc(var(--text-6xl) * var(--text-scale-ratio));                     /* 40px */
-  --text-8xl: calc(var(--text-7xl) * var(--text-scale-ratio));                     /* 45px */
-  --text-9xl: calc(var(--text-8xl) * var(--text-scale-ratio));                     /* 51px */
+  /* Enhanced text size scale with improved scaling and Web3-appropriate sizes */
+  --text-scale-ratio: 1.2;                      /* 1.2 - Major second scale for better hierarchy */
+
+  --text-xs: 0.75rem;                           /* 12px - Small captions */
+  --text-sm: 0.875rem;                          /* 14px - Body small */
+  --text-base: 1rem;                            /* 16px - Body regular */
+  --text-lg: 1.125rem;                          /* 18px - Body large */
+  --text-xl: 1.25rem;                           /* 20px - Large text */
+  --text-2xl: 1.5rem;                           /* 24px - Small headings */
+  --text-3xl: 1.875rem;                         /* 30px - Medium headings */
+  --text-4xl: 2.25rem;                          /* 36px - Large headings */
+  --text-5xl: 3rem;                             /* 48px - Hero headings */
+  --text-6xl: 3.75rem;                          /* 60px - Display headings */
+  --text-7xl: 4.5rem;                           /* 72px - Large display */
+  --text-8xl: 6rem;                             /* 96px - Massive display */
+  --text-9xl: 8rem;                             /* 128px - Epic display */
 
   /* Enhanced line height system for optimal readability */
   --leading-none: 1;
@@ -343,6 +350,20 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
   --leading-loose: 2;
+
+  /* Semantic line heights */
+  --leading-caption: var(--leading-tight);
+  --leading-body: var(--leading-relaxed);
+  --leading-heading: var(--leading-tight);
+  --leading-display: var(--leading-none);
+
+  /* Letter spacing for different text sizes */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
 
   /* Context-specific typography adaptations */
   --text-current-base: var(--text-base);

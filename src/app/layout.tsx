@@ -115,11 +115,22 @@ export default function RootLayout({
   return (
     <html lang="en" data-context="desktop">
       <head>
+        {/* Enhanced Font Loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
         <link rel="icon" href="/images/miniapp-og-square.png?v=1" type="image/png" sizes="32x32" />
         <link rel="icon" href="/images/miniapp-icon-192.png?v=1" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/images/miniapp-og-square.png?v=1" />
+
+        {/* Enhanced Meta Tags for Better SEO */}
+        <meta name="theme-color" content="#6366f1" />
+        <meta name="color-scheme" content="light dark" />
       </head>
-      <body className="min-h-screen bg-background font-sans antialiased bg-amber-glow">
+      <body className="min-h-screen bg-background font-sans antialiased bg-web3-glow text-foreground leading-relaxed">
         {/* 
           🔧 KEY FIX: This provider hierarchy ensures that every component
           in your app has access to all the context providers, including AuthProvider.

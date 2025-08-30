@@ -151,7 +151,7 @@ function CreatorsSection() {
   }
 
   return (
-    <section className="py-16 bg-gradient-to-br from-background to-muted/50">
+    <section className="py-16 bg-gradient-to-br from-background to-muted/50 animate-slide-in-up animate-delay-300">
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-12">
@@ -509,42 +509,62 @@ export default function HomePage() {
         <div className="container mx-auto space-y-16">
           
           {/* Hero Section - Adapts based on user connection status */}
-          <section className="relative py-20 text-center bg-white rounded-2xl overflow-hidden bg-amber-glow">
+          <section className="relative py-20 text-center bg-gradient-to-br from-background via-background to-muted/20 rounded-2xl overflow-hidden bg-web3-glow bg-blockchain-pattern border border-border/50 shadow-xl animate-slide-in-up">
             <div className="mx-auto max-w-4xl space-y-8">
               <div className="space-y-4">
-                <Badge variant="secondary" className="text-sm">
+                <Badge variant="secondary" className="text-sm bg-primary/10 text-primary border-primary/20">
                   <Sparkles className="mr-2 h-4 w-4" />
                   Web3 Content Economy
                 </Badge>
-                <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-                   Create, Share, 
-                  <span className="bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent ml-2">
+                <h1 className="text-5xl font-bold tracking-tight sm:text-6xl leading-tight">
+                   Create, Share,
+                  <span className="bg-gradient-to-r from-primary via-accent to-cyan-500 bg-clip-text text-transparent ml-2 block sm:inline">
                     Earn
                   </span>
                 </h1>
-                <p className="text-xl text-muted-foreground leading-relaxed">
-                  The decentralized platform where creators own their content, 
-                  build direct relationships with their audience, and earn fairly 
-                  for their work through blockchain technology.
+                <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
+                  The decentralized platform where creators own their content,
+                  build direct relationships with their audience, and earn fairly
+                  through blockchain-powered micropayments and NFTs.
                 </p>
+              </div>
+
+              {/* Web3 Platform Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
+                <div className="text-center animate-scale-in animate-delay-100">
+                  <div className="text-2xl font-bold text-primary mb-1">10K+</div>
+                  <div className="text-sm text-muted-foreground">Active Creators</div>
+                </div>
+                <div className="text-center animate-scale-in animate-delay-200">
+                  <div className="text-2xl font-bold text-accent mb-1">$2M+</div>
+                  <div className="text-sm text-muted-foreground">Creator Earnings</div>
+                </div>
+                <div className="text-center animate-scale-in animate-delay-300">
+                  <div className="text-2xl font-bold text-cyan-500 mb-1">50K+</div>
+                  <div className="text-sm text-muted-foreground">Content Pieces</div>
+                </div>
+                <div className="text-center animate-scale-in animate-delay-500">
+                  <div className="text-2xl font-bold text-green-500 mb-1">Base</div>
+                  <div className="text-sm text-muted-foreground">Network</div>
+                </div>
               </div>
 
               {/* Role-based Call-to-Action */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 {!isConnected ? (
                   <>
-                    <WalletConnectButton 
-                      variant="default" 
+                    <Button
+                      variant="default"
                       size="lg"
-                      className="text-lg px-8 py-4"
+                      className="btn-gradient-primary text-lg px-8 py-4 shadow-xl hover:shadow-2xl transition-all duration-300"
                     >
                       Connect Wallet
-                    </WalletConnectButton>
-                    <Button 
-                      variant="glow" 
+                    </Button>
+                    <Button
+                      variant="outline"
                       size="lg"
                       onClick={handleBrowseContent}
-                      className="text-lg px-8 py-4"
+                      className="text-lg px-8 py-4 border-2 border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all duration-300"
                     >
                       Browse Content
                       <Eye className="ml-2 h-5 w-5" />
@@ -552,20 +572,20 @@ export default function HomePage() {
                   </>
                 ) : isCreator ? (
                   <>
-                    <Button 
-                      variant="glow"
-                      size="lg" 
+                    <Button
+                      variant="default"
+                      size="lg"
                       onClick={() => router.push('/dashboard')}
-                      className="text-lg px-8 py-4"
+                      className="btn-gradient-primary text-lg px-8 py-4 shadow-xl hover:shadow-2xl transition-all duration-300"
                     >
                       Creator Dashboard
                       <TrendingUp className="ml-2 h-5 w-5" />
                     </Button>
-                    <Button 
-                      variant="glow" 
+                    <Button
+                      variant="outline"
                       size="lg"
                       onClick={() => router.push('/upload')}
-                      className="text-lg px-8 py-4"
+                      className="text-lg px-8 py-4 border-2 border-accent/30 hover:border-accent/60 hover:bg-accent/5 transition-all duration-300"
                     >
                       Upload Content
                       <Plus className="ml-2 h-5 w-5" />
@@ -573,20 +593,20 @@ export default function HomePage() {
                   </>
                 ) : (
                   <>
-                    <Button 
-                      variant="glow"
-                      size="lg" 
+                    <Button
+                      variant="default"
+                      size="lg"
                       onClick={handleStartCreating}
-                      className="text-lg px-8 py-4"
+                      className="btn-gradient-primary text-lg px-8 py-4 shadow-xl hover:shadow-2xl transition-all duration-300"
                     >
                       Start Creating
                       <Sparkles className="ml-2 h-5 w-5" />
                     </Button>
-                    <Button 
-                      variant="glow" 
+                    <Button
+                      variant="outline"
                       size="lg"
                       onClick={handleBrowseContent}
-                      className="text-lg px-8 py-4"
+                      className="text-lg px-8 py-4 border-2 border-accent/30 hover:border-accent/60 hover:bg-accent/5 transition-all duration-300"
                     >
                       Discover Content
                       <ChevronRight className="ml-2 h-5 w-5" />
@@ -780,42 +800,44 @@ export default function HomePage() {
           </section>
 
           {/* Value Proposition for New Creators */}
-          <section className="bg-gradient-to-r from-primary/5 to-purple-600/5 rounded-lg p-12">
+          <section className="bg-gradient-to-br from-background to-muted/30 rounded-2xl p-12 border border-border/50 shadow-lg animate-slide-in-up animate-delay-500 hover-lift">
             <div className="max-w-4xl mx-auto text-center space-y-8">
               <div className="space-y-4">
-                <h2 className="text-3xl font-bold">Why Creators Choose Our Platform</h2>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Why Creators Choose Our Platform
+                </h2>
                 <p className="text-lg text-muted-foreground">
-                  Join thousands of creators who&apos;ve discovered the power of 
-                  Web3 content monetization and true ownership.
+                  Join thousands of creators who&apos;ve discovered the power of
+                  Web3 content monetization and true digital ownership.
                 </p>
               </div>
 
               <div className="grid md:grid-cols-3 gap-8">
-                <div className="space-y-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
-                    <Shield className="h-6 w-6 text-primary" />
+                <div className="space-y-4 p-6 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 hover:border-primary/40 hover:web3-glow-primary transition-all duration-300 animate-float">
+                  <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center mx-auto shadow-lg animate-pulse-web3">
+                    <Shield className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="font-semibold text-lg">True Ownership</h3>
+                  <h3 className="font-semibold text-lg text-primary">True Ownership</h3>
                   <p className="text-sm text-muted-foreground">
-                    Your content lives on IPFS. No platform can delete or control your work.
+                    Your content lives on IPFS. No platform can delete or control your work. Own your digital assets forever.
                   </p>
                 </div>
-                <div className="space-y-4">
-                  <div className="w-12 h-12 bg-green-600/10 rounded-lg flex items-center justify-center mx-auto">
-                    <DollarSign className="h-6 w-6 text-green-600" />
+                <div className="space-y-4 p-6 rounded-xl bg-gradient-to-br from-green-500/5 to-emerald-500/10 border border-green-500/20 hover:border-green-500/40 hover:web3-glow-success transition-all duration-300 animate-float" style={{animationDelay: '1s'}}>
+                  <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto shadow-lg animate-pulse-web3" style={{animationDelay: '0.5s'}}>
+                    <DollarSign className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="font-semibold text-lg">Fair Revenue</h3>
+                  <h3 className="font-semibold text-lg text-green-600 dark:text-green-400">Fair Revenue</h3>
                   <p className="text-sm text-muted-foreground">
-                    Keep 90%+ of your earnings. Direct payments via USDC on Base blockchain.
+                    Keep 90%+ of your earnings. Direct payments via USDC on Base blockchain with instant settlements.
                   </p>
                 </div>
-                <div className="space-y-4">
-                  <div className="w-12 h-12 bg-blue-600/10 rounded-lg flex items-center justify-center mx-auto">
-                    <Globe className="h-6 w-6 text-blue-600" />
+                <div className="space-y-4 p-6 rounded-xl bg-gradient-to-br from-accent/5 to-accent/10 border border-accent/20 hover:border-accent/40 hover:web3-glow-accent transition-all duration-300 animate-float" style={{animationDelay: '2s'}}>
+                  <div className="w-14 h-14 bg-gradient-to-br from-accent to-accent/80 rounded-xl flex items-center justify-center mx-auto shadow-lg animate-pulse-web3" style={{animationDelay: '1s'}}>
+                    <Globe className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="font-semibold text-lg">Global Reach</h3>
+                  <h3 className="font-semibold text-lg text-accent">Global Reach</h3>
                   <p className="text-sm text-muted-foreground">
-                    Borderless payments enable creators to monetize worldwide audiences.
+                    Borderless payments enable creators to monetize worldwide audiences without geographic restrictions.
                   </p>
                 </div>
               </div>
@@ -842,7 +864,7 @@ export default function HomePage() {
           </section>
 
           {/* Final CTA Section */}
-          <section className="text-center py-16 space-y-8">
+          <section className="text-center py-16 space-y-8 animate-slide-in-up animate-delay-700">
             <div className="space-y-4">
               <h2 className="text-4xl font-bold">Ready to Join the Creator Economy?</h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

@@ -391,7 +391,10 @@ export const validateRPCConfiguration = async () => {
  * @returns The appropriate chain for the current environment
  */
 export function getCurrentChain() {
-  return process.env.NODE_ENV === 'production' ? base : baseSepolia
+  // FIXED: Use mainnet by default, only use sepolia if explicitly set
+  const network = process.env.NETWORK as 'base' | 'base-sepolia' | undefined
+  if (network === 'base-sepolia') return baseSepolia
+  return base // Default to mainnet
 }
 
 /**
