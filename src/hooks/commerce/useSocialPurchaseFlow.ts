@@ -435,7 +435,7 @@ export function useSocialPurchaseFlow(
   const effectiveUserAddress = userAddress || walletUI.address
   
   // Your existing purchase flow foundation
-  const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress)
+  const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress as `0x${string}` | undefined)
   
   // Your existing integrations
   const miniAppContext = useMiniApp()
@@ -501,7 +501,7 @@ export function useSocialPurchaseFlow(
             subscriberCount: BigInt(0),
             registrationTime: BigInt(0)
           } : null, // Create Creator object from boolean
-          effectiveUserAddress,
+          effectiveUserAddress as `0x${string}` | undefined,
           miniAppContext
         )
         setSocialContext(context)

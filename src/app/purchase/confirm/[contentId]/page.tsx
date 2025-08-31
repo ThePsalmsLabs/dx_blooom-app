@@ -116,10 +116,13 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
   const router = useRouter()
   const walletUI = useWalletConnectionUI()
 
+  // Extract user address from wallet UI with proper type checking
+  const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
+
   // Core data hooks for content and purchase flow
   const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(walletUI.address as `0x${string}` | undefined, contentId)
-  const purchaseFlow = useContentPurchaseFlow(contentId, walletUI.address as `0x${string}` | undefined)
+  const accessQuery = useHasContentAccess(userAddress, contentId)
+  const purchaseFlow = useContentPurchaseFlow(contentId, userAddress)
 
   // Purchase intent state management
   const [intentState, setIntentState] = useState<PurchaseIntentState>({

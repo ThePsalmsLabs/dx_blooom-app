@@ -62,7 +62,7 @@ export function ZoraIntegrationDemo() {
   const { totalNFTs, totalMinted, totalVolume, formattedVolume, formattedAveragePrice } = useZoraCollectionAnalytics(collectionAddress as Address)
   
   // Creator status
-  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address)
+  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
   
   // Form state
   const [contentData, setContentData] = useState<ContentFormData>({

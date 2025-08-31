@@ -268,7 +268,7 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
 
   const contextValue: EnhancedWeb3ContextType = {
     // Core state
-    address: walletUI.address || null,
+    address: walletUI.address as `0x${string}` | null,
     isConnected: walletUI.isConnected,
     isConnecting: !ready, // Privy's ready state indicates loading
     chainId,

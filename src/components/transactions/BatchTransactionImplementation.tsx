@@ -301,7 +301,7 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
         // Detect account type first
         let accountType: 'eoa' | 'smart_account' = 'eoa'
         if (walletUI.address) {
-          accountType = await detectAccountType(walletUI.address)
+          accountType = await detectAccountType(walletUI.address as `0x${string}`)
         }
         
         // Simulate capability detection
@@ -928,7 +928,7 @@ export function BatchTransactionImplementation({
     
     if (paymentConfig.paymentMethod === 'usdc') {
       builtConfig = BatchTransactionBuilder.buildUSDCPaymentBatch(
-        walletUI.address,
+        walletUI.address as `0x${string}`,
         paymentConfig.contractAddresses.USDC,
         paymentConfig.contractAddresses.COMMERCE_INTEGRATION,
         paymentConfig.amount,
@@ -980,7 +980,7 @@ export function BatchTransactionImplementation({
     }
     
     // Detect account type first
-    const accountType = await detectAccountType(walletUI.address)
+    const accountType = await detectAccountType(walletUI.address as `0x${string}`)
     
     // Check if batch transactions are supported and account type is compatible
     if (!capabilities.isSupported || accountType === 'eoa') {
@@ -1115,7 +1115,7 @@ export function BatchTransactionImplementation({
     }
     
     // Verify account type again before execution
-    const accountType = await detectAccountType(walletUI.address)
+    const accountType = await detectAccountType(walletUI.address as `0x${string}`)
     if (accountType === 'eoa') {
       throw new Error('Batch transactions require smart account - EOA detected')
     }

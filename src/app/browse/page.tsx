@@ -591,7 +591,7 @@ function BrowsePageClient() {
                 <ContentGrid
                   contentIds={discovery.data?.contentIds || []}
                   viewMode={viewMode}
-                  userAddress={walletUI.address}
+                  userAddress={walletUI.address as `0x${string}` | undefined}
                   onViewContent={handleViewContent}
                 />
               )}

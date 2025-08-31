@@ -222,7 +222,7 @@ export default function UploadPage() {
 
               {/* Upload Form */}
               <ContentUploadForm
-                userAddress={walletUI.address || ''}
+                userAddress={walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined}
                 onSuccess={handleUploadSuccess}
                 onCancel={handleUploadCancel}
                 variant="page"

@@ -29,25 +29,28 @@ interface PinataError {
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Starting real IPFS upload via Pinata...')
-    
+
     // Check if Pinata is configured
     const pinataJWT = process.env.PINATA_JWT
     if (!pinataJWT) {
       console.error('❌ PINATA_JWT environment variable not configured')
       return NextResponse.json(
-        { 
-          error: 'IPFS service not configured', 
+        {
+          error: 'IPFS service not configured',
           details: 'Server missing PINATA_JWT environment variable',
           setupRequired: true
         },
         { status: 500 }
       )
     }
+
+    // Check NEXT_PUBLIC_PINATA_GATEWAY
+    const gatewayDomain = process.env.NEXT_PUBLIC_PINATA_GATEWAY
     
     // Parse the form data
     const formData = await request.formData()
     const file = formData.get('file') as File
-    
+
     if (!file) {
       return NextResponse.json(
         { error: 'No file provided in request' },
@@ -136,17 +139,18 @@ export async function POST(request: NextRequest) {
     pinataFormData.append('pinataOptions', JSON.stringify(pinataOptions))
     
     console.log('📤 Uploading to Pinata IPFS...')
-    
-    // Upload to Pinata IPFS
-    const pinataResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${pinataJWT}`,
-        // Note: Don't set Content-Type header when using FormData
-        // The browser will set it automatically with the boundary
-      },
-      body: pinataFormData,
-    })
+
+    try {
+      // Upload to Pinata IPFS
+      const pinataResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${pinataJWT}`,
+          // Note: Don't set Content-Type header when using FormData
+          // The browser will set it automatically with the boundary
+        },
+        body: pinataFormData,
+      })
     
     const responseText = await pinataResponse.text()
     console.log('📨 Pinata response status:', pinataResponse.status)
@@ -211,26 +215,34 @@ export async function POST(request: NextRequest) {
     })
     
     // Return success response with all necessary information
+    const cleanGatewayDomain = (GATEWAY_DOMAIN || 'gateway.pinata.cloud/ipfs').replace(/^https?:\/\//, '').replace(/\/+$/, '')
+    const gatewayUrl = `https://${cleanGatewayDomain}/${hash}`
+
     return NextResponse.json({
       success: true,
       hash: hash,
       ipfsHash: hash, // Alias for compatibility
       size: result.PinSize,
-      gateway: `https://${GATEWAY_DOMAIN}/ipfs/${hash}`,
+      gateway: gatewayUrl,
       timestamp: result.Timestamp,
       message: 'File uploaded successfully to IPFS',
       provider: 'Pinata'
     })
     
+    } catch (pinataError) {
+      console.error('❌ Pinata upload error:', pinataError)
+      throw pinataError // Re-throw to be caught by outer catch
+    }
+
   } catch (error) {
     console.error('💥 IPFS upload error:', error)
-    
+
     // Provide detailed error information for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorStack = error instanceof Error ? error.stack : undefined
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to upload file to IPFS',
         details: errorMessage,
         stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,

@@ -197,8 +197,8 @@ export function UserSubscriptionDashboard({
   const effectiveUserAddress = userAddress || walletUI.address
 
   // Core subscription data using your architectural layers
-  const subscriptionManagement = useSubscriptionManagement(effectiveUserAddress)
-  const autoRenewalManagement = useAutoRenewalManagement(effectiveUserAddress)
+  const subscriptionManagement = useSubscriptionManagement(effectiveUserAddress as `0x${string}` | undefined)
+  const autoRenewalManagement = useAutoRenewalManagement(effectiveUserAddress as `0x${string}` | undefined)
 
   // Component state management following your established patterns
   const [filterOptions, setFilterOptions] = useState<SubscriptionFilterOptions>({

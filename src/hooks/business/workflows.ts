@@ -3008,6 +3008,19 @@ export function useContentPublishingFlow(
   const walletUI = useWalletConnectionUI()
   const { isConnected: isWagmiConnected } = useAccount()
 
+  // Better wallet synchronization - if either wallet system is connected and we have a userAddress, proceed
+  const isWalletReady = (walletUI.isConnected || isWagmiConnected) && Boolean(userAddress)
+
+  // Debug wallet connection states
+  useEffect(() => {
+    debug.log('🪪 useContentPublishingFlow - Wallet states:', {
+      walletUIConnected: walletUI.isConnected,
+      wagmiConnected: isWagmiConnected,
+      userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null,
+      isWalletReady
+    })
+  }, [walletUI.isConnected, isWagmiConnected, userAddress, isWalletReady])
+
   const creatorRegistration = useIsCreatorRegistered(userAddress)
   const registerContent = useRegisterContent()
   const userBalance = useTokenBalance(contractAddresses.USDC, userAddress)
@@ -3092,8 +3105,13 @@ export function useContentPublishingFlow(
   const publish = useCallback((data: ContentPublishingData) => {
     debug.log('Starting content publishing workflow...', data)
 
-    // Check if wallet is connected (both Privy and Wagmi)
-    if (!walletUI.isConnected || !isWagmiConnected) {
+    // Check if wallet is connected (at least one system and userAddress available)
+    if (!isWalletReady) {
+      debug.log('Wallet connection check failed:', {
+        walletUIConnected: walletUI.isConnected,
+        wagmiConnected: isWagmiConnected,
+        hasUserAddress: Boolean(userAddress)
+      })
       setWorkflowState({
         currentStep: 'error',
         error: new Error('Wallet must be connected to publish content. Please connect your wallet and try again.'),
@@ -3137,13 +3155,15 @@ export function useContentPublishingFlow(
     setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
     
     try {
-      debug.log('Calling registerContent with validated data:', {
+      debug.log('🚀 Calling registerContent with validated data:', {
         ipfsHash: data.ipfsHash,
         title: data.title,
         description: data.description,
         category: data.category,
         payPerViewPrice: data.payPerViewPrice.toString(),
-        tags: data.tags
+        tags: data.tags,
+        userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null,
+        chainId
       })
       
       registerContent.write({
@@ -3155,14 +3175,20 @@ export function useContentPublishingFlow(
         tags: data.tags
       })
     } catch (error) {
-      console.error('Error calling registerContent:', error)
+      console.error('❌ Error calling registerContent:', error)
+      debug.log('❌ Transaction error details:', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        chainId,
+        userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null
+      })
       setWorkflowState({
         currentStep: 'error',
         error: error instanceof Error ? error : new Error('Failed to submit content registration'),
         publishedContentId: null
       })
     }
-  }, [userAddress, isCreatorRegistered, validateContentData, registerContent, walletUI, isWagmiConnected])
+  }, [userAddress, isCreatorRegistered, validateContentData, registerContent, isWalletReady])
   
   const reset = useCallback(() => {
     setWorkflowState({
@@ -3175,7 +3201,7 @@ export function useContentPublishingFlow(
   
   useEffect(() => {
     if (registerContent.isLoading) {
-      debug.log('Transaction submitted, waiting for confirmation...')
+      debug.log('📤 Transaction submitted, waiting for confirmation...')
       setWorkflowState(prev => {
         if (prev.currentStep === 'registering') {
           return prev
@@ -3183,7 +3209,7 @@ export function useContentPublishingFlow(
         return { ...prev, currentStep: 'registering' }
       })
     } else if (registerContent.isConfirming) {
-      debug.log('Transaction confirmed, waiting for receipt...')
+      debug.log('✅ Transaction confirmed, waiting for receipt...')
       setWorkflowState(prev => {
         if (prev.currentStep === 'confirming') {
           return prev
@@ -3191,7 +3217,13 @@ export function useContentPublishingFlow(
         return { ...prev, currentStep: 'confirming' }
       })
     } else if (registerContent.error) {
-      console.error('Transaction error:', registerContent.error)
+      console.error('❌ Transaction error:', registerContent.error)
+      debug.log('❌ Register content error details:', {
+        error: registerContent.error,
+        chainId,
+        userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null,
+        contractAddress: contractAddresses?.CONTENT_REGISTRY
+      })
       setWorkflowState(prev => {
         if (prev.currentStep === 'error' && prev.error === registerContent.error) {
           return prev

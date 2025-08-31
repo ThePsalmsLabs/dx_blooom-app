@@ -127,7 +127,7 @@ interface TransactionStatus {
   readonly status: 'pending' | 'confirmed' | 'failed' | 'cancelled' | null
   readonly confirmedAt: number | null
   readonly error: Error | null
-  readonly receipt: any | null
+  readonly receipt: unknown | null
 }
 
 /**
@@ -254,7 +254,7 @@ function PaymentMethodSelector({
               <div>
                 <h2 className="text-lg font-semibold">Select Payment Method</h2>
                 <p className="text-sm text-muted-foreground">
-                  Choose how you'd like to pay for this content
+                  Choose how you&apos;d like to pay for this content
                 </p>
               </div>
               <button
@@ -665,6 +665,9 @@ export function OrchestratedContentPurchaseCard({
   
   // Track current transaction type for proper state management
   const [currentTransactionType, setCurrentTransactionType] = useState<'eth' | 'usdc' | 'batch' | null>(null)
+
+  // Debug condition must be called at the top level, not conditionally
+  const showDebugInfo = useDebugCondition()
   
   // ===== EIP-5792 BATCH TRANSACTION SUPPORT =====
   // Use sendCalls for batch transactions (approve + purchase in one)
@@ -710,7 +713,7 @@ export function OrchestratedContentPurchaseCard({
     if (batchTransactionHash && paymentState.phase === PaymentIntentPhase.PROCESSING) {
       debug.log('Batch transaction hash received:', batchTransactionHash)
       // Extract the actual transaction hash from the batch result
-      const txHash = (batchTransactionHash as any)?.id || batchTransactionHash
+      const txHash = (batchTransactionHash as { id?: string })?.id || batchTransactionHash
       
       if (txHash && typeof txHash === 'string') {
         setPendingTransactionHash(txHash as `0x${string}`)
@@ -783,7 +786,7 @@ export function OrchestratedContentPurchaseCard({
         onPurchaseSuccess(contentId, result)
       }
     },
-    onHealthChange: (health: any) => {
+    onHealthChange: (health: unknown) => {
       debug.log('Backend health changed:', health)
     },
     onRecoveryAttempt: (strategy: string, attempt: number) => {
@@ -1577,7 +1580,7 @@ export function OrchestratedContentPurchaseCard({
         </CardContent>
 
         {/* Debug Information (Development Only) */}
-        {useDebugCondition() && (
+        {showDebugInfo && (
           <div className="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
             <h4 className="font-semibold mb-2">Debug Info:</h4>
             <div className="space-y-1">

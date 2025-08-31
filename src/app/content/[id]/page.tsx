@@ -729,7 +729,7 @@ function AccessStatusCard({
             </Button>
           )}
           
-          {!walletUI.isConnected && accessState.status !== 'accessible' && (
+          {!isConnected && accessState.status !== 'accessible' && (
             <p className="text-xs text-gray-500 mt-2">
               Connect your wallet to check access status
             </p>

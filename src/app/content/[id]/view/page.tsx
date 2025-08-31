@@ -31,6 +31,8 @@ export default function ContentViewPage({ params }: ViewPageProps) {
   const router = useRouter()
   const walletUI = useWalletConnectionUI()
 
+  // Extract user address from wallet UI with proper type checking
+  const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
   const unwrapped = React.use(params) as { readonly id: string }
   const contentId = useMemo(() => {
     try {
@@ -44,7 +46,7 @@ export default function ContentViewPage({ params }: ViewPageProps) {
 
   // Always call hooks unconditionally
   const contentQuery = useContentById(contentId || (BigInt(0) as unknown as bigint))
-  const accessQuery = useHasContentAccess(walletUI.address as `0x${string}` | undefined, contentId || (BigInt(0) as unknown as bigint))
+  const accessQuery = useHasContentAccess(userAddress, contentId || (BigInt(0) as unknown as bigint))
 
   // Light polling to mitigate RPC/indexing latency after purchase
   React.useEffect(() => {

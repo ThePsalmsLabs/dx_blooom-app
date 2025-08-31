@@ -584,7 +584,7 @@ export function EnhancedCreatorDashboard({
       {/* Content Upload Modal (Existing Functionality Preserved) */}
       {showUploadModal && (
         <ContentUploadForm
-          userAddress={walletUI.address || ''}
+          userAddress={walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined}
           onSuccess={handleContentUploadSuccess}
           onCancel={() => setShowUploadModal(false)}
         />

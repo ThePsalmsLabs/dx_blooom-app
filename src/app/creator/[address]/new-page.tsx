@@ -210,7 +210,7 @@ export default function CreatorProfilePage() {
                             contentId={contentId}
                             viewMode="grid"
                             showCreatorInfo={false}
-                            userAddress={walletUI.address}
+                            userAddress={walletUI.address || undefined}
                           />
                         ))}
                       </div>

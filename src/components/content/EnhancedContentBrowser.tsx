@@ -165,8 +165,12 @@ interface ContentCardProps {
 
 function ContentCard({ contentId, width, breakpoint, compact = false }: ContentCardProps) {
   const walletUI = useWalletConnectionUI()
+
+  // Extract user address from wallet UI with proper type checking
+  const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
+
   const { data: content, isLoading: contentLoading } = useContentById(contentId)
-  const { data: hasAccess } = useHasContentAccess(walletUI.address, contentId)
+  const { data: hasAccess } = useHasContentAccess(userAddress, contentId)
 
   if (contentLoading) {
     return (
@@ -261,7 +265,7 @@ function ContentCard({ contentId, width, breakpoint, compact = false }: ContentC
           <div className="space-y-2 w-full">
             <OrchestratedContentPurchaseCard
               contentId={contentId}
-              userAddress={walletUI.address}
+              userAddress={walletUI.address as `0x${string}` | undefined}
               onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
               onViewContent={(contentId) => window.location.href = `/content/${contentId}`}
               variant="full"
