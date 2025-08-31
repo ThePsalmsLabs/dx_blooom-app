@@ -30,13 +30,7 @@ import {
   RefreshCw,
   X
 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { CustomModal } from '@/components/ui/custom-modal'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
@@ -112,54 +106,58 @@ export function TransactionStatusModal({
   }, [transactionStatus.status])
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={cn('sm:max-w-md', className)}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <TransactionStatusIcon status={transactionStatus.status} />
-            {transactionTitle} Status
-          </DialogTitle>
-          <DialogDescription>
-            {transactionStatus.formattedStatus}
-          </DialogDescription>
-        </DialogHeader>
+    <CustomModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${transactionTitle} Status`}
+      description={transactionStatus.formattedStatus}
+      maxWidth="sm:max-w-md"
+      className={className}
+      mobileBottomSheet={false}
+    >
+      {/* Custom Header with Icon */}
+      <div className="flex items-center gap-2 mb-4 pb-4 border-b border-border">
+        <TransactionStatusIcon status={transactionStatus.status} />
+        <h2 className="text-lg font-semibold text-foreground">
+          {transactionTitle} Status
+        </h2>
+      </div>
 
-        <div className="space-y-6">
-          {/* Progress visualization */}
-          <TransactionProgressSection
-            status={transactionStatus.status}
-            progress={transactionStatus.progress}
-            progressPercentage={progressPercentage}
+      <div className="space-y-6">
+        {/* Progress visualization */}
+        <TransactionProgressSection
+          status={transactionStatus.status}
+          progress={transactionStatus.progress}
+          progressPercentage={progressPercentage}
+        />
+
+        {/* Transaction hash display (when available) */}
+        {transactionStatus.transactionHash && (
+          <TransactionHashSection
+            transactionHash={transactionStatus.transactionHash}
+            onViewTransaction={transactionStatus.viewTransaction}
           />
+        )}
 
-          {/* Transaction hash display (when available) */}
-          {transactionStatus.transactionHash && (
-            <TransactionHashSection
-              transactionHash={transactionStatus.transactionHash}
-              onViewTransaction={transactionStatus.viewTransaction}
-            />
-          )}
-
-          {/* Error handling section */}
-          {transactionStatus.status === 'failed' && (
-            <TransactionErrorSection
-              canRetry={transactionStatus.canRetry}
-              onRetry={transactionStatus.retry}
-              onReset={transactionStatus.reset}
-            />
-          )}
-
-          {/* Action buttons */}
-          <TransactionActionsSection
-            status={transactionStatus.status}
+        {/* Error handling section */}
+        {transactionStatus.status === 'failed' && (
+          <TransactionErrorSection
             canRetry={transactionStatus.canRetry}
             onRetry={transactionStatus.retry}
             onReset={transactionStatus.reset}
-            onClose={onClose}
           />
-        </div>
-      </DialogContent>
-    </Dialog>
+        )}
+
+        {/* Action buttons */}
+        <TransactionActionsSection
+          status={transactionStatus.status}
+          canRetry={transactionStatus.canRetry}
+          onRetry={transactionStatus.retry}
+          onReset={transactionStatus.reset}
+          onClose={onClose}
+        />
+      </div>
+    </CustomModal>
   )
 }
 
