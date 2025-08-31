@@ -75,12 +75,12 @@ export function ProductionSwapInterface() {
 
   // Get user balances
   const { data: fromTokenBalance } = useBalance({
-    address: walletUI.address,
+    address: walletUI.address as `0x${string}` | undefined,
     token: fromToken.address === '0x4200000000000000000000000000000000000006' ? undefined : fromToken.address,
   });
 
   const { data: toTokenBalance } = useBalance({
-    address: walletUI.address,
+    address: walletUI.address as `0x${string}` | undefined,
     token: toToken.address === '0x4200000000000000000000000000000000000006' ? undefined : toToken.address,
   });
 

@@ -52,7 +52,13 @@ function useFlowState() {
   return { currentStep, setCurrentStep, canProceed, setCanProceed, progress }
 }
 
-function useRevenueCalculator(contentData: any, nftOptions: any) {
+interface NFTOptions {
+  enabled: boolean
+  mintPrice: bigint
+  maxSupply: number
+}
+
+function useRevenueCalculator(contentData: unknown, nftOptions: NFTOptions) {
   // Debounced calculation to prevent constant re-renders
   const revenueProjection = useMemo(() => {
     if (!nftOptions.enabled) return null
@@ -77,7 +83,7 @@ function useZoraDemo() {
   const [isCreating, setIsCreating] = useState(false)
   const [isMinting, setIsMinting] = useState(false)
   const [collectionAddress, setCollectionAddress] = useState<string>()
-  const [mintResult, setMintResult] = useState<any>(null)
+  const [mintResult, setMintResult] = useState<{ tokenId: string; transactionHash: string } | null>(null)
   
   const createCollection = async () => {
     setIsCreating(true)
@@ -512,7 +518,7 @@ export default function OptimizedZoraIntegrationFlow() {
       
       <Card>
         <CardHeader>
-          <CardTitle>What's Next?</CardTitle>
+          <CardTitle>What&apos;s Next?</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -540,7 +546,7 @@ export default function OptimizedZoraIntegrationFlow() {
               </div>
               <h4 className="font-semibold text-sm">Grow & Scale</h4>
               <p className="text-xs text-gray-600">
-                Expand reach through Zora's social feeds
+                Expand reach through Zora&apos;s social feeds
               </p>
             </div>
           </div>

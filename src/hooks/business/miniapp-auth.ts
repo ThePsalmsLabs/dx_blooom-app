@@ -252,7 +252,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
   
   const socialVerification = useMemo(() => {
     try {
-      if (!farcasterContext?.user || !address) {
+      if (!farcasterContext?.user || !walletUI.address) {
         return {
           isAddressVerified: false,
           verificationCount: 0,
@@ -261,9 +261,9 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       }
       
       const verifications = farcasterContext.user.verifications || []
-      const isAddressVerified = verifications.some(
-        verification => verification.toLowerCase() === address.toLowerCase()
-      )
+      const isAddressVerified = walletUI.address ? verifications.some(
+        verification => verification.toLowerCase() === walletUI.address!.toLowerCase()
+      ) : false
       
       const result = {
         isAddressVerified,
@@ -292,7 +292,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         canVerifyAddress: false
       }
     }
-  }, [farcasterContext, address, environmentType])
+  }, [farcasterContext, walletUI.address, environmentType])
 
   // ===== NEW: OPTIMAL PAYMENT METHOD COMPUTATION =====
   
@@ -305,7 +305,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
    */
   const optimalPaymentMethod = useMemo((): OptimalPaymentMethod | null => {
     try {
-      if (!address) {
+      if (!walletUI.address) {
         return {
           type: 'requires-connection',
           address: null,
@@ -319,17 +319,17 @@ export function useMiniAppAuth(): MiniAppAuthResult {
 
       // PRIORITY 1: Farcaster-verified wallet (best UX)
       if (farcasterContext?.user && socialVerification.isAddressVerified && environmentType === 'miniapp') {
-        const confidenceScore = calculateConfidenceScore(walletUI.address, true, walletUI.isConnected, environmentType)
+        const confidenceScore = calculateConfidenceScore(walletUI.address as `0x${string}`, true, walletUI.isConnected, environmentType)
         
         debug.log('🎯 Optimal payment method: Farcaster-verified wallet', {
-          address,
+          address: walletUI.address,
           confidenceScore,
           environmentType
         })
         
         return {
           type: 'farcaster-verified',
-          address,
+          address: walletUI.address as `0x${string}`,
           needsConnection: false,
           canDirectPayment: true,
           sociallyVerified: true,
@@ -340,17 +340,17 @@ export function useMiniAppAuth(): MiniAppAuthResult {
 
       // PRIORITY 2: Privy-connected wallet (standard UX)
       if (walletUI.isConnected) {
-        const confidenceScore = calculateConfidenceScore(walletUI.address, false, walletUI.isConnected, environmentType)
+        const confidenceScore = calculateConfidenceScore(walletUI.address as `0x${string}`, false, walletUI.isConnected, environmentType)
         
         debug.log('🎯 Optimal payment method: Privy-connected wallet', {
-          address,
+          address: walletUI.address,
           confidenceScore,
           environmentType
         })
         
         return {
           type: 'privy-connected',
-          address,
+          address: walletUI.address as `0x${string}`,
           needsConnection: false,
           canDirectPayment: true,
           sociallyVerified: false,
@@ -422,7 +422,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       
       // Build base user profile with wallet data
       const baseUser: User = {
-        address,
+        address: walletUI.address as `0x${string}`,
         isConnected: walletUI.isConnected,
         isCreator,
         optimalPaymentMethod,
@@ -477,7 +477,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       }
       
       debug.log('👤 User profile created (wallet-only):', {
-        address,
+        address: walletUI.address,
         isCreator,
         authenticationMethod
       })
@@ -685,7 +685,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         error: error instanceof Error ? error : new Error(errorMessage)
       }))
     }
-  }, [farcasterContext, creatorOnboarding])
+  }, [farcasterContext, creatorOnboarding, environmentType])
 
   /**
    * Creator Status Update Function
@@ -743,10 +743,10 @@ export function useMiniAppAuth(): MiniAppAuthResult {
           ...prev,
           isInitialized: true,
           environmentType,
-          isLoading: isConnecting
+          isLoading: walletUI.isConnecting
         }))
         
-        debug.log('✅ Authentication state initialized:', { environmentType, isConnecting })
+        debug.log('✅ Authentication state initialized:', { environmentType, isConnecting: walletUI.isConnecting })
       } catch (error) {
         console.error('Authentication state initialization error:', error)
         setAuthState(prev => ({
@@ -757,7 +757,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         }))
       }
     }
-  }, [authState.isInitialized, environmentType, isConnecting])
+  }, [authState.isInitialized, environmentType, walletUI.isConnecting])
   
   /**
    * Loading State Synchronization Effect
@@ -768,7 +768,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
   useEffect(() => {
     try {
       const isLoading = Boolean(
-        isConnecting ||
+        walletUI.isConnecting ||
         creatorOnboarding.isLoading ||
         authState.isLoading
       )
@@ -778,7 +778,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         
         if (isLoading) {
           debug.log('🔄 Loading state synchronized:', { 
-            isConnecting, 
+            isConnecting: walletUI.isConnecting, 
             creatorOnboardingLoading: creatorOnboarding.isLoading,
             authStateLoading: authState.isLoading 
           })
@@ -788,7 +788,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       console.error('Loading state synchronization error:', error)
       // Don't update state on error to avoid infinite loops
     }
-  }, [isConnecting, creatorOnboarding.isLoading, authState.isLoading])
+  }, [walletUI.isConnecting, creatorOnboarding.isLoading, authState.isLoading])
 
   // ===== COMPUTED AUTHENTICATION FLAGS =====
   

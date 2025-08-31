@@ -210,7 +210,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: walletUI.address && contractAddresses?.COMMERCE_INTEGRATION
-      ? [walletUI.address, contractAddresses.COMMERCE_INTEGRATION] 
+      ? [walletUI.address as `0x${string}`, contractAddresses.COMMERCE_INTEGRATION]
       : undefined,
     query: {
       enabled: !!walletUI.address && !!state.fromToken && !state.fromToken.isNative && !!contractAddresses?.COMMERCE_INTEGRATION

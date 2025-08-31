@@ -408,7 +408,7 @@ function EnhancedMiniAppProvider({
   const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   const queryClient = useQueryClient()
-  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address)
+  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
   
   // Environment detection state
   const [environmentDetection, setEnvironmentDetection] = useState<MiniAppEnvironmentDetection | null>(null)
@@ -863,7 +863,7 @@ function EnhancedMiniAppProvider({
     
     // Build base profile from your existing UnifiedUserProfile pattern
     const baseProfile: UnifiedUserProfile = {
-      address: walletUI.address,
+      address: walletUI.address as `0x${string}`,
       connectionStatus: walletUI.isConnected ? 'connected' : 'disconnected',
       userRole: isCreatorRegistered ? 'creator' : 'consumer',
       isRegisteredCreator: Boolean(isCreatorRegistered),

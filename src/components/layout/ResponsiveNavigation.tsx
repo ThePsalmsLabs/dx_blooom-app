@@ -173,7 +173,7 @@ export function ResponsiveNavigation({
   const walletUI = useWalletConnectionUI()
 
   // Creator status for navigation personalization
-  const creatorRegistration = useIsCreatorRegistered(walletUI.address)
+  const creatorRegistration = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
 
   // Navigation context state management
   const [contextState, setContextState] = useState<NavigationContextState>({

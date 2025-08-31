@@ -752,6 +752,7 @@ export function useEnhancedPaymentOrchestrator(
   userAddress?: Address
 ) {
   const walletUI = useWalletConnectionUI()
+  const address = walletUI.address as `0x${string}` | undefined
   const chainId = useChainId()
   const queryClient = useQueryClient()
   
@@ -1691,7 +1692,7 @@ export function usePaymentFlowOrchestrator(
         message: 'Detecting account type...'
       })
       
-      const accountType = await detectAccountType(publicClient!, walletUI.address!)
+      const accountType = await detectAccountType(publicClient!, walletUI.address as `0x${string}`)
       const availableStrategies = determinePaymentStrategies(accountType)
       
       // State Machine: Phase 2 - Choose Strategy
@@ -1722,7 +1723,7 @@ export function usePaymentFlowOrchestrator(
             request.contentId,
             publicClient!,
             walletClientInstance,
-            address!
+            walletUI.address as `0x${string}`
           )
           
         case 'smart_account_batch':
@@ -1736,7 +1737,7 @@ export function usePaymentFlowOrchestrator(
             request.contentId,
             publicClient!,
             batchWalletClient,
-            address!,
+            walletUI.address as `0x${string}`,
             sendCalls
           )
           
@@ -1751,7 +1752,7 @@ export function usePaymentFlowOrchestrator(
             request.contentId,
             publicClient!,
             sequentialWalletClient,
-            address!
+            walletUI.address as `0x${string}`
           )
           
         default:

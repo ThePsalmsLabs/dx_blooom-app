@@ -173,8 +173,8 @@ export function LayoutStatePersistence({
   const pathname = usePathname();
 
   // Creator registration state for permission validation
-  const creatorRegistration = useIsCreatorRegistered(walletUI.address);
-  const creatorProfile = useCreatorProfile(walletUI.address);
+  const creatorRegistration = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined);
+  const creatorProfile = useCreatorProfile(walletUI.address as `0x${string}` | undefined);
 
   // Toast notifications for user feedback
   const { toast } = useToast();

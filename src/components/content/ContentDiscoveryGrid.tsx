@@ -240,7 +240,7 @@ export function ContentDiscoveryGrid({
         viewMode={viewMode}
         showCreatorInfo={showCreatorInfo}
         onContentSelect={onContentSelect}
-        userAddress={userAddress}
+        userAddress={walletUI.address as `0x${string}` | undefined}
         isLoading={contentQuery.isLoading}
         error={contentQuery.error}
         onRefresh={contentQuery.refetch}

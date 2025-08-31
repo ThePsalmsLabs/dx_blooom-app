@@ -29,7 +29,7 @@ class DebugLogger {
   /**
    * Log debug information (only in development)
    */
-  log(message: string, data?: any): void {
+  log(message: string, data?: unknown): void {
     if (!this.enabled) return
     
     const timestamp = new Date().toISOString()
@@ -45,7 +45,7 @@ class DebugLogger {
   /**
    * Log warnings (only in development)
    */
-  warn(message: string, data?: any): void {
+  warn(message: string, data?: unknown): void {
     if (!this.enabled) return
     
     const timestamp = new Date().toISOString()
@@ -80,7 +80,7 @@ class DebugLogger {
   /**
    * Log performance metrics (only when performance debugging is enabled)
    */
-  performance(operation: string, duration: number, metadata?: any): void {
+  performance(operation: string, duration: number, metadata?: unknown): void {
     if (!this.enabled || !isPerformanceDebugEnabled) return
     
     const timestamp = new Date().toISOString()
@@ -96,7 +96,7 @@ class DebugLogger {
   /**
    * Log wallet-specific debug information
    */
-  wallet(message: string, data?: any): void {
+  wallet(message: string, data?: unknown): void {
     if (!this.enabled || !isWalletDebugEnabled) return
     
     const timestamp = new Date().toISOString()
@@ -145,7 +145,7 @@ export const debug = {
   /**
    * General debug logging
    */
-  log: (message: string, data?: any, p0?: string) => {
+  log: (message: string, data?: unknown, p0?: string) => {
     if (isDevelopment && isDebugEnabled) {
       console.log(`[DEBUG] 🔍 ${message}`, data)
     }
@@ -154,7 +154,7 @@ export const debug = {
   /**
    * Warning logging (only in development)
    */
-  warn: (message: string, data?: any) => {
+  warn: (message: string, data?: unknown) => {
     if (isDevelopment && isDebugEnabled) {
       console.warn(`[DEBUG] ⚠️ ${message}`, data)
     }
@@ -174,7 +174,7 @@ export const debug = {
   /**
    * Performance logging
    */
-  performance: (operation: string, duration: number, metadata?: any) => {
+  performance: (operation: string, duration: number, metadata?: unknown) => {
     if (isDevelopment && isPerformanceDebugEnabled) {
       console.log(`[PERF] ⏱️ ${operation}: ${duration}ms`, metadata)
     }
@@ -183,7 +183,7 @@ export const debug = {
   /**
    * Wallet-specific logging
    */
-  wallet: (message: string, data?: any) => {
+  wallet: (message: string, data?: unknown) => {
     if (isDevelopment && isWalletDebugEnabled) {
       console.log(`[WALLET] 🔗 ${message}`, data)
     }
@@ -221,13 +221,17 @@ export function withDebugCondition<T extends object>(
   Component: React.ComponentType<T>,
   debugProps: Partial<T> = {}
 ): React.ComponentType<T> {
-  return (props: T) => {
+  const WrappedComponent = (props: T) => {
     if (!debug.isAnyEnabled) {
       return <Component {...props} />
     }
-    
+
     return <Component {...props} {...debugProps} />
   }
+
+  WrappedComponent.displayName = `withDebugCondition(${Component.displayName || Component.name || 'Component'})`
+
+  return WrappedComponent
 }
 
 /**

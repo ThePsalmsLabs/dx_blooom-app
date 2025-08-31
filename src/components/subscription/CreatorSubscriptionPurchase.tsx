@@ -47,6 +47,8 @@ export function CreatorSubscriptionPurchase({
   className
 }: CreatorSubscriptionPurchaseProps) {
   const walletUI = useWalletConnectionUI()
+  const userAddress = walletUI.address as `0x${string}` | undefined
+  const isConnected = walletUI.isConnected
   const { toast } = useToast()
   const chainId = useChainId()
   
@@ -171,7 +173,7 @@ export function CreatorSubscriptionPurchase({
         </div>
         <Button 
           onClick={handleSubscribe}
-          disabled={!isConnected || !canAfford || subscriptionManagement.isLoading}
+          disabled={!walletUI.isConnected || !canAfford || subscriptionManagement.isLoading}
           size="sm"
           className="w-full sm:w-auto"
         >
@@ -190,7 +192,7 @@ export function CreatorSubscriptionPurchase({
     return (
       <div className={className}>
         {/* Balance Check */}
-        {!canAfford && isConnected && (
+        {!canAfford && walletUI.isConnected && (
           <Alert className="border-yellow-200 bg-yellow-50 mb-4">
             <AlertCircle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800 text-sm">
@@ -202,11 +204,11 @@ export function CreatorSubscriptionPurchase({
         {/* Subscribe Button */}
         <Button
           onClick={handleSubscribe}
-          disabled={!isConnected || !canAfford || subscriptionManagement.isLoading}
+          disabled={!walletUI.isConnected || !canAfford || subscriptionManagement.isLoading}
           className="w-full"
           size="lg"
         >
-          {!isConnected ? (
+          {!walletUI.isConnected ? (
             'Connect Wallet to Subscribe'
           ) : subscriptionManagement.isLoading ? (
             <>
@@ -297,7 +299,7 @@ export function CreatorSubscriptionPurchase({
         </div>
 
         {/* Balance Check */}
-        {!canAfford && isConnected && (
+        {!canAfford &&  walletUI.isConnected && (
           <Alert className="border-yellow-200 bg-yellow-50">
             <AlertCircle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800 text-xs sm:text-sm">
@@ -309,11 +311,11 @@ export function CreatorSubscriptionPurchase({
         {/* Subscribe Button */}
         <Button 
           onClick={handleSubscribe}
-          disabled={!isConnected || !canAfford || subscriptionManagement.isLoading}
+          disabled={!walletUI.isConnected || !canAfford || subscriptionManagement.isLoading}
           className="w-full"
           size="default"
         >
-          {!isConnected ? (
+          {!walletUI.isConnected ? (
             'Connect Wallet to Subscribe'
           ) : subscriptionManagement.isLoading ? (
             <>

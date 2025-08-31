@@ -38,6 +38,7 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
 
   // Use unified wallet connection UI
   const walletUI = useWalletConnectionUI()
+  const address = walletUI.address as `0x${string}` | undefined
   const { disconnect: wagmiDisconnect } = useDisconnect()
   const chainId = useChainId()
   

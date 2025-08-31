@@ -608,7 +608,7 @@ export function EnhancedUnifiedAppProvider({
   // Integration hooks
   const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
-  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address || undefined)
+  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
   const pathname = usePathname()
   const router = useRouter()
   

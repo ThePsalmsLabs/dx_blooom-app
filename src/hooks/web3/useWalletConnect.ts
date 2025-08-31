@@ -138,6 +138,7 @@ export function useWalletConnect(): UseWalletConnectReturn {
   
   // Use unified wallet connection UI
   const walletUI = useWalletConnectionUI()
+  const address = walletUI.address as `0x${string}` | undefined
   const chainId = useChainId()
   const { switchChain } = useSwitchChain() // FIXED: This is the correct import and usage
   
@@ -365,7 +366,7 @@ export function useWalletConnect(): UseWalletConnectReturn {
     isConnecting: status === 'connecting',
     isAuthenticated: authenticated,
     status,
-    address: walletUI.address || null,
+    address: walletUI.address as `0x${string}` | null,
     formattedAddress,
     
     // User Information - this is new with Privy and provides rich user context

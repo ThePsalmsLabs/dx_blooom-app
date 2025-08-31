@@ -706,7 +706,7 @@ export function UnifiedAppProvider({
 
   // Use unified wallet UI state for consistent synchronization
   const isConnected = walletUI.isConnected
-  const address = walletUI.address
+  const address = walletUI.address as `0x${string}` | undefined
 
   // Navigation hook integration
   const navigationSections = useAppNavigation(state.user.userRole)

@@ -285,9 +285,10 @@ export default function SocialSharingHub({
   showAnalytics = true
 }: SocialSharingHubProps) {
   const walletUI = useWalletConnectionUI()
-  const { 
-    isMiniApp, 
-    capabilities, 
+  const userAddress = walletUI.address as `0x${string}` | undefined
+  const {
+    isMiniApp,
+    capabilities,
     shareContent: miniAppShare
   } = useMiniApp()
   

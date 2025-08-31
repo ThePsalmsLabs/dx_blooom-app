@@ -265,7 +265,7 @@ export function SubscribeButton({
       <div className={className}>
         <SubscriptionApprovalFlow
           creatorAddress={creatorAddress}
-          userAddress={walletUI.address}
+          userAddress={walletUI.address as `0x${string}` | undefined}
           onSubscriptionSuccess={handleSubscriptionSuccess}
           onError={handleSubscriptionError}
           disabled={disabled}
@@ -301,7 +301,7 @@ export function SubscribeButton({
           isOpen={isModalOpen}
           onClose={handleModalClose}
           creatorAddress={creatorAddress}
-          userAddress={walletUI.address}
+          userAddress={walletUI.address as `0x${string}` | undefined}
           onSubscriptionSuccess={handleSubscriptionSuccess}
           onError={handleSubscriptionError}
         />

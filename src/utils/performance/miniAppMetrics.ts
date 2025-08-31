@@ -403,7 +403,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         context: {
           ...event.context,
           contentId: contentId || event.context?.contentId,
-          userAddress: walletUI.address || event.context?.userAddress,
+          userAddress: (walletUI.address as `0x${string}` | undefined) || event.context?.userAddress,
           clientInfo: {
             name: capabilities.capabilities?.details.clientInfo.name || 'unknown',
             version: capabilities.capabilities?.details.clientInfo.version || 'unknown',
@@ -463,7 +463,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         {
           originalError: error instanceof Error ? error : new Error('Unknown tracking error'),
           contentId,
-          userAddress: walletUI.address,
+          userAddress: walletUI.address as `0x${string}` | undefined,
           context: { operation: 'trackMiniAppMetrics' }
         }
       )
@@ -506,7 +506,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         context: {
           frameType,
           contentId,
-          userAddress: walletUI.address
+          userAddress: walletUI.address as `0x${string}` | undefined
         }
       })
     }
@@ -533,7 +533,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         context: {
           paymentMethod,
           contentId,
-          userAddress: walletUI.address
+          userAddress: walletUI.address as `0x${string}` | undefined
         }
       })
     }

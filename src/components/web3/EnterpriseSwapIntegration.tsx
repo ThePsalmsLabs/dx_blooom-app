@@ -395,7 +395,7 @@ export function useEnterpriseSwapExecution() {
       // Create payment request for swap (using special contentId = 0 for swaps)
       const paymentRequest: PlatformPaymentRequest = {
         paymentType: 0, // PayPerView type - your backend will handle this as a swap
-        creator: walletUI.address, // For swaps, user is both creator and recipient
+        creator: walletUI.address as `0x${string}`, // For swaps, user is both creator and recipient
         contentId: BigInt(0), // Special contentId for swaps
         paymentToken: fromToken.address,
         maxSlippage: slippageBps,

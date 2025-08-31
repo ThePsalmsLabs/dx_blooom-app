@@ -46,13 +46,13 @@ import {
 
 // ===== SIMULATED HOOKS (Replace with your actual implementations) =====
 function useZoraIntegration() {
-  const [isReady, setIsReady] = useState(true)
+  const [_isReady, _setIsReady] = useState(true)
   const [collectionAddress, setCollectionAddress] = useState<string>()
   const [isCreating, setIsCreating] = useState(false)
-  const [isMinting, setIsMinting] = useState(false)
+  const [_isMinting, setIsMinting] = useState(false)
   
   return {
-    isReady,
+    isReady: _isReady,
     collectionAddress,
     createCollection: async () => {
       setIsCreating(true)
@@ -67,7 +67,7 @@ function useZoraIntegration() {
       return { success: true, tokenId: '1', transactionHash: '0xabc...def' }
     },
     isCreating,
-    isMinting,
+    isMinting: _isMinting,
     hasCollection: Boolean(collectionAddress)
   }
 }
@@ -91,12 +91,12 @@ export default function ZoraUserExperienceFlow() {
   const walletUI = useWalletConnectionUI()
   const { isRegistered, profile } = useCreatorProfile()
   const {
-    isReady,
+    isReady: _isReady,
     collectionAddress,
     createCollection,
     mintNFT,
     isCreating,
-    isMinting,
+    isMinting: _isMinting,
     hasCollection
   } = useZoraIntegration()
 
@@ -116,7 +116,7 @@ export default function ZoraUserExperienceFlow() {
     maxSupply: 100,
     royaltyPercentage: 5
   })
-  const [mintResult, setMintResult] = useState<any>(null)
+  const [mintResult, setMintResult] = useState<{ tokenId: string; transactionHash: string } | null>(null)
   const [showShareDialog, setShowShareDialog] = useState(false)
 
   // ===== EFFECTS =====
@@ -289,7 +289,7 @@ export default function ZoraUserExperienceFlow() {
 
             <div className="space-y-2">
               <Label htmlFor="tier">Subscription Tier</Label>
-              <Select value={contentData.subscriptionTier} onValueChange={(value: any) => 
+              <Select value={contentData.subscriptionTier} onValueChange={(value: 'free' | 'premium' | 'exclusive') => 
                 setContentData(prev => ({ ...prev, subscriptionTier: value }))
               }>
                 <SelectTrigger>
@@ -337,7 +337,7 @@ export default function ZoraUserExperienceFlow() {
               <Zap className="h-4 w-4" />
               <AlertDescription>
                 <strong>Hybrid Monetization:</strong> Earn from subscriptions AND NFT sales. 
-                Your content will be discoverable on Zora's social feed!
+                Your content will be discoverable on Zora&apos;s social feed!
               </AlertDescription>
             </Alert>
 
@@ -452,7 +452,7 @@ export default function ZoraUserExperienceFlow() {
         <Progress value={65} className="h-3" />
         
         <p className="text-sm text-gray-600">
-          This usually takes 1-2 minutes. Don't close this window.
+          This usually takes 1-2 minutes. Don&apos;t close this window.
         </p>
       </CardContent>
     </Card>
