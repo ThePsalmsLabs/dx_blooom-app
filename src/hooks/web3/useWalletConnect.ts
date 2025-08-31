@@ -19,7 +19,8 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
-import { useAccount, useChainId, useSwitchChain } from 'wagmi'
+import { useChainId, useSwitchChain } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useEnhancedWeb3 } from '@/components/providers/Web3Provider'
 import { formatAddress } from '@/lib/utils'
 import { type Address } from 'viem'
@@ -135,8 +136,8 @@ export function useWalletConnect(): UseWalletConnectReturn {
     connectWallet
   } = usePrivy()
   
-  // CORRECTED: Wagmi hooks for blockchain interaction - these work the same as before
-  const { address, isConnected } = useAccount()
+  // Use unified wallet connection UI
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   const { switchChain } = useSwitchChain() // FIXED: This is the correct import and usage
   
@@ -168,10 +169,10 @@ export function useWalletConnect(): UseWalletConnectReturn {
   const status: WalletConnectionStatus = useMemo(() => {
     if (!ready) return 'connecting'
     if (error) return 'error'
-    if (authenticated && isConnected && address) return 'connected'
+    if (authenticated && walletUI.isConnected && walletUI.address) return 'connected'
     if (authenticated) return 'authenticated'
     return 'disconnected'
-  }, [ready, authenticated, isConnected, address, error])
+  }, [ready, authenticated, walletUI.isConnected, walletUI.address, error])
 
   /**
    * User Information - CORRECTED VERSION
@@ -364,7 +365,7 @@ export function useWalletConnect(): UseWalletConnectReturn {
     isConnecting: status === 'connecting',
     isAuthenticated: authenticated,
     status,
-    address: address || null,
+    address: walletUI.address || null,
     formattedAddress,
     
     // User Information - this is new with Privy and provides rich user context
@@ -390,6 +391,6 @@ export function useWalletConnect(): UseWalletConnectReturn {
     // UI State
     error,
     clearError,
-    showNetworkWarning: !isCorrectNetwork && isConnected
+    showNetworkWarning: !isCorrectNetwork && walletUI.isConnected
   }
 } 

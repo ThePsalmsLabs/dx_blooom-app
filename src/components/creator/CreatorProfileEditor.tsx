@@ -33,7 +33,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   User,
   DollarSign,
@@ -166,8 +166,8 @@ export function CreatorProfileEditor({
   variant = 'inline',
   className
 }: CreatorProfileEditorProps) {
-  const { address: connectedAddress } = useAccount()
-  const effectiveCreatorAddress = (creatorAddress || connectedAddress) as `0x${string}` | undefined
+  const walletUI = useWalletConnectionUI()
+  const effectiveCreatorAddress = (creatorAddress || walletUI.address) as `0x${string}` | undefined
 
   // Profile management hooks following established patterns
   const creatorProfile = useCreatorProfile(effectiveCreatorAddress)

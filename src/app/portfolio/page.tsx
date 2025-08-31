@@ -18,7 +18,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { 
   ArrowLeft, 
   Plus, 
@@ -66,7 +66,7 @@ interface PortfolioPageState {
  */
 export default function PortfolioPage() {
   const router = useRouter()
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { totalPortfolioValue, tokens } = useEnhancedTokenBalances()
   const { metrics } = usePortfolioAnalytics()
   
@@ -280,7 +280,7 @@ export default function PortfolioPage() {
   )
   
   // Handle wallet connection state
-  if (!isConnected) {
+  if (!walletUI.isConnected) {
     return (
       <div className="container mx-auto px-4 py-8">
         {renderPageNavigation()}

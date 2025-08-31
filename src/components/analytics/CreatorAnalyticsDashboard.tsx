@@ -43,7 +43,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   TrendingUp,
   Target,
@@ -173,10 +173,10 @@ export function CreatorAnalyticsDashboard({
   compact = false
 }: CreatorAnalyticsDashboardProps) {
 
-  const { address: connectedAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Determine effective creator address using your established patterns
-  const effectiveCreatorAddress = (creatorAddress || connectedAddress) as Address | undefined
+  const effectiveCreatorAddress = (creatorAddress || walletUI.address) as Address | undefined
 
   // Extract configuration with intelligent defaults
   const {

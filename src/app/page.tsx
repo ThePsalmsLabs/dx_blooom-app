@@ -22,7 +22,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
 import {
   ArrowRight,
   TrendingUp,
@@ -67,7 +66,7 @@ import { ContentCarouselWrapper } from '@/components/content/ContentCarouselWrap
 import { useCreatorProfile, useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 
-import { useWalletConnect } from '@/hooks/web3/useWalletConnect'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import UI components
 import { CreatorCard } from '@/components/creators/CreatorCard'
@@ -179,11 +178,14 @@ function CreatorsSection() {
           </div>
         </div>
 
-        {/* Featured Creators - Responsive Carousel/Grid */}
-        {(allCreators.isLoading || (allCreators.totalCount > 0 && featuredCreators.length === 0)) ? (
-          <>
-            {/* Mobile/Tablet Loading */}
-            <div className="block lg:hidden">
+        {/* Featured Creators - Enhanced Carousel for All Devices */}
+        <div className="relative">
+          {/* Carousel Background Effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 rounded-2xl blur-xl -z-10" />
+
+          {(allCreators.isLoading || (allCreators.totalCount > 0 && featuredCreators.length === 0)) ? (
+            <>
+              {/* Loading State - Carousel */}
               <CreatorsCarousel
                 creators={Array.from({ length: 6 }, (_, i) => (
                   <Card key={i} className="animate-pulse">
@@ -201,30 +203,10 @@ function CreatorsSection() {
                 ))}
                 autoPlay={false}
               />
-            </div>
-
-            {/* Desktop Loading */}
-            <div className="hidden lg:grid lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }, (_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-muted rounded-full" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-muted rounded w-3/4" />
-                        <div className="h-3 bg-muted rounded w-1/2" />
-                        <div className="h-3 bg-muted rounded w-2/3" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </>
-        ) : featuredCreators.length > 0 ? (
-          <>
-            {/* Mobile/Tablet: Carousel */}
-            <div className="block lg:hidden mb-8">
+            </>
+          ) : featuredCreators.length > 0 ? (
+            <>
+              {/* Enhanced Carousel for All Devices */}
               <CreatorsCarousel
                 creators={featuredCreators.map((creator) => (
                   <CreatorCard
@@ -232,98 +214,85 @@ function CreatorsSection() {
                     creatorAddress={creator.address}
                     variant="featured"
                     showSubscribeButton={true}
-                    className="hover:shadow-lg transition-shadow"
+                    className="hover:shadow-lg transition-shadow hover:scale-105"
                   />
                 ))}
                 autoPlay={true}
               />
-            </div>
-
-            {/* Desktop: Grid */}
-            <div className="hidden lg:grid lg:grid-cols-3 gap-6 mb-8">
-              {featuredCreators.map((creator) => (
-                <CreatorCard
-                  key={creator.address}
-                  creatorAddress={creator.address}
-                  variant="featured"
-                  showSubscribeButton={true}
-                  className="hover:shadow-lg transition-shadow"
-                />
-              ))}
-            </div>
-          </>
-        ) : !allCreators.isLoading && allCreators.totalCount === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Creators Yet</h3>
-              <p className="text-muted-foreground mb-6">
-                Be the first creator to join our platform and start monetizing your content.
-              </p>
-              <Button onClick={() => router.push('/onboard')}>
-                Become a Creator
-              </Button>
-            </CardContent>
-          </Card>
-        ) : allCreators.isError ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Unable to Load Creators</h3>
-              <p className="text-muted-foreground mb-6">
-                {allCreators.error?.message || 'There was an issue loading creators.'}
-              </p>
-              <div className="flex gap-2 justify-center">
-                <Button onClick={allCreators.retryFailed} variant="outline">
-                  Retry Failed
+            </>
+          ) : !allCreators.isLoading && allCreators.totalCount === 0 ? (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Creators Yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Be the first creator to join our platform and start monetizing your content.
+                </p>
+                <Button onClick={() => router.push('/onboard')}>
+                  Become a Creator
                 </Button>
-                <Button onClick={() => window.location.reload()}>
-                  Refresh Page
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">
-                {allCreators.totalCount > 0 ? 'Loading Creators...' : 'No Creators Found'}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {allCreators.totalCount > 0 
-                  ? 'Please wait while we load the creator profiles.'
-                  : 'Be the first creator to join our platform!'
-                }
-              </p>
-              {allCreators.totalCount > 0 && allCreators.loadMore && (
-                <div className="space-y-2">
-                  <Button 
-                    onClick={allCreators.loadMore}
-                    disabled={allCreators.isLoading}
-                    variant="outline"
-                  >
-                    {allCreators.isLoading ? 'Loading...' : 'Load Creators'}
+              </CardContent>
+            </Card>
+          ) : allCreators.isError ? (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Unable to Load Creators</h3>
+                <p className="text-muted-foreground mb-6">
+                  {allCreators.error?.message || 'There was an issue loading creators.'}
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={allCreators.retryFailed} variant="outline">
+                    Retry Failed
                   </Button>
-                  {allCreators.isError && (
-                    <Button 
-                      onClick={allCreators.retryFailed}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Retry Failed
-                    </Button>
-                  )}
+                  <Button onClick={() => window.location.reload()}>
+                    Refresh Page
+                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">
+                  {allCreators.totalCount > 0 ? 'Loading Creators...' : 'No Creators Found'}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {allCreators.totalCount > 0
+                    ? 'Please wait while we load the creator profiles.'
+                    : 'Be the first creator to join our platform!'
+                  }
+                </p>
+                {allCreators.totalCount > 0 && allCreators.loadMore && (
+                  <div className="space-y-2">
+                    <Button
+                      onClick={allCreators.loadMore}
+                      disabled={allCreators.isLoading}
+                      variant="outline"
+                    >
+                      {allCreators.isLoading ? 'Loading...' : 'Load Creators'}
+                    </Button>
+                    {allCreators.isError && (
+                      <Button
+                        onClick={allCreators.retryFailed}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Retry Failed
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+                </div>
 
         {/* Call to Action Buttons */}
         <div className="text-center">
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
+            <Button
               size="lg"
               onClick={() => router.push('/creators')}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -332,8 +301,8 @@ function CreatorsSection() {
               View All Creators
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            
-            <Button 
+
+            <Button
               size="lg"
               variant="outline"
               onClick={() => router.push('/browse')}
@@ -342,7 +311,7 @@ function CreatorsSection() {
               Browse Content
             </Button>
           </div>
-          
+
           <p className="text-sm text-muted-foreground mt-4">
             Discover unique content from verified creators worldwide
           </p>
@@ -392,12 +361,11 @@ interface FeaturedCreator {
  */
 export default function HomePage() {
   const router = useRouter()
-  const { address, isConnected } = useAccount()
-  
-  // Use Privy-based wallet connection
-  const { login, isAuthenticated: _isAuthenticated } = useWalletConnect()
-  const { data: isCreator } = useIsCreatorRegistered(address)
-  const { data: _creatorProfile } = useCreatorProfile(address)
+
+  // Use unified wallet connection UI
+  const walletUI = useWalletConnectionUI()
+  const { data: isCreator } = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
+  const { data: _creatorProfile } = useCreatorProfile(walletUI.address as `0x${string}` | undefined)
   const allCreators = useAllCreators()
 
   // Component state management
@@ -491,17 +459,17 @@ export default function HomePage() {
   }, [router])
 
   const handleStartCreating = useCallback(() => {
-    if (isConnected) {
+    if (walletUI.isConnected) {
       if (isCreator) {
         router.push('/dashboard')
       } else {
         router.push('/onboard')
       }
     } else {
-      // Connect wallet first using Privy, then redirect to onboarding
-      login()
+      // Connect wallet first using unified wallet UI
+      walletUI.connect()
     }
-  }, [isConnected, isCreator, router, login])
+  }, [walletUI.isConnected, walletUI.connect, isCreator, router])
 
   const handleContentTabChange = useCallback((category: ContentCategory | 'featured') => {
     setPageState(prev => ({ ...prev, activeContentTab: category }))
@@ -565,7 +533,7 @@ export default function HomePage() {
 
               {/* Role-based Call-to-Action */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                {!isConnected ? (
+                {!walletUI.isConnected ? (
                   <>
                     <Button
                       variant="default"
@@ -667,33 +635,16 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* Content Display - Responsive Carousel/Grid */}
-            <div className="min-h-[400px]">
-              {/* Mobile/Tablet: Carousel */}
-              <div className="block lg:hidden">
-                <ContentCarouselWrapper
-                  category={pageState.activeContentTab}
-                  itemsPerView={8}
-                  autoPlay={true}
-                />
-              </div>
+            {/* Content Display - Enhanced Carousel for All Devices */}
+            <div className="min-h-[400px] relative">
+              {/* Carousel Background Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-accent/5 via-transparent to-primary/5 rounded-2xl blur-xl -z-10" />
 
-              {/* Desktop: Full Grid */}
-              <div className="hidden lg:block">
-                <ContentDiscoveryGrid
-                  initialFilters={
-                    pageState.activeContentTab === 'featured'
-                      ? {}
-                      : { category: pageState.activeContentTab }
-                  }
-                  onContentSelect={(contentId) => {
-                    router.push(`/content/${contentId}`)
-                  }}
-                  showCreatorInfo={true}
-                  itemsPerPage={8}
-                  className="min-h-[400px]"
-                />
-              </div>
+              <ContentCarouselWrapper
+                category={pageState.activeContentTab}
+                itemsPerView={2}
+                autoPlay={true}
+              />
             </div>
 
             <div className="text-center">
@@ -947,7 +898,7 @@ export default function HomePage() {
 
               {!isCreator && (
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  {!isConnected ? (
+                  {!walletUI.isConnected ? (
                     <div className="text-lg px-8 py-4">
                       Connect Wallet to Start
                     </div>
@@ -986,7 +937,7 @@ export default function HomePage() {
                 Explore Content
                 <Eye className="ml-2 h-5 w-5" />
               </Button>
-              {!isConnected ? (
+              {!walletUI.isConnected ? (
                 <div className="text-lg px-8 py-4">
                   Connect Wallet to Start Creating
                 </div>

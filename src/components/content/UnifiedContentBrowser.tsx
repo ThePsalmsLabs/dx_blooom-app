@@ -32,7 +32,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { 
   Search,
   Filter,
@@ -227,8 +227,11 @@ export function UnifiedContentBrowser({
 }: UnifiedContentBrowserProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { address: userAddress, isConnected } = useAccount()
-  
+  const walletUI = useWalletConnectionUI()
+
+  // Extract user address from wallet UI
+  const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
+
   // Debounced search applier
   const applySearch = useMemo(() => createDebouncedSearch((q: string) => {
     // Reset pagination on search input stabilization

@@ -26,7 +26,8 @@
 'use client'
 
 import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
-import { useAccount, useChainId, useSendCalls } from 'wagmi'
+import { useChainId, useSendCalls } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { encodeFunctionData, type Address } from 'viem'
 
 // Import your existing purchase flow foundation
@@ -429,9 +430,9 @@ export function useSocialPurchaseFlow(
   
   // ===== CORE DEPENDENCIES =====
   
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
-  const effectiveUserAddress = userAddress || address
+  const effectiveUserAddress = userAddress || walletUI.address
   
   // Your existing purchase flow foundation
   const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress)

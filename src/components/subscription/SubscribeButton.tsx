@@ -1,6 +1,6 @@
 import React, { useState, useCallback, ReactElement } from 'react'
 import { type Address } from 'viem'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import your new approval flow component
 import SubscriptionApprovalFlow from '@/components/subscription/SubscriptionApprovalFlow'
@@ -191,8 +191,8 @@ export function SubscribeButton({
 }: SubscribeButtonProps): ReactElement {
   
   // ===== WALLET CONNECTION =====
-  
-  const { address: userAddress, isConnected } = useAccount()
+
+  const walletUI = useWalletConnectionUI()
   
   // ===== MODAL STATE MANAGEMENT =====
   
@@ -207,13 +207,13 @@ export function SubscribeButton({
    * the component configuration and user state.
    */
   const handleButtonClick = useCallback(() => {
-    if (disabled || !isConnected) return
+    if (disabled || !walletUI.isConnected) return
     
     if (modalTrigger) {
       setIsModalOpen(true)
     }
     // If not using modal trigger, the parent component should handle the detailed flow
-  }, [disabled, isConnected, modalTrigger])
+  }, [disabled, walletUI.isConnected, modalTrigger])
 
   /**
    * Handle Modal Close
@@ -265,7 +265,7 @@ export function SubscribeButton({
       <div className={className}>
         <SubscriptionApprovalFlow
           creatorAddress={creatorAddress}
-          userAddress={userAddress}
+          userAddress={walletUI.address}
           onSubscriptionSuccess={handleSubscriptionSuccess}
           onError={handleSubscriptionError}
           disabled={disabled}
@@ -276,17 +276,17 @@ export function SubscribeButton({
 
   // ===== BUTTON RENDERING =====
   
-  const buttonClasses = buildButtonClasses(variant, size, disabled || !isConnected, className)
+  const buttonClasses = buildButtonClasses(variant, size, disabled || !walletUI.isConnected, className)
   
   return (
     <>
       {/* Subscribe Button */}
       <button
         onClick={handleButtonClick}
-        disabled={disabled || !isConnected}
+        disabled={disabled || !walletUI.isConnected}
         className={buttonClasses}
       >
-        {!isConnected ? (
+        {!walletUI.isConnected ? (
           'Connect Wallet to Subscribe'
         ) : disabled ? (
           'Subscribe Unavailable'
@@ -301,7 +301,7 @@ export function SubscribeButton({
           isOpen={isModalOpen}
           onClose={handleModalClose}
           creatorAddress={creatorAddress}
-          userAddress={userAddress}
+          userAddress={walletUI.address}
           onSubscriptionSuccess={handleSubscriptionSuccess}
           onError={handleSubscriptionError}
         />

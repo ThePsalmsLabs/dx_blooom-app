@@ -17,6 +17,7 @@ import {
   useCreatorProfile,
   useRegisterCreator,
 } from '@/hooks/contracts/core'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
 import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
@@ -3002,7 +3003,11 @@ export function useContentPublishingFlow(
 ): ContentPublishingFlowResult {
   const chainId = useChainId()
   const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
-  
+
+  // Add wallet connection check
+  const walletUI = useWalletConnectionUI()
+  const { isConnected: isWagmiConnected } = useAccount()
+
   const creatorRegistration = useIsCreatorRegistered(userAddress)
   const registerContent = useRegisterContent()
   const userBalance = useTokenBalance(contractAddresses.USDC, userAddress)
@@ -3086,11 +3091,21 @@ export function useContentPublishingFlow(
   
   const publish = useCallback((data: ContentPublishingData) => {
     debug.log('Starting content publishing workflow...', data)
-    
+
+    // Check if wallet is connected (both Privy and Wagmi)
+    if (!walletUI.isConnected || !isWagmiConnected) {
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error('Wallet must be connected to publish content. Please connect your wallet and try again.'),
+        publishedContentId: null
+      })
+      return
+    }
+
     if (!userAddress) {
       setWorkflowState({
         currentStep: 'error',
-        error: new Error('Wallet connection required to publish content'),
+        error: new Error('Wallet address is required to publish content'),
         publishedContentId: null
       })
       return
@@ -3147,7 +3162,7 @@ export function useContentPublishingFlow(
         publishedContentId: null
       })
     }
-  }, [userAddress, isCreatorRegistered, validateContentData, registerContent])
+  }, [userAddress, isCreatorRegistered, validateContentData, registerContent, walletUI, isWagmiConnected])
   
   const reset = useCallback(() => {
     setWorkflowState({

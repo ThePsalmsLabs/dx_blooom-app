@@ -1,7 +1,7 @@
 // src/hooks/business/miniapp-auth.ts
 
 import { useMemo, useCallback, useState, useEffect } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import type { Address } from 'viem'
 
 // Import existing Farcaster context from the MiniApp implementation
@@ -206,14 +206,14 @@ function calculateConfidenceScore(
 export function useMiniAppAuth(): MiniAppAuthResult {
   // ===== CORE DEPENDENCIES AND CONTEXT =====
   
-  // Wallet connection state from wagmi
-  const { address, isConnected, isConnecting } = useAccount()
-  
+  // Unified wallet connection UI
+  const walletUI = useWalletConnectionUI()
+
   // Farcaster context from MiniApp integration
   const farcasterContext = useFarcasterContext()
-  
+
   // Creator onboarding functionality from existing system
-  const creatorOnboarding = useCreatorOnboarding(address)
+  const creatorOnboarding = useCreatorOnboarding(walletUI.address as Address | undefined)
   
   // Optional auth context with graceful fallback
   const authContext = useOptionalAuth()
@@ -319,7 +319,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
 
       // PRIORITY 1: Farcaster-verified wallet (best UX)
       if (farcasterContext?.user && socialVerification.isAddressVerified && environmentType === 'miniapp') {
-        const confidenceScore = calculateConfidenceScore(address, true, isConnected, environmentType)
+        const confidenceScore = calculateConfidenceScore(walletUI.address, true, walletUI.isConnected, environmentType)
         
         debug.log('🎯 Optimal payment method: Farcaster-verified wallet', {
           address,
@@ -339,8 +339,8 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       }
 
       // PRIORITY 2: Privy-connected wallet (standard UX)
-      if (isConnected) {
-        const confidenceScore = calculateConfidenceScore(address, false, isConnected, environmentType)
+      if (walletUI.isConnected) {
+        const confidenceScore = calculateConfidenceScore(walletUI.address, false, walletUI.isConnected, environmentType)
         
         debug.log('🎯 Optimal payment method: Privy-connected wallet', {
           address,
@@ -383,7 +383,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         confidenceScore: 0
       }
     }
-  }, [address, farcasterContext, socialVerification, environmentType, isConnected])
+  }, [walletUI.address, farcasterContext, socialVerification, environmentType, walletUI.isConnected])
 
   // ===== USER PROFILE CREATION =====
   
@@ -398,7 +398,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
   const user = useMemo((): User | null => {
     try {
       // Must have wallet connection to have authenticated user
-      if (!isConnected || !address || !optimalPaymentMethod) {
+      if (!walletUI.isConnected || !walletUI.address || !optimalPaymentMethod) {
         return null
       }
       
@@ -423,7 +423,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       // Build base user profile with wallet data
       const baseUser: User = {
         address,
-        isConnected: true,
+        isConnected: walletUI.isConnected,
         isCreator,
         optimalPaymentMethod,
         isSocialUser: false,
@@ -492,8 +492,8 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       return null
     }
   }, [
-    isConnected, 
-    address, 
+    walletUI.isConnected,
+    walletUI.address,
     optimalPaymentMethod,
     creatorOnboarding.isRegistered,
     creatorOnboarding.profile,
@@ -580,7 +580,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         // The user needs to connect their wallet through the UI
         
         // Wait for wallet connection to be established
-        if (!isConnected) {
+        if (!walletUI.isConnected) {
           throw new Error('Please connect your wallet to continue')
         }
         
@@ -598,7 +598,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         error: error instanceof Error ? error : new Error(errorMessage)
       }))
     }
-  }, [environmentType, farcasterContext, isConnected])
+  }, [environmentType, farcasterContext, walletUI.isConnected])
 
   /**
    * Logout Function
@@ -792,7 +792,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
 
   // ===== COMPUTED AUTHENTICATION FLAGS =====
   
-  const isAuthenticated = Boolean(isConnected && address)
+  const isAuthenticated = Boolean(walletUI.isConnected && walletUI.address)
   const isSocialUser = Boolean(
     isAuthenticated && 
     environmentType === 'miniapp' && 

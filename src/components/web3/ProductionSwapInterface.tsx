@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { AlertTriangle, CheckCircle2, Clock, Loader2, Shield, Target, Lock, AlertCircle, Zap, Activity } from 'lucide-react';
 import { formatUnits } from 'viem';
-import { useAccount, useBalance } from 'wagmi';
+import { useBalance } from 'wagmi';
+import { useWalletConnectionUI } from '@/hooks/ui/integration';
 import { 
   useEnterpriseSwapPrice, 
   useEnterpriseSecurityValidation, 
@@ -26,7 +27,7 @@ import type { TokenInfo } from '@/hooks/web3/useTokenBalances';
  * - Real-time price impact analysis
  */
 export function ProductionSwapInterface() {
-  const { address } = useAccount();
+  const walletUI = useWalletConnectionUI();
   
   // Demo tokens - in production, these would come from your token list
   const ethToken: TokenInfo = useMemo(() => ({
@@ -74,12 +75,12 @@ export function ProductionSwapInterface() {
 
   // Get user balances
   const { data: fromTokenBalance } = useBalance({
-    address,
+    address: walletUI.address,
     token: fromToken.address === '0x4200000000000000000000000000000000000006' ? undefined : fromToken.address,
   });
 
   const { data: toTokenBalance } = useBalance({
-    address,
+    address: walletUI.address,
     token: toToken.address === '0x4200000000000000000000000000000000000006' ? undefined : toToken.address,
   });
 
@@ -93,8 +94,8 @@ export function ProductionSwapInterface() {
 
   // Validate swap intent when parameters change
   React.useEffect(() => {
-    if (address && fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0) {
-      securityValidation.validateSwapIntent(fromToken, toToken, fromAmount, address)
+    if (walletUI.address && fromToken && toToken && fromAmount && parseFloat(fromAmount) > 0) {
+      securityValidation.validateSwapIntent(fromToken, toToken, fromAmount, walletUI.address)
         .then(setSecurityResult)
         .catch(error => {
           console.error('Security validation failed:', error);
@@ -107,7 +108,7 @@ export function ProductionSwapInterface() {
     } else {
       setSecurityResult(null);
     }
-  }, [address, fromToken, toToken, fromAmount, securityValidation]);
+  }, [walletUI.address, fromToken, toToken, fromAmount, securityValidation]);
 
   // Calculate estimated output amount
   const estimatedOutput = useMemo(() => {
@@ -142,7 +143,7 @@ export function ProductionSwapInterface() {
 
   // Handle swap execution
   const handleExecuteSwap = useCallback(async () => {
-    if (!address || !fromToken || !toToken || !fromAmount) {
+    if (!walletUI.address || !fromToken || !toToken || !fromAmount) {
       alert('Please connect wallet and enter valid amounts');
       return;
     }
@@ -166,7 +167,7 @@ export function ProductionSwapInterface() {
     } catch (error) {
       console.error('Swap execution error:', error);
     }
-  }, [address, fromToken, toToken, fromAmount, slippageTolerance, securityResult, swapExecution]);
+  }, [walletUI.address, fromToken, toToken, fromAmount, slippageTolerance, securityResult, swapExecution]);
 
   // Render price impact indicator
   const renderPriceImpactIndicator = () => {
@@ -454,7 +455,7 @@ export function ProductionSwapInterface() {
           <button
             onClick={handleExecuteSwap}
             disabled={
-              !address || 
+              !walletUI.address || 
               !fromAmount || 
               parseFloat(fromAmount) <= 0 || 
               !securityResult?.isValid ||
@@ -469,7 +470,7 @@ export function ProductionSwapInterface() {
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 {swapExecution.isCreatingIntent ? 'Creating Intent...' : 'Executing...'}
               </>
-            ) : !address ? (
+            ) : !walletUI.address ? (
               'Connect Wallet'
             ) : (
               `Swap ${fromToken.symbol} → ${toToken.symbol}`

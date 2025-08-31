@@ -35,7 +35,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   FileText,
   DollarSign,
@@ -199,8 +199,8 @@ export function ContentManagementDashboard({
   onContentUpdated,
   className
 }: ContentManagementDashboardProps) {
-  const { address: connectedAddress } = useAccount()
-  const effectiveCreatorAddress = (creatorAddress || connectedAddress) as `0x${string}` | undefined
+  const walletUI = useWalletConnectionUI()
+  const effectiveCreatorAddress = (creatorAddress || walletUI.address) as `0x${string}` | undefined
 
   // Content management hooks
   const contentManagement = useAdvancedContentManagement()

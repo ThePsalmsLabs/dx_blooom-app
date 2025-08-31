@@ -95,7 +95,7 @@ export default function CollectionSetupStep({
                   onChange={(e) => onCollectionDataChange({ royalty: parseFloat(e.target.value) || 0 })}
                 />
                 <p className="text-sm text-gray-500">
-                  Percentage you'll earn from secondary sales (0-10%)
+                  Percentage you&apos;ll earn from secondary sales (0-10%)
                 </p>
               </div>
             </div>

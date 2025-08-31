@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Basename, BasenameWithAddress, CompactBasename } from '@/components/ui/basename'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import Link from 'next/link'
  * of different display formats.
  */
 export default function BasenamesPage() {
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   const sampleAddresses = [
     '0x742d35CC6Eb6B3d3C6B8A40B5A13E9A9B0B5F0F0',
@@ -54,22 +54,22 @@ export default function BasenamesPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
-              <Badge variant={isConnected ? "default" : "secondary"}>
-                {isConnected ? "Connected" : "Disconnected"}
+              <Badge variant={walletUI.isConnected ? "default" : "secondary"}>
+                {walletUI.isConnected ? "Connected" : "Disconnected"}
               </Badge>
-              {isConnected && (
+              {walletUI.isConnected && (
                 <Badge variant="outline">
-                  {address ? "Address Available" : "No Address"}
+                  {walletUI.address ? "Address Available" : "No Address"}
                 </Badge>
               )}
             </div>
 
-            {isConnected && address && (
+            {walletUI.isConnected && walletUI.address && (
               <div className="space-y-3">
                 <div>
                   <h4 className="text-sm font-medium mb-2">Your Basename:</h4>
                   <BasenameWithAddress
-                    address={address}
+                    address={walletUI.address}
                     className="text-lg"
                     separator=" • "
                   />
@@ -77,14 +77,14 @@ export default function BasenamesPage() {
                 <div>
                   <h4 className="text-sm font-medium mb-2">Compact Display:</h4>
                   <CompactBasename
-                    address={address}
+                    address={walletUI.address}
                     className="text-base"
                   />
                 </div>
               </div>
             )}
 
-            {!isConnected && (
+            {!walletUI.isConnected && (
               <p className="text-muted-foreground">
                 Connect your wallet to see your Basename display in action.
               </p>
@@ -223,16 +223,16 @@ export default function BasenamesPage() {
               <div className="bg-muted p-4 rounded-lg">
                 <pre className="text-xs overflow-x-auto">
 {`// Basic usage
-<Basename address={userAddress} />
+<Basename address={walletUI.address} />
 
 // With address fallback
 <BasenameWithAddress
-  address={userAddress}
+  address={walletUI.address}
   separator=" • "
 />
 
 // Compact for tight spaces
-<CompactBasename address={userAddress} />`}
+<CompactBasename address={walletUI.address} />`}
                 </pre>
               </div>
             </div>
@@ -242,3 +242,4 @@ export default function BasenamesPage() {
     </div>
   )
 }
+

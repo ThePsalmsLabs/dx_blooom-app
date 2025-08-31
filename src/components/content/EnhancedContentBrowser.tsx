@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, Grid3X3, List, Menu, X, Eye } from 'lucide-react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import your existing infrastructure
 import { ContentCategory } from '@/types/contracts'
@@ -164,9 +164,9 @@ interface ContentCardProps {
 }
 
 function ContentCard({ contentId, width, breakpoint, compact = false }: ContentCardProps) {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { data: content, isLoading: contentLoading } = useContentById(contentId)
-  const { data: hasAccess } = useHasContentAccess(address, contentId)
+  const { data: hasAccess } = useHasContentAccess(walletUI.address, contentId)
 
   if (contentLoading) {
     return (
@@ -261,7 +261,7 @@ function ContentCard({ contentId, width, breakpoint, compact = false }: ContentC
           <div className="space-y-2 w-full">
             <OrchestratedContentPurchaseCard
               contentId={contentId}
-              userAddress={address}
+              userAddress={walletUI.address}
               onPurchaseSuccess={() => console.log('Purchase successful for content:', contentId)}
               onViewContent={(contentId) => window.location.href = `/content/${contentId}`}
               variant="full"

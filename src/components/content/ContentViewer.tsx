@@ -70,7 +70,7 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
 import { categoryToString } from '@/types/contracts'
@@ -145,8 +145,11 @@ export function ContentViewer({
   className
 }: ContentViewerProps) {
   // Wallet connection for access control
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const router = useRouter()
+
+  // Extract user address from wallet UI with proper type checking
+  const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
 
   // Content data and access control using our architectural layers
   const contentQuery = useContentById(contentId)

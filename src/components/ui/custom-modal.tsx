@@ -179,7 +179,7 @@ export function CustomModal({
               <button
                 onClick={onClose}
                 className={cn(
-                  "flex-shrink-0 rounded-full p-2 text-muted-foreground",
+                  "flex-shrink-0 rounded-full p-2 text-muted-foreground cursor-pointer",
                   "hover:bg-muted hover:text-foreground",
                   "transition-colors duration-200",
                   "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
@@ -318,7 +318,7 @@ CustomModal.CloseButton = function ModalCloseButton({
     <button
       onClick={onClick}
       className={cn(
-        "flex-shrink-0 rounded-full p-2 text-muted-foreground",
+        "flex-shrink-0 rounded-full p-2 text-muted-foreground cursor-pointer",
         "hover:bg-muted hover:text-foreground",
         "transition-colors duration-200",
         "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",

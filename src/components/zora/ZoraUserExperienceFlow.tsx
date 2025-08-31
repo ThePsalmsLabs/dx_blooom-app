@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { parseEther, formatEther } from 'viem'
 import {
   Card,
@@ -88,7 +88,7 @@ function useCreatorProfile() {
 // ===== MAIN COMPONENT =====
 
 export default function ZoraUserExperienceFlow() {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { isRegistered, profile } = useCreatorProfile()
   const {
     isReady,
@@ -560,7 +560,7 @@ export default function ZoraUserExperienceFlow() {
               </div>
               <h4 className="font-semibold">Social Discovery</h4>
               <p className="text-sm text-gray-600">
-                Your NFT appears in Zora's social feeds and is discoverable by collectors
+                Your NFT appears in Zora&apos;s social feeds and is discoverable by collectors
               </p>
             </div>
             
@@ -590,7 +590,7 @@ export default function ZoraUserExperienceFlow() {
   )
 
   // ===== MAIN RENDER =====
-  if (!address) {
+  if (!walletUI.address) {
     return (
       <Card className="max-w-md mx-auto">
         <CardHeader className="text-center">

@@ -108,9 +108,9 @@ const SheetContent = React.forwardRef<
       </VisuallyHidden>
       {children}
       <SheetClose className={cn(
-        'absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity',
+        'absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity cursor-pointer',
         'hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-        'disabled:pointer-events-none z-10'
+        'disabled:pointer-events-none disabled:cursor-not-allowed z-10'
       )}>
         <X className="h-4 w-4" />
         <span className="sr-only">Close navigation</span>

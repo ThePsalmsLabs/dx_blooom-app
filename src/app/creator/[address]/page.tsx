@@ -38,7 +38,7 @@ import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 // Import hooks
 import { useCreatorProfile, useCreatorContent } from '@/hooks/contracts/core'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import UI components
 import {
@@ -60,7 +60,7 @@ import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 export default function CreatorProfilePage() {
   const params = useParams()
   const creatorAddress = params.address as Address
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const [activeTab, setActiveTab] = useState('content')
 
   // Fetch creator data
@@ -210,7 +210,7 @@ export default function CreatorProfilePage() {
                             contentId={contentId}
                             viewMode="grid"
                             showCreatorInfo={false}
-                            userAddress={userAddress}
+                            userAddress={walletUI.address}
                           />
                         ))}
                       </div>

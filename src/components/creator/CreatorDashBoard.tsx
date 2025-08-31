@@ -97,7 +97,7 @@ import {
 } from '@/hooks/contracts/core'
 
 import { useCreatorDashboardUI } from '@/hooks/ui/integration'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { ContentUploadForm } from '@/components/content/ContentUpload'
 import { ZoraCollectionManager } from '@/components/creator/ZoraCollectionManager'
 import { useMiniAppAnalytics } from '@/hooks/farcaster/useMiniAppAnalytics'
@@ -239,8 +239,8 @@ export function EnhancedCreatorDashboard({
   className
 }: EnhancedCreatorDashboardProps) {
   // Wallet connection and creator identification
-  const { address: connectedAddress } = useAccount()
-  const effectiveCreatorAddress = (creatorAddress || connectedAddress) as `0x${string}` | undefined
+  const walletUI = useWalletConnectionUI()
+  const effectiveCreatorAddress = (creatorAddress || walletUI.address) as `0x${string}` | undefined
 
   // Dashboard state management (enhanced with social view)
   const [currentView, setCurrentView] = useState<DashboardView>(initialView)
@@ -584,6 +584,7 @@ export function EnhancedCreatorDashboard({
       {/* Content Upload Modal (Existing Functionality Preserved) */}
       {showUploadModal && (
         <ContentUploadForm
+          userAddress={walletUI.address || ''}
           onSuccess={handleContentUploadSuccess}
           onCancel={() => setShowUploadModal(false)}
         />

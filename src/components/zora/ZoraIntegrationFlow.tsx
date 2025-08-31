@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { parseEther, formatEther } from 'viem'
 import {
   Card,
@@ -109,7 +109,7 @@ function useZoraDemo() {
 // ===== MAIN OPTIMIZED COMPONENT =====
 
 export default function OptimizedZoraIntegrationFlow() {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { currentStep, setCurrentStep, progress } = useFlowState()
   const { createCollection, mintNFT, isCreating, isMinting, hasCollection, mintResult } = useZoraDemo()
   
@@ -550,7 +550,7 @@ export default function OptimizedZoraIntegrationFlow() {
   )
   
   // ===== MAIN RENDER =====
-  if (!address) {
+  if (!walletUI.address) {
     return (
       <Card className="max-w-md mx-auto">
         <CardHeader className="text-center">

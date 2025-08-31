@@ -34,7 +34,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount, useBalance, useChainId } from 'wagmi'
+import { useBalance, useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   ShoppingCart,
   Zap,
@@ -258,11 +259,11 @@ export function UnifiedPurchaseFlow({
   transactionTimeout = 300
 }: UnifiedPurchaseFlowProps) {
   const router = useRouter()
-  const { address: connectedAddress, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
-  
-  // Use provided address or connected address
-  const effectiveUserAddress = userAddress || connectedAddress
+
+  // Use provided address or connected address from unified wallet UI
+  const effectiveUserAddress = userAddress || walletUI.address
   
   // Viewport detection using AdaptiveNavigation patterns
   const detectedViewport = useViewportSize()
@@ -275,12 +276,12 @@ export function UnifiedPurchaseFlow({
   
   // Fetch content data using existing hook pattern
   const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(effectiveUserAddress, contentId)
+  const accessQuery = useHasContentAccess(effectiveUserAddress as `0x${string}` , contentId)
   const creatorRegistration = useIsCreatorRegistered(contentQuery.data?.creator)
   
   // User balance for payment validation
   const balanceQuery = useBalance({
-    address: effectiveUserAddress,
+    address: effectiveUserAddress as `0x${string}`,
     chainId,
     query: {
       refetchInterval: autoRefreshBalance ? config.balanceRefreshInterval : false
@@ -323,9 +324,9 @@ export function UnifiedPurchaseFlow({
     setFlowState(prev => ({
       ...prev,
       hasAccess,
-      canPurchase: isConnected && !hasAccess && canAffordPurchase && !!content,
+      canPurchase: walletUI.isConnected && !hasAccess && canAffordPurchase && !!content,
     }))
-  }, [hasAccess, isConnected, canAffordPurchase, content])
+  }, [hasAccess, walletUI.isConnected, canAffordPurchase, content])
 
   // Auto-refresh content data periodically
   useEffect(() => {
@@ -528,7 +529,7 @@ export function UnifiedPurchaseFlow({
               variant="outline"
               size={isCompact ? "sm" : "default"}
               onClick={() => handleSocialShare('farcaster')}
-              className="w-full touch-target-optimized"
+              className="w-full touch-target-optimized cursor-pointer"
             >
               <Share2 className="nav-icon-adaptive mr-2" />
               <span className="text-adaptive-base">Share Content</span>
@@ -539,13 +540,13 @@ export function UnifiedPurchaseFlow({
     }
 
     // Not connected to wallet
-    if (!isConnected) {
+    if (!walletUI.isConnected) {
       return (
         <Button
           variant="outline"
           size={isCompact ? "sm" : "default"}
           onClick={() => router.push('/connect')}
-          className={cn("w-full touch-target-optimized", className)}
+          className={cn("w-full touch-target-optimized cursor-pointer", className)}
         >
           <Wallet className="nav-icon-adaptive mr-2" />
           <span className="text-adaptive-base">Connect Wallet</span>
@@ -601,7 +602,7 @@ export function UnifiedPurchaseFlow({
         onClick={handlePurchaseInitiate}
         disabled={!flowState.canPurchase}
         className={cn(
-          "w-full touch-target-optimized",
+          "w-full touch-target-optimized cursor-pointer",
           enableBatchTransactions && "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700",
           className
         )}
@@ -697,7 +698,7 @@ export function UnifiedPurchaseFlow({
             {showTransactionDetails && !isCompact && (
               <Collapsible open={showAdvancedOptions} onOpenChange={setShowAdvancedOptions}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between">
+                  <Button variant="ghost" size="sm" className="w-full justify-between cursor-pointer">
                     <span className="text-adaptive-base">Transaction Details</span>
                     {showAdvancedOptions ? (
                       <ChevronUp className="nav-icon-adaptive" />
@@ -756,7 +757,7 @@ export function UnifiedPurchaseFlow({
       footer={
         <div className="flex-col space-y-2">
           {flowState.step === 'error' && flowState.retryAttempts < config.maxRetryAttempts && (
-            <Button onClick={handleRetryPurchase} className="w-full">
+            <Button onClick={handleRetryPurchase} className="w-full cursor-pointer">
               <RefreshCw className="nav-icon-adaptive mr-2" />
               Retry Purchase
             </Button>
@@ -765,7 +766,7 @@ export function UnifiedPurchaseFlow({
           {flowState.step === 'success' && (
             <Button
               onClick={() => setIsTransactionModalOpen(false)}
-              className="w-full"
+              className="w-full cursor-pointer"
             >
               Continue
             </Button>
@@ -775,7 +776,7 @@ export function UnifiedPurchaseFlow({
             <Button
               variant="outline"
               onClick={handlePurchaseCancel}
-              className="w-full"
+              className="w-full cursor-pointer"
             >
               Cancel
             </Button>

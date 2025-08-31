@@ -81,21 +81,24 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Comprehensive file type validation
+    // Comprehensive file type validation with enhanced markdown support
     const allowedTypes = [
       // Images
       'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-      // Videos  
+      // Videos
       'video/mp4', 'video/webm', 'video/mov', 'video/avi',
       // Audio
       'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3',
       // Documents
-      'application/pdf', 'text/plain', 'text/markdown', 'text/html',
+      'application/pdf', 'text/plain', 'text/markdown', 'text/x-markdown', 'text/html',
       'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       // Archives
       'application/zip', 'application/x-rar-compressed',
       // Code files
-      'text/javascript', 'text/css', 'application/json'
+      'text/javascript', 'text/css', 'application/json',
+      // Additional formats
+      'text/csv', 'application/csv',
+      'application/octet-stream' // Generic binary files
     ]
     
     if (!allowedTypes.includes(file.type) && file.type) {

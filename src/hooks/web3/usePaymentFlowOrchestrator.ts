@@ -25,7 +25,8 @@
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { useWriteContract, useWaitForTransactionReceipt, useChainId, useAccount, usePublicClient, useWalletClient, useSendCalls } from 'wagmi'
+import { useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient, useWalletClient, useSendCalls } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Address, encodeFunctionData, type PublicClient, type WalletClient, type SendCallsParameters, type SendCallsReturnType } from 'viem'
 import { simulateContract } from 'wagmi/actions'
 import { useQueryClient } from '@tanstack/react-query'
@@ -750,7 +751,7 @@ export function useEnhancedPaymentOrchestrator(
   contentId: bigint,
   userAddress?: Address
 ) {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   const queryClient = useQueryClient()
   
@@ -1368,7 +1369,7 @@ export function usePaymentFlowOrchestrator(
   
   // Hook dependencies
   const chainId = useChainId()
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const publicClient = usePublicClient()
   const { data: walletClient } = useWalletClient()
   const contractAddresses = getContractAddresses(chainId)
@@ -1379,7 +1380,7 @@ export function usePaymentFlowOrchestrator(
   const { sendCalls } = useSendCalls()
   
   // Gracefully handle missing clients - don't throw immediately
-  const isClientReady = !!publicClient && !!walletClient && isConnected
+  const isClientReady = !!publicClient && !!walletClient && walletUI.isConnected
   
   // Only throw wallet client error if we're trying to execute a payment
   // This allows the hook to be used for read-only operations
@@ -1390,7 +1391,7 @@ export function usePaymentFlowOrchestrator(
     if (!walletClient) {
       throw new Error(`Wallet client is required for ${operation}. Please connect your wallet.`)
     }
-    if (!isConnected) {
+    if (!walletUI.isConnected) {
       throw new Error(`Please connect your wallet to ${operation}`)
     }
     return walletClient
@@ -1690,7 +1691,7 @@ export function usePaymentFlowOrchestrator(
         message: 'Detecting account type...'
       })
       
-      const accountType = await detectAccountType(publicClient!, address!)
+      const accountType = await detectAccountType(publicClient!, walletUI.address!)
       const availableStrategies = determinePaymentStrategies(accountType)
       
       // State Machine: Phase 2 - Choose Strategy

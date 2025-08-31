@@ -21,7 +21,7 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   ArrowLeft,
   Upload as UploadIcon,
@@ -185,7 +185,7 @@ function CreatorOnboardingAlert() {
  */
 export default function UploadPage() {
   const router = useRouter()
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Handle successful content upload
   const handleUploadSuccess = React.useCallback((contentId: bigint) => {
@@ -222,7 +222,7 @@ export default function UploadPage() {
 
               {/* Upload Form */}
               <ContentUploadForm
-                userAddress={address}
+                userAddress={walletUI.address || ''}
                 onSuccess={handleUploadSuccess}
                 onCancel={handleUploadCancel}
                 variant="page"

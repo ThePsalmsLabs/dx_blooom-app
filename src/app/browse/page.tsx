@@ -27,7 +27,7 @@
 
 import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import type { Address } from 'viem'
 import {
   Search,
@@ -171,7 +171,7 @@ interface ContentDiscoveryParams {
 function BrowsePageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { address: userAddress, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Parse URL parameters into typed state for seamless navigation
   const urlParams: BrowsePageParams = useMemo(() => {
@@ -591,7 +591,7 @@ function BrowsePageClient() {
                 <ContentGrid
                   contentIds={discovery.data?.contentIds || []}
                   viewMode={viewMode}
-                  userAddress={userAddress}
+                  userAddress={walletUI.address}
                   onViewContent={handleViewContent}
                 />
               )}

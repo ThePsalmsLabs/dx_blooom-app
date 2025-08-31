@@ -9,7 +9,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 
@@ -284,7 +284,7 @@ export default function SocialSharingHub({
   className,
   showAnalytics = true
 }: SocialSharingHubProps) {
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { 
     isMiniApp, 
     capabilities, 

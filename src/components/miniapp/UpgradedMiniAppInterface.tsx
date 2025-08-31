@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { 
   Search, 
   Grid3x3, 
@@ -72,7 +72,7 @@ interface MiniAppState {
  */
 export function UpgradedMiniAppInterface() {
   const searchParams = useSearchParams()
-  const { address: _address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // State management for the enhanced miniapp experience
   const [state, setState] = useState<MiniAppState>({
@@ -423,7 +423,7 @@ export function UpgradedMiniAppInterface() {
       </Dialog>
 
       {/* Wallet Connection Status */}
-      {!isConnected && (
+      {!walletUI.isConnected && (
         <div className="fixed bottom-20 left-4 right-4">
           <Card className="bg-yellow-50 border-yellow-200">
             <CardContent className="p-3 text-center">

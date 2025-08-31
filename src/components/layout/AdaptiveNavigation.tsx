@@ -29,7 +29,7 @@ import React, {
   startTransition
 } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   Home,
@@ -268,17 +268,17 @@ function useUserRole(): {
   error: Error | null
 } {
   const { context: miniAppContext, isMiniApp } = useMiniApp()
-  const { address, isConnected } = isMiniApp ? useMiniAppWalletUI() : useAccount()
+  const walletUI = useWalletConnectionUI()
   const { data: isCreator, isLoading, error } = useIsCreatorRegistered(
-    address ? (address as `0x${string}`) : undefined
+    walletUI.address ? (walletUI.address as `0x${string}`) : undefined
   )
 
   const role = useMemo((): UserRole => {
-    if (!isConnected || !address) return 'disconnected'
+    if (!walletUI.isConnected || !walletUI.address) return 'disconnected'
     if (isLoading) return 'consumer' // Safe default while loading
     if (error) return 'consumer' // Safe default on error
     return isCreator ? 'creator' : 'consumer'
-  }, [isConnected, address, isCreator, isLoading, error])
+  }, [walletUI.isConnected, walletUI.address, isCreator, isLoading, error])
 
   return { role, isLoading, error: error as Error | null }
 }

@@ -21,7 +21,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   ArrowRight,
   Check,
@@ -53,23 +53,18 @@ import {
   AlertDescription,
   Progress,
   Separator,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   useToast,
   Badge
 } from '@/components/ui/index'
 
 // Import our architectural layers - this shows the power of our modular approach
 import { AppLayout } from '@/components/layout/AppLayout'
+import { CustomModal } from '@/components/ui/custom-modal'
 import { ResponsiveNavigation } from '@/components/layout/ResponsiveNavigation'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 
 // Import our business logic hooks - the core of our workflow management
 import { useCreatorOnboarding } from '@/hooks/business/workflows'
-import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import utilities and types that ensure type safety throughout
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
@@ -121,9 +116,8 @@ export default function CreatorOnboardingPage() {
  */
 function OnboardingContent() {
   const router = useRouter()
-  const { address, isConnected } = useAccount()
   const walletUI = useWalletConnectionUI()
-  const onboarding = useCreatorOnboarding(address)
+  const onboarding = useCreatorOnboarding(walletUI.address as `0x${string}` | undefined)
   const { toast } = useToast()
   
   // Form state management
@@ -339,8 +333,8 @@ function OnboardingContent() {
       title: 'Connect Wallet',
       description: 'Connect your wallet and set up Smart Account',
       icon: Wallet,
-      completed: isConnected,
-      active: !isConnected
+      completed: walletUI.isConnected,
+      active: !walletUI.isConnected
     },
     {
       id: 'profile',
@@ -348,7 +342,7 @@ function OnboardingContent() {
       description: 'Set up your creator profile and subscription pricing',
       icon: User,
       completed: onboarding.currentStep === 'registered' || showSuccessDialog,
-      active: isConnected && onboarding.currentStep !== 'registered' && !showSuccessDialog
+      active: walletUI.isConnected && onboarding.currentStep !== 'registered' && !showSuccessDialog
     },
     {
       id: 'verify',
@@ -361,7 +355,7 @@ function OnboardingContent() {
              (onboarding.currentStep === 'registered' && !showSuccessDialog)
     }
   ], [
-    isConnected, 
+    walletUI.isConnected, 
     onboarding.currentStep, 
     onboarding.registrationProgress,
     showSuccessDialog
@@ -454,7 +448,7 @@ function OnboardingContent() {
       </Suspense>
       
       {/* Wallet Address Display */}
-      {isConnected && address && (
+      {walletUI.isConnected && walletUI.address && (
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -464,13 +458,13 @@ function OnboardingContent() {
               </div>
               <div className="flex items-center gap-2">
                 <code className="text-xs bg-muted px-2 py-1 rounded">
-                  {formatAddress(address)}
+                  {formatAddress(walletUI.address as `0x${string}`)}
                 </code>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    navigator.clipboard.writeText(address)
+                    navigator.clipboard.writeText(walletUI.address || '')
                     toast({
                       title: "Address Copied",
                       description: "Wallet address copied to clipboard!",
@@ -501,7 +495,7 @@ function OnboardingContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-2">
           {(() => {
-            if (!isConnected) {
+            if (!walletUI.isConnected) {
               return <WalletConnectionCard walletUI={walletUI} />
             }
             
@@ -630,19 +624,12 @@ function OnboardingContent() {
       </div>
       
       {/* Enhanced Success Dialog */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-6 w-6 text-green-500" />
-              Registration Successful!
-            </DialogTitle>
-            <DialogDescription>
-              Welcome to the creator economy! You&apos;re now registered as a creator and can start 
-              monetizing your content. {isNavigating ? "Redirecting to your dashboard..." : ""}
-            </DialogDescription>
-          </DialogHeader>
-          
+      <CustomModal
+        isOpen={showSuccessDialog}
+        onClose={() => setShowSuccessDialog(false)}
+        title="Registration Successful!"
+        description={`Welcome to the creator economy! You're now registered as a creator and can start monetizing your content. ${isNavigating ? "Redirecting to your dashboard..." : ""}`}
+        footer={
           <div className="flex justify-between items-center pt-4">
             <Button variant="outline" onClick={() => setShowSuccessDialog(false)}>
               Stay Here
@@ -651,7 +638,7 @@ function OnboardingContent() {
               debug.log('🚀 Dashboard button clicked!')
               debug.log('Current router state:', router)
               try {
-                // Close the dialog first
+                // Close the modal first
                 setShowSuccessDialog(false)
                 // Then navigate to dashboard
                 setTimeout(() => {
@@ -666,8 +653,15 @@ function OnboardingContent() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        }
+        maxWidth="sm:max-w-md"
+        mobileBottomSheet={false}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <CheckCircle className="h-6 w-6 text-green-500" />
+          <span className="text-lg font-semibold">Congratulations!</span>
+        </div>
+      </CustomModal>
     </div>
   )
 }

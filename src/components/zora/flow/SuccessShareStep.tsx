@@ -174,7 +174,7 @@ export default function SuccessShareStep({
       {/* Next Steps */}
       <Card>
         <CardHeader>
-          <CardTitle>What's Next?</CardTitle>
+          <CardTitle>What&apos;s Next?</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -202,7 +202,7 @@ export default function SuccessShareStep({
               </div>
               <h4 className="font-semibold text-sm">Grow & Scale</h4>
               <p className="text-xs text-gray-600">
-                Expand reach through Zora's social feeds
+                Expand reach through Zora&apos;s social feeds
               </p>
             </div>
           </div>

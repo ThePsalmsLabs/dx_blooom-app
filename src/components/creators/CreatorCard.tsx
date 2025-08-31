@@ -23,12 +23,12 @@ interface CreatorCardProps {
   onClick?: () => void
 }
 
-export function CreatorCard({ 
-  creatorAddress, 
+export function CreatorCard({
+  creatorAddress,
   variant = 'default',
   showSubscribeButton = true,
   className,
-  onClick 
+  onClick
 }: CreatorCardProps) {
   const router = useRouter()
   const creatorProfile = useCreatorProfile(creatorAddress)

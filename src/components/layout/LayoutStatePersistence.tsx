@@ -24,7 +24,8 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { usePathname } from 'next/navigation'
 import {
   Settings,
@@ -167,13 +168,13 @@ export function LayoutStatePersistence({
   storageKeyPrefix = 'contentdao-layout'
 }: LayoutStatePersistenceProps) {
   // Wallet and network state for scoping preferences
-  const { address } = useAccount();
+  const walletUI = useWalletConnectionUI();
   const chainId = useChainId();
   const pathname = usePathname();
 
   // Creator registration state for permission validation
-  const creatorRegistration = useIsCreatorRegistered(address);
-  const creatorProfile = useCreatorProfile(address);
+  const creatorRegistration = useIsCreatorRegistered(walletUI.address);
+  const creatorProfile = useCreatorProfile(walletUI.address);
 
   // Toast notifications for user feedback
   const { toast } = useToast();
@@ -200,10 +201,10 @@ export function LayoutStatePersistence({
 
   // Generate storage key based on wallet address and network
   const storageKey = useMemo(() => {
-    return address
-      ? `${storageKeyPrefix}-${address}-${chainId}`
+    return walletUI.address
+      ? `${storageKeyPrefix}-${walletUI.address}-${chainId}`
       : `${storageKeyPrefix}-anonymous`;
-  }, [storageKeyPrefix, address, chainId]);
+  }, [storageKeyPrefix, walletUI.address, chainId]);
 
   // Default layouts per role
   const defaultLayouts = useMemo<Record<UserRole, Partial<LayoutConfiguration>>>(() => ({
@@ -361,7 +362,7 @@ export function LayoutStatePersistence({
       // Create metadata for this persistence operation
       const metadata: LayoutStateMetadata = {
         savedAt: new Date(),
-        walletAddress: address || 'anonymous',
+        walletAddress: walletUI.address || 'anonymous',
         chainId,
         version: '1.0.0',
         deviceType: getDeviceType(),
@@ -397,7 +398,7 @@ export function LayoutStatePersistence({
     } finally {
       persistenceInProgress.current = false
     }
-  }, [storageKey, userRole, address, chainId, enableAutoPersistence, toast])
+  }, [storageKey, userRole, walletUI.address, chainId, enableAutoPersistence, toast])
 
   // Handle layout configuration changes
   const handleLayoutChange = useCallback((updates: Partial<LayoutConfiguration>) => {
@@ -468,7 +469,7 @@ export function LayoutStatePersistence({
     }
 
     loadAndApplyPersistedLayout()
-  }, [userRole, address, chainId]) // Only depend on identity-related changes
+  }, [userRole, walletUI.address, chainId]) // Only depend on identity-related changes
 
   // Manual export/import functionality for advanced users
   const exportLayoutConfiguration = useCallback(() => {

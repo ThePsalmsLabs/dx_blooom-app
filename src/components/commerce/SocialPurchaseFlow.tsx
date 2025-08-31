@@ -27,7 +27,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import type { Address } from 'viem'
 
 // Import your established UI components
@@ -456,9 +456,9 @@ export default function SocialPurchaseFlow({
 }: SocialPurchaseFlowProps) {
   
   const router = useRouter()
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const miniAppContext = useMiniApp()
-  const effectiveUserAddress = userAddress || address
+  const effectiveUserAddress = userAddress || walletUI.address
 
   // ===== BUSINESS LOGIC INTEGRATION =====
   
@@ -481,7 +481,7 @@ export default function SocialPurchaseFlow({
     triggerImmediateShare,
     trackSocialConversion,
     reset
-  } = useSocialPurchaseFlow(contentId, effectiveUserAddress)
+  } = useSocialPurchaseFlow(contentId, effectiveUserAddress as `0x${string}`)
 
   // ===== LOCAL STATE =====
   

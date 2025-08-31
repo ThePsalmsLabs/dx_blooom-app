@@ -42,7 +42,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   BarChart3,
   PieChart,
@@ -184,7 +184,7 @@ export function PlatformInsightsDashboard({
   refreshInterval = 60, // 60 seconds
   className
 }: PlatformInsightsDashboardProps) {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // ===== STATE MANAGEMENT =====
   // Sophisticated state management for administrative dashboard functionality

@@ -15,7 +15,8 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -138,7 +139,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
   onSwapComplete,
   contextualMessage
 }) => {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   const { tokens, refreshBalances } = useEnhancedTokenBalances()
   const contractAddresses = getContractAddresses(chainId)
@@ -208,11 +209,11 @@ export const SwapModal: React.FC<SwapModalProps> = ({
     address: state.fromToken?.address as Address,
     abi: ERC20_ABI,
     functionName: 'allowance',
-    args: address && contractAddresses?.COMMERCE_INTEGRATION 
-      ? [address, contractAddresses.COMMERCE_INTEGRATION] 
+    args: walletUI.address && contractAddresses?.COMMERCE_INTEGRATION
+      ? [walletUI.address, contractAddresses.COMMERCE_INTEGRATION] 
       : undefined,
     query: {
-      enabled: !!address && !!state.fromToken && !state.fromToken.isNative && !!contractAddresses?.COMMERCE_INTEGRATION
+      enabled: !!walletUI.address && !!state.fromToken && !state.fromToken.isNative && !!contractAddresses?.COMMERCE_INTEGRATION
     }
   })
   
@@ -412,7 +413,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
    * this would call your Commerce Protocol's swap functions.
    */
   const handleSwap = useCallback(async () => {
-    if (!state.fromToken || !state.toToken || !address || !state.fromAmount) return
+    if (!state.fromToken || !state.toToken || !walletUI.address || !state.fromAmount) return
     
     try {
       setState(prev => ({ ...prev, stage: 'swap', error: null }))
@@ -447,7 +448,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
         error: `Swap failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }))
     }
-  }, [state.fromToken, state.toToken, state.fromAmount, address, swapCalculation.minimumReceived, state.slippageTolerance])
+  }, [state.fromToken, state.toToken, state.fromAmount, walletUI.address, swapCalculation.minimumReceived, state.slippageTolerance])
   
   /**
    * Action Button Logic
@@ -457,7 +458,7 @@ export const SwapModal: React.FC<SwapModalProps> = ({
    * contextual UI that guides users through complex multi-step processes.
    */
   const getActionButtonConfig = () => {
-    if (!address) return { text: "Connect Wallet", disabled: true, action: undefined }
+    if (!walletUI.address) return { text: "Connect Wallet", disabled: true, action: undefined }
     if (!state.fromToken || !state.toToken) return { text: "Select Tokens", disabled: true, action: undefined }
     if (!state.fromAmount || parseFloat(state.fromAmount) === 0) return { text: "Enter Amount", disabled: true, action: undefined }
     

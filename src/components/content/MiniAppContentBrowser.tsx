@@ -11,7 +11,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -61,19 +61,19 @@ function MiniAppContentBrowserCore({
   onContentSelect,
   className 
 }: MiniAppContentBrowserProps) {
-  const { isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const [shouldLoadContent, setShouldLoadContent] = useState(false)
-  
+
   // Only load content if wallet is connected or after a delay
   useEffect(() => {
-    if (isConnected) {
+    if (walletUI.isConnected) {
       setShouldLoadContent(true)
     } else {
       // Delay content loading for non-connected users to prioritize wallet connection
       const timer = setTimeout(() => setShouldLoadContent(true), 2000)
       return () => clearTimeout(timer)
     }
-  }, [isConnected])
+  }, [walletUI.isConnected])
 
   // Only make contract calls when we should load content
   const contentQuery = useActiveContentPaginated(
@@ -92,7 +92,7 @@ function MiniAppContentBrowserCore({
   }, [contentQuery])
 
   // Show wallet connection prompt if not connected
-  if (!isConnected) {
+  if (!walletUI.isConnected) {
     return (
       <div className="space-y-4">
         <div className="text-center py-8">

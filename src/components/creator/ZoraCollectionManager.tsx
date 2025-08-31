@@ -18,7 +18,8 @@
 'use client'
 
 import React, { useState, useCallback, useMemo } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { type Address } from 'viem'
 import {
   Plus,
@@ -139,7 +140,7 @@ export function ZoraCollectionManager({
   className,
   onCollectionCreated
 }: ZoraCollectionManagerProps) {
-  const { address: connectedAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   
   // Use your existing authentication hooks
@@ -177,10 +178,10 @@ export function ZoraCollectionManager({
   const canManageCollections = useMemo(() => {
     return (
       isRegisteredCreator &&
-      connectedAddress === creatorAddress &&
+      walletUI.address === creatorAddress &&
       !isCheckingRegistration
     )
-  }, [isRegisteredCreator, connectedAddress, creatorAddress, isCheckingRegistration])
+  }, [isRegisteredCreator, walletUI.address, creatorAddress, isCheckingRegistration])
 
   // Form validation
   const isFormValid = useMemo(() => {

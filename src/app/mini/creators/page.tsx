@@ -27,7 +27,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   Users,
@@ -391,7 +391,7 @@ function MiniAppCreatorsCore() {
   // Production state management
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const [creatorsState, setCreatorsState] = useState<MiniAppCreatorsState>({
     activeTab: (searchParams?.get('tab') as any) || 'all',
     viewMode: 'grid',
@@ -411,7 +411,7 @@ function MiniAppCreatorsCore() {
     socialUser,
     hasSocialContext 
   } = useMiniApp()
-  const { data: isCreator } = useIsCreatorRegistered(address)
+  const { data: isCreator } = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
   
   // Enhanced creators data with your existing patterns
   const filters: CreatorFilters = useMemo(() => ({
@@ -521,13 +521,13 @@ function MiniAppCreatorsCore() {
       trackCreatorInteraction('page_viewed', {
         tab: creatorsState.activeTab,
         has_social_context: hasSocialContext,
-        is_connected: isConnected,
+        is_connected: walletUI.isConnected,
         is_creator: isCreator || false,
         user_fid: socialUser?.fid || null,
         total_creators: stats.totalCreators
       })
     }
-  }, [isReady, isMiniApp, creatorsState.activeTab, hasSocialContext, isConnected, isCreator, socialUser, stats.totalCreators, trackCreatorInteraction])
+  }, [isReady, isMiniApp, creatorsState.activeTab, hasSocialContext, walletUI.isConnected, isCreator, socialUser, stats.totalCreators, trackCreatorInteraction])
   
   // ================================================
   // PRODUCTION RENDER COMPONENTS

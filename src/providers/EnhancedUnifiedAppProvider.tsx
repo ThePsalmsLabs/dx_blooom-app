@@ -47,7 +47,8 @@ import React, {
   useCallback
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 
@@ -605,9 +606,9 @@ export function EnhancedUnifiedAppProvider({
   const [enhancedState, dispatch] = useReducer(enhancedUnifiedAppReducer, initialEnhancedState)
   
   // Integration hooks
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
-  const { data: isCreatorRegistered } = useIsCreatorRegistered(address || undefined)
+  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address || undefined)
   const pathname = usePathname()
   const router = useRouter()
   

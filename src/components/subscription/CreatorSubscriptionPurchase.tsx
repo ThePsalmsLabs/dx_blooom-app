@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/components/ui/toast'
 import { formatCurrency, formatAddress } from '@/lib/utils'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { type Address } from 'viem'
 import { 
   Calendar, 
@@ -46,7 +46,7 @@ export function CreatorSubscriptionPurchase({
   variant = 'default',
   className
 }: CreatorSubscriptionPurchaseProps) {
-  const { address: userAddress, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { toast } = useToast()
   const chainId = useChainId()
   

@@ -24,7 +24,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   ArrowLeft,
   Shield,
@@ -114,12 +114,12 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
 
   // Navigation and wallet state
   const router = useRouter()
-  const { address: userAddress, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Core data hooks for content and purchase flow
   const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(userAddress as `0x${string}` | undefined, contentId)
-  const purchaseFlow = useContentPurchaseFlow(contentId, userAddress as `0x${string}` | undefined)
+  const accessQuery = useHasContentAccess(walletUI.address as `0x${string}` | undefined, contentId)
+  const purchaseFlow = useContentPurchaseFlow(contentId, walletUI.address as `0x${string}` | undefined)
 
   // Purchase intent state management
   const [intentState, setIntentState] = useState<PurchaseIntentState>({
@@ -184,7 +184,7 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
    * to purchase, initiating the blockchain transaction with proper validation.
    */
   const handleConfirmPurchase = useCallback(() => {
-    if (!isConnected || !userAddress) {
+    if (!walletUI.isConnected || !walletUI.address) {
       setIntentState(prev => ({
         ...prev,
         lastError: new Error('Wallet connection required for purchase'),
@@ -224,7 +224,7 @@ export default function PurchaseConfirmationPage({ params }: PurchaseConfirmatio
         userHasConfirmed: false
       }))
     }
-  }, [isConnected, userAddress, purchaseFlow])
+  }, [walletUI.isConnected, walletUI.address, purchaseFlow])
 
   /**
    * Transaction Modal Dismissal Handler

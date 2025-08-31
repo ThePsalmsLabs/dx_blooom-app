@@ -6,7 +6,8 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { type Address } from 'viem'
 
 // Import existing performance monitoring system (placeholder export)
@@ -340,7 +341,7 @@ const performanceCollector = new MiniAppPerformanceCollector()
  * - Follows your established error handling and recovery strategies
  */
 export function useMiniAppPerformanceMetrics(contentId?: bigint) {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   
   // Integration with existing systems
@@ -402,7 +403,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         context: {
           ...event.context,
           contentId: contentId || event.context?.contentId,
-          userAddress: address || event.context?.userAddress,
+          userAddress: walletUI.address || event.context?.userAddress,
           clientInfo: {
             name: capabilities.capabilities?.details.clientInfo.name || 'unknown',
             version: capabilities.capabilities?.details.clientInfo.version || 'unknown',
@@ -428,7 +429,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         errorState: errorHandling.miniAppErrors.length > 0,
         timestamp: Date.now(),
         chainId,
-        userAddress: address
+        userAddress: walletUI.address
       }
 
       // Send to existing analytics system using your established patterns
@@ -441,9 +442,9 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
       }
 
       // Update subgraph analytics if available
-      if (contentId && address && hasTrackPerformanceMetrics(subgraphQueryService)) {
+      if (contentId && walletUI.address && hasTrackPerformanceMetrics(subgraphQueryService)) {
         try {
-          await subgraphQueryService.trackPerformanceMetrics(contentId, address as Address, enhancedEvent)
+          await subgraphQueryService.trackPerformanceMetrics(contentId, walletUI.address as Address, enhancedEvent)
         } catch (subgraphError) {
           console.warn('Subgraph performance tracking failed:', subgraphError)
           // Continue with local tracking - don't fail the entire operation
@@ -462,7 +463,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         {
           originalError: error instanceof Error ? error : new Error('Unknown tracking error'),
           contentId,
-          userAddress: address,
+          userAddress: walletUI.address,
           context: { operation: 'trackMiniAppMetrics' }
         }
       )
@@ -475,7 +476,7 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
   }, [
     baseMetrics,
     contentId,
-    address,
+    walletUI.address,
     chainId,
     capabilities.capabilities,
     capabilities.enhancementLevel,
@@ -505,11 +506,11 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         context: {
           frameType,
           contentId,
-          userAddress: address
+          userAddress: walletUI.address
         }
       })
     }
-  }, [trackMiniAppMetrics, endTimer, contentId, address])
+  }, [trackMiniAppMetrics, endTimer, contentId, walletUI.address])
 
   /**
    * Track Payment Performance
@@ -532,11 +533,11 @@ export function useMiniAppPerformanceMetrics(contentId?: bigint) {
         context: {
           paymentMethod,
           contentId,
-          userAddress: address
+          userAddress: walletUI.address
         }
       })
     }
-  }, [trackMiniAppMetrics, endTimer, contentId, address])
+  }, [trackMiniAppMetrics, endTimer, contentId, walletUI.address])
 
   /**
    * Get Performance Recommendations

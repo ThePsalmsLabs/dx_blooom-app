@@ -25,7 +25,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   ChevronRight,
   Home,
@@ -170,10 +170,10 @@ export function ResponsiveNavigation({
     }
   }, [searchParams.toString()])
   
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Creator status for navigation personalization
-  const creatorRegistration = useIsCreatorRegistered(address)
+  const creatorRegistration = useIsCreatorRegistered(walletUI.address)
 
   // Navigation context state management
   const [contextState, setContextState] = useState<NavigationContextState>({
@@ -288,13 +288,13 @@ export function ResponsiveNavigation({
         {
           id: 'wallet_connect',
           label: 'Connect Wallet',
-          status: isConnected ? 'completed' : 'active',
+          status: walletUI.isConnected ? 'completed' : 'active',
           description: 'Connect your wallet to get started'
         },
         {
           id: 'role_selection',
           label: 'Choose Role',
-          status: isConnected ? 'active' : 'pending',
+          status: walletUI.isConnected ? 'active' : 'pending',
           description: 'Are you a creator or consumer?'
         },
         {
@@ -310,12 +310,12 @@ export function ResponsiveNavigation({
         steps,
         currentStep: steps.findIndex(step => step.status === 'active'),
         canNavigateBack: false,
-        canNavigateForward: isConnected
+        canNavigateForward: walletUI.isConnected
       }
     }
 
     return undefined
-  }, [currentContext, creatorRegistration.data, isConnected])
+  }, [currentContext, creatorRegistration.data, walletUI.isConnected])
 
   // Update context state when dependencies change
   useEffect(() => {
@@ -334,7 +334,7 @@ export function ResponsiveNavigation({
   // Navigation action handlers
   const handleBreadcrumbClick = useCallback((item: BreadcrumbNavItem) => {
     // Check access requirements before navigation
-    if (item.requiresWallet && !isConnected) {
+    if (item.requiresWallet && !walletUI.isConnected) {
       // Could trigger wallet connection modal here
       return
     }
@@ -345,7 +345,7 @@ export function ResponsiveNavigation({
     }
 
     router.push(item.href)
-  }, [isConnected, creatorRegistration.data, router])
+  }, [walletUI.isConnected, creatorRegistration.data, router])
 
   const handleWorkflowNavigation = useCallback((direction: 'back' | 'forward') => {
     if (!workflowState) return

@@ -32,7 +32,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   Shield,
   CheckCircle,
@@ -241,8 +241,8 @@ export function CreatorVerificationPanel({
   onVerificationChange,
   className
 }: CreatorVerificationPanelProps) {
-  const { address: connectedAddress } = useAccount()
-  const targetAddress = creatorAddress || connectedAddress
+  const walletUI = useWalletConnectionUI()
+  const targetAddress = creatorAddress || walletUI.address
 
   // Get verification data and functionality from our hook
   const {
@@ -258,7 +258,7 @@ export function CreatorVerificationPanel({
     refreshVerificationData,
     isLoading,
     error
-  } = useCreatorVerification(targetAddress)
+  } = useCreatorVerification(targetAddress as `0x${string}`)
 
   // Local state for UI management
   const [currentStep, setCurrentStep] = useState<string>('status')

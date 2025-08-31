@@ -7,13 +7,14 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { ContentCarousel } from '@/components/ui/carousel'
 import { Eye, Lock, Unlock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   useActiveContentPaginated,
   useContentById,
   useHasContentAccess,
   useCreatorProfile
 } from '@/hooks/contracts/core'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 import { formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 import { OrchestratedContentPurchaseCard } from './OrchestratedContentPurchaseCard'
@@ -31,7 +32,7 @@ export function ContentCarouselWrapper({
   autoPlay = true,
   className
 }: ContentCarouselWrapperProps) {
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Get content data
   const contentQuery = useActiveContentPaginated(0, itemsPerView)
@@ -43,12 +44,12 @@ export function ContentCarouselWrapper({
     <ContentCarouselCard
       key={contentId.toString()}
       contentId={contentId}
-      userAddress={userAddress}
+      userAddress={walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined}
     />
   ))
 
   return (
-    <div className={className}>
+    <div className={cn('w-full', className)}>
       <ContentCarousel
         content={contentComponents}
         autoPlay={autoPlay}
@@ -99,56 +100,56 @@ function ContentCarouselCard({
   const content = contentQuery.data
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full">
+    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 h-full min-w-[380px] max-w-[480px] mx-auto">
       {/* Content Preview */}
       <div className="aspect-video bg-muted flex items-center justify-center relative">
         <Eye className="h-12 w-12 text-muted-foreground" />
         {accessControl.data !== undefined && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-3 right-3">
             <AccessStatusBadge hasAccess={accessControl.data} />
           </div>
         )}
       </div>
 
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-5 px-6">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-2 text-base leading-tight">
+          <CardTitle className="line-clamp-2 text-xl leading-snug font-semibold">
             {content.title}
           </CardTitle>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 flex-1">
-        <CardDescription className="line-clamp-3 mb-3 text-sm">
+      <CardContent className="pt-0 px-6 pb-5 flex-1">
+        <CardDescription className="line-clamp-3 mb-5 text-sm leading-relaxed">
           {content.description}
         </CardDescription>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <Badge variant="secondary" className="text-xs">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Badge variant="secondary" className="text-xs px-3 py-1.5 font-medium">
               {categoryToString(content.category)}
             </Badge>
-            <span className="font-medium">
+            <span className="font-bold text-xl text-primary">
               {formatCurrency(content.payPerViewPrice)}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Avatar className="h-4 w-4">
-              <AvatarFallback className="text-xs">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Avatar className="h-6 w-6">
+              <AvatarFallback className="text-xs font-medium">
                 {formatAddress(content.creator).slice(0, 2)}
               </AvatarFallback>
             </Avatar>
-            <span>by {formatAddress(content.creator)}</span>
+            <span className="truncate font-medium">by {formatAddress(content.creator)}</span>
           </div>
 
-          <div className="text-xs text-muted-foreground">
+          <div className="text-sm text-muted-foreground font-medium">
             {formatRelativeTime(content.creationTime)}
           </div>
         </div>
       </CardContent>
 
-      <CardFooter className="pt-0">
+      <CardFooter className="pt-0 px-6 pb-6">
         <div className="w-full">
           <OrchestratedContentPurchaseCard
             contentId={contentId}

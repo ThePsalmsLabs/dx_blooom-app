@@ -10,7 +10,7 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 import { VerifiedCreatorCard } from './VerificationEligibility'
 import { VerificationEligibilityCard } from './VerificationEligibility'
@@ -54,8 +54,8 @@ export function CreatorVerificationStatus({
 }: { 
   userAddress?: string 
 }) {
-  const { address } = useAccount()
-  const creatorAddress = userAddress || address
+  const walletUI = useWalletConnectionUI()
+  const creatorAddress = userAddress || walletUI.address
 
   // Get creator data (using your existing hooks)
   const creatorProfile = useCreatorProfile(creatorAddress as `0x${string}`)
@@ -116,5 +116,5 @@ export function CreatorVerificationStatus({
     return <VerificationEligibilityCard eligibilityCheck={eligibilityCheck} />
   }
 
-  return <VerificationApplicationCard creatorAddress={creatorAddress} />
+  return <VerificationApplicationCard creatorAddress={creatorAddress as `0x${string}`} />
 } 

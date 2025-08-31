@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { useAccount, useDisconnect } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useRouter } from 'next/navigation'
 
 // Define what information we track about authenticated users
@@ -33,8 +33,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { address, isConnected } = useAccount()
-  const { disconnect } = useDisconnect()
+  const walletUI = useWalletConnectionUI()
   const router = useRouter()
   
   // State for tracking user information
@@ -44,17 +43,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // This effect runs whenever the wallet connection status changes
   // It automatically updates the user state when wallets connect or disconnect
   useEffect(() => {
-    if (isConnected && address) {
+    if (walletUI.isConnected && walletUI.address) {
       // When a wallet connects, create a user object
       setUser({
-        address,
+        address: walletUI.address,
         isCreator: false, // We'll check this against the CreatorRegistry contract later
       })
     } else {
       // When wallet disconnects, clear user state
       setUser(null)
     }
-  }, [isConnected, address])
+  }, [walletUI.isConnected, walletUI.address])
 
   // Function to handle user login
   // In Web3 apps, "login" usually means connecting a wallet
@@ -73,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Function to handle user logout
   const logout = () => {
-    disconnect()
+    walletUI.disconnect()
     setUser(null)
     router.push('/')
   }

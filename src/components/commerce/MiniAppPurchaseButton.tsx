@@ -394,8 +394,8 @@ export function MiniAppPurchaseButton({
         disabled: !socialFlow.canShare,
         icon: Share2,
         text: socialFlow.canShare ? 'Share' : 'Owned',
-        className: socialFlow.canShare 
-          ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100' 
+        className: socialFlow.canShare
+          ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
           : 'bg-green-100 text-green-700 cursor-default'
       }
     }
@@ -420,7 +420,7 @@ export function MiniAppPurchaseButton({
         disabled: false,
         icon: Zap,
         text: 'Approve & Purchase',
-        className: 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 border-0 shadow-lg'
+        className: 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 border-0 shadow-lg cursor-pointer'
       }
     }
 
@@ -431,7 +431,7 @@ export function MiniAppPurchaseButton({
       disabled: false,
       icon: ShoppingCart,
       text: 'Purchase',
-      className: 'bg-green-600 hover:bg-green-700 text-white'
+              className: 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
     }
   }, [
     disabled,

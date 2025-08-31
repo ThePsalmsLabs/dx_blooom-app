@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWalletConnectionUI } from '@/hooks/ui/integration';
 import { formatUnits, type Address } from 'viem';
 import { getContractAddresses } from '@/lib/contracts/config';
 import { PRICE_ORACLE_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI } from '@/lib/contracts/abis';
@@ -321,7 +322,7 @@ export function useEnterpriseSecurityValidation() {
  * contract with proper intent creation, signature polling, and execution.
  */
 export function useEnterpriseSwapExecution() {
-  const { address } = useAccount();
+  const walletUI = useWalletConnectionUI();
   const chainId = useChainId();
   const [executionState, setExecutionState] = useState<SwapExecutionState>({
     step: 'idle',
@@ -366,7 +367,7 @@ export function useEnterpriseSwapExecution() {
     slippageTolerance: number = 0.5
   ): Promise<{ success: boolean; intentId?: string; error?: string }> => {
     
-    if (!address || !contractAddresses) {
+    if (!walletUI.address || !contractAddresses) {
       const error = 'Wallet not connected or contracts unavailable';
       setExecutionState(prev => ({ ...prev, step: 'error', error }));
       return { success: false, error };
@@ -394,7 +395,7 @@ export function useEnterpriseSwapExecution() {
       // Create payment request for swap (using special contentId = 0 for swaps)
       const paymentRequest: PlatformPaymentRequest = {
         paymentType: 0, // PayPerView type - your backend will handle this as a swap
-        creator: address, // For swaps, user is both creator and recipient
+        creator: walletUI.address, // For swaps, user is both creator and recipient
         contentId: BigInt(0), // Special contentId for swaps
         paymentToken: fromToken.address,
         maxSlippage: slippageBps,
@@ -445,7 +446,7 @@ export function useEnterpriseSwapExecution() {
       
       return { success: false, error: errorMessage };
     }
-  }, [address, contractAddresses, writeContract]);
+  }, [walletUI.address, contractAddresses, writeContract]);
 
   /**
    * Poll backend for signature once intent is created

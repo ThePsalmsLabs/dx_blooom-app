@@ -21,7 +21,133 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { type Address } from 'viem'
-import { ContentCategory } from '@/types/contracts'
+import { categoryToString, ContentCategory } from '@/types/contracts'
+
+// ===== FILE TYPE MAPPING SYSTEM =====
+// Maps MIME types to content categories for automatic categorization
+
+/**
+ * Maps MIME types to content categories for automatic categorization
+ * This helps users by suggesting appropriate categories based on their file type
+ */
+export function getContentCategoryFromFileType(mimeType: string): ContentCategory | null {
+  const fileTypeMappings: Record<string, ContentCategory> = {
+    // Images
+    'image/jpeg': ContentCategory.IMAGE,
+    'image/png': ContentCategory.IMAGE,
+    'image/gif': ContentCategory.IMAGE,
+    'image/webp': ContentCategory.IMAGE,
+    'image/svg+xml': ContentCategory.IMAGE,
+
+    // Videos
+    'video/mp4': ContentCategory.VIDEO,
+    'video/webm': ContentCategory.VIDEO,
+    'video/mov': ContentCategory.VIDEO,
+    'video/avi': ContentCategory.VIDEO,
+
+    // Audio
+    'audio/mpeg': ContentCategory.AUDIO,
+    'audio/wav': ContentCategory.AUDIO,
+    'audio/ogg': ContentCategory.AUDIO,
+    'audio/mp3': ContentCategory.AUDIO,
+
+    // Documents
+    'application/pdf': ContentCategory.DOCUMENT,
+    'text/plain': ContentCategory.DOCUMENT,
+    'text/markdown': ContentCategory.DOCUMENT,
+    'text/x-markdown': ContentCategory.DOCUMENT,
+    'text/html': ContentCategory.DOCUMENT,
+    'text/csv': ContentCategory.DATA,
+    'application/csv': ContentCategory.DATA,
+    'application/msword': ContentCategory.DOCUMENT,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ContentCategory.DOCUMENT,
+
+    // Code/Software
+    'text/javascript': ContentCategory.SOFTWARE,
+    'text/css': ContentCategory.SOFTWARE,
+    'application/json': ContentCategory.DATA,
+    'application/octet-stream': ContentCategory.SOFTWARE, // Generic binary files
+    'application/zip': ContentCategory.SOFTWARE,
+    'application/x-rar-compressed': ContentCategory.SOFTWARE
+  }
+
+  return fileTypeMappings[mimeType] || null
+}
+
+/**
+ * Gets recommended content categories for a given file type
+ * Returns an array of suggested categories, with the primary recommendation first
+ */
+export function getRecommendedCategoriesForFileType(mimeType: string): ContentCategory[] {
+  const primaryCategory = getContentCategoryFromFileType(mimeType)
+
+  if (!primaryCategory) {
+    return [ContentCategory.DOCUMENT, ContentCategory.SOFTWARE, ContentCategory.DATA]
+  }
+
+  // Return primary category first, then related alternatives
+  const categoryAlternatives: Record<ContentCategory, ContentCategory[]> = {
+    [ContentCategory.ARTICLE]: [ContentCategory.DOCUMENT, ContentCategory.COURSE],
+    [ContentCategory.VIDEO]: [ContentCategory.COURSE, ContentCategory.SOFTWARE],
+    [ContentCategory.AUDIO]: [ContentCategory.COURSE, ContentCategory.DOCUMENT],
+    [ContentCategory.IMAGE]: [ContentCategory.ARTICLE, ContentCategory.DOCUMENT],
+    [ContentCategory.DOCUMENT]: [ContentCategory.ARTICLE, ContentCategory.COURSE],
+    [ContentCategory.COURSE]: [ContentCategory.ARTICLE, ContentCategory.VIDEO],
+    [ContentCategory.SOFTWARE]: [ContentCategory.COURSE, ContentCategory.DOCUMENT],
+    [ContentCategory.DATA]: [ContentCategory.SOFTWARE, ContentCategory.DOCUMENT]
+  }
+
+  return [primaryCategory, ...categoryAlternatives[primaryCategory]]
+}
+
+/**
+ * Validates if a file type is supported by the platform
+ * Returns detailed information about the file type support
+ */
+export function validateFileTypeSupport(mimeType: string): {
+  isSupported: boolean
+  category: ContentCategory | null
+  recommendations: ContentCategory[]
+  message: string
+} {
+  const supportedTypes = [
+    // Images
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    // Videos
+    'video/mp4', 'video/webm', 'video/mov', 'video/avi',
+    // Audio
+    'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3',
+    // Documents
+    'application/pdf', 'text/plain', 'text/markdown', 'text/x-markdown', 'text/html',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    // Archives & Code
+    'application/zip', 'application/x-rar-compressed',
+    'text/javascript', 'text/css', 'application/json', 'text/csv', 'application/csv',
+    'application/octet-stream'
+  ]
+
+  const isSupported = supportedTypes.includes(mimeType) || !mimeType
+  const category = getContentCategoryFromFileType(mimeType)
+  const recommendations = getRecommendedCategoriesForFileType(mimeType)
+
+  let message = ''
+  if (isSupported) {
+    if (category) {
+      message = `Perfect! This file type is supported and will be categorized as "${categoryToString(category)}".`
+    } else {
+      message = 'This file type is supported. Please select an appropriate category for your content.'
+    }
+  } else {
+    message = `Sorry, "${mimeType}" is not supported. Please try uploading a different file format.`
+  }
+
+  return {
+    isSupported,
+    category,
+    recommendations,
+    message
+  }
+}
 
 // ===== CORE UI UTILITIES =====
 // These functions handle styling and className management

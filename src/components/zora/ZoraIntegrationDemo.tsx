@@ -8,7 +8,8 @@
  */
 
 import React, { useState, useCallback } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Address, parseEther } from 'viem'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,7 +50,7 @@ interface NFTMintOptions {
 }
 
 export function ZoraIntegrationDemo() {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   
   // Zora integration hooks
@@ -61,7 +62,7 @@ export function ZoraIntegrationDemo() {
   const { totalNFTs, totalMinted, totalVolume, formattedVolume, formattedAveragePrice } = useZoraCollectionAnalytics(collectionAddress as Address)
   
   // Creator status
-  const { data: isCreatorRegistered } = useIsCreatorRegistered(address)
+  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address)
   
   // Form state
   const [contentData, setContentData] = useState<ContentFormData>({
@@ -119,16 +120,16 @@ export function ZoraIntegrationDemo() {
   }, [])
 
   const handlePublishWithNFT = useCallback(async () => {
-    if (!address) return
+    if (!walletUI.address) return
 
     try {
       await publishWithOptionalNFT(contentData, nftOptions)
     } catch (error) {
       console.error('Failed to publish with NFT:', error)
     }
-  }, [publishWithOptionalNFT, contentData, nftOptions, address])
+  }, [publishWithOptionalNFT, contentData, nftOptions, walletUI.address])
 
-  if (!address) {
+  if (!walletUI.address) {
     return (
       <Card>
         <CardHeader>

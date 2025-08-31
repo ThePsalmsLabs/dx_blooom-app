@@ -35,7 +35,9 @@
 
 import { ReactNode, createContext, useContext, useMemo, useState, useEffect, useRef, useReducer } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { useConnect, useDisconnect } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
+import { usePrivy } from '@privy-io/react-auth'
 import { useQueryClient } from '@tanstack/react-query'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
@@ -693,13 +695,18 @@ export function UnifiedAppProvider({
   const { connectionQuality } = usePerformanceMonitoring()
 
   // ===== EXISTING HOOK INTEGRATIONS =====
-  
+
   const router = useRouter()
   const pathname = usePathname()
-  const { address, isConnected } = useAccount()
+  const { user, authenticated, logout } = usePrivy() // Use Privy for connection state and logout
+  const walletUI = useWalletConnectionUI() // Use unified wallet UI for consistent state
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
   const queryClient = useQueryClient()
+
+  // Use unified wallet UI state for consistent synchronization
+  const isConnected = walletUI.isConnected
+  const address = walletUI.address
 
   // Navigation hook integration
   const navigationSections = useAppNavigation(state.user.userRole)
@@ -887,8 +894,16 @@ export function UnifiedAppProvider({
       }
     },
 
-    disconnectWallet: () => {
-      disconnect()
+    disconnectWallet: async () => {
+      console.log('🔌 UnifiedAppProvider: Using Privy logout for proper synchronization')
+      try {
+        await logout()
+        console.log('✅ UnifiedAppProvider: Successfully logged out via Privy')
+      } catch (error) {
+        console.error('❌ UnifiedAppProvider: Error during Privy logout:', error)
+        // Fallback to wagmi disconnect if Privy fails
+        disconnect()
+      }
     },
 
     updateUserRole: (role: UserRole) => {

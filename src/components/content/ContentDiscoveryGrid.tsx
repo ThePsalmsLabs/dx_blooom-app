@@ -74,7 +74,7 @@ import {
   useHasContentAccess,
   useCreatorProfile
 } from '@/hooks/contracts/core'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 import { ContentCategory, categoryToString } from '@/types/contracts'
@@ -146,7 +146,7 @@ export function ContentDiscoveryGrid({
   className
 }: ContentDiscoveryGridProps) {
   // Wallet connection for access control
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Filter and view state management
   const [filters, setFilters] = useState<ContentFilters>({

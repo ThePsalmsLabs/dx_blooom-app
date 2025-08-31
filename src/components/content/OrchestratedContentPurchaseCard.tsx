@@ -41,7 +41,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount, useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance, useSendCalls } from 'wagmi'
+import { useWriteContract, useReadContract, useChainId, useWaitForTransactionReceipt, useBalance, useSendCalls } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { type Address, encodeFunctionData } from 'viem'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { 
@@ -532,7 +533,7 @@ export function OrchestratedContentPurchaseCard({
   enablePerformanceMetrics = false
 }: OrchestratedContentPurchaseCardProps) {
   const router = useRouter()
-  const { address: connectedAddress, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   
   // Safe contract configuration
@@ -545,13 +546,13 @@ export function OrchestratedContentPurchaseCard({
     }
   }, [chainId])
   
-  // Use connected address if no userAddress provided
-  const effectiveUserAddress = userAddress || connectedAddress
+  // Use wallet UI address if no userAddress provided
+  const effectiveUserAddress = userAddress || walletUI.address
 
   // ===== CORE DATA HOOKS (Always Active) =====
   // These are lightweight and only fetch basic content info
   const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(effectiveUserAddress, contentId)
+  const accessQuery = useHasContentAccess(effectiveUserAddress as `0x${string}` | undefined, contentId)
 
   // ===== PAYMENT INTENT STATE MANAGEMENT =====
   const [paymentState, setPaymentState] = useState<SimplifiedPaymentState>({
@@ -817,13 +818,13 @@ export function OrchestratedContentPurchaseCard({
 
   // Token balance hooks - ONLY enabled after payment intent expressed
   const usdcBalance = useTokenBalance(
-    paymentDataEnabled && !!contractAddresses?.USDC && !!effectiveUserAddress ? contractAddresses.USDC : undefined, 
-    paymentDataEnabled && !!effectiveUserAddress ? effectiveUserAddress : undefined
+    paymentDataEnabled && !!contractAddresses?.USDC && !!effectiveUserAddress ? contractAddresses.USDC : undefined,
+    paymentDataEnabled && !!effectiveUserAddress ? effectiveUserAddress as `0x${string}` : undefined
   )
   
   const ethBalance = useBalance({
-    address: effectiveUserAddress,
-    query: { 
+    address: effectiveUserAddress as `0x${string}` | undefined,
+    query: {
       enabled: paymentDataEnabled && !!effectiveUserAddress,
       refetchInterval: 30000
     }
@@ -832,7 +833,7 @@ export function OrchestratedContentPurchaseCard({
   // USDC allowance checking - ONLY enabled after payment intent expressed
   const usdcAllowance = useTokenAllowance(
     paymentDataEnabled && !!contractAddresses?.USDC && !!effectiveUserAddress ? contractAddresses.USDC : undefined,
-    paymentDataEnabled && !!effectiveUserAddress ? effectiveUserAddress : undefined,
+    paymentDataEnabled && !!effectiveUserAddress ? effectiveUserAddress as `0x${string}` : undefined,
     paymentDataEnabled && !!contractAddresses?.PAY_PER_VIEW ? contractAddresses.PAY_PER_VIEW : undefined
   )
   
@@ -1597,7 +1598,7 @@ export function OrchestratedContentPurchaseCard({
 
         <CardFooter className="space-y-3 w-full pb-4">
           {/* Connection Required - Show first if not connected */}
-          {!isConnected && (
+          {!walletUI.isConnected && (
             <Button variant="outline" className="w-full" disabled>
               <Wallet className="h-4 w-4 mr-2" />
               Connect Wallet to Purchase
@@ -1605,7 +1606,7 @@ export function OrchestratedContentPurchaseCard({
           )}
 
           {/* BROWSING Phase - Initial purchase button */}
-          {paymentState.phase === PaymentIntentPhase.BROWSING && isConnected && (
+          {paymentState.phase === PaymentIntentPhase.BROWSING && walletUI.isConnected && (
             <Button 
               className="w-full" 
               onClick={handleExpressPurchaseIntent}
@@ -1616,7 +1617,7 @@ export function OrchestratedContentPurchaseCard({
           )}
 
           {/* SELECTING_METHOD Phase - Show method selection or direct purchase */}
-          {paymentState.phase === PaymentIntentPhase.SELECTING_METHOD && isConnected && (
+          {paymentState.phase === PaymentIntentPhase.SELECTING_METHOD && walletUI.isConnected && (
             <div className="w-full space-y-2">
               {enableMultiPayment ? (
                 <Button 
@@ -1640,7 +1641,7 @@ export function OrchestratedContentPurchaseCard({
           )}
 
           {/* PROCESSING Phase - Show method-specific purchase buttons */}
-          {paymentState.phase === PaymentIntentPhase.PROCESSING && isConnected && (
+          {paymentState.phase === PaymentIntentPhase.PROCESSING && walletUI.isConnected && (
             <div className="w-full space-y-2">
               {/* USDC Purchase Button */}
               {paymentState.selectedMethod === PaymentMethod.USDC && (

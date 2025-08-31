@@ -138,3 +138,4 @@ Visit `/basenames` to see:
 4. **Add More Locations** - Integrate Basenames in content cards, transaction history, etc.
 
 The integration is complete and ready for use! 🎉
+

@@ -46,7 +46,7 @@ import React, {
   } from 'react'
   import { ErrorBoundary } from 'react-error-boundary'
   import { useRouter, usePathname } from 'next/navigation'
-  import { useAccount, useChainId } from 'wagmi'
+  import { useChainId } from 'wagmi'
   import { WagmiProvider } from 'wagmi'
   import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
   import {

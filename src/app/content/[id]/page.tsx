@@ -19,7 +19,7 @@
 
 import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   ArrowLeft,
   Share2,
@@ -112,8 +112,11 @@ interface ContentAccessState {
  */
 export default function ContentDisplayPage({ params }: ContentDisplayPageProps) {
   const router = useRouter()
-  const { address: userAddress, isConnected } = useAccount()
-  
+  const walletUI = useWalletConnectionUI()
+
+  // Extract user address from wallet UI
+  const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
+
   // Unwrap params using React.use() for Next.js 15 compatibility
   const unwrappedParams = React.use(params) as { readonly id: string }
   
@@ -345,7 +348,7 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
                   <AccessStatusCard
                     accessState={accessState}
                     onViewContent={() => handleViewContent(contentId)}
-                    isConnected={isConnected}
+                    isConnected={walletUI.isConnected}
                   />
                 )}
 
@@ -726,7 +729,7 @@ function AccessStatusCard({
             </Button>
           )}
           
-          {!isConnected && accessState.status !== 'accessible' && (
+          {!walletUI.isConnected && accessState.status !== 'accessible' && (
             <p className="text-xs text-gray-500 mt-2">
               Connect your wallet to check access status
             </p>

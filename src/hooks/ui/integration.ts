@@ -25,7 +25,7 @@
  */
 "use client";
 
-import { useMemo, useCallback, useState, useEffect } from 'react'
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { useChainId } from 'wagmi'
 import { useLogin, useLogout, usePrivy } from '@privy-io/react-auth'
 import { useMiniAppWalletContext } from '@/contexts/MiniAppWalletContext'
@@ -502,7 +502,14 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
       // Send to parent window (in case we're in an iframe)
       sendWalletStateToParent(walletState)
 
-      console.log('🌐 Web wallet state updated:', walletState)
+      // Only log in development and throttle to reduce console spam
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🌐 Web wallet state updated:', {
+          isConnected: walletState.isConnected,
+          address: `${walletState.address.slice(0, 6)}...${walletState.address.slice(-4)}`,
+          chainId: walletState.chainId
+        })
+      }
     }
   }, [isConnected, user?.wallet?.address, chainId])
 
@@ -515,19 +522,40 @@ export function useWalletConnectionUI(): EnhancedWalletConnectionUI {
   const isConnecting = !ready
   const address = user?.wallet?.address || null
 
-  // Debug logging to help identify the issue (always enabled in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 useWalletConnectionUI Debug (Privy-only):', {
-      ready,
-      authenticated,
-      isConnected,
-      isConnecting,
-      userWallet: user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : null,
-      userEmail: user?.email?.address || null,
-      hasUser: !!user,
-      userLinkedAccounts: user?.linkedAccounts?.length || 0
-    })
-  }
+  // Track previous values to reduce console spam
+  const prevDebugState = useRef<{
+    ready: boolean
+    authenticated: boolean
+    isConnected: boolean
+    address: string | null
+  } | null>(null)
+
+  // Debug logging to help identify the issue (throttled in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const currentDebugState = {
+        ready,
+        authenticated,
+        isConnected,
+        address
+      }
+
+      // Only log if values have actually changed
+      if (JSON.stringify(currentDebugState) !== JSON.stringify(prevDebugState.current)) {
+        console.log('🔍 useWalletConnectionUI Debug (Privy-only):', {
+          ready,
+          authenticated,
+          isConnected,
+          isConnecting,
+          userWallet: user?.wallet?.address ? `${user.wallet.address.slice(0, 6)}...${user.wallet.address.slice(-4)}` : null,
+          userEmail: user?.email?.address || null,
+          hasUser: !!user,
+          userLinkedAccounts: user?.linkedAccounts?.length || 0
+        })
+        prevDebugState.current = currentDebugState
+      }
+    }
+  }, [ready, authenticated, isConnected, address, user])
   
   /**
    * Return the Complete UI Interface

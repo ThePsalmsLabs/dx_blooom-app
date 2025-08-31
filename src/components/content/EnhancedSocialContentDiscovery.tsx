@@ -10,7 +10,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { formatUnits } from 'viem'
 import type { Address } from 'viem'
 
@@ -344,8 +344,8 @@ function useEnhancedContentData(
   pageSize: number = 20,
   filters?: Partial<ContentFilters>
 ) {
-  const { address: userAddress } = useAccount()
-  
+  const walletUI = useWalletConnectionUI()
+
   // Get paginated content IDs from your existing hook
   const contentQuery = useActiveContentPaginated(page, pageSize)
   const allCreatorsQuery = useAllCreators()
@@ -528,7 +528,7 @@ export default function EnhancedSocialContentDiscovery({
   onSocialShare
 }: EnhancedSocialContentDiscoveryProps) {
   const router = useRouter()
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Merge configuration with defaults
   const finalSocialConfig: SocialDiscoveryConfig = {

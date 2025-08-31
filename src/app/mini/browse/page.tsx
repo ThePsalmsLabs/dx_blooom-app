@@ -28,7 +28,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+// Wallet connection handled by useWalletConnectionUI below
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   Search,

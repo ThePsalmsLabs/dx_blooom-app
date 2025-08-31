@@ -8,7 +8,7 @@
 'use client'
 
 import React from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { CreatorVerificationStatus } from '@/components/creator/CreatorVerificationStatus'
 import { AdminVerificationDashboard } from '@/components/creator/AdminVerificationDashboard'
@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Shield, Users, CheckCircle, Clock } from 'lucide-react'
 
 export default function VerificationPage() {
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   return (
     <AppLayout>
@@ -37,7 +37,7 @@ export default function VerificationPage() {
           </div>
 
           {/* Connection Status */}
-          {!isConnected ? (
+          {!walletUI.isConnected ? (
             <Card className="max-w-md mx-auto">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function VerificationPage() {
               {/* Creator Verification Status */}
               <div>
                 <h2 className="text-2xl font-bold mb-4">Your Bloom Verification Status</h2>
-                <CreatorVerificationStatus userAddress={address} />
+                <CreatorVerificationStatus userAddress={walletUI.address || ''} />
               </div>
 
               {/* System Overview */}

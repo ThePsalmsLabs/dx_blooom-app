@@ -47,6 +47,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useAccount, useWriteContract, useChainId, usePublicClient } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Address, encodeFunctionData, parseEther } from 'viem'
 
 import {
@@ -273,7 +274,8 @@ interface BatchCapabilityDetectorProps {
 function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: BatchCapabilityDetectorProps) {
   const [capability, setCapability] = useState<BatchCapabilityInfo | null>(null)
   const [isDetecting, setIsDetecting] = useState(true)
-  const { address, connector } = useAccount()
+  const walletUI = useWalletConnectionUI()
+  const { connector } = useAccount()
   const miniApp = useMiniApp()
   const publicClient = usePublicClient()
   
@@ -298,8 +300,8 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
       try {
         // Detect account type first
         let accountType: 'eoa' | 'smart_account' = 'eoa'
-        if (address) {
-          accountType = await detectAccountType(address)
+        if (walletUI.address) {
+          accountType = await detectAccountType(walletUI.address)
         }
         
         // Simulate capability detection
@@ -341,7 +343,7 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
           mockCapability.limitations.push('MiniApp SDK version may not support batch transactions')
         }
         
-        if (!address) {
+        if (!walletUI.address) {
           mockCapability.limitations.push('Wallet not connected')
           mockCapability = {
             ...mockCapability,
@@ -381,7 +383,7 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
     }
     
     detectCapabilities()
-  }, [address, connector, miniApp, onCapabilityDetected])
+  }, [walletUI.address, connector, miniApp, onCapabilityDetected])
   
   if (isDetecting) {
     return (
@@ -896,7 +898,7 @@ export function BatchTransactionImplementation({
   })
   const [analytics, setAnalytics] = useState<Partial<BatchTransactionAnalytics>>({})
   
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { writeContract } = useWriteContract()
   const chainId = useChainId()
   const publicClient = usePublicClient()
@@ -920,13 +922,13 @@ export function BatchTransactionImplementation({
   
   // Build batch configuration when capabilities are detected
   useEffect(() => {
-    if (!capabilities || !address) return
+    if (!capabilities || !walletUI.address) return
     
     let builtConfig: BatchTransactionConfig
     
     if (paymentConfig.paymentMethod === 'usdc') {
       builtConfig = BatchTransactionBuilder.buildUSDCPaymentBatch(
-        address,
+        walletUI.address,
         paymentConfig.contractAddresses.USDC,
         paymentConfig.contractAddresses.COMMERCE_INTEGRATION,
         paymentConfig.amount,
@@ -937,7 +939,7 @@ export function BatchTransactionImplementation({
       // ETH payment batch configuration
       const paymentRequest = {
         paymentType: 0,
-        creator: address, // Simplified for demo
+        creator: walletUI.address, // Simplified for demo
         contentId: paymentConfig.contentId,
         paymentToken: '0x0000000000000000000000000000000000000000' as Address,
         maxSlippage: BigInt(200),
@@ -969,16 +971,16 @@ export function BatchTransactionImplementation({
       }))
     }))
     
-  }, [capabilities, address, paymentConfig, config])
+  }, [capabilities, walletUI.address, paymentConfig, config])
   
   // Execute batch transaction
   const executeBatchTransaction = useCallback(async () => {
-    if (!batchConfig || !capabilities || !address) {
+    if (!batchConfig || !capabilities || !walletUI.address) {
       throw new Error('Missing required configuration or wallet not connected')
     }
     
     // Detect account type first
-    const accountType = await detectAccountType(address)
+    const accountType = await detectAccountType(walletUI.address)
     
     // Check if batch transactions are supported and account type is compatible
     if (!capabilities.isSupported || accountType === 'eoa') {
@@ -1105,7 +1107,7 @@ export function BatchTransactionImplementation({
   
   // Execute the actual batch transaction
   const executeBatch = useCallback(async (): Promise<`0x${string}`> => {
-    if (!batchConfig || !address) throw new Error('No batch configuration or wallet not connected')
+    if (!batchConfig || !walletUI.address) throw new Error('No batch configuration or wallet not connected')
     
     // Check if we have batch transaction capability
     if (!capabilities?.isSupported) {
@@ -1113,7 +1115,7 @@ export function BatchTransactionImplementation({
     }
     
     // Verify account type again before execution
-    const accountType = await detectAccountType(address)
+    const accountType = await detectAccountType(walletUI.address)
     if (accountType === 'eoa') {
       throw new Error('Batch transactions require smart account - EOA detected')
     }
@@ -1148,7 +1150,7 @@ export function BatchTransactionImplementation({
       console.error('Batch execution failed:', error)
       throw new Error(`Batch transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-  }, [batchConfig, address, capabilities, detectAccountType])
+  }, [batchConfig, walletUI.address, capabilities, detectAccountType])
   
   // Confirm batch transaction on blockchain
   const confirmBatchTransaction = useCallback(async (txHash: `0x${string}`): Promise<void> => {

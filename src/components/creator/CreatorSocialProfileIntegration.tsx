@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import type { Address } from 'viem'
 
 // Import your existing hooks and components
@@ -369,7 +369,7 @@ export default function CreatorSocialProfileIntegration({
   editable = false
 }: CreatorSocialProfileIntegrationProps) {
   const router = useRouter()
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   
   // Merge configuration with defaults
   const finalSocialConfig: SocialProfileConfig = {

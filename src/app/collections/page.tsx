@@ -8,7 +8,7 @@
 'use client'
 
 import React from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 import { ZoraCollectionManager } from '@/components/creator/ZoraCollectionManager'
@@ -17,9 +17,9 @@ import { Badge } from '@/components/ui/badge'
 import { Sparkles, BarChart3, PlusCircle } from 'lucide-react'
 
 export default function CollectionsPage() {
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
-  if (!userAddress) {
+  if (!walletUI.address) {
     return (
       <AppLayout>
         <RouteGuards requiredLevel="public">
@@ -80,7 +80,7 @@ export default function CollectionsPage() {
               </CardHeader>
               <CardContent>
                 <ZoraCollectionManager
-                  creatorAddress={userAddress}
+                  creatorAddress={walletUI.address as `0x${string}`}
                   onCollectionCreated={(collectionAddress) => {
                     console.log('New collection created:', collectionAddress)
                   }}

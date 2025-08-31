@@ -68,7 +68,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
+import { cn, validateFileTypeSupport, getRecommendedCategoriesForFileType } from '@/lib/utils'
 
 // Import our UI integration hooks and utilities
 import { useContentPublishingUI } from '@/hooks/ui/integration'
@@ -379,18 +379,26 @@ export function ContentUploadForm({
       return
     }
     
-    // File type validation
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'video/mp4', 'video/webm', 'audio/mpeg', 'audio/wav',
-      'application/pdf', 'text/plain', 'text/markdown'
-    ]
-    if (!allowedTypes.includes(file.type)) {
+    // Enhanced file type validation with category suggestions
+    const fileTypeValidation = validateFileTypeSupport(file.type)
+
+    if (!fileTypeValidation.isSupported) {
       setValidationErrors(prev => ({
         ...prev,
-        file: `File type "${file.type}" not supported. Please use images, videos, audio, or documents.`
+        file: `File type "${file.type}" is not supported. Please use supported formats like JPEG, PNG, MP4, PDF, Markdown, etc.`
       }))
       return
+    }
+
+    // Auto-suggest category based on file type
+    if (fileTypeValidation.category && !formData.category) {
+      setFormData(prev => ({
+        ...prev,
+        category: fileTypeValidation.category
+      }))
+
+      // Show success message about auto-categorization
+      console.log(`🎯 Auto-categorized file as "${categoryToString(fileTypeValidation.category!)}"`)
     }
     
     // Check network status
@@ -572,7 +580,7 @@ export function ContentUploadForm({
             id="file-upload"
             type="file"
             onChange={handleFileSelect}
-            accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.gif,.mp4,.webm,.mp3,.wav"
+            accept=".txt,.md,.markdown,.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.mov,.avi,.mp3,.wav,.ogg,.csv,.json,.css,.js,.zip,.rar"
             className="hidden"
             disabled={isUploading}
           />
@@ -704,10 +712,30 @@ export function ContentUploadForm({
           </div>
           
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:w-full md:grid-cols-3">
-              <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="pricing">Pricing</TabsTrigger>
-              <TabsTrigger value="tags">Tags & Category</TabsTrigger>
+            <TabsList className="flex flex-row gap-1 sm:gap-2 md:gap-3 p-1 bg-gradient-to-r from-muted/50 to-muted/30 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm w-full overflow-x-auto scrollbar-hide">
+              <TabsTrigger
+                value="basic"
+                className="flex-1 min-w-[100px] sm:min-w-[120px] px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 hover:bg-background/80 hover:shadow-md data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:border-primary/20 flex items-center justify-center gap-1 sm:gap-2"
+              >
+                <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="truncate hidden sm:inline">Basic Info</span>
+                <span className="truncate sm:hidden">Basic</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="pricing"
+                className="flex-1 min-w-[90px] sm:min-w-[100px] px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 hover:bg-background/80 hover:shadow-md data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:border-primary/20 flex items-center justify-center gap-1 sm:gap-2"
+              >
+                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="truncate">Pricing</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="tags"
+                className="flex-1 min-w-[120px] sm:min-w-[140px] px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 hover:bg-background/80 hover:shadow-md data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:border-primary/20 flex items-center justify-center gap-1 sm:gap-2"
+              >
+                <Tag className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="truncate hidden sm:inline">Tags & Category</span>
+                <span className="truncate sm:hidden">Tags</span>
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="basic" className="space-y-4">
@@ -822,24 +850,63 @@ export function ContentUploadForm({
                 <Label htmlFor="category">Category *</Label>
                 <Select
                   value={formData.category?.toString() || ''}
-                  onValueChange={(value) => setFormData(prev => ({ 
-                    ...prev, 
-                    category: parseInt(value) as ContentCategory 
+                  onValueChange={(value) => setFormData(prev => ({
+                    ...prev,
+                    category: parseInt(value) as ContentCategory
                   }))}
                 >
-                  <SelectTrigger className={cn(validationErrors.category && 'border-red-500')}>
+                  <SelectTrigger className={cn(
+                    validationErrors.category && 'border-red-500',
+                    formData.category && 'border-green-500 bg-green-50'
+                  )}>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.values(ContentCategory)
                       .filter(value => typeof value === 'number')
-                      .map((category) => (
-                        <SelectItem key={category} value={category.toString()}>
-                          {categoryToString(category as ContentCategory)}
-                        </SelectItem>
-                      ))}
+                      .map((category) => {
+                        const isRecommended = formData.file && getRecommendedCategoriesForFileType(formData.file.type).includes(category as ContentCategory)
+                        return (
+                          <SelectItem
+                            key={category}
+                            value={category.toString()}
+                            className={cn(
+                              isRecommended && 'bg-blue-50 text-blue-700 font-medium',
+                              'relative'
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{categoryToString(category as ContentCategory)}</span>
+                              {isRecommended && (
+                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                                  Recommended
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        )
+                      })}
                   </SelectContent>
                 </Select>
+
+                {formData.file && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="text-sm">
+                        <p className="font-medium text-blue-800">File Type Detected</p>
+                        <p className="text-blue-700 mt-1">
+                          {validateFileTypeSupport(formData.file.type).message}
+                        </p>
+                        {formData.category && (
+                          <p className="text-green-600 mt-1 font-medium">
+                            ✓ Category auto-selected based on file type
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {validationErrors.category && (
                   <p className="text-sm text-red-500">{validationErrors.category}</p>
                 )}

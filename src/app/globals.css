@@ -5,6 +5,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Custom scrollbar utilities */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
 /* Privy Modal Z-Index Fix */
 /* Ensure Privy modals appear above all other content */
 /* Keep z-index overrides minimal to avoid hiding the modal unintentionally */

@@ -27,7 +27,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   Users,
   DollarSign,
@@ -113,15 +113,15 @@ interface SubscriptionManagementState {
  * intelligence while maintaining excellent performance and user experience.
  */
 export default function SubscriptionManagementPage() {
-  // Wallet connection and creator verification
-  const { address: userAddress, isConnected } = useAccount()
+  // Use unified wallet connection UI
+  const walletUI = useWalletConnectionUI()
   const router = useRouter()
 
   // Core creator data using our architectural layers
-  const creatorProfile = useCreatorProfile(userAddress as `0x${string}` | undefined)
-  const creatorContent = useCreatorContent(userAddress as `0x${string}` | undefined)
-  const pendingEarnings = useCreatorPendingEarnings(userAddress as `0x${string}` | undefined)
-  const dashboardUI = useCreatorDashboardUI(userAddress as `0x${string}` | undefined)
+  const creatorProfile = useCreatorProfile(walletUI.address as `0x${string}` | undefined)
+  const creatorContent = useCreatorContent(walletUI.address as `0x${string}` | undefined)
+  const pendingEarnings = useCreatorPendingEarnings(walletUI.address as `0x${string}` | undefined)
+  const dashboardUI = useCreatorDashboardUI(walletUI.address as `0x${string}` | undefined)
   
   // Withdraw earnings functionality
   const withdrawEarnings = useWithdrawEarnings()
@@ -130,16 +130,16 @@ export default function SubscriptionManagementPage() {
 
   // Force refresh creator data when dashboard loads (helps with post-registration navigation)
   useEffect(() => {
-    if (isConnected && userAddress) {
+    if (walletUI.isConnected && walletUI.address) {
       debug.log('🔄 Forcing creator data refresh on dashboard load')
       creatorProfile.refetch()
     }
-  }, [isConnected, userAddress, creatorProfile])
+  }, [walletUI.isConnected, walletUI.address, creatorProfile])
 
   // Force refresh when wallet connects to ensure immediate UI updates
   useEffect(() => {
-    if (isConnected && userAddress) {
-      debug.log('🔄 Dashboard: Wallet connected, refreshing all creator data for:', userAddress)
+    if (walletUI.isConnected && walletUI.address) {
+      debug.log('🔄 Dashboard: Wallet connected, refreshing all creator data for:', walletUI.address)
       
       // Refresh all creator-related data
       creatorProfile.refetch()
@@ -154,7 +154,7 @@ export default function SubscriptionManagementPage() {
         pendingEarnings.refetch()
       }, 100)
     }
-  }, [isConnected, userAddress, creatorProfile, creatorContent, pendingEarnings, dashboardUI])
+  }, [walletUI.isConnected, walletUI.address, creatorProfile, creatorContent, pendingEarnings, dashboardUI])
 
   // Handle fresh registrations
   useEffect(() => {
@@ -198,20 +198,20 @@ export default function SubscriptionManagementPage() {
    */
   useEffect(() => {
     debug.log('🔍 Dashboard verification effect:', {
-      isConnected,
+      isConnected: walletUI.isConnected,
       isRegistered: dashboardUI.isRegistered,
       isLoading: dashboardUI.isLoading
     })
-    
+
     // Only redirect if we're connected, not loading, and definitely not registered
-    if (isConnected && !dashboardUI.isLoading && dashboardUI.isRegistered === false) {
+    if (walletUI.isConnected && !dashboardUI.isLoading && dashboardUI.isRegistered === false) {
       debug.log('⚠️ Non-creator detected, redirecting to onboarding')
       // Add a small delay to prevent rapid redirects
       setTimeout(() => {
         router.push('/onboard')
       }, 500)
     }
-  }, [isConnected, dashboardUI.isRegistered, dashboardUI.isLoading, router])
+  }, [walletUI.isConnected, dashboardUI.isRegistered, dashboardUI.isLoading, router])
 
   /**
    * Tab Change Handler
@@ -362,7 +362,7 @@ export default function SubscriptionManagementPage() {
   }, [withdrawEarnings.isError, withdrawEarnings.error, withdrawEarnings])
 
   // Show loading state while creator data loads
-  if (!isConnected || !userAddress) {
+  if (!walletUI.isConnected || !walletUI.address) {
     return (
       <AppLayout>
         <div className="container mx-auto py-16 text-center">
@@ -492,7 +492,7 @@ export default function SubscriptionManagementPage() {
             <TabsContent value="settings" className="space-y-6">
               <SettingsTab
                 creatorProfile={creatorProfile.data}
-                userAddress={userAddress}
+                userAddress={walletUI.address || ''}
               />
             </TabsContent>
           </Tabs>
@@ -510,7 +510,7 @@ export default function SubscriptionManagementPage() {
             </CardHeader>
             <CardContent className="p-0">
               <CreatorDashboard
-                creatorAddress={userAddress}
+                creatorAddress={walletUI.address || ''}
                 initialView="overview"
                 onContentUploaded={(contentId) => {
                   creatorContent.refetch()

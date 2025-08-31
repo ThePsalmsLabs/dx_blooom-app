@@ -9,7 +9,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import type { Address } from 'viem'
 
 // Import your existing UI components
@@ -411,7 +411,7 @@ export default function SocialCommerceAnalytics({
   onInsightAction,
   className
 }: SocialCommerceAnalyticsProps) {
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const { isMiniApp } = useMiniApp()
   
   // ===== STATE MANAGEMENT =====
@@ -458,13 +458,13 @@ export default function SocialCommerceAnalytics({
       await SocialAnalyticsAPI.trackSocialEvent('analytics_refresh', {
         context,
         timePeriod: dashboardState.timePeriod,
-        userAddress,
+        userAddress: walletUI.address,
         creatorAddress
       })
     } catch (error) {
       console.error('Failed to refresh analytics:', error)
     }
-  }, [analyticsContext, context, dashboardState.timePeriod, userAddress, creatorAddress])
+  }, [analyticsContext, context, dashboardState.timePeriod, walletUI.address, creatorAddress])
   
   const handleExportData = useCallback(async (format: 'json' | 'csv') => {
     if (!socialMetrics) return

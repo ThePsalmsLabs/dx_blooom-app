@@ -12,7 +12,8 @@
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react'
-import { useAccount, useChainId, useDisconnect } from 'wagmi'
+import { useChainId, useDisconnect } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { formatAddress } from '@/lib/utils'
 import { useMiniAppWalletConnect } from './useMiniAppWalletConnect'
 import type { EnhancedWalletConnectionUI } from '@/hooks/ui/integration'
@@ -34,9 +35,9 @@ import {
 export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
   // Get the MiniApp-specific wallet state
   const miniAppWallet = useMiniAppWalletConnect()
-  
-  // Also get standard wagmi hooks for additional state
-  const { address, isConnected, isConnecting } = useAccount()
+
+  // Use unified wallet connection UI
+  const walletUI = useWalletConnectionUI()
   const { disconnect: wagmiDisconnect } = useDisconnect()
   const chainId = useChainId()
   
@@ -112,10 +113,10 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
   
   // MiniApp communication - send wallet state to parent window
   useEffect(() => {
-    if (isMiniAppContext() && miniAppWallet.isConnected && address) {
+    if (isMiniAppContext() && miniAppWallet.isConnected && walletUI.address) {
       const walletState = {
         isConnected: miniAppWallet.isConnected,
-        address: address,
+        address: walletUI.address,
         chainId: chainId
       }
 
@@ -127,17 +128,17 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
 
       console.log('📤 Sent wallet state to parent:', walletState)
     }
-  }, [miniAppWallet.isConnected, address, chainId])
+  }, [miniAppWallet.isConnected, walletUI.address, chainId])
 
   // Debug logging to track state synchronization
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 MiniApp Wallet UI State:', {
         miniAppConnected: miniAppWallet.isConnected,
-        wagmiConnected: isConnected,
+        unifiedConnected: walletUI.isConnected,
         miniAppConnecting: miniAppWallet.isConnecting,
-        wagmiConnecting: isConnecting,
-        address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null,
+        unifiedConnecting: walletUI.isConnecting,
+        address: walletUI.address ? `${walletUI.address.slice(0, 6)}...${walletUI.address.slice(-4)}` : null,
         miniAppError: miniAppWallet.error?.message,
         miniAppStatus: miniAppWallet.status,
         isMiniAppContext: isMiniAppContext()
@@ -148,9 +149,9 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
     miniAppWallet.isConnecting,
     miniAppWallet.error,
     miniAppWallet.status,
-    isConnected,
-    isConnecting,
-    address
+    walletUI.isConnected,
+    walletUI.isConnecting,
+    walletUI.address
   ])
   
   // Return the unified interface that AppLayout expects
@@ -173,7 +174,7 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
     // Error handling - use MiniApp error state
     error: miniAppWallet.error?.message || null,
     clearError,
-    showNetworkWarning: isConnected && !isCorrectNetwork,
+    showNetworkWarning: walletUI.isConnected && !isCorrectNetwork,
     
     // Smart Account features (disabled for MiniApp for now)
     accountType: miniAppWallet.isConnected ? 'eoa' as const : 'disconnected' as const,

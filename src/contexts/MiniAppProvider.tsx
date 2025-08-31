@@ -45,7 +45,8 @@ import React, {
   useReducer,
   ReactNode
 } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { useQueryClient } from '@tanstack/react-query'
 
 // Import your established types and patterns
@@ -403,11 +404,11 @@ function EnhancedMiniAppProvider({
   debugMode = process.env.NODE_ENV === 'development'
 }: EnhancedMiniAppProviderProps) {
   
-  // Integration with your existing wagmi and authentication systems
-  const { address, isConnected } = useAccount()
+  // Integration with unified wallet UI system
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   const queryClient = useQueryClient()
-  const { data: isCreatorRegistered } = useIsCreatorRegistered(address)
+  const { data: isCreatorRegistered } = useIsCreatorRegistered(walletUI.address)
   
   // Environment detection state
   const [environmentDetection, setEnvironmentDetection] = useState<MiniAppEnvironmentDetection | null>(null)
@@ -473,7 +474,7 @@ function EnhancedMiniAppProvider({
     },
     socialProfile: null,
     socialInteractions: [],
-    connectionStatus: isConnected ? 'connected' : 'disconnected',
+    connectionStatus: walletUI.isConnected ? 'connected' : 'disconnected',
     shareableContent: [],
     pendingShares: [],
     shareHistory: [],
@@ -510,7 +511,7 @@ function EnhancedMiniAppProvider({
       degradedCapabilities: [],
       enhancedCapabilities: []
     }
-  }), [forceEnvironment, isConnected])
+  }), [forceEnvironment, walletUI.isConnected])
   
   // State management with your established reducer pattern
   const [state, dispatch] = useReducer(enhancedMiniAppReducer, initialState)
@@ -858,17 +859,17 @@ function EnhancedMiniAppProvider({
    * user management with social context from the MiniApp SDK.
    */
   const enhancedUser = useMemo((): EnhancedSocialProfile | null => {
-    if (!address || !isConnected) return null
+    if (!walletUI.address || !walletUI.isConnected) return null
     
     // Build base profile from your existing UnifiedUserProfile pattern
     const baseProfile: UnifiedUserProfile = {
-      address,
-      connectionStatus: isConnected ? 'connected' : 'disconnected',
+      address: walletUI.address,
+      connectionStatus: walletUI.isConnected ? 'connected' : 'disconnected',
       userRole: isCreatorRegistered ? 'creator' : 'consumer',
       isRegisteredCreator: Boolean(isCreatorRegistered),
       capabilities: {
         canCreateContent: Boolean(isCreatorRegistered),
-        canPurchaseContent: isConnected,
+        canPurchaseContent: walletUI.isConnected,
         canShareSocially: state.capabilities.social.canShare,
         canUseBatchTransactions: state.capabilities.wallet.canBatchTransactions
       }
@@ -887,7 +888,7 @@ function EnhancedMiniAppProvider({
       verifications: [],
       followerCount: 0,
       followingCount: 0,
-      custodyAddress: address as Address,
+      custodyAddress: walletUI.address as Address,
       verificationTimestamps: []
     } : null
     
@@ -919,8 +920,8 @@ function EnhancedMiniAppProvider({
       }
     }
   }, [
-    address,
-    isConnected,
+    walletUI.address,
+    walletUI.isConnected,
     isCreatorRegistered,
     state.capabilities.social.canShare,
     state.capabilities.wallet.canBatchTransactions,

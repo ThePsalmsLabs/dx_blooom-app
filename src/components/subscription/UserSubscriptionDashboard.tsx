@@ -33,7 +33,7 @@
 'use client'
 
 import React, { useState, useCallback, useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   Calendar,
   AlertCircle,
@@ -193,8 +193,8 @@ export function UserSubscriptionDashboard({
   enableBulkActions = false
 }: UserSubscriptionDashboardProps) {
   // Wallet connection and user verification following established patterns
-  const { address: connectedAddress, isConnected } = useAccount()
-  const effectiveUserAddress = userAddress || connectedAddress
+  const walletUI = useWalletConnectionUI()
+  const effectiveUserAddress = userAddress || walletUI.address
 
   // Core subscription data using your architectural layers
   const subscriptionManagement = useSubscriptionManagement(effectiveUserAddress)
@@ -609,7 +609,7 @@ export function UserSubscriptionDashboard({
   // ===== CONDITIONAL RENDERING FOR STATES =====
 
   // Loading state following your established patterns
-  if (!isConnected) {
+  if (!walletUI.isConnected) {
     return (
       <div className={cn("max-w-6xl mx-auto p-6", className)}>
         <Alert>

@@ -10,12 +10,13 @@ import React, {
   type ReactNode 
 } from 'react'
 import { PrivyProvider } from '@privy-io/react-auth'
-import { WagmiProvider } from 'wagmi'
+import { WagmiProvider, createConfig } from '@privy-io/wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { base, baseSepolia } from 'viem/chains'
 import { type Address } from 'viem'
 import { BiconomySmartAccountV2 } from '@biconomy/account'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { usePrivy } from '@privy-io/react-auth'
 import { debug } from '@/lib/utils/debug'
 
@@ -127,19 +128,57 @@ const privyConfig = {
 /**
  * CRITICAL FIX: Privy Wagmi Provider Component
  * This component properly integrates Privy's wagmi configuration
- * The previous version was creating wagmi config manually, which broke the integration
+ * Now uses Privy's WagmiProvider and createConfig for proper synchronization
  */
 function PrivyWagmiProvider({ children }: { children: ReactNode }) {
-  // Import the enhanced wagmi configuration with multi-tier RPC providers
-  const { enhancedWagmiConfig } = useMemo(() => {
-    // Dynamic import to avoid circular dependencies
-    const { enhancedWagmiConfig } = require('@/lib/web3/enhanced-wagmi-config')
-    return { enhancedWagmiConfig }
+  // Create wagmi config using Privy's createConfig for proper synchronization
+  const wagmiConfig = useMemo(() => {
+    // Dynamic import to get the enhanced transport configuration
+    const { base, baseSepolia } = require('viem/chains')
+    const { http, fallback } = require('wagmi')
+
+    // Create the same multi-tier RPC configuration but with Privy's createConfig
+    const premiumProviders = []
+    const alternativeProviders = []
+
+    // Premium providers (same as enhanced config but using http from wagmi)
+    if (process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
+      premiumProviders.push(
+        http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
+      )
+    }
+
+    if (process.env.NEXT_PUBLIC_INFURA_API_KEY) {
+      premiumProviders.push(
+        http(`https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`)
+      )
+    }
+
+    // Base mainnet as fallback
+    alternativeProviders.push(http('https://mainnet.base.org'))
+
+    const transports = {
+      [base.id]: fallback(premiumProviders.length > 0 ? premiumProviders : alternativeProviders),
+      [baseSepolia.id]: http('https://sepolia.base.org')
+    }
+
+    return createConfig({
+      chains: [base, baseSepolia],
+      transports,
+      batch: {
+        multicall: {
+          batchSize: 1024 * 200,
+          wait: 8,
+        },
+      },
+      cacheTime: 2_000,
+      ssr: typeof window === 'undefined'
+    })
   }, [])
 
   return (
     <QueryClientProvider client={queryClient}>
-      <WagmiProvider config={enhancedWagmiConfig}>
+      <WagmiProvider config={wagmiConfig}>
         {children}
       </WagmiProvider>
     </QueryClientProvider>
@@ -152,7 +191,7 @@ function PrivyWagmiProvider({ children }: { children: ReactNode }) {
  */
 function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
   const { user, ready, authenticated } = usePrivy()
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   
   // Smart Account state (preserved from your current implementation)
@@ -167,32 +206,32 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
       authenticated,
       hasUser: Boolean(user),
       userWallet: user?.wallet?.address,
-      wagmiConnected: isConnected,
-      wagmiAddress: address,
+      unifiedConnected: walletUI.isConnected,
+      unifiedAddress: walletUI.address,
       chainId
     })
-  }, [ready, authenticated, user, isConnected, address, chainId])
+  }, [ready, authenticated, user, walletUI.isConnected, walletUI.address, chainId])
 
   /**
    * Determine account type based on connection status and smart account
    */
   const accountType: AccountType = useMemo(() => {
-    if (!isConnected || !address) return 'disconnected'
+    if (!walletUI.isConnected || !walletUI.address) return 'disconnected'
     if (smartAccount && smartAccountAddress) return 'smart_account'
     return 'eoa'
-  }, [isConnected, address, smartAccount, smartAccountAddress])
+  }, [walletUI.isConnected, walletUI.address, smartAccount, smartAccountAddress])
 
   /**
    * Create Smart Account - preserved functionality from your current setup
    */
   const createSmartAccountAsync = useCallback(async (): Promise<BiconomySmartAccountV2 | null> => {
-    if (!address || !envConfig.hasAdvancedFeatures) {
+    if (!walletUI.address || !envConfig.hasAdvancedFeatures) {
       debug.warn('❌ Cannot create smart account: missing address or advanced features not configured')
       return null
     }
 
     try {
-      debug.wallet('🚀 Creating smart account for address:', address)
+      debug.wallet('🚀 Creating smart account for address:', walletUI.address)
       
       // For now, return null since we need a proper signer implementation
       // This will be implemented when we have the full wallet integration
@@ -203,7 +242,7 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
       console.error('❌ Failed to create smart account:', error)
       return null
     }
-  }, [address, chainId])
+  }, [walletUI.address, chainId])
 
   /**
    * Refresh Smart Account Status
@@ -221,16 +260,16 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
 
   // Auto-create smart account when user connects (if you want this behavior)
   useEffect(() => {
-    if (isConnected && address && !smartAccount && envConfig.hasAdvancedFeatures) {
+    if (walletUI.isConnected && walletUI.address && !smartAccount && envConfig.hasAdvancedFeatures) {
       debug.wallet('🔄 Auto-creating smart account for connected user')
       createSmartAccountAsync()
     }
-  }, [isConnected, address, smartAccount, createSmartAccountAsync])
+  }, [walletUI.isConnected, walletUI.address, smartAccount, createSmartAccountAsync])
 
   const contextValue: EnhancedWeb3ContextType = {
     // Core state
-    address: address || null,
-    isConnected,
+    address: walletUI.address || null,
+    isConnected: walletUI.isConnected,
     isConnecting: !ready, // Privy's ready state indicates loading
     chainId,
     

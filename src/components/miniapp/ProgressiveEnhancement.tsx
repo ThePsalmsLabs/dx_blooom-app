@@ -6,7 +6,8 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   Globe,
   Smartphone,
@@ -431,7 +432,7 @@ function useCapabilityDetection(): {
   detectionTime: number
   refetch: () => Promise<void>
 } {
-  const { address } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   const errorHandling = useMiniAppErrorHandling()
   const farcasterContext = useFarcasterContext()
@@ -521,10 +522,10 @@ function useCapabilityDetection(): {
 
   // Re-detect capabilities when wallet connection changes
   useEffect(() => {
-    if (capabilities && address) {
+    if (capabilities && walletUI.address) {
       detectCapabilities()
     }
-  }, [address, detectCapabilities, capabilities])
+  }, [walletUI.address, detectCapabilities, capabilities])
 
   return {
     capabilities,

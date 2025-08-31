@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Share2, Copy, CheckCircle, ExternalLink, ArrowLeft, Sparkles, MessageCircle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 export default function MiniAppSharePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const farcasterContext = useFarcasterContext()
   
   const contentId = searchParams.get('contentId')
@@ -83,7 +83,7 @@ export default function MiniAppSharePage() {
             creatorAddress,
             shareType,
             referralCode,
-            userAddress,
+            userAddress: walletUI.address,
             farcasterFid: farcasterContext?.user?.fid,
             shareUrl,
             timestamp: Date.now()
@@ -93,7 +93,7 @@ export default function MiniAppSharePage() {
         console.warn('Analytics tracking failed:', analyticsError)
       }
       
-      console.log('Share tracked:', { platform, contentId, creatorAddress, shareType, referralCode, userAddress, farcasterContext: farcasterContext?.user?.fid })
+      console.log('Share tracked:', { platform, contentId, creatorAddress, shareType, referralCode, userAddress: walletUI.address, farcasterContext: farcasterContext?.user?.fid })
     } catch (error) {
       console.error('Share failed:', error)
     }

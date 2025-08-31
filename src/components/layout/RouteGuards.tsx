@@ -29,7 +29,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useAccount, useChainId, useSwitchChain } from 'wagmi'
+import { useChainId, useSwitchChain } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   Shield,
   AlertCircle,
@@ -237,7 +238,7 @@ export function MiniAppRouteGuard({
   className
 }: MiniAppRouteGuardProps): React.ReactElement {
   // Get current user address for access control checks
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   
   // Get Farcaster context from Component 3.3
   const farcasterContext = useFarcasterContext()
@@ -564,7 +565,7 @@ export function RouteGuards({
   const pathname = usePathname()
 
   // Wallet and network state
-  const { address, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   const { switchChain } = useSwitchChain()
 
@@ -581,9 +582,9 @@ export function RouteGuards({
   }, [])
 
   // Always call hooks in the same order - use conditional logic after they return
-  const creatorRegistration = useIsCreatorRegistered(address)
-  const creatorProfile = useCreatorProfile(address)
-  const creatorOnboarding = useCreatorOnboardingUI(address as `0x${string}`)
+  const creatorRegistration = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
+  const creatorProfile = useCreatorProfile(walletUI.address as `0x${string}` | undefined)
+  const creatorOnboarding = useCreatorOnboardingUI(walletUI.address as `0x${string}` | undefined)
 
   // Only use hook data when we're ready to check creator status
   const shouldLoadCreatorChecks = hasCheckedBasicAccess && requiredLevel !== 'public'
@@ -611,7 +612,7 @@ export function RouteGuards({
     const isNewRegistration = searchParams?.get('newRegistration') === 'true'
     
     // Check wallet connection requirement
-    if (requiredLevel !== 'public' && !isConnected) {
+    if (requiredLevel !== 'public' && !walletUI.isConnected) {
       blockers.push({
         type: 'wallet',
         message: 'Wallet connection required to access this area',
@@ -622,7 +623,7 @@ export function RouteGuards({
     }
 
     // Check network compatibility  
-    if (isConnected && !isSupportedChain(chainId)) {
+    if (walletUI.isConnected && !isSupportedChain(chainId)) {
       const currentChain = getCurrentChain()
       blockers.push({
         type: 'network',
@@ -641,11 +642,11 @@ export function RouteGuards({
         console.log('🔄 Creator checks not loaded yet, allowing temporary access...')
       } else {
         // Special handling for users who just completed registration
-        if (isNewRegistration && isConnected) {
+        if (isNewRegistration && walletUI.isConnected) {
           console.log('🔍 New registration detected, allowing access pending data refresh...')
           // Allow access for newly registered users while data refreshes
           // The registration hooks should refresh automatically
-        } else if (isConnected && creatorRegistration.data === false) {
+        } else if (walletUI.isConnected && creatorRegistration.data === false) {
           blockers.push({
             type: 'registration',
             message: 'Creator registration required to access creator features',
@@ -659,7 +660,7 @@ export function RouteGuards({
 
     // Check creator verification requirements
     if (requiredLevel === 'creator_verified' && shouldLoadCreatorChecks) {
-      if (isConnected && creatorRegistration.data && !creatorProfile.data?.isVerified) {
+      if (walletUI.isConnected && creatorRegistration.data && !creatorProfile.data?.isVerified) {
         blockers.push({
           type: 'verification',
           message: 'Verified creator status required for this feature',
@@ -680,7 +681,7 @@ export function RouteGuards({
         isPrimary: true
       } : undefined
     }
-  }, [requiredLevel, isConnected, chainId, creatorRegistration.data, creatorProfile.data, shouldLoadCreatorChecks])
+  }, [requiredLevel, walletUI.isConnected, chainId, creatorRegistration.data, creatorProfile.data, shouldLoadCreatorChecks])
 
   // Permission resolution handler
   const handlePermissionResolution = useCallback((resolutionPath: string) => {

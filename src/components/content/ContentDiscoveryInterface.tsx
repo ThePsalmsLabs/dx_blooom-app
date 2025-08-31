@@ -43,7 +43,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   Search,
   SlidersHorizontal,
@@ -193,7 +193,7 @@ export function ContentDiscoveryInterface({
   compact = false
 }: ContentDiscoveryInterfaceProps) {
   const router = useRouter()
-  const { address: connectedAddress, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Extract configuration with intelligent defaults
   const {
@@ -750,24 +750,24 @@ function ContentCard({
 }: ContentCardProps) {
   const { data: content, isLoading: contentLoading } = useContentById(contentId)
   const { data: creator } = useCreatorProfile(content?.creator)
-  const { address: connectedAddress, isConnected } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   // Check if connected user is the content creator
   const isCreator = useMemo(() => {
-    return connectedAddress && content?.creator && 
-           connectedAddress.toLowerCase() === content.creator.toLowerCase()
-  }, [connectedAddress, content?.creator])
+    return walletUI.address && content?.creator &&
+           walletUI.address.toLowerCase() === content.creator.toLowerCase()
+  }, [walletUI.address, content?.creator])
 
   // Force UI refresh when wallet connects/disconnects
   useEffect(() => {
-    if (isConnected && connectedAddress) {
-      console.log('🔄 ContentDiscoveryInterface: Wallet connected, refreshing UI for:', connectedAddress)
+    if (walletUI.isConnected && walletUI.address) {
+      console.log('🔄 ContentDiscoveryInterface: Wallet connected, refreshing UI for:', walletUI.address)
       // Force a re-render by updating the component state
-    } else if (!isConnected) {
+    } else if (!walletUI.isConnected) {
       console.log('🔄 ContentDiscoveryInterface: Wallet disconnected, clearing creator state')
       // The isCreator will automatically become false when connectedAddress is null
     }
-  }, [isConnected, connectedAddress])
+  }, [walletUI.isConnected, walletUI.address])
 
   if (contentLoading || !content) {
     return <ContentCardSkeleton displayMode={displayMode} />

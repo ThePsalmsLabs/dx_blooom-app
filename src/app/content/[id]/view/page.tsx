@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAccount } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 import {
   Alert,
@@ -29,7 +29,7 @@ interface ViewPageProps {
 
 export default function ContentViewPage({ params }: ViewPageProps) {
   const router = useRouter()
-  const { address: userAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
 
   const unwrapped = React.use(params) as { readonly id: string }
   const contentId = useMemo(() => {
@@ -44,11 +44,11 @@ export default function ContentViewPage({ params }: ViewPageProps) {
 
   // Always call hooks unconditionally
   const contentQuery = useContentById(contentId || (BigInt(0) as unknown as bigint))
-  const accessQuery = useHasContentAccess(userAddress, contentId || (BigInt(0) as unknown as bigint))
+  const accessQuery = useHasContentAccess(walletUI.address as `0x${string}` | undefined, contentId || (BigInt(0) as unknown as bigint))
 
   // Light polling to mitigate RPC/indexing latency after purchase
   React.useEffect(() => {
-    if (!userAddress || !contentId) return
+    if (!walletUI.address || !contentId) return
     let attempts = 0
     const timer = setInterval(() => {
       attempts += 1

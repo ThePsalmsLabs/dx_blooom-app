@@ -22,7 +22,8 @@
 'use client'
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
-import { useAccount, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { type Address, parseEther, formatEther } from 'viem'
 import {
   Sparkles,
@@ -161,7 +162,7 @@ export function ContentNFTPromotion({
   className,
   onMintSuccess 
 }: ContentNFTPromotionProps) {
-  const { address: connectedAddress } = useAccount()
+  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
   
   // Zora integration hooks
@@ -170,7 +171,7 @@ export function ContentNFTPromotion({
 
   // Access control - check if user has purchased content or if it's free
   const { data: hasAccess, isLoading: accessLoading } = useHasContentAccess(
-    connectedAddress,
+    walletUI.address as `0x${string}`,
     content.contentId
   )
   
@@ -201,7 +202,7 @@ export function ContentNFTPromotion({
       zoraReady &&
       !accessLoading && // Wait for access check to complete
       hasContentAccess &&
-      connectedAddress?.toLowerCase() === creatorAddress?.toLowerCase() &&
+      walletUI.address?.toLowerCase() === creatorAddress?.toLowerCase() &&
       creatorProfile?.isRegistered &&
       content.isActive
     )
@@ -210,7 +211,7 @@ export function ContentNFTPromotion({
     accessLoading,
     hasAccess,
     content.payPerViewPrice,
-    connectedAddress,
+    walletUI.address,
     creatorAddress,
     creatorProfile?.isRegistered,
     content.isActive
@@ -343,7 +344,7 @@ export function ContentNFTPromotion({
         </Badge>
       )
     }
-    if (connectedAddress !== creatorAddress) {
+    if (walletUI.address !== creatorAddress) {
       return null // Don't show anything for non-creators
     }
 
