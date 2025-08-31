@@ -10,10 +10,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 // Add global type declarations for Farcaster MiniKit
 declare global {
   interface Window {
-    farcaster?: {
-      sdk?: unknown
-      context?: unknown
-    }
+    farcaster?: MiniKitSDK
+    MiniKit?: MiniKitSDK
+    miniKit?: MiniKitSDK
   }
 }
 
@@ -90,27 +89,27 @@ export interface FarcasterContext {
   readonly hasAuthProvider: boolean
 }
 
-/**
- * MiniKit SDK Context Type
- * 
- * This interface represents the structure we expect from MiniKit.getContext().
- * We define this to ensure type safety when interacting with the external SDK.
- */
+// Simplified types for MiniKit SDK integration
+interface MiniKitUser {
+  readonly fid: number
+  readonly username?: string
+  readonly displayName?: string
+  readonly pfpUrl?: string
+  readonly verifications?: readonly string[]
+}
+
 interface MiniKitContext {
-  readonly user?: {
-    readonly fid: number
-    readonly username?: string
-    readonly displayName?: string
-    readonly pfpUrl?: string
-    readonly verifications?: readonly string[]
+  readonly user?: MiniKitUser
+  readonly client?: unknown
+  readonly location?: unknown
+}
+
+// Use unknown for SDK to avoid strict typing conflicts
+type MiniKitSDK = {
+  readonly actions?: {
+    readonly ready?: () => Promise<void>
   }
-  readonly client?: {
-    readonly name?: string
-    readonly version?: string
-  }
-  readonly location?: {
-    readonly type?: string
-  }
+  readonly context: Promise<unknown> | (() => Promise<unknown>)
 }
 
 /**
@@ -212,44 +211,63 @@ export function useFarcasterContext(): FarcasterContext | undefined {
         return null
       }
 
-      // Check if MiniKit SDK is available globally
-      if (!window.farcaster) {
-        console.warn('Farcaster MiniKit SDK not available globally')
-        return null
+      // Check if MiniKit SDK is available globally (optional check)
+      const hasGlobalMiniKit = window.farcaster || window.MiniKit || window.miniKit
+      if (!hasGlobalMiniKit) {
+        console.log('MiniKit SDK not found globally, attempting dynamic import')
+      } else {
+        console.log('MiniKit SDK found globally:', hasGlobalMiniKit === window.farcaster ? 'window.farcaster' :
+                                                  hasGlobalMiniKit === window.MiniKit ? 'window.MiniKit' : 'window.miniKit')
       }
 
-      // Dynamically import MiniKit SDK to avoid SSR issues
-      let sdk
+      // Dynamically import MiniKit SDK to avoid SSR issues (primary method)
+      let sdk: MiniKitSDK | undefined
       try {
         const miniKitModule = await import('@farcaster/miniapp-sdk')
-        sdk = miniKitModule.sdk
+        sdk = miniKitModule.sdk || miniKitModule.default
       } catch (importError) {
         console.warn('Failed to import MiniKit SDK:', importError)
         return null
       }
 
       if (!sdk) {
-        console.warn('MiniKit SDK is not available')
+        console.warn('MiniKit SDK is not available after import')
         return null
       }
+
+      console.log('Successfully imported MiniKit SDK')
 
       // Wait for SDK to be ready with timeout
       try {
-        await Promise.race([
-          sdk.actions.ready(),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('MiniKit SDK ready timeout')), 5000)
-          )
-        ])
+        if (sdk.actions?.ready && typeof sdk.actions.ready === 'function') {
+          await Promise.race([
+            sdk.actions.ready(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('MiniKit SDK ready timeout')), 5000)
+            )
+          ])
+          console.log('MiniKit SDK is ready')
+        } else {
+          console.warn('MiniKit SDK does not have actions.ready method, proceeding anyway')
+        }
       } catch (readyError) {
         console.warn('MiniKit SDK failed to become ready:', readyError)
-        return null
+        // Continue anyway - some versions might not need explicit ready call
       }
 
       // Extract context from SDK
-      let context
+      let context: MiniKitContext | undefined
       try {
-        context = await sdk.context
+        // Handle both Promise and function cases
+        let contextPromise: Promise<unknown>
+        if (typeof sdk.context === 'function') {
+          contextPromise = sdk.context()
+        } else {
+          contextPromise = sdk.context
+        }
+
+        const rawContext = await contextPromise
+        context = rawContext as MiniKitContext
       } catch (contextError) {
         console.warn('Failed to get MiniKit context:', contextError)
         return null
