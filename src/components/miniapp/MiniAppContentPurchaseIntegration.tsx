@@ -3,7 +3,7 @@
 'use client'
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
-import { useAccount } from 'wagmi'
+import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import business logic hooks we built
 import { 
@@ -351,7 +351,8 @@ export function SocialContextIntegration({
   const authResult = useMiniAppAuth()
   const purchaseFlow = useUnifiedMiniAppPurchaseFlow(contentId)
   const farcasterContext = useFarcasterContext()
-  const { address, isConnected } = useAccount()
+  const walletUI = useMiniAppWalletUI()
+  const { address, isConnected } = walletUI
   
   // Content data
   const { data: contentData, isLoading: isContentLoading } = useContentById(contentId)

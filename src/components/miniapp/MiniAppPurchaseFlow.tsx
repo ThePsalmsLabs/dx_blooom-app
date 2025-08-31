@@ -6,10 +6,10 @@
 'use client'
 
 import React, { useCallback, useMemo } from 'react'
-import { useAccount } from 'wagmi'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { useX402ContentPurchaseFlow } from '@/hooks/business/workflows'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
+import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 /**
  * Farcaster Embed Interface
@@ -226,11 +226,12 @@ export function MiniAppPurchaseFlow({
   onPurchaseComplete,
   className
 }: MiniAppPurchaseFlowProps): React.ReactElement {
-  // Get current user address from wallet connection
-  const { address } = useAccount()
-  
+  // Get current user address from MiniApp wallet UI
+  const walletUI = useMiniAppWalletUI()
+  const { address } = walletUI
+
   // Initialize x402 payment flow with social context integration
-  const purchaseFlow = useX402ContentPurchaseFlow(contentId, address)
+  const purchaseFlow = useX402ContentPurchaseFlow(contentId, address as `0x${string}` | undefined)
   
   // Initialize social sharing capabilities
   const socialContext = useSocialContextWithSharing()
@@ -296,7 +297,7 @@ export function MiniAppPurchaseFlow({
       {/* Enhanced Content Purchase Card */}
       <OrchestratedContentPurchaseCard
         contentId={contentId}
-        userAddress={address}
+        userAddress={address as `0x${string}` | undefined}
         onPurchaseSuccess={handlePurchaseSuccess}
         onViewContent={(contentId) => window.location.href = `/content/${contentId}`}
         variant="full"

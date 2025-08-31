@@ -189,38 +189,9 @@ export function CreatorSubscriptionPurchase({
   if (variant === 'embedded') {
     return (
       <div className={className}>
-        {/* Subscription Details */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/10 dark:to-purple-950/10">
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              <div>
-                <div className="font-medium text-base">Monthly Subscription</div>
-                <div className="text-sm text-muted-foreground">
-                  Access to all creator content for 30 days
-                </div>
-              </div>
-            </div>
-            <div className="text-xl font-bold text-primary mt-2 sm:mt-0">
-              {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm text-muted-foreground justify-center">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>Renews monthly</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              <span>Cancel anytime</span>
-            </div>
-          </div>
-        </div>
-
         {/* Balance Check */}
         {!canAfford && isConnected && (
-          <Alert className="border-yellow-200 bg-yellow-50 mt-4">
+          <Alert className="border-yellow-200 bg-yellow-50 mb-4">
             <AlertCircle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800 text-sm">
               Insufficient USDC balance. You need {formatCurrency(creator.subscriptionPrice, 6, 'USDC')} but have {formatCurrency(usdcBalance.data || BigInt(0), 6, 'USDC')}.
@@ -232,7 +203,7 @@ export function CreatorSubscriptionPurchase({
         <Button
           onClick={handleSubscribe}
           disabled={!isConnected || !canAfford || subscriptionManagement.isLoading}
-          className="w-full mt-6"
+          className="w-full"
           size="lg"
         >
           {!isConnected ? (

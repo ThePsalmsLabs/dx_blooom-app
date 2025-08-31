@@ -34,26 +34,12 @@ import { getX402MiddlewareConfig } from '@/lib/web3/x402-config'
 // FIXED: Updated MiniKit interface to match current SDK v0.1.8 API
 interface MiniKitAPI {
   // Core MiniKit functions from the current SDK
-  Ready: (options?: { disableNativeGestures?: boolean }) => Promise<void>
-  Context: {
-    Get: () => Promise<{
-      user?: {
-        fid: number
-        username: string
-        verifications?: unknown[]
-        followerCount?: number
-        verifiedAddresses?: unknown[]
-      }
-      client?: {
-        name: string
-        version: string
-        supportedFeatures?: string[]
-      }
-      frame?: boolean
-      referrer?: string
-    } | null>
+  Ready?: { DEFAULT_READY_OPTIONS: { disableNativeGestures: boolean } }
+  Context?: Record<string, never> // Empty object in current SDK
+  Manifest?: {
+    getMiniAppConfig: () => Promise<unknown>
   }
-  SignIn?: (options?: unknown) => Promise<unknown>
+  SignIn?: { RejectedByUser: unknown }
   // Add other functions as needed from the SDK
 }
 
@@ -305,28 +291,22 @@ export async function initializeMiniKit(config: MiniKitConfig): Promise<void> {
 
     const miniKit = await getMiniKit()
     if (!miniKit) {
-      throw new Error('MiniKit is not available in this environment')
+      console.log('ℹ️ MiniKit is not available in this environment - running in web mode')
+      return // Not an error, just not available
     }
 
-    // Check if Ready method exists before calling it
-    if (typeof miniKit.Ready !== 'function') {
-      throw new Error('MiniKit.Ready is not a function - SDK may not be properly loaded')
-    }
-
-    // Use Ready() instead of install() for the new API
-    await miniKit.Ready({
-      disableNativeGestures: false // You can make this configurable if needed
-    })
-
+    // MiniKit v0.1.8 doesn't require explicit initialization
+    // The SDK is ready to use once imported
     if (config.debugMode) {
-      console.log('✅ MiniKit initialized successfully with Ready()', {
+      console.log('✅ MiniKit is available (no initialization required)', {
         supportedChains: config.supportedChains,
         supportedTokens: config.supportedTokens.length,
         enablePayments: config.enablePayments,
+        hasManifest: Boolean(miniKit.Manifest?.getMiniAppConfig),
       })
     }
   } catch (error) {
-    console.warn('⚠️ MiniKit initialization failed:', error)
+    console.warn('⚠️ MiniKit setup failed:', error)
     // Graceful degradation - don't throw, just log the warning
     // This allows the app to continue working even without MiniKit
   }
@@ -339,7 +319,7 @@ export async function initializeMiniKit(config: MiniKitConfig): Promise<void> {
  * This function provides an async version for extracting Farcaster context
  * when we can properly await the MiniKit initialization.
  */
-// FIXED: Updated to use correct MiniKit SDK v0.1.8 API
+// FIXED: Updated to work with MiniKit SDK v0.1.8 API that doesn't have Context.Get()
 async function extractFarcasterContextAsync(): Promise<FarcasterContext | null> {
   try {
     if (typeof window === 'undefined') {
@@ -351,33 +331,55 @@ async function extractFarcasterContextAsync(): Promise<FarcasterContext | null> 
       return null
     }
 
-    // Check if Context.Get method exists before calling it
-    if (!miniKit.Context || typeof miniKit.Context.Get !== 'function') {
-      console.warn('MiniKit.Context.Get is not available')
-      return null
+    // In MiniKit v0.1.8, context might be available through global window or different mechanism
+    // For now, return a basic context structure when MiniKit is available
+    const win = window as unknown as {
+      farcaster?: {
+        user?: {
+          fid: number
+          username: string
+          verifications?: string[]
+          followerCount?: number
+          verifiedAddresses?: string[]
+        }
+        client?: {
+          name: string
+          version: string
+          supportedFeatures?: string[]
+        }
+      }
+      location?: {
+        ancestorOrigins?: string[]
+      }
     }
 
-    const context = await miniKit.Context.Get()
-    if (!context) {
-      return null
+    // Try to get context from global farcaster object (if available)
+    const farcasterContext = win.farcaster
+
+    // Check if we're in a frame context
+    const isFrameContext = window.parent !== window
+
+    // Get referrer from ancestor origins if available
+    let referrer = document.referrer
+    if (win.location?.ancestorOrigins && win.location.ancestorOrigins.length > 0) {
+      referrer = win.location.ancestorOrigins[0]
     }
 
     return {
-      user: context.user ? {
-        fid: context.user.fid,
-        username: context.user.username,
-        // Explicit typing in filter function to avoid 'implicit any' error
-        verifications: safeAddressArray(context.user.verifications || []),
-        followerCount: context.user.followerCount || 0,
-        verifiedAddresses: safeAddressArray(context.user.verifiedAddresses || []),
+      user: farcasterContext?.user ? {
+        fid: farcasterContext.user.fid,
+        username: farcasterContext.user.username,
+        verifications: safeAddressArray(farcasterContext.user.verifications || []),
+        followerCount: farcasterContext.user.followerCount || 0,
+        verifiedAddresses: safeAddressArray(farcasterContext.user.verifiedAddresses || []),
       } : null,
-      client: context.client ? {
-        name: context.client.name,
-        version: context.client.version,
-        supportedFeatures: context.client.supportedFeatures || [],
+      client: farcasterContext?.client ? {
+        name: farcasterContext.client.name,
+        version: farcasterContext.client.version,
+        supportedFeatures: farcasterContext.client.supportedFeatures || [],
       } : null,
-      isFrameContext: Boolean(context.frame),
-      referrer: context.referrer || null,
+      isFrameContext,
+      referrer: referrer || null,
     }
   } catch (error) {
     console.warn('Failed to extract Farcaster context:', error)
@@ -430,27 +432,46 @@ export function MiniKitProvider({
     const initialize = async (): Promise<void> => {
       try {
         setConfig(miniKitConfig)
-        await initializeMiniKit(miniKitConfig)
-        
+
+        // Check if MiniKit is available (doesn't require explicit initialization in v0.1.8)
+        const miniKit = await getMiniKit()
+
         if (!mounted) return
 
-        setIsInstalled(true)
-        setIsReady(true)
-        setError(null)
+        if (miniKit) {
+          setIsInstalled(true)
+          setIsReady(true)
+          setError(null)
 
-        const initialContext = await extractFarcasterContextAsync()
-        setContext(initialContext)
+          // Try to extract context
+          const initialContext = await extractFarcasterContextAsync()
+          setContext(initialContext)
+
+          if (miniKitConfig.debugMode) {
+            console.log('✅ MiniKit context loaded:', initialContext)
+          }
+        } else {
+          // MiniKit not available - this is fine, just means we're not in Farcaster
+          setIsInstalled(false)
+          setIsReady(true) // Still "ready" - just not with MiniKit
+          setError(null)
+          setContext(null)
+
+          if (miniKitConfig.debugMode) {
+            console.log('ℹ️ MiniKit not available - running in standard web mode')
+          }
+        }
 
       } catch (initError) {
         if (!mounted) return
 
-        const error = initError instanceof Error ? initError : new Error('MiniKit initialization failed')
+        const error = initError instanceof Error ? initError : new Error('MiniKit setup failed')
         setError(error)
         setIsInstalled(false)
         setIsReady(false)
 
         if (miniKitConfig.debugMode) {
-          console.error('MiniKit initialization error:', error)
+          console.error('MiniKit setup error:', error)
         }
       }
     }

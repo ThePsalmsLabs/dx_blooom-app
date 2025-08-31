@@ -1,12 +1,10 @@
 'use client'
 
 import React, { ReactNode, useEffect, useMemo, useState, useCallback } from 'react'
-import { WagmiProvider } from 'wagmi'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 
 // Import your existing sophisticated provider and configuration systems
 import { EnhancedMiniAppProvider } from '@/contexts/MiniAppProvider'
-import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
 import { Toaster } from '@/components/ui/sonner'
 
 // Import error boundary and monitoring systems
@@ -53,10 +51,7 @@ interface MiniAppLayoutConfig {
     readonly gcTime: number
     readonly refetchOnWindowFocus: boolean
   }
-  readonly wagmiConfig: {                        // How should we configure wagmi?
-    readonly pollingInterval: number
-    readonly enableAutoConnect: boolean
-  }
+
 }
 
 /**
@@ -209,10 +204,7 @@ function generateLayoutConfig(context: ContextDetectionResult): MiniAppLayoutCon
         gcTime: 1000 * 60 * 30,        // 30 minutes - aggressive garbage collection
         refetchOnWindowFocus: false     // Don't refetch on focus in embedded context
       },
-      wagmiConfig: {
-        pollingInterval: 8000,          // Slower polling to save battery
-        enableAutoConnect: true         // Auto-connect for seamless UX
-      }
+
     }
   }
 
@@ -226,10 +218,7 @@ function generateLayoutConfig(context: ContextDetectionResult): MiniAppLayoutCon
       gcTime: 1000 * 60 * 10,          // 10 minutes - normal garbage collection
       refetchOnWindowFocus: true       // Refetch when user returns to tab
     },
-    wagmiConfig: {
-      pollingInterval: 4000,           // Faster polling for responsive UX
-      enableAutoConnect: false         // Manual connect for explicit user control
-    }
+    
   }
 }
 
@@ -355,7 +344,7 @@ export function MiniAppLayout({
           staleTime: config.staleTime,
           gcTime: config.gcTime,
           refetchOnWindowFocus: config.refetchOnWindowFocus,
-          retry: (failureCount, error) => {
+          retry: (failureCount: number, error: Error) => {
             // Smart retry logic based on error type
             if (error?.message?.includes('Network')) return failureCount < 3
             if (error?.message?.includes('Contract')) return failureCount < 2
@@ -468,14 +457,12 @@ export function MiniAppLayout({
       onError={handleLayoutError}
       onReset={initializeLayout}
     >
-      <WagmiProvider config={wagmiConfig}>
-        <QueryClientProvider client={queryClient}>
-          <EnhancedMiniAppProvider
-            forceEnvironment={contextDetection?.isMiniApp ? 'farcaster' : 'web'}
-            enableAnalytics={layoutConfig?.enablePerformanceTracking || false}
-            fallbackToWeb={true}
-            debugMode={process.env.NODE_ENV === 'development'}
-          >
+      <EnhancedMiniAppProvider
+        forceEnvironment={contextDetection?.isMiniApp ? 'farcaster' : 'web'}
+        enableAnalytics={layoutConfig?.enablePerformanceTracking || false}
+        fallbackToWeb={true}
+        debugMode={process.env.NODE_ENV === 'development'}
+      >
             {/* Apply context-specific styling using your design token system */}
             <div 
               className={cn(
@@ -504,8 +491,6 @@ export function MiniAppLayout({
               </div>
             )}
           </EnhancedMiniAppProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
     </ErrorBoundary>
   )
 }

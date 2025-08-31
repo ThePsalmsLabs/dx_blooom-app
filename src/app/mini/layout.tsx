@@ -92,9 +92,7 @@ import React, {
 	useMiniAppEnvironment,
 	useEnhancedSocialProfile
   } from '@/contexts/MiniAppProvider'
-  import { 
-	getEnhancedWagmiConfig 
-  } from '@/lib/contracts/miniapp-config'
+
   import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
 import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   
@@ -913,10 +911,9 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	loadingComponent: CustomLoadingComponent
   }: EnhancedMiniAppLayoutProps) {
 	
-	// State for wagmi configuration
-	const [wagmiConfig, setWagmiConfig] = useState<any>(null)
+	// State for layout initialization
 	const [configError, setConfigError] = useState<Error | null>(null)
-	const [isConfigReady, setIsConfigReady] = useState(false)
+	const [isConfigReady, setIsConfigReady] = useState(true)
 	
 	// Query client for React Query
 	const [queryClient] = useState(() => new QueryClient({
@@ -937,93 +934,22 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	  initializeErrorRecovery()
 	}, [])
 
-	// Initialize wagmi configuration
+	// Initialize layout
 	useEffect(() => {
-	  let mounted = true
-
-	  const initializeConfig = async () => {
-		try {
-		  // Pre-clear any potentially corrupted wagmi state
-		  if (typeof window !== 'undefined') {
-			const wagmiKeys = [
-			  'wagmi.store',
-			  'wagmi.cache', 
-			  'wagmi.connections',
-			  'wagmi.state',
-			  'wagmi.account',
-			  'wagmi.chainId',
-			  'wagmi.connector',
-			  'dxbloom-miniapp-wagmi'
-			]
-			
-			// Clear any corrupted state before initializing
-			wagmiKeys.forEach(key => {
-			  try {
-				localStorage.removeItem(key)
-				sessionStorage.removeItem(key)
-			  } catch (e) {
-				// Ignore individual key removal errors
-			  }
-			})
-			
-			// Clear any other wagmi-related items
-			Object.keys(localStorage).forEach(key => {
-			  if (key.includes('wagmi') || key.includes('wallet') || key.includes('connector')) {
-				try {
-				  localStorage.removeItem(key)
-				} catch (e) {
-				  // Ignore errors
-				}
-			  }
-			})
-		  }
-		  
-		  const config = await getEnhancedWagmiConfig()
-		  
-		  if (mounted) {
-			setWagmiConfig(config)
-			setIsConfigReady(true)
-		  }
-		} catch (error) {
-		  console.error('Failed to initialize wagmi config:', error)
-		  
-		  if (mounted) {
-			setConfigError(error as Error)
-			
-			// Fallback configuration for web mode
-			if (fallbackToWeb) {
-			  try {
-				const fallbackConfig = await getEnhancedWagmiConfig()
-				if (mounted) {
-				  setWagmiConfig(fallbackConfig)
-				  setIsConfigReady(true)
-				}
-			  } catch (fallbackError) {
-				console.error('Fallback config also failed:', fallbackError)
-			  }
-			}
-		  }
-		}
-	  }
-	  
-	  initializeConfig()
-	  
-	  return () => {
-		mounted = false
-	  }
-	}, [fallbackToWeb])
+	  setIsConfigReady(true)
+	}, [])
 	
 	// Error boundary component selection
 	const ErrorBoundaryComponent = CustomErrorBoundary || ErrorBoundary
 	const LoadingComponent = CustomLoadingComponent || MiniAppLayoutLoading
 	
 	// Show loading while config initializes
-	if (!isConfigReady || !wagmiConfig) {
-	  return <LoadingComponent progress={wagmiConfig ? 75 : 25} />
+	if (!isConfigReady) {
+	  return <LoadingComponent progress={75} />
 	}
 	
-	// Show error if config failed and no fallback
-	if (configError && !wagmiConfig) {
+	// Show error if config failed
+	if (configError) {
 	  return (
 		<div className="min-h-screen flex items-center justify-center bg-background p-4">
 		  <Alert className="max-w-md">
@@ -1055,15 +981,11 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		  }
 		}}
 	  >
-		<WagmiProvider config={wagmiConfig}>
-		  <QueryClientProvider client={queryClient}>
+	
 			{/* DEBUG: Log config state for troubleshooting */}
-			{showDebugInfo && wagmiConfig && (
-			  <div className="fixed top-0 left-0 bg-red-500 text-white p-2 text-xs z-50">
-				Config: {wagmiConfig ? 'OK' : 'FAILED'}
-				{wagmiConfig && wagmiConfig._enhancedMetadata && (
-				  <div>Fallback: {wagmiConfig._enhancedMetadata.fallbackUsed ? 'YES' : 'NO'}</div>
-				)}
+			{showDebugInfo && (
+			  <div className="fixed top-0 left-0 bg-green-500 text-white p-2 text-xs z-50">
+				MiniApp Layout: OK
 			  </div>
 			)}
 			<FastRPCProvider>
@@ -1081,8 +1003,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 					</Suspense>
 				</EnhancedMiniAppProvider>
 			</FastRPCProvider>
-		  </QueryClientProvider>
-		</WagmiProvider>
+
 	  </ErrorBoundaryComponent>
 	)
   }

@@ -63,6 +63,7 @@ import { cn } from '@/lib/utils'
 // Import your actual hooks and providers
 import { useMiniApp } from '@/contexts/MiniAppProvider'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // ================================================
 // PRODUCTION TYPE DEFINITIONS
@@ -258,23 +259,24 @@ function useNavigationContext(): NavigationContext {
 
 /**
  * Production User Role Hook
- * Uses your actual useIsCreatorRegistered hook
+ * Uses your actual useIsCreatorRegistered hook with MiniApp wallet context when appropriate
  */
-function useUserRole(): { 
+function useUserRole(): {
   role: UserRole
   isLoading: boolean
-  error: Error | null 
+  error: Error | null
 } {
-  const { address, isConnected } = useAccount()
+  const { context: miniAppContext, isMiniApp } = useMiniApp()
+  const { address, isConnected } = isMiniApp ? useMiniAppWalletUI() : useAccount()
   const { data: isCreator, isLoading, error } = useIsCreatorRegistered(address)
-  
+
   const role = useMemo((): UserRole => {
     if (!isConnected || !address) return 'disconnected'
     if (isLoading) return 'consumer' // Safe default while loading
     if (error) return 'consumer' // Safe default on error
     return isCreator ? 'creator' : 'consumer'
   }, [isConnected, address, isCreator, isLoading, error])
-  
+
   return { role, isLoading, error: error as Error | null }
 }
 
