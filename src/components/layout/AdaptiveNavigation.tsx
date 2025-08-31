@@ -268,7 +268,9 @@ function useUserRole(): {
 } {
   const { context: miniAppContext, isMiniApp } = useMiniApp()
   const { address, isConnected } = isMiniApp ? useMiniAppWalletUI() : useAccount()
-  const { data: isCreator, isLoading, error } = useIsCreatorRegistered(address)
+  const { data: isCreator, isLoading, error } = useIsCreatorRegistered(
+    address ? (address as `0x${string}`) : undefined
+  )
 
   const role = useMemo((): UserRole => {
     if (!isConnected || !address) return 'disconnected'
