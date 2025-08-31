@@ -7,9 +7,13 @@
 
 import React, { useCallback, useMemo } from 'react'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
-import { useX402ContentPurchaseFlow } from '@/hooks/business/workflows'
+import { useX402ContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+import { useTokenAllowance } from '@/hooks/contracts/core'
+import { getContractAddresses } from '@/lib/contracts/config'
+import { useChainId } from 'wagmi'
+import { formatTokenBalance } from '@/lib/utils'
 
 /**
  * Farcaster Embed Interface
@@ -229,9 +233,30 @@ export function MiniAppPurchaseFlow({
   // Get current user address from MiniApp wallet UI
   const walletUI = useMiniAppWalletUI()
   const { address } = walletUI
+  const chainId = useChainId()
+
+  // Get contract addresses for token allowance check
+  const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
 
   // Initialize x402 payment flow with social context integration
   const purchaseFlow = useX402ContentPurchaseFlow(contentId, address as `0x${string}` | undefined)
+
+  // Get token allowance directly
+  const tokenAllowance = useTokenAllowance(
+    contractAddresses?.USDC,
+    address as `0x${string}` | undefined,
+    contractAddresses?.PAY_PER_VIEW
+  )
+
+  // Extract payment validation data
+  const userBalance = purchaseFlow.userBalance || BigInt(0)
+  const userAllowance = tokenAllowance.data || BigInt(0)
+  const contentPrice = purchaseFlow.content?.payPerViewPrice || BigInt(0)
+
+  // Enhanced validation checks
+  const hasEnoughBalance = userBalance >= contentPrice
+  const hasEnoughAllowance = userAllowance >= contentPrice
+  const needsApproval = purchaseFlow.needsApproval
   
   // Initialize social sharing capabilities
   const socialContext = useSocialContextWithSharing()
@@ -294,6 +319,65 @@ export function MiniAppPurchaseFlow({
         </div>
       </div>
       
+      {/* Wallet Balance & Allowance Status */}
+      <div className="mb-4 p-4 bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-lg">
+        <h3 className="text-sm font-medium text-slate-700 mb-3">Payment Status</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center">
+            <div className="text-xs text-slate-500 mb-1">Your Balance</div>
+            <div className={`text-lg font-bold ${hasEnoughBalance ? 'text-green-600' : 'text-red-600'}`}>
+              {purchaseFlow.isLoading ? '...' : formatTokenBalance(userBalance, 6)} USDC
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-slate-500 mb-1">Allowance</div>
+            <div className={`text-lg font-bold ${hasEnoughAllowance ? 'text-green-600' : 'text-orange-600'}`}>
+              {tokenAllowance.isLoading ? '...' : formatTokenBalance(userAllowance, 6)} USDC
+            </div>
+          </div>
+        </div>
+
+        {/* Content Price Display */}
+        <div className="mt-3 pt-3 border-t border-slate-200">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-slate-600">Content Price:</span>
+            <span className="text-lg font-bold text-slate-800">
+              {formatTokenBalance(contentPrice, 6)} USDC
+            </span>
+          </div>
+        </div>
+
+        {/* Status Indicators */}
+        <div className="mt-3 flex gap-2">
+          <div className={`flex-1 text-center text-xs px-2 py-1 rounded-full ${
+            hasEnoughBalance
+              ? 'bg-green-100 text-green-700 border border-green-200'
+              : 'bg-red-100 text-red-700 border border-red-200'
+          }`}>
+            {hasEnoughBalance ? '✓ Balance OK' : '✗ Insufficient Balance'}
+          </div>
+          <div className={`flex-1 text-center text-xs px-2 py-1 rounded-full ${
+            hasEnoughAllowance
+              ? 'bg-green-100 text-green-700 border border-green-200'
+              : 'bg-orange-100 text-orange-700 border border-orange-200'
+          }`}>
+            {hasEnoughAllowance ? '✓ Allowance OK' : needsApproval ? '⚠ Needs Approval' : '✗ Insufficient Allowance'}
+          </div>
+        </div>
+
+        {/* Warning Messages */}
+        {!hasEnoughBalance && (
+          <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+            You need {formatTokenBalance(contentPrice - userBalance, 6)} more USDC to purchase this content.
+          </div>
+        )}
+        {hasEnoughBalance && !hasEnoughAllowance && (
+          <div className="mt-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+            You need to approve USDC spending before purchasing.
+          </div>
+        )}
+      </div>
+
       {/* Enhanced Content Purchase Card */}
       <OrchestratedContentPurchaseCard
         contentId={contentId}

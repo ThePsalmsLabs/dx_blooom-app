@@ -59,6 +59,7 @@ import {
   Skeleton
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
+import { CompactBasename } from '@/components/ui/basename'
 
 // Import your actual hooks and providers
 import { useMiniApp } from '@/contexts/MiniAppProvider'

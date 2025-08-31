@@ -64,6 +64,7 @@ import {
     ToastViewport
   } from '@/components/ui/index'
 import { cn, formatAddress } from '@/lib/utils'
+import { CompactBasename } from '@/components/ui/basename'
 import { ThemeToggle, ThemeSelector } from '@/components/ui/theme-toggle'
 
 // Import our architectural layers for layout functionality
@@ -639,9 +640,13 @@ function UserProfileDropdown({
             <p className="text-sm font-medium leading-none">
               {userRole === 'creator' ? 'Creator Account' : 'User Account'}
             </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {formattedAddress || formatAddress(address as `0x${string}`)}
-            </p>
+            <div className="text-xs leading-none text-muted-foreground">
+              <CompactBasename
+                address={address}
+                showAddressOnFallback={true}
+                fallbackText="Not connected"
+              />
+            </div>
             {creatorProfile?.isVerified && (
               <Badge variant="secondary" className="w-fit text-xs">
                 <CheckCircle className="h-3 w-3 mr-1" />

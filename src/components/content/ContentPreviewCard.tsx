@@ -114,27 +114,63 @@ export function ContentPreviewCard({
   if (viewMode === 'list') {
     return (
       <Card className={cn(
-        "overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer group",
-        "border-border/50 hover:border-primary/30",
+        "overflow-hidden cursor-pointer group relative",
+        // Beautiful gradient border with glow effect
+        "bg-gradient-to-br from-card via-card/95 to-card/90",
+        "border-2 border-transparent bg-clip-padding",
+        "before:absolute before:inset-0 before:rounded-lg before:p-[2px]",
+        "before:bg-gradient-to-br before:from-primary/30 before:via-purple-500/20 before:to-primary/30",
+        "before:content-[''] before:opacity-0 hover:before:opacity-100",
+        "before:transition-opacity before:duration-300",
+        // Enhanced shadow and glow effects
+        "shadow-lg hover:shadow-xl hover:shadow-primary/20",
+        "transition-all duration-300 ease-out",
+        // Premium hover effects
+        "hover:scale-[1.02] hover:-translate-y-1",
+        "hover:bg-gradient-to-br hover:from-card hover:to-primary/5",
         className
       )} onClick={handleViewContent}>
-        <div className="flex">
-          {/* Content Thumbnail/Icon */}
-          <div className="w-32 h-32 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center flex-shrink-0 relative">
-            <Eye className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+        {/* Subtle inner glow on hover */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+
+        <div className="flex relative z-10">
+          {/* Content Thumbnail/Icon with enhanced styling */}
+          <div className="w-32 h-32 bg-gradient-to-br from-primary/10 via-purple-500/5 to-primary/10 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+            {/* Animated background pattern */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            {/* Purchase indicator overlay */}
+            <div className="absolute top-2 left-2">
+              <div className="bg-gradient-to-r from-primary to-purple-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
+                <DollarSign className="h-3 w-3 inline mr-1" />
+                {hasAccess ? 'Owned' : 'Premium'}
+              </div>
+            </div>
+
+            <Eye className="h-8 w-8 text-primary group-hover:text-primary/80 transition-colors relative z-10" />
+
+            {/* Access status badge */}
             <div className="absolute top-2 right-2">
               <AccessStatusBadge hasAccess={hasAccess} />
             </div>
+
+            {/* Animated corner accent */}
+            <div className="absolute bottom-0 right-0 w-8 h-8 bg-gradient-to-tl from-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
 
-          {/* Content Information */}
+          {/* Content Information with enhanced styling */}
           <div className="flex-1 p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2 flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold line-clamp-1 text-lg group-hover:text-primary transition-colors">
+                  <h3 className="font-bold line-clamp-1 text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text group-hover:from-primary group-hover:to-purple-600 transition-all duration-300">
                     {content.title}
                   </h3>
+                  {/* Premium badge */}
+                  <div className="bg-gradient-to-r from-primary/20 to-purple-500/20 text-primary text-xs px-2 py-1 rounded-full border border-primary/30">
+                    <Tag className="h-3 w-3 inline mr-1" />
+                    {categoryToString(content.category)}
+                  </div>
                 </div>
 
                 <div className="text-sm text-muted-foreground">
@@ -148,7 +184,7 @@ export function ContentPreviewCard({
                         {needsReadMore && (
                           <button
                             onClick={handleDescriptionToggle}
-                            className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors"
+                            className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors hover:scale-105"
                           >
                             {isDescriptionExpanded ? (
                               <>
@@ -167,16 +203,12 @@ export function ContentPreviewCard({
                 </div>
 
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <Badge variant="secondary" className="text-xs">
-                    <Tag className="h-3 w-3 mr-1" />
-                    {categoryToString(content.category)}
-                  </Badge>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-full">
                     <Clock className="h-3 w-3" />
                     <span>{formatRelativeTime(content.creationTime)}</span>
                   </div>
                   {showCreatorInfo && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-full">
                       <User className="h-3 w-3" />
                       <span>by {formatAddress(content.creator)}</span>
                     </div>
@@ -184,20 +216,27 @@ export function ContentPreviewCard({
                 </div>
               </div>
 
-              <div className="text-right flex-shrink-0">
-                <div className="text-lg font-bold text-primary mb-2">
-                  {formatCurrency(content.payPerViewPrice)}
+              <div className="text-right flex-shrink-0 space-y-3">
+                {/* Enhanced price display */}
+                <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 px-4 py-2 rounded-lg border border-primary/20">
+                  <div className="text-xs text-muted-foreground mb-1">Price</div>
+                  <div className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                    {formatCurrency(content.payPerViewPrice)}
+                  </div>
                 </div>
+
+                {/* Enhanced CTA button */}
                 <Button
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleViewContent()
                   }}
-                  className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                  className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white shadow-lg hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 hover:scale-105"
                 >
+                  <Eye className="h-4 w-4 mr-2" />
                   View Content
-                  <ArrowRight className="h-3 w-3 ml-1" />
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </div>
             </div>
@@ -211,24 +250,58 @@ export function ContentPreviewCard({
   if (viewMode === 'compact') {
     return (
       <Card className={cn(
-        "overflow-hidden hover:shadow-md transition-shadow duration-200 cursor-pointer group",
-        "border-border/50 hover:border-primary/30",
+        "overflow-hidden cursor-pointer group relative",
+        // Beautiful gradient border with glow effect
+        "bg-gradient-to-br from-card via-card/95 to-card/90",
+        "border-2 border-transparent bg-clip-padding",
+        "before:absolute before:inset-0 before:rounded-lg before:p-[1px]",
+        "before:bg-gradient-to-br before:from-primary/20 before:via-purple-500/15 before:to-primary/20",
+        "before:content-[''] before:opacity-0 hover:before:opacity-100",
+        "before:transition-opacity before:duration-300",
+        // Enhanced shadow and glow effects
+        "shadow-md hover:shadow-lg hover:shadow-primary/15",
+        "transition-all duration-300 ease-out",
+        // Premium hover effects
+        "hover:scale-[1.01] hover:-translate-y-0.5",
+        "hover:bg-gradient-to-br hover:from-card hover:to-primary/3",
         className
       )} onClick={handleViewContent}>
-        <CardContent className="p-4">
+        {/* Subtle inner glow on hover */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/3 via-transparent to-purple-500/3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+
+        <CardContent className="p-4 relative z-10">
           <div className="flex items-start gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center flex-shrink-0 relative">
-              <Eye className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            <div className="w-12 h-12 bg-gradient-to-br from-primary/10 via-purple-500/5 to-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+              {/* Animated background pattern */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/15 to-purple-500/8 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              {/* Compact purchase indicator */}
+              <div className="absolute -top-1 left-1">
+                <div className="bg-gradient-to-r from-primary to-purple-600 text-white text-xs px-1.5 py-0.5 rounded-full font-medium shadow-md text-[10px]">
+                  {hasAccess ? '✓' : '$'}
+                </div>
+              </div>
+
+              <Eye className="h-4 w-4 text-primary group-hover:text-primary/80 transition-colors relative z-10" />
+
+              {/* Access status badge */}
               <div className="absolute -top-1 -right-1">
                 <AccessStatusBadge hasAccess={hasAccess} size="sm" />
               </div>
+
+              {/* Animated corner accent */}
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-gradient-to-tl from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                <h3 className="font-semibold text-sm line-clamp-1 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text group-hover:from-primary group-hover:to-purple-600 transition-all duration-300">
                   {content.title}
                 </h3>
+                {/* Compact category badge */}
+                <div className="bg-gradient-to-r from-primary/15 to-purple-500/15 text-primary text-xs px-1.5 py-0.5 rounded-full border border-primary/20 text-[10px]">
+                  {categoryToString(content.category)}
+                </div>
               </div>
 
               <div className="text-xs text-muted-foreground mb-2">
@@ -242,15 +315,15 @@ export function ContentPreviewCard({
                       {needsReadMore && (
                         <button
                           onClick={handleDescriptionToggle}
-                          className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors"
+                          className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors hover:scale-105"
                         >
                           {isDescriptionExpanded ? (
                             <>
-                              Read less <ChevronUp className="h-3 w-3" />
+                              Read less <ChevronUp className="h-2.5 w-2.5" />
                             </>
                           ) : (
                             <>
-                              Read more <ChevronDown className="h-3 w-3" />
+                              Read more <ChevronDown className="h-2.5 w-2.5" />
                             </>
                           )}
                         </button>
@@ -262,12 +335,12 @@ export function ContentPreviewCard({
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs px-2 py-0">
-                    {categoryToString(content.category)}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {formatCurrency(content.payPerViewPrice)}
-                  </span>
+                  {/* Enhanced price display */}
+                  <div className="bg-gradient-to-r from-primary/8 to-purple-500/8 px-2 py-1 rounded-md border border-primary/15">
+                    <span className="text-xs font-medium bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                      {formatCurrency(content.payPerViewPrice)}
+                    </span>
+                  </div>
                 </div>
                 <Button
                   size="sm"
@@ -276,8 +349,9 @@ export function ContentPreviewCard({
                     e.stopPropagation()
                     handleViewContent()
                   }}
-                  className="text-xs px-2 py-1 h-auto group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                  className="text-xs px-2 py-1 h-auto bg-gradient-to-r from-primary/10 to-purple-500/10 hover:from-primary hover:to-purple-600 hover:text-white border border-primary/20 transition-all duration-300 hover:scale-105 hover:shadow-md"
                 >
+                  <Eye className="h-3 w-3 mr-1" />
                   View
                   <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
@@ -289,26 +363,76 @@ export function ContentPreviewCard({
     )
   }
 
-  // Default grid view layout
+  // Default grid view layout - PREMIUM STYLING
   return (
     <Card className={cn(
-      "overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer group",
-      "border-border/50 hover:border-primary/30",
+      "overflow-hidden cursor-pointer group relative",
+      // Beautiful gradient border with enhanced glow effect
+      "bg-gradient-to-br from-card via-card/98 to-card/95",
+      "border-2 border-transparent bg-clip-padding",
+      "before:absolute before:inset-0 before:rounded-lg before:p-[2px]",
+      "before:bg-gradient-to-br before:from-primary/40 before:via-purple-500/30 before:to-primary/40",
+      "before:content-[''] before:opacity-0 hover:before:opacity-100",
+      "before:transition-opacity before:duration-500",
+      // Enhanced shadow and glow effects
+      "shadow-xl hover:shadow-2xl hover:shadow-primary/25",
+      "transition-all duration-500 ease-out",
+      // Premium hover effects with enhanced animation
+      "hover:scale-[1.03] hover:-translate-y-2",
+      "hover:bg-gradient-to-br hover:from-card hover:to-primary/8",
+      // Add a subtle pulse animation on hover
+      "hover:animate-pulse-slow",
       className
     )} onClick={handleViewContent}>
-      {/* Content Thumbnail/Icon */}
-      <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center relative group-hover:from-primary/5 group-hover:to-primary/10 transition-colors">
-        <Eye className="h-12 w-12 text-muted-foreground group-hover:text-primary transition-colors" />
-        <div className="absolute top-3 right-3">
+      {/* Multiple layered glow effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-purple-500/8 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-lg" />
+      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-lg" />
+
+      {/* Content Thumbnail/Icon with premium styling */}
+      <div className="aspect-video bg-gradient-to-br from-primary/15 via-purple-500/10 to-primary/15 flex items-center justify-center relative overflow-hidden group-hover:from-primary/25 group-hover:to-purple-500/20 transition-all duration-500">
+        {/* Animated background pattern with multiple layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-rotate-slow" />
+
+        {/* Premium purchase indicator overlay */}
+        <div className="absolute top-4 left-4 z-20">
+          <div className="bg-gradient-to-r from-primary via-purple-600 to-primary bg-size-200 bg-pos-0 hover:bg-pos-100 text-white px-3 py-1.5 rounded-full font-bold shadow-2xl border border-white/20 backdrop-blur-sm transition-all duration-500 animate-gradient">
+            <DollarSign className="h-4 w-4 inline mr-2" />
+            {hasAccess ? 'OWNED' : 'PREMIUM'}
+          </div>
+        </div>
+
+        {/* Enhanced eye icon with glow */}
+        <div className="relative z-10">
+          <div className="absolute inset-0 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Eye className="h-16 w-16 text-primary group-hover:text-white transition-all duration-300 drop-shadow-lg group-hover:scale-110" />
+        </div>
+
+        {/* Access status badge with premium styling */}
+        <div className="absolute top-4 right-4 z-20">
           <AccessStatusBadge hasAccess={hasAccess} />
         </div>
+
+        {/* Animated corner accents */}
+        <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute bottom-0 left-0 w-12 h-12 bg-gradient-to-tr from-purple-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+        {/* Floating particles effect */}
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-primary/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-float-1" />
+        <div className="absolute top-3/4 right-1/4 w-1.5 h-1.5 bg-purple-500/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-float-2" />
       </div>
 
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 relative z-10">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-2 text-base group-hover:text-primary transition-colors">
+          <CardTitle className="line-clamp-2 text-lg font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/80 bg-clip-text group-hover:from-primary group-hover:via-purple-600 group-hover:to-primary transition-all duration-500 leading-tight">
             {content.title}
           </CardTitle>
+          {/* Premium sparkle effect */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            <div className="w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-white text-xs font-bold animate-pulse">★</span>
+            </div>
+          </div>
         </div>
 
         <div className="text-sm text-muted-foreground">
@@ -322,7 +446,7 @@ export function ContentPreviewCard({
                 {needsReadMore && (
                   <button
                     onClick={handleDescriptionToggle}
-                    className="text-primary hover:text-primary/80 text-xs font-medium flex items-center gap-1 transition-colors"
+                    className="text-primary text-xs font-medium flex items-center gap-1 transition-all duration-300 hover:scale-105 hover:text-purple-600"
                   >
                     {isDescriptionExpanded ? (
                       <>
@@ -341,45 +465,52 @@ export function ContentPreviewCard({
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-3">
+      <CardContent className="pt-0 space-y-4 relative z-10">
         <div className="flex items-center justify-between">
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs bg-gradient-to-r from-primary/15 to-purple-500/15 border-primary/30 hover:from-primary/25 hover:to-purple-500/25 transition-all duration-300">
             <Tag className="h-3 w-3 mr-1" />
             {categoryToString(content.category)}
           </Badge>
-          <div className="flex items-center gap-1 text-sm font-medium text-primary">
-            <DollarSign className="h-4 w-4" />
-            {formatCurrency(content.payPerViewPrice)}
+          {/* Premium price display */}
+          <div className="bg-gradient-to-r from-primary/15 via-purple-500/10 to-primary/15 px-4 py-2 rounded-xl border border-primary/30 shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all duration-300 hover:scale-105">
+            <div className="text-xs text-muted-foreground mb-1 font-medium">Price</div>
+            <div className="flex items-center gap-1">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <span className="text-lg font-bold bg-gradient-to-r from-primary via-purple-600 to-primary bg-clip-text text-transparent">
+                {formatCurrency(content.payPerViewPrice)}
+              </span>
+            </div>
           </div>
         </div>
 
         {showCreatorInfo && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Avatar className="h-4 w-4">
-              <AvatarFallback className="text-xs">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-3 py-2 rounded-lg">
+            <Avatar className="h-5 w-5 ring-2 ring-primary/20">
+              <AvatarFallback className="text-xs bg-gradient-to-r from-primary/20 to-purple-500/20">
                 {formatAddress(content.creator).slice(0, 2)}
               </AvatarFallback>
             </Avatar>
-            <span>by {formatAddress(content.creator)}</span>
+            <span>by <span className="font-medium">{formatAddress(content.creator)}</span></span>
           </div>
         )}
 
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
+        <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/20 px-3 py-1.5 rounded-lg">
+          <Clock className="h-3 w-3 text-primary/70" />
           <span>{formatRelativeTime(content.creationTime)}</span>
         </div>
       </CardContent>
 
-      <CardFooter className="pt-0">
+      <CardFooter className="pt-0 relative z-10">
         <Button
-          className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+          className="w-full bg-gradient-to-r from-primary via-purple-600 to-primary bg-size-200 bg-pos-0 hover:bg-pos-100 text-white font-bold py-3 shadow-xl hover:shadow-2xl hover:shadow-primary/40 transition-all duration-500 hover:scale-[1.02] animate-gradient-slow"
           onClick={(e) => {
             e.stopPropagation()
             handleViewContent()
           }}
         >
+          <Eye className="h-5 w-5 mr-2" />
           View Full Content
-          <ArrowRight className="h-4 w-4 ml-2" />
+          <ArrowRight className="h-5 w-5 ml-2" />
         </Button>
       </CardFooter>
     </Card>

@@ -1085,6 +1085,20 @@ export function OrchestratedContentPurchaseCard({
           }
         ]
         
+        // Enhanced validation before batch transaction
+        const currentBalance = usdcBalance.data || BigInt(0)
+        const contentPrice = contentQuery.data.payPerViewPrice
+
+        debug.log('Batch purchase validation:', {
+          balance: currentBalance.toString(),
+          price: contentPrice.toString(),
+          hasEnoughBalance: currentBalance >= contentPrice
+        })
+
+        if (currentBalance < contentPrice) {
+          throw new Error(`Insufficient USDC balance. You have ${formatTokenBalance(currentBalance, 6)} USDC but need ${formatTokenBalance(contentPrice, 6)} USDC.`)
+        }
+
         await sendCalls({ calls })
         debug.log('Batch transaction submitted successfully')
         return
@@ -1107,9 +1121,30 @@ export function OrchestratedContentPurchaseCard({
         return
       }
       
-      // Direct purchase without approval needed
+            // Direct purchase without approval needed
       debug.log('Purchasing content with USDC...')
-      
+
+      // Enhanced validation before purchase
+      const currentBalance = usdcBalance.data || BigInt(0)
+      const currentAllowance = usdcAllowance.data || BigInt(0)
+      const contentPrice = contentQuery.data.payPerViewPrice
+
+      debug.log('Purchase validation:', {
+        balance: currentBalance.toString(),
+        allowance: currentAllowance.toString(),
+        price: contentPrice.toString(),
+        hasEnoughBalance: currentBalance >= contentPrice,
+        hasEnoughAllowance: currentAllowance >= contentPrice
+      })
+
+      if (currentBalance < contentPrice) {
+        throw new Error(`Insufficient USDC balance. You have ${formatTokenBalance(currentBalance, 6)} USDC but need ${formatTokenBalance(contentPrice, 6)} USDC.`)
+      }
+
+      if (currentAllowance < contentPrice) {
+        throw new Error(`Insufficient USDC allowance. Please approve spending first.`)
+      }
+
       setCurrentTransactionType('usdc')
       await writeContract({
         address: contractAddresses.PAY_PER_VIEW,

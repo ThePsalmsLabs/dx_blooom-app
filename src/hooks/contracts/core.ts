@@ -23,14 +23,14 @@
  * - Loading states are granular to enable precise UI feedback
  */
 
-import { 
-  useReadContract, 
-  useWriteContract, 
+import {
+  useReadContract,
+  useWriteContract,
   useWaitForTransactionReceipt,
   useChainId,
 } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useEffect } from 'react'
+import { useCallback, useMemo, useEffect, useState, useRef } from 'react'
 import { type Address, type Hash } from 'viem'
 
 // Import our foundational layers
@@ -100,39 +100,83 @@ export function useIsCreatorRegistered(creatorAddress: Address | undefined): Con
   const chainId = useChainId()
   const contractConfig = useMemo(() => getCreatorRegistryContract(chainId), [chainId])
 
+  // Add a local timeout mechanism to prevent infinite loading
+  const [localTimeout, setLocalTimeout] = useState(false)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   const result = useReadContract({
     address: contractConfig.address,
     abi: CREATOR_REGISTRY_ABI,
     functionName: 'isRegisteredCreator',
     args: creatorAddress ? [creatorAddress] : undefined,
     query: {
-      enabled: !!creatorAddress, // Only run when we have an address
-      staleTime: 1000 * 60 * 10, // Creator registration rarely changes, cache for 10 minutes
-      gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes
-      retry: 3, // Retry failed requests up to 3 times
-      retryDelay: 1000, // Wait 1 second between retries
+      enabled: !!creatorAddress && !localTimeout, // Only run when we have an address and not timed out
+      staleTime: 1000 * 60 * 5, // Reduced from 10 minutes to 5 minutes for faster refreshes
+      gcTime: 1000 * 60 * 15, // Reduced from 30 minutes to 15 minutes
+      retry: (failureCount, error) => {
+        // Smart retry logic with exponential backoff
+        if (failureCount >= 3) return false
+        if (error?.message?.includes('network') || error?.message?.includes('timeout')) {
+          return failureCount < 2 // Retry network issues fewer times
+        }
+        return true
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Exponential backoff, max 10s
+      // Add a query-level timeout
+      refetchInterval: false, // Don't auto-refetch
     }
   })
 
-  // Add better error handling and logging
+  // Local timeout mechanism - if the query takes longer than 8 seconds, consider it failed
+  useEffect(() => {
+    if (creatorAddress && result.isLoading && !localTimeout) {
+      timeoutRef.current = setTimeout(() => {
+        console.warn('⏰ useIsCreatorRegistered local timeout - forcing failure state')
+        setLocalTimeout(true)
+      }, 8000) // 8 second timeout
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
+  }, [creatorAddress, result.isLoading, localTimeout])
+
+  // Reset timeout when address changes or query completes
+  useEffect(() => {
+    if (!result.isLoading && localTimeout) {
+      setLocalTimeout(false)
+    }
+  }, [result.isLoading, localTimeout])
+
+  // Enhanced error handling and logging
   useEffect(() => {
     if (result.isError && result.error) {
       console.error('❌ Creator registration check failed:', {
         address: creatorAddress,
         contractAddress: contractConfig.address,
         chainId,
-        error: result.error
+        error: result.error,
+        localTimeout
       })
     }
-  }, [result.isError, result.error, creatorAddress, contractConfig.address, chainId])
+  }, [result.isError, result.error, creatorAddress, contractConfig.address, chainId, localTimeout])
+
+  // Enhanced refetch function that also resets our local timeout
+  const enhancedRefetch = useCallback(() => {
+    setLocalTimeout(false)
+    return result.refetch()
+  }, [result.refetch])
 
   return {
-    data: typeof result.data === 'boolean' ? result.data : undefined,
-    isLoading: result.isLoading,
-    isError: result.isError,
-    error: result.error,
-    isSuccess: result.isSuccess,
-    refetch: result.refetch
+    data: typeof result.data === 'boolean' ? result.data : (localTimeout ? false : undefined),
+    isLoading: result.isLoading && !localTimeout,
+    isError: result.isError || localTimeout,
+    error: localTimeout ? new Error('Registration check timed out') : result.error,
+    isSuccess: result.isSuccess && !localTimeout,
+    refetch: enhancedRefetch
   }
 }
 

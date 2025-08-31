@@ -86,6 +86,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn, formatCurrency, formatNumber } from '@/lib/utils'
+import { Basename, BasenameWithAddress } from '@/components/ui/basename'
 
 // Import our architectural layers
 import {
@@ -360,7 +361,11 @@ export function EnhancedCreatorDashboard({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Address</span>
-                    <span className="font-mono text-sm">{creatorAddress}</span>
+                    <BasenameWithAddress
+                      address={creatorAddress}
+                      className="text-sm"
+                      separator=" • "
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Subscription Price</span>
@@ -1521,7 +1526,12 @@ function BasicDashboardContent({
             <div className="space-y-3">
                              <div className="flex items-center justify-between">
                  <span className="text-sm text-muted-foreground">Address</span>
-                 <span className="font-mono text-sm">{creatorAddress || 'Unknown'}</span>
+                 <BasenameWithAddress
+                   address={creatorAddress}
+                   className="text-sm"
+                   separator=" • "
+                   fallbackText="Not connected"
+                 />
                </div>
                <div className="flex items-center justify-between">
                  <span className="text-sm text-muted-foreground">Subscription Price</span>

@@ -18,6 +18,7 @@ import {
   useRegisterCreator,
 } from '@/hooks/contracts/core'
 import { getContractAddresses } from '@/lib/contracts/config'
+import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
 import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
 import {
   getX402MiddlewareConfig,
@@ -2138,6 +2139,31 @@ export function useContentPurchaseFlow(
       throw new Error('Missing contract addresses or content ID')
     }
 
+    // Enhanced validation before purchase
+    const currentBalance = usdcBalance?.value || BigInt(0)
+    const currentAllowance = usdcAllowance || BigInt(0)
+    const contentPrice = contentDetails?.payPerViewPrice
+
+    if (!contentPrice) {
+      throw new Error('Content price not available')
+    }
+
+    debug.log('MiniApp purchase validation:', {
+      balance: currentBalance.toString(),
+      allowance: currentAllowance.toString(),
+      price: contentPrice.toString(),
+      hasEnoughBalance: currentBalance >= contentPrice,
+      hasEnoughAllowance: currentAllowance >= contentPrice
+    })
+
+    if (currentBalance < contentPrice) {
+      throw new Error(`Insufficient USDC balance. You have ${formatTokenBalance(currentBalance, 6)} USDC but need ${formatTokenBalance(contentPrice, 6)} USDC.`)
+    }
+
+    if (currentAllowance < contentPrice) {
+      throw new Error(`Insufficient USDC allowance. Please approve spending first.`)
+    }
+
     setFlowState({
       step: 'purchasing',
       message: 'Processing USDC purchase...',
@@ -2151,7 +2177,7 @@ export function useContentPurchaseFlow(
       functionName: 'purchaseContentDirect',
       args: [contentId]
     })
-  }, [writeContract, contractAddresses, contentId])
+  }, [writeContract, contractAddresses, contentId, usdcBalance, usdcAllowance, contentDetails])
 
   const executeETHPurchase = useCallback(async () => {
     if (!contractAddresses?.PAY_PER_VIEW || !contentId) {
@@ -3871,15 +3897,17 @@ export interface CreatorOnboardingFlowResult {
   readonly profile: Creator | null
   readonly register: (subscriptionPrice: bigint, profileData: string) => void
   readonly reset: () => void
-  readonly hasJustRegistered: boolean // Add this flag
-  readonly registrationCheck: any // Add this for manual refresh
-  readonly creatorProfile: any // Add this for manual refresh
+  readonly hasJustRegistered: boolean
+  readonly registrationCheck: any
+  readonly creatorProfile: any
   readonly registrationProgress: {
     readonly isSubmitting: boolean
     readonly isConfirming: boolean
     readonly isConfirmed: boolean
     readonly transactionHash: string | undefined
   }
+  readonly forceProceedAsNotRegistered: () => void
+  readonly manualOverrideUsed: boolean
 }
 
 export function useCreatorOnboarding(
@@ -3895,19 +3923,21 @@ export function useCreatorOnboarding(
   // and forcing a deterministic transition if remote reads remain stuck.
   const checkingSinceRef = useRef<number | null>(null)
   const checkingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Standard timeout that defines how long we allow a registration check to run.
-  const REGISTRATION_CHECK_TIMEOUT_MS = 15000
+  // Reduced timeout for faster user experience - 10 seconds instead of 15
+  const REGISTRATION_CHECK_TIMEOUT_MS = 10000
   
   const [workflowState, setWorkflowState] = useState<{
     currentStep: CreatorOnboardingFlowStep
     error: Error | null
     lastTransactionHash: string | null
     hasJustRegistered: boolean
+    manualOverrideUsed: boolean
   }>({
     currentStep: 'checking',
     error: null,
     lastTransactionHash: null,
-    hasJustRegistered: false
+    hasJustRegistered: false,
+    manualOverrideUsed: false
   })
   
   const isRegistered = registrationCheck.data ?? false
@@ -3936,6 +3966,24 @@ export function useCreatorOnboarding(
     }
   }, [creatorProfile.data, isRegistered])
   
+  // Manual override function for when registration check gets stuck
+  const forceProceedAsNotRegistered = useCallback(() => {
+    debug.log('🚨 Manual override: Forcing proceed as not registered')
+    setWorkflowState(prev => ({
+      ...prev,
+      currentStep: 'not_registered',
+      error: null,
+      manualOverrideUsed: true
+    }))
+
+    // Clear any pending timeouts
+    if (checkingTimeoutRef.current) {
+      clearTimeout(checkingTimeoutRef.current)
+      checkingTimeoutRef.current = null
+    }
+    checkingSinceRef.current = null
+  }, [])
+
   const register = useCallback(async (subscriptionPrice: bigint, profileData: string) => {
     if (!userAddress) {
       setWorkflowState(prev => ({ 
@@ -4002,11 +4050,12 @@ export function useCreatorOnboarding(
   }, [userAddress, isRegistered, registerCreator])
   
   const reset = useCallback(() => {
-    setWorkflowState({ 
-      currentStep: 'checking', 
+    setWorkflowState({
+      currentStep: 'checking',
       error: null,
       lastTransactionHash: null,
-      hasJustRegistered: false
+      hasJustRegistered: false,
+      manualOverrideUsed: false
     })
     registerCreator.reset()
     registrationCheck.refetch()
@@ -4190,14 +4239,14 @@ export function useCreatorOnboarding(
     // Add a timeout to prevent infinite loading if the contract call takes too long
     if (workflowState.currentStep === 'checking' && !registrationCheck.isLoading && !registrationCheck.isSuccess && !registrationCheck.error) {
       const timeout = setTimeout(() => {
-        console.warn('⏰ Registration check timeout - treating as not registered')
-        setWorkflowState(prev => ({ 
-          ...prev, 
+        console.warn('⏰ Registration check secondary timeout - treating as not registered')
+        setWorkflowState(prev => ({
+          ...prev,
           currentStep: 'not_registered',
           error: null
         }))
-      }, 10000) // 10 second timeout
-      
+      }, 5000) // 5 second timeout for secondary mechanism
+
       return () => clearTimeout(timeout)
     }
     // Cleanup any lingering watchdog when effect dependencies change
@@ -4237,12 +4286,13 @@ export function useCreatorOnboarding(
   useEffect(() => {
     if (userAddress) {
       debug.log('👤 Address changed, resetting workflow:', userAddress)
-      setWorkflowState(prev => ({ 
+      setWorkflowState(prev => ({
         ...prev,
         currentStep: 'checking',
         error: null,
         lastTransactionHash: null,
-        hasJustRegistered: false
+        hasJustRegistered: false,
+        manualOverrideUsed: false
       }))
     }
   }, [userAddress])
@@ -4272,10 +4322,12 @@ export function useCreatorOnboarding(
     profile: profileData,
     register,
     reset,
-    hasJustRegistered: workflowState.hasJustRegistered, // Add this
-    registrationCheck, // Add this
-    creatorProfile, // Add this
-    registrationProgress
+    hasJustRegistered: workflowState.hasJustRegistered,
+    registrationCheck,
+    creatorProfile,
+    registrationProgress,
+    forceProceedAsNotRegistered, // Manual override function
+    manualOverrideUsed: workflowState.manualOverrideUsed
   }
 }
 

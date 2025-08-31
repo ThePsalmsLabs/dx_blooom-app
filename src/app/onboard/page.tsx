@@ -138,6 +138,7 @@ function OnboardingContent() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [isNavigating, setIsNavigating] = useState(false)
+  const [showManualOverride, setShowManualOverride] = useState(false)
   
   // Enhanced form validation
   const validateForm = useCallback((data: OnboardingFormData): Record<string, string> => {
@@ -312,6 +313,24 @@ function OnboardingContent() {
       setIsNavigating(false)
     }
   }, [])
+
+  // Show manual override button after 5 seconds of checking
+  useEffect(() => {
+    let timeout: NodeJS.Timeout
+    if (onboarding.currentStep === 'checking') {
+      timeout = setTimeout(() => {
+        setShowManualOverride(true)
+      }, 5000) // Show manual override after 5 seconds
+    } else {
+      setShowManualOverride(false)
+    }
+
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+    }
+  }, [onboarding.currentStep])
   
   // Enhanced onboarding steps configuration with better state reflection
   const onboardingSteps: readonly OnboardingStep[] = useMemo(() => [
@@ -487,7 +506,12 @@ function OnboardingContent() {
             }
             
             if (onboarding.currentStep === 'checking') {
-              return <CheckingRegistrationCard />
+              return (
+                <CheckingRegistrationCard
+                  onManualOverride={onboarding.forceProceedAsNotRegistered}
+                  showManualOverride={showManualOverride}
+                />
+              )
             }
             
             if (onboarding.currentStep === 'registered' || showSuccessDialog) {
@@ -996,13 +1020,35 @@ function HelpCard() {
 }
 
 // Helper components for different states
-function CheckingRegistrationCard() {
+interface CheckingRegistrationCardProps {
+  onManualOverride?: () => void
+  showManualOverride?: boolean
+}
+
+function CheckingRegistrationCard({ onManualOverride, showManualOverride }: CheckingRegistrationCardProps) {
   return (
     <Card>
       <CardContent className="p-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
         <h3 className="text-lg font-semibold mb-2">Checking Registration Status</h3>
-        <p className="text-muted-foreground">Please wait while we verify your account...</p>
+        <p className="text-muted-foreground mb-4">
+          Please wait while we verify your account...
+        </p>
+        {showManualOverride && onManualOverride && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Taking longer than expected?
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onManualOverride}
+              className="text-xs"
+            >
+              Skip Check & Proceed
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
