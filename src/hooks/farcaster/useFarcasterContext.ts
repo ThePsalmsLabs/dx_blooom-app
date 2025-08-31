@@ -7,6 +7,16 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 
+// Add global type declarations for Farcaster MiniKit
+declare global {
+  interface Window {
+    farcaster?: {
+      sdk?: unknown
+      context?: unknown
+    }
+  }
+}
+
 /**
  * Farcaster User Data Interface
  * 
@@ -148,7 +158,7 @@ export function useFarcasterContext(): FarcasterContext | undefined {
   // State management for Farcaster context
   const [farcasterContext, setFarcasterContext] = useState<FarcasterContext | undefined>(undefined)
   const [isInitialized, setIsInitialized] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
+  const [_error, setError] = useState<Error | null>(null)
 
   /**
    * MiniApp Environment Detection
@@ -176,15 +186,15 @@ export function useFarcasterContext(): FarcasterContext | undefined {
       )
       
       return urlIndicators || metaIndicators
-    } catch (detectionError) {
-      console.warn('Failed to detect MiniApp environment:', detectionError)
+    } catch (_detectionError) {
+      console.warn('Failed to detect MiniApp environment:', _detectionError)
       return false
     }
   }, [])
 
   /**
    * MiniKit Context Extraction
-   * 
+   *
    * This function safely extracts Farcaster context from the MiniKit SDK,
    * handling all potential errors and missing data gracefully.
    */
@@ -192,23 +202,65 @@ export function useFarcasterContext(): FarcasterContext | undefined {
     try {
       // Only attempt MiniKit integration if we're in a MiniApp environment
       if (!isMiniAppEnvironment) {
+        console.log('Not in MiniApp environment, skipping MiniKit extraction')
+        return null
+      }
+
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        console.log('Server-side rendering, skipping MiniKit extraction')
+        return null
+      }
+
+      // Check if MiniKit SDK is available globally
+      if (!window.farcaster) {
+        console.warn('Farcaster MiniKit SDK not available globally')
         return null
       }
 
       // Dynamically import MiniKit SDK to avoid SSR issues
-      const { sdk } = await import('@farcaster/miniapp-sdk')
-      
-      // Wait for SDK to be ready
-      await sdk.actions.ready()
-      
-      // Extract context from SDK
-      const context = await sdk.context
-      
-      if (!context || !context.user) {
-        console.warn('MiniKit context is incomplete or unavailable')
+      let sdk
+      try {
+        const miniKitModule = await import('@farcaster/miniapp-sdk')
+        sdk = miniKitModule.sdk
+      } catch (importError) {
+        console.warn('Failed to import MiniKit SDK:', importError)
         return null
       }
-      
+
+      if (!sdk) {
+        console.warn('MiniKit SDK is not available')
+        return null
+      }
+
+      // Wait for SDK to be ready with timeout
+      try {
+        await Promise.race([
+          sdk.actions.ready(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('MiniKit SDK ready timeout')), 5000)
+          )
+        ])
+      } catch (readyError) {
+        console.warn('MiniKit SDK failed to become ready:', readyError)
+        return null
+      }
+
+      // Extract context from SDK
+      let context
+      try {
+        context = await sdk.context
+      } catch (contextError) {
+        console.warn('Failed to get MiniKit context:', contextError)
+        return null
+      }
+
+      if (!context || !context.user) {
+        console.warn('MiniKit context is incomplete or unavailable:', { context })
+        return null
+      }
+
+      console.log('Successfully extracted MiniKit context:', { fid: context.user.fid })
       return context as MiniKitContext
     } catch (extractionError) {
       console.warn('Failed to extract MiniKit context:', extractionError)
@@ -257,11 +309,11 @@ export function useFarcasterContext(): FarcasterContext | undefined {
 
   /**
    * Context Initialization
-   * 
+   *
    * This function initializes the complete Farcaster context by extracting
    * MiniKit data and merging it with platform authentication state.
    */
-  const initializeContext = async (): Promise<void> => {
+  const initializeContext = useCallback(async (): Promise<void> => {
     try {
       setIsInitialized(false)
       setError(null)
@@ -332,14 +384,34 @@ export function useFarcasterContext(): FarcasterContext | undefined {
       setError(initializationError instanceof Error ? initializationError : new Error('Context initialization failed'))
       setIsInitialized(true)
     }
-  }
+  }, [extractMiniKitContext, createEnhancedUser, isMiniAppEnvironment, auth])
 
-  // Initialize context when component mounts or dependencies change
+  // Initialize context when component mounts
   useEffect(() => {
-    if (!isInitialized) {
+    let isMounted = true
+
+    if (!isInitialized && isMounted) {
       initializeContext()
     }
-  }, [isInitialized, auth?.user?.address, auth?.user?.isCreator])
+
+    return () => {
+      isMounted = false
+    }
+  }, [isInitialized, initializeContext]) // Include initializeContext in dependencies
+
+  // Separate effect to handle auth changes without causing infinite loops
+  useEffect(() => {
+    if (isInitialized && farcasterContext && auth?.user?.address) {
+      // Only reinitialize if we have a meaningful auth change
+      const currentAddress = farcasterContext.enhancedUser.platformAddress
+      const newAddress = auth.user.address
+
+      if (currentAddress !== newAddress && newAddress) {
+        console.log('Auth user address changed, reinitializing context:', { from: currentAddress, to: newAddress })
+        initializeContext()
+      }
+    }
+  }, [auth?.user?.address, isInitialized, farcasterContext, initializeContext])
 
   // Return context when available
   return farcasterContext
