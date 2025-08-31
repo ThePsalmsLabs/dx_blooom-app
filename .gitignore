@@ -70,14 +70,14 @@ src/app/demo/
 src/components/demo/
 src/components/examples/
 
-# Debug and testing components
-src/components/debug/
-src/lib/utils/debug.tsx
+# Debug and testing components (keeping for production debug functionality)
+# src/components/debug/
+# src/lib/utils/debug.tsx
 debug-scan-report.json
 
 # Development test files
 test-wagmi-config.js
-src/app/rpc-test/
+# src/app/rpc-test/  # Uncommented to include in production
 
 # Modules (development/experimental features)
 src/modules/
