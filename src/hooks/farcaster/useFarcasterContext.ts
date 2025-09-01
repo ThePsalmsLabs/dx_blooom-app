@@ -110,6 +110,7 @@ type MiniKitSDK = {
     readonly ready?: () => Promise<void>
   }
   readonly context: Promise<unknown> | (() => Promise<unknown>)
+  readonly isInMiniApp?: () => Promise<boolean>
 }
 
 /**
@@ -120,6 +121,69 @@ type MiniKitSDK = {
  */
 // Importing directly avoids require() and preserves type safety
 import { useOptionalAuth } from '@/components/providers/AuthProvider'
+
+// Export a utility hook for MiniApp detection
+export function useIsInMiniApp(): boolean {
+  const [isInMiniApp, setIsInMiniApp] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const checkMiniApp = async () => {
+      try {
+        // First, check basic indicators
+        const url = new URL(window.location.href)
+        const urlIndicators = (
+          url.pathname.startsWith('/mini') ||
+          url.pathname.startsWith('/miniapp') ||
+          url.searchParams.get('miniApp') === 'true'
+        )
+
+        const metaIndicators = (
+          document.querySelector('meta[name="fc:frame"]') !== null ||
+          document.querySelector('meta[name="fc:miniapp"]') !== null
+        )
+
+        const iframeContext = window.parent !== window
+        const farcasterReferrer = document.referrer.includes('farcaster') ||
+                                 document.referrer.includes('warpcast')
+        const farcasterUserAgent = navigator.userAgent.includes('farcaster') ||
+                                  navigator.userAgent.includes('warpcast')
+
+        const basicDetection = urlIndicators || metaIndicators || iframeContext || farcasterReferrer || farcasterUserAgent
+
+        if (!basicDetection) {
+          setIsInMiniApp(false)
+          return
+        }
+
+        // If basic detection passes, try SDK detection
+        try {
+          const { sdk } = await import('@farcaster/miniapp-sdk')
+          if (sdk?.isInMiniApp && typeof sdk.isInMiniApp === 'function') {
+            const sdkResult = await Promise.race([
+              sdk.isInMiniApp(),
+              new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000))
+            ])
+            setIsInMiniApp(sdkResult)
+          } else {
+            setIsInMiniApp(basicDetection)
+          }
+        } catch (sdkError) {
+          console.debug('SDK detection failed, using basic detection:', sdkError)
+          setIsInMiniApp(basicDetection)
+        }
+      } catch (error) {
+        console.warn('MiniApp detection failed:', error)
+        setIsInMiniApp(false)
+      }
+    }
+
+    checkMiniApp()
+  }, [])
+
+  return isInMiniApp
+}
 
 /**
  * Enhanced Farcaster Context Hook with Optional Auth
@@ -161,7 +225,7 @@ export function useFarcasterContext(): FarcasterContext | undefined {
 
   /**
    * MiniApp Environment Detection
-   * 
+   *
    * This function detects if we're running in a Farcaster MiniApp environment
    * by checking various indicators including URL patterns and meta tags.
    */
@@ -170,21 +234,32 @@ export function useFarcasterContext(): FarcasterContext | undefined {
 
     try {
       const url = new URL(window.location.href)
-      
+
       // Check URL patterns that indicate MiniApp context
       const urlIndicators = (
         url.pathname.startsWith('/mini') ||
         url.pathname.startsWith('/miniapp') ||
         url.searchParams.get('miniApp') === 'true'
       )
-      
+
       // Check for Farcaster meta tags
       const metaIndicators = (
         document.querySelector('meta[name="fc:frame"]') !== null ||
         document.querySelector('meta[name="fc:miniapp"]') !== null
       )
-      
-      return urlIndicators || metaIndicators
+
+      // Check for iframe context (common in MiniApps)
+      const iframeContext = window.parent !== window
+
+      // Check referrer for Farcaster
+      const farcasterReferrer = document.referrer.includes('farcaster') ||
+                               document.referrer.includes('warpcast')
+
+      // Check user agent for Farcaster client
+      const farcasterUserAgent = navigator.userAgent.includes('farcaster') ||
+                                navigator.userAgent.includes('warpcast')
+
+      return urlIndicators || metaIndicators || iframeContext || farcasterReferrer || farcasterUserAgent
     } catch (_detectionError) {
       console.warn('Failed to detect MiniApp environment:', _detectionError)
       return false
@@ -211,15 +286,6 @@ export function useFarcasterContext(): FarcasterContext | undefined {
         return null
       }
 
-      // Check if MiniKit SDK is available globally (optional check)
-      const hasGlobalMiniKit = window.farcaster || window.MiniKit || window.miniKit
-      if (!hasGlobalMiniKit) {
-        console.log('MiniKit SDK not found globally, attempting dynamic import')
-      } else {
-        console.log('MiniKit SDK found globally:', hasGlobalMiniKit === window.farcaster ? 'window.farcaster' :
-                                                  hasGlobalMiniKit === window.MiniKit ? 'window.MiniKit' : 'window.miniKit')
-      }
-
       // Dynamically import MiniKit SDK to avoid SSR issues (primary method)
       let sdk: MiniKitSDK | undefined
       try {
@@ -237,7 +303,33 @@ export function useFarcasterContext(): FarcasterContext | undefined {
 
       console.log('Successfully imported MiniKit SDK')
 
-      // Wait for SDK to be ready with timeout
+      // FIRST: Check if we're actually in a MiniApp environment using the official method
+      let isInMiniApp = false
+      try {
+        if (sdk.isInMiniApp && typeof sdk.isInMiniApp === 'function') {
+          isInMiniApp = await Promise.race([
+            sdk.isInMiniApp(),
+            new Promise<boolean>((resolve) =>
+              setTimeout(() => resolve(false), 1000) // 1 second timeout
+            )
+          ])
+          console.log('MiniApp detection result:', isInMiniApp)
+        } else {
+          console.warn('MiniKit SDK does not have isInMiniApp method, using fallback detection')
+          // Fallback to basic iframe detection
+          isInMiniApp = window.parent !== window || document.referrer.includes('farcaster')
+        }
+      } catch (detectionError) {
+        console.warn('MiniApp detection failed:', detectionError)
+        return null
+      }
+
+      if (!isInMiniApp) {
+        console.log('Not running in MiniApp environment according to SDK, skipping context extraction')
+        return null
+      }
+
+      // SECOND: Wait for SDK to be ready with timeout
       try {
         if (sdk.actions?.ready && typeof sdk.actions.ready === 'function') {
           await Promise.race([
@@ -255,7 +347,7 @@ export function useFarcasterContext(): FarcasterContext | undefined {
         // Continue anyway - some versions might not need explicit ready call
       }
 
-      // Extract context from SDK
+      // THIRD: Extract context from SDK (only after confirming we're in MiniApp)
       let context: MiniKitContext | undefined
       try {
         // Handle both Promise and function cases
@@ -266,7 +358,12 @@ export function useFarcasterContext(): FarcasterContext | undefined {
           contextPromise = sdk.context
         }
 
-        const rawContext = await contextPromise
+        const rawContext = await Promise.race([
+          contextPromise,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Context extraction timeout')), 3000)
+          )
+        ])
         context = rawContext as MiniKitContext
       } catch (contextError) {
         console.warn('Failed to get MiniKit context:', contextError)
@@ -408,14 +505,19 @@ export function useFarcasterContext(): FarcasterContext | undefined {
   useEffect(() => {
     let isMounted = true
 
-    if (!isInitialized && isMounted) {
+    // Only initialize if we're in a MiniApp environment
+    if (!isInitialized && isMounted && isMiniAppEnvironment) {
       initializeContext()
+    } else if (!isInitialized && isMounted && !isMiniAppEnvironment) {
+      // If not in MiniApp environment, mark as initialized with null context
+      console.log('Not in MiniApp environment, skipping Farcaster context initialization')
+      setIsInitialized(true)
     }
 
     return () => {
       isMounted = false
     }
-  }, [isInitialized, initializeContext]) // Include initializeContext in dependencies
+  }, [isInitialized, initializeContext, isMiniAppEnvironment]) // Include initializeContext in dependencies
 
   // Separate effect to handle auth changes without causing infinite loops
   useEffect(() => {
@@ -431,6 +533,6 @@ export function useFarcasterContext(): FarcasterContext | undefined {
     }
   }, [auth?.user?.address, isInitialized, farcasterContext, initializeContext])
 
-  // Return context when available
+  // Return context when available, or undefined if not in MiniApp environment
   return farcasterContext
 }

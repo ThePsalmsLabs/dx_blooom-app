@@ -422,49 +422,62 @@ function useProviderInitialization(
   
   const initialize = useCallback(async () => {
     if (initializationRef.current) {
+      console.log('⏳ Provider initialization already in progress')
       return initializationRef.current
     }
-    
+
     const initPromise = (async () => {
       try {
-        // Step 1: Initialize wagmi configuration
+        console.log('🚀 Starting provider initialization')
+
+        // Step 1: Initialize wagmi configuration using singleton
         let wagmiConfig: EnhancedWagmiConfig
-        
+
         if (customWagmiConfig) {
+          console.log('🔧 Using provided custom wagmi config')
           wagmiConfig = customWagmiConfig
         } else {
+          console.log('🔧 Initializing enhanced wagmi config')
           const configResult = await initializeEnhancedWagmiForProvider()
           wagmiConfig = configResult.config
-          
+
           if (configResult.error && !miniAppOptions?.fallbackToWeb) {
             throw configResult.error
           }
+
+          // Log any recommendations
+          if (configResult.recommendations.length > 0 && process.env.NODE_ENV === 'development') {
+            console.log('💡 Configuration recommendations:', configResult.recommendations)
+          }
         }
-        
+
         // Step 2: Perform environment detection if MiniApp is enabled
         let environmentDetection: MiniAppEnvironmentDetection | null = null
-        
+
         if (enableMiniApp) {
           try {
+            console.log('🔍 Performing environment detection')
             environmentDetection = await detectMiniAppEnvironment()
+            console.log('✅ Environment detection complete:', environmentDetection.environment)
           } catch (detectionError) {
             console.warn('Environment detection failed:', detectionError)
-            
+
             if (!miniAppOptions?.fallbackToWeb) {
               throw detectionError
             }
           }
         }
-        
+
+        console.log('✅ Provider initialization successful')
         setInitializationState({
           isInitialized: true,
           wagmiConfig,
           environmentDetection,
           error: null
         })
-        
+
       } catch (error) {
-        console.error('Provider initialization failed:', error)
+        console.error('❌ Provider initialization failed:', error)
         setInitializationState(prev => ({
           ...prev,
           error: error as Error
@@ -473,7 +486,7 @@ function useProviderInitialization(
         initializationRef.current = null
       }
     })()
-    
+
     initializationRef.current = initPromise
     return initPromise
   }, [enableMiniApp, miniAppOptions, customWagmiConfig])
@@ -481,6 +494,26 @@ function useProviderInitialization(
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  // Cleanup effect to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      console.log('🧹 Cleaning up EnhancedUnifiedAppProvider')
+
+      // Clear any pending initialization
+      if (initializationRef.current) {
+        initializationRef.current = null
+      }
+
+      // Reset initialization state
+      setInitializationState({
+        isInitialized: false,
+        wagmiConfig: null,
+        environmentDetection: null,
+        error: null
+      })
+    }
+  }, [])
   
   return initializationState
 }

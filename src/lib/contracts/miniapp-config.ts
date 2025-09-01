@@ -733,18 +733,111 @@ export async function createEnhancedWagmiConfig(
 // ================================================
 
 /**
- * Default Enhanced Configuration
- * 
- * This provides a pre-configured instance that can be used directly,
- * following your existing patterns of providing ready-to-use configurations.
+ * Enhanced Configuration Singleton
+ *
+ * This implements a proper singleton pattern to prevent multiple WalletConnect
+ * Core initializations and ensure consistent configuration across the application.
  */
-let defaultConfigPromise: Promise<ReturnType<typeof createConfig>> | null = null
+class EnhancedWagmiConfigManager {
+  private static instance: EnhancedWagmiConfigManager | null = null
+  private config: ReturnType<typeof createConfig> | null = null
+  private configPromise: Promise<ReturnType<typeof createConfig>> | null = null
+  private configKey: string = ''
+  private initializationTime: number = 0
+  private isInitializing: boolean = false
 
-export async function getEnhancedWagmiConfig(): Promise<ReturnType<typeof createConfig>> {
-  if (!defaultConfigPromise) {
-    defaultConfigPromise = createEnhancedWagmiConfig()
+  private constructor() {}
+
+  static getInstance(): EnhancedWagmiConfigManager {
+    if (!EnhancedWagmiConfigManager.instance) {
+      EnhancedWagmiConfigManager.instance = new EnhancedWagmiConfigManager()
+    }
+    return EnhancedWagmiConfigManager.instance
   }
-  return defaultConfigPromise
+
+  async getConfig(forceEnvironment?: MiniAppEnvironment): Promise<ReturnType<typeof createConfig>> {
+    // Create a unique key for this configuration
+    const configKey = `config_${forceEnvironment || 'auto'}_${Date.now()}`
+
+    // If we already have a config and it's recent (within 5 minutes), return it
+    if (this.config && this.configKey === configKey && (Date.now() - this.initializationTime) < 300000) {
+      console.log('🔄 Reusing existing wagmi configuration')
+      return this.config
+    }
+
+    // If we're already initializing, wait for it
+    if (this.isInitializing && this.configPromise) {
+      console.log('⏳ Waiting for existing configuration initialization')
+      return this.configPromise
+    }
+
+    // Start new initialization
+    this.isInitializing = true
+    console.log('🚀 Creating new wagmi configuration')
+
+    try {
+      this.configPromise = createEnhancedWagmiConfig(forceEnvironment)
+      this.config = await this.configPromise
+      this.configKey = configKey
+      this.initializationTime = Date.now()
+
+      console.log('✅ Wagmi configuration created successfully')
+      return this.config
+    } finally {
+      this.isInitializing = false
+      this.configPromise = null
+    }
+  }
+
+  reset(): void {
+    console.log('🔄 Resetting wagmi configuration singleton')
+    this.config = null
+    this.configPromise = null
+    this.configKey = ''
+    this.initializationTime = 0
+    this.isInitializing = false
+  }
+
+  getDebugInfo() {
+    return {
+      hasConfig: Boolean(this.config),
+      configKey: this.configKey,
+      initializationTime: new Date(this.initializationTime).toISOString(),
+      isInitializing: this.isInitializing,
+      timeSinceInit: Date.now() - this.initializationTime
+    }
+  }
+}
+
+// Export singleton instance
+const configManager = EnhancedWagmiConfigManager.getInstance()
+
+export async function getEnhancedWagmiConfig(forceEnvironment?: MiniAppEnvironment): Promise<ReturnType<typeof createConfig>> {
+  return configManager.getConfig(forceEnvironment)
+}
+
+export function resetEnhancedWagmiConfig(): void {
+  configManager.reset()
+}
+
+export function getEnhancedWagmiConfigDebugInfo() {
+  return configManager.getDebugInfo()
+}
+
+/**
+ * Debug utility for development - logs configuration state
+ */
+export function debugEnhancedWagmiConfig() {
+  if (process.env.NODE_ENV === 'development') {
+    const debugInfo = getEnhancedWagmiConfigDebugInfo()
+    console.log('🔍 Enhanced Wagmi Config Debug Info:', debugInfo)
+
+    // Check for singleton effectiveness
+    console.log('🔄 Singleton Manager State:', {
+      instanceExists: Boolean(EnhancedWagmiConfigManager.getInstance()),
+      sameInstance: EnhancedWagmiConfigManager.getInstance() === configManager
+    })
+  }
 }
 
 /**
@@ -910,9 +1003,9 @@ export {
 
 /**
  * Configuration Initializer for Provider Integration
- * 
+ *
  * This helper function provides easy integration with your Enhanced MiniApp Provider,
- * ensuring proper initialization sequence and error handling.
+ * using the singleton pattern to prevent multiple WalletConnect initializations.
  */
 export async function initializeEnhancedWagmiForProvider(
   environmentDetection?: MiniAppEnvironmentDetection
@@ -923,9 +1016,14 @@ export async function initializeEnhancedWagmiForProvider(
   recommendations: string[]
 }> {
   try {
-    const config = await createEnhancedWagmiConfig(environmentDetection?.environment)
+    console.log('🔧 Initializing wagmi config for provider integration')
+
+    // Use singleton to prevent multiple initializations
+    const config = await getEnhancedWagmiConfig(environmentDetection?.environment)
     const health = await checkEnhancedConfigHealth()
-    
+
+    console.log('✅ Provider initialization successful')
+
     return {
       config,
       isReady: health.isHealthy,
@@ -933,11 +1031,20 @@ export async function initializeEnhancedWagmiForProvider(
       recommendations: health.recommendations
     }
   } catch (error) {
-    return {
-      config: await createEnhancedWagmiConfig('web'), // Fallback to web mode
-      isReady: false,
-      error: error as Error,
-      recommendations: ['Failed to initialize enhanced configuration - falling back to web mode']
+    console.error('❌ Provider initialization failed:', error)
+
+    // Try fallback with web mode using singleton
+    try {
+      const fallbackConfig = await getEnhancedWagmiConfig('web')
+      return {
+        config: fallbackConfig,
+        isReady: false,
+        error: error as Error,
+        recommendations: ['Failed to initialize enhanced configuration - falling back to web mode']
+      }
+    } catch (fallbackError) {
+      console.error('❌ Fallback initialization also failed:', fallbackError)
+      throw error
     }
   }
 }
