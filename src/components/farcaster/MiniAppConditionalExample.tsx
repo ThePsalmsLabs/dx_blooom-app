@@ -191,6 +191,7 @@ export function FarcasterUserInfo() {
       </CardHeader>
       <CardContent>
         <p>Display Name: {farcasterContext.user.displayName}</p>
+        <p>Profile Picture: {farcasterContext.user.pfpUrl}</p>
         {farcasterContext.user.pfpUrl && (
           <img
             src={farcasterContext.user.pfpUrl}

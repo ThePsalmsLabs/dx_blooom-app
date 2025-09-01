@@ -32,7 +32,7 @@ export const CONTRACT_ADDRESSES: Record<number, NetworkContractAddresses> = {
     USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address, // Base Mainnet USDC
   },
   
-  // Base Sepolia (Testnet)
+  // Base Sepolia (Testnet) - Kept for backward compatibility
   [baseSepolia.id]: {
     CREATOR_REGISTRY: (process.env.NEXT_PUBLIC_CREATOR_REGISTRY_ADDRESS || '0xe94dbb72bdd8604e25a2c7d2cf9bad71f2870d5b') as Address,
     CONTENT_REGISTRY: (process.env.NEXT_PUBLIC_CONTENT_REGISTRY_ADDRESS || '0x981f162aa0d25c660c2658f50904cb3b33afa406') as Address,

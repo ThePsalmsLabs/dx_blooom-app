@@ -981,6 +981,20 @@ export function ContentUploadForm({
             Cancel
           </Button>
         )}
+
+        {/* Retry button when there's an error */}
+        {publishingUI.transactionStatus.status === 'failed' && publishingUI.publishingActions.retry && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={publishingUI.publishingActions.retry}
+            disabled={isUploading || isProcessing}
+            className="min-w-[100px] sm:min-w-[120px] text-sm md:text-base"
+          >
+            Try Again
+          </Button>
+        )}
+
         <Button
           type="submit"
           disabled={

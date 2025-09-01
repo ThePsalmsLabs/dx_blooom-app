@@ -45,7 +45,8 @@ import {
   Users,
   Sparkles,
   ExternalLink,
-  BookOpen
+  BookOpen,
+  Layers
 } from 'lucide-react'
 import {
     Button,
@@ -259,6 +260,13 @@ export function AppLayout({
         icon: Users,
         roles: ['disconnected', 'consumer', 'creator', 'admin'],
         isActive: pathname.startsWith('/creators')
+      },
+      {
+        label: 'Collections',
+        href: '/collections',
+        icon: Layers,
+        roles: ['disconnected', 'consumer', 'creator', 'admin'],
+        isActive: pathname.startsWith('/collections')
       }
     ]
 

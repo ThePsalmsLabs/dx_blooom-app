@@ -275,6 +275,7 @@ export interface ContentPublishingUI {
     readonly publishAction: (data: ContentPublishingData) => void
     readonly isProcessing: boolean
     readonly reset: () => void
+    readonly retry: () => void
   }
   
   // Creator requirements
@@ -1004,7 +1005,10 @@ export function useContentPublishingUI(userAddress: Address | undefined): Conten
     reset: () => {
       publishingFlow.reset();
     },
-  }), [publishingFlow.publish, publishingFlow.isLoading, publishingFlow.reset]);
+    retry: () => {
+      publishingFlow.retry();
+    },
+  }), [publishingFlow.publish, publishingFlow.isLoading, publishingFlow.reset, publishingFlow.retry]);
 
   // Create transaction status UI
   const transactionStatus: TransactionStatusUI = useMemo(() => {

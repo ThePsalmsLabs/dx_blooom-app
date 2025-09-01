@@ -2989,6 +2989,7 @@ export interface ContentPublishingFlowResult {
   readonly publishedContentId: bigint | null
   readonly publish: (data: ContentPublishingData) => void
   readonly reset: () => void
+  readonly retry: () => void
   readonly publishingProgress: {
     readonly isSubmitting: boolean
     readonly isConfirming: boolean
@@ -3052,15 +3053,31 @@ export function useContentPublishingFlow(
       completed: 'Content published successfully!',
       error: 'Publishing failed'
     }
-    
+
     return {
       isSubmitting: registerContent.isLoading && !registerContent.isConfirmed,
       isConfirming: registerContent.isConfirming,
       isConfirmed: registerContent.isConfirmed,
       transactionHash: registerContent.hash,
-      stepDescription: stepDescriptions[workflowState.currentStep]
+      stepDescription: stepDescriptions[workflowState.currentStep],
+      // Enhanced transaction details
+      transactionDetails: {
+        hash: registerContent.hash,
+        status: registerContent.isLoading ? 'submitting' :
+                registerContent.isConfirming ? 'confirming' :
+                registerContent.isConfirmed ? 'confirmed' :
+                registerContent.error ? 'failed' : 'idle',
+        gasEstimate: undefined, // Could be added if needed
+        network: chainId === base.id ? 'Base Mainnet' : 'Unknown Network'
+      },
+      // Error details for better debugging
+      errorDetails: registerContent.error ? {
+        message: registerContent.error.message,
+        code: 'code' in registerContent.error ? registerContent.error.code : undefined,
+        data: 'data' in registerContent.error ? registerContent.error.data : undefined
+      } : null
     }
-  }, [registerContent, workflowState.currentStep])
+  }, [registerContent, workflowState.currentStep, chainId])
   
   const validateContentData = useCallback((data: ContentPublishingData): string[] => {
     const errors: string[] = []
@@ -3103,18 +3120,38 @@ export function useContentPublishingFlow(
   }, [])
   
   const publish = useCallback((data: ContentPublishingData) => {
-    debug.log('Starting content publishing workflow...', data)
+    debug.log('🚀 Starting content publishing workflow...', {
+      title: data.title,
+      category: data.category,
+      price: data.payPerViewPrice.toString(),
+      ipfsHash: `${data.ipfsHash.slice(0, 10)}...`,
+      tagsCount: data.tags.length
+    })
 
-    // Check if wallet is connected (at least one system and userAddress available)
+    // Enhanced wallet connection check
     if (!isWalletReady) {
-      debug.log('Wallet connection check failed:', {
+      const errorMsg = 'Wallet must be connected to publish content. Please connect your wallet and ensure you\'re on Base mainnet.'
+      debug.log('❌ Wallet connection check failed:', {
         walletUIConnected: walletUI.isConnected,
         wagmiConnected: isWagmiConnected,
-        hasUserAddress: Boolean(userAddress)
+        hasUserAddress: Boolean(userAddress),
+        currentChain: chainId
       })
       setWorkflowState({
         currentStep: 'error',
-        error: new Error('Wallet must be connected to publish content. Please connect your wallet and try again.'),
+        error: new Error(errorMsg),
+        publishedContentId: null
+      })
+      return
+    }
+
+    // Check if on correct network
+    if (chainId !== base.id) {
+      const errorMsg = `Please switch to Base mainnet (Chain ID: ${base.id}). Current chain: ${chainId}`
+      debug.log('❌ Wrong network:', { expected: base.id, current: chainId })
+      setWorkflowState({
+        currentStep: 'error',
+        error: new Error(errorMsg),
         publishedContentId: null
       })
       return
@@ -3128,67 +3165,101 @@ export function useContentPublishingFlow(
       })
       return
     }
-    
+
     setWorkflowState(prev => ({ ...prev, currentStep: 'checking_creator', error: null }))
-    
+
+    // Enhanced creator registration check with refresh
     if (!isCreatorRegistered) {
-      setWorkflowState({
-        currentStep: 'error',
-        error: new Error('You must be a registered creator to publish content. Please complete creator registration first.'),
-        publishedContentId: null
-      })
+      // Try to refresh creator status
+      creatorRegistration.refetch()
+
+      setTimeout(() => {
+        if (!creatorRegistration.data) {
+          setWorkflowState({
+            currentStep: 'error',
+            error: new Error('You must be a registered creator to publish content. Please complete creator registration first.'),
+            publishedContentId: null
+          })
+        }
+      }, 1000)
       return
     }
-    
+
     setWorkflowState(prev => ({ ...prev, currentStep: 'validating_content' }))
-    
+
     const validationErrors = validateContentData(data)
     if (validationErrors.length > 0) {
+      const errorMsg = `Content validation failed:\n${validationErrors.join('\n')}`
+      debug.log('❌ Content validation failed:', validationErrors)
       setWorkflowState({
         currentStep: 'error',
-        error: new Error(`Content validation failed:\n${validationErrors.join('\n')}`),
+        error: new Error(errorMsg),
         publishedContentId: null
       })
       return
     }
-    
+
     setWorkflowState(prev => ({ ...prev, currentStep: 'registering' }))
-    
+
     try {
-      debug.log('🚀 Calling registerContent with validated data:', {
+      debug.log('🔄 Preparing transaction data:', {
         ipfsHash: data.ipfsHash,
         title: data.title,
         description: data.description,
         category: data.category,
-        payPerViewPrice: data.payPerViewPrice.toString(),
+        payPerViewPrice: `${data.payPerViewPrice} wei (${Number(data.payPerViewPrice) / 1000000} USDC)`,
         tags: data.tags,
         userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null,
-        chainId
+        chainId,
+        network: 'Base Mainnet'
       })
-      
+
+      // Pre-flight checks
+      if (!registerContent.write) {
+        throw new Error('Contract write function not available. Please check your wallet connection.')
+      }
+
       registerContent.write({
         ipfsHash: data.ipfsHash,
-        title: data.title,
-        description: data.description,
+        title: data.title.trim(),
+        description: data.description.trim(),
         category: data.category,
         payPerViewPrice: data.payPerViewPrice,
         tags: data.tags
       })
+
+      debug.log('✅ Transaction submitted successfully')
+
     } catch (error) {
       console.error('❌ Error calling registerContent:', error)
+
+      let errorMessage = 'Failed to submit content registration'
+      let errorDetails = {}
+
+      if (error instanceof Error) {
+        errorMessage = error.message
+        errorDetails = {
+          name: error.name,
+          stack: error.stack,
+          cause: error.cause
+        }
+      }
+
       debug.log('❌ Transaction error details:', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
+        error: errorMessage,
+        details: errorDetails,
         chainId,
-        userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null
+        userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null,
+        contractAddress: contractAddresses.CONTENT_REGISTRY
       })
+
       setWorkflowState({
         currentStep: 'error',
-        error: error instanceof Error ? error : new Error('Failed to submit content registration'),
+        error: new Error(`${errorMessage}. Please try again or contact support if the issue persists.`),
         publishedContentId: null
       })
     }
-  }, [userAddress, isCreatorRegistered, validateContentData, registerContent, isWalletReady])
+  }, [userAddress, isCreatorRegistered, validateContentData, registerContent, isWalletReady, chainId, creatorRegistration])
   
   const reset = useCallback(() => {
     setWorkflowState({
@@ -3197,11 +3268,33 @@ export function useContentPublishingFlow(
       publishedContentId: null
     })
     registerContent.reset()
+    debug.log('🔄 Publishing workflow reset')
+  }, [registerContent])
+
+  // Enhanced retry mechanism
+  const retry = useCallback(() => {
+    debug.log('🔄 Retrying publishing workflow...')
+
+    // Reset wagmi contract state
+    registerContent.reset()
+
+    // Reset workflow state
+    setWorkflowState(prev => ({
+      ...prev,
+      currentStep: 'idle',
+      error: null,
+      publishedContentId: null
+    }))
+
+    debug.log('✅ Publishing workflow ready for retry')
   }, [registerContent])
   
   useEffect(() => {
     if (registerContent.isLoading) {
-      debug.log('📤 Transaction submitted, waiting for confirmation...')
+      debug.log('📤 Transaction submitted, waiting for confirmation...', {
+        hash: registerContent.hash,
+        network: chainId === base.id ? 'Base Mainnet' : 'Unknown'
+      })
       setWorkflowState(prev => {
         if (prev.currentStep === 'registering') {
           return prev
@@ -3209,7 +3302,10 @@ export function useContentPublishingFlow(
         return { ...prev, currentStep: 'registering' }
       })
     } else if (registerContent.isConfirming) {
-      debug.log('✅ Transaction confirmed, waiting for receipt...')
+      debug.log('⏳ Transaction confirming on blockchain...', {
+        hash: registerContent.hash,
+        network: chainId === base.id ? 'Base Mainnet' : 'Unknown'
+      })
       setWorkflowState(prev => {
         if (prev.currentStep === 'confirming') {
           return prev
@@ -3217,68 +3313,111 @@ export function useContentPublishingFlow(
         return { ...prev, currentStep: 'confirming' }
       })
     } else if (registerContent.error) {
-      console.error('❌ Transaction error:', registerContent.error)
+      console.error('❌ Transaction failed:', registerContent.error)
+
+      // Enhanced error analysis
+      let userFriendlyError = 'Transaction failed'
+      if (registerContent.error.message) {
+        if (registerContent.error.message.includes('insufficient funds')) {
+          userFriendlyError = 'Insufficient funds for transaction. Please add more ETH to your wallet.'
+        } else if (registerContent.error.message.includes('gas')) {
+          userFriendlyError = 'Gas estimation failed. Please try again or contact support.'
+        } else if (registerContent.error.message.includes('network')) {
+          userFriendlyError = 'Network error. Please check your connection and try again.'
+        } else if (registerContent.error.message.includes('revert')) {
+          userFriendlyError = 'Transaction reverted. Please check your content data and try again.'
+        } else {
+          userFriendlyError = registerContent.error.message
+        }
+      }
+
       debug.log('❌ Register content error details:', {
         error: registerContent.error,
+        userFriendlyMessage: userFriendlyError,
         chainId,
         userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null,
-        contractAddress: contractAddresses?.CONTENT_REGISTRY
+        contractAddress: contractAddresses?.CONTENT_REGISTRY,
+        network: chainId === base.id ? 'Base Mainnet' : 'Unknown'
       })
+
       setWorkflowState(prev => {
-        if (prev.currentStep === 'error' && prev.error === registerContent.error) {
+        if (prev.currentStep === 'error' && prev.error?.message === userFriendlyError) {
           return prev
         }
         return {
           currentStep: 'error',
-          error: registerContent.error,
+          error: new Error(userFriendlyError),
           publishedContentId: null
         }
       })
     } else if (registerContent.isSuccess && registerContent.hash) {
-      debug.log('Transaction successful, extracting content ID...')
+      debug.log('✅ Transaction confirmed! Extracting content ID...', {
+        hash: registerContent.hash,
+        network: chainId === base.id ? 'Base Mainnet' : 'Unknown'
+      })
       setWorkflowState(prev => {
         if (prev.currentStep === 'extracting_content_id') {
           return prev
         }
         return { ...prev, currentStep: 'extracting_content_id' }
       })
-      
+
       const extractContentId = async () => {
         try {
           const publicClient = createPublicClient({
-            chain: chainId === 8453 ? base : baseSepolia,
+            chain: chainId === base.id ? base : baseSepolia,
             transport: http()
           })
-          
+
+          debug.log('🔍 Fetching transaction receipt...')
           const receipt = await publicClient.getTransactionReceipt({
             hash: registerContent.hash as `0x${string}`
           })
-          
-          debug.log('Transaction receipt:', receipt)
-          
+
+          debug.log('📄 Transaction receipt received:', {
+            status: receipt.status,
+            gasUsed: receipt.gasUsed.toString(),
+            logsCount: receipt.logs.length
+          })
+
           const contentRegisteredLogs = parseEventLogs({
             abi: CONTENT_REGISTRY_ABI,
             eventName: 'ContentRegistered',
             logs: receipt.logs
           })
-          
+
           if (contentRegisteredLogs.length > 0) {
             const contentId = contentRegisteredLogs[0].args.contentId
-            debug.log('Successfully extracted content ID:', contentId)
-            
+            debug.log('🎉 Successfully extracted content ID:', contentId.toString())
+
             setWorkflowState({
               currentStep: 'completed',
               error: null,
               publishedContentId: contentId
             })
-            
+
+            // Refresh related data
             creatorRegistration.refetch()
             userBalance.refetch()
+
+            debug.log('✅ Publishing workflow completed successfully!')
           } else {
-            throw new Error('Content ID not found in transaction receipt')
+            debug.log('⚠️ No ContentRegistered events found in transaction logs')
+            // Still mark as completed but with null contentId
+            setWorkflowState({
+              currentStep: 'completed',
+              error: null,
+              publishedContentId: null
+            })
           }
         } catch (error) {
-          console.error('Error extracting content ID:', error)
+          console.error('❌ Error extracting content ID:', error)
+          debug.log('❌ Content ID extraction error details:', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            hash: registerContent.hash
+          })
+
+          // Mark as completed even if content ID extraction fails
           setWorkflowState({
             currentStep: 'completed',
             error: null,
@@ -3286,7 +3425,7 @@ export function useContentPublishingFlow(
           })
         }
       }
-      
+
       extractContentId()
     }
   }, [
@@ -3297,7 +3436,9 @@ export function useContentPublishingFlow(
     registerContent.hash,
     chainId,
     creatorRegistration,
-    userBalance
+    userBalance,
+    userAddress,
+    contractAddresses?.CONTENT_REGISTRY
   ])
   
   return {
@@ -3309,6 +3450,7 @@ export function useContentPublishingFlow(
     publishedContentId: workflowState.publishedContentId,
     publish,
     reset,
+    retry,
     publishingProgress
   }
 }

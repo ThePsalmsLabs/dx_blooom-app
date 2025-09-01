@@ -1,5 +1,6 @@
-import React, { useState, useCallback, ReactElement } from 'react'
+import React, { useCallback, ReactElement } from 'react'
 import { type Address } from 'viem'
+import { useRouter } from 'next/navigation'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import your new approval flow component
@@ -21,10 +22,9 @@ interface SubscribeButtonProps {
   readonly className?: string
   readonly onSubscriptionSuccess?: (transactionHash: string) => void
   readonly onError?: (error: Error) => void
-  
-  // New props for enhanced functionality
+
+  // Enhanced functionality props
   readonly showDetailedFlow?: boolean
-  readonly modalTrigger?: boolean
 }
 
 /**
@@ -91,92 +91,20 @@ function buildButtonClasses(
     .join(' ')
 }
 
-// ===== MODAL COMPONENT =====
 
-/**
- * Subscription Flow Modal
- * 
- * This modal component provides a focused environment for users to complete
- * their subscription process without navigation distractions.
- */
-interface SubscriptionFlowModalProps {
-  readonly isOpen: boolean
-  readonly onClose: () => void
-  readonly creatorAddress: Address
-  readonly userAddress: Address | undefined
-  readonly onSubscriptionSuccess?: (transactionHash: string) => void
-  readonly onError?: (error: Error) => void
-}
-
-function SubscriptionFlowModal({
-  isOpen,
-  onClose,
-  creatorAddress,
-  userAddress,
-  onSubscriptionSuccess,
-  onError
-}: SubscriptionFlowModalProps): ReactElement | null {
-  
-  // Handle successful subscription by closing modal and calling callback
-  const handleSubscriptionSuccess = useCallback((transactionHash: string) => {
-    onClose()
-    onSubscriptionSuccess?.(transactionHash)
-  }, [onClose, onSubscriptionSuccess])
-
-  // Handle errors by calling callback but keeping modal open for retry
-  const handleError = useCallback((error: Error) => {
-    onError?.(error)
-  }, [onError])
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Modal Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
-      />
-      
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-        {/* Modal Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Subscribe to Creator</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <span className="sr-only">Close</span>
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Subscription Flow */}
-        <SubscriptionApprovalFlow
-          creatorAddress={creatorAddress}
-          userAddress={userAddress}
-          onSubscriptionSuccess={handleSubscriptionSuccess}
-          onError={handleError}
-        />
-      </div>
-    </div>
-  )
-}
 
 // ===== MAIN COMPONENT =====
 
 /**
  * Enhanced Subscribe Button Component
- * 
- * This component serves as the primary entry point for subscription flows.
- * It intelligently presents either a simple button for quick actions or
- * a detailed approval flow for complex scenarios.
- * 
- * The component maintains backward compatibility with your existing usage
- * while providing enhanced functionality through the new approval system.
+ *
+ * This component provides a consistent subscription flow by navigating users
+ * to the creator's page where they can subscribe through the dedicated
+ * subscription section. This provides better context and user experience
+ * compared to modal-based flows.
+ *
+ * The component maintains backward compatibility while providing enhanced
+ * navigation-based subscription flows.
  */
 export function SubscribeButton({
   creatorAddress,
@@ -186,43 +114,28 @@ export function SubscribeButton({
   className = '',
   onSubscriptionSuccess,
   onError,
-  showDetailedFlow = false,
-  modalTrigger = true
+  showDetailedFlow = false
 }: SubscribeButtonProps): ReactElement {
-  
+
   // ===== WALLET CONNECTION =====
 
   const walletUI = useWalletConnectionUI()
-  
-  // ===== MODAL STATE MANAGEMENT =====
-  
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  
-  // ===== EVENT HANDLERS =====
-  
-  /**
-   * Handle Button Click
-   * 
-   * This function determines how to respond to button clicks based on
-   * the component configuration and user state.
-   */
-  const handleButtonClick = useCallback(() => {
-    if (disabled || !walletUI.isConnected) return
-    
-    if (modalTrigger) {
-      setIsModalOpen(true)
-    }
-    // If not using modal trigger, the parent component should handle the detailed flow
-  }, [disabled, walletUI.isConnected, modalTrigger])
+  const router = useRouter()
+
+    // ===== EVENT HANDLERS =====
 
   /**
-   * Handle Modal Close
-   * 
-   * This function manages the modal state when users close the subscription flow.
+   * Handle Button Click
+   *
+   * This function navigates to the creator's page with the subscription section
+   * instead of opening a modal, providing a better user experience with more context.
    */
-  const handleModalClose = useCallback(() => {
-    setIsModalOpen(false)
-  }, [])
+  const handleButtonClick = useCallback(() => {
+    if (disabled) return
+
+    // Navigate to creator page with subscription section
+    router.push(`/creator/${creatorAddress}#subscribe`)
+  }, [disabled, router, creatorAddress])
 
   /**
    * Handle Subscription Success
@@ -258,9 +171,9 @@ export function SubscribeButton({
   }, [onError])
 
   // ===== RENDER LOGIC =====
-  
-  // If showing detailed flow inline (not in modal), render the full approval flow
-  if (showDetailedFlow && !modalTrigger) {
+
+  // If showing detailed flow inline, render the full approval flow
+  if (showDetailedFlow) {
     return (
       <div className={className}>
         <SubscriptionApprovalFlow
@@ -275,38 +188,21 @@ export function SubscribeButton({
   }
 
   // ===== BUTTON RENDERING =====
-  
-  const buttonClasses = buildButtonClasses(variant, size, disabled || !walletUI.isConnected, className)
-  
-  return (
-    <>
-      {/* Subscribe Button */}
-      <button
-        onClick={handleButtonClick}
-        disabled={disabled || !walletUI.isConnected}
-        className={buttonClasses}
-      >
-        {!walletUI.isConnected ? (
-          'Connect Wallet to Subscribe'
-        ) : disabled ? (
-          'Subscribe Unavailable'
-        ) : (
-          'Subscribe'
-        )}
-      </button>
 
-      {/* Subscription Flow Modal */}
-      {modalTrigger && (
-        <SubscriptionFlowModal
-          isOpen={isModalOpen}
-          onClose={handleModalClose}
-          creatorAddress={creatorAddress}
-          userAddress={walletUI.address as `0x${string}` | undefined}
-          onSubscriptionSuccess={handleSubscriptionSuccess}
-          onError={handleSubscriptionError}
-        />
+  const buttonClasses = buildButtonClasses(variant, size, disabled, className)
+
+  return (
+    <button
+      onClick={handleButtonClick}
+      disabled={disabled}
+      className={buttonClasses}
+    >
+      {disabled ? (
+        'Subscribe Unavailable'
+      ) : (
+        'Subscribe'
       )}
-    </>
+    </button>
   )
 }
 
@@ -318,35 +214,34 @@ export default SubscribeButton
 
 /**
  * Usage Examples
- * 
+ *
  * Here are several ways to use the enhanced SubscribeButton component
  * in different contexts throughout your application:
- * 
- * // Basic usage (opens modal with approval flow)
- * <SubscribeButton 
- *   creatorAddress="0x..." 
+ *
+ * // Basic usage (navigates to creator page)
+ * <SubscribeButton
+ *   creatorAddress="0x..."
  *   onSubscriptionSuccess={(hash) => console.log('Success!', hash)}
  * />
- * 
- * // Inline detailed flow (no modal)
- * <SubscribeButton 
- *   creatorAddress="0x..." 
+ *
+ * // Inline detailed flow (shows full approval flow)
+ * <SubscribeButton
+ *   creatorAddress="0x..."
  *   showDetailedFlow={true}
- *   modalTrigger={false}
  *   onSubscriptionSuccess={handleSuccess}
  * />
- * 
+ *
  * // Custom styling
- * <SubscribeButton 
- *   creatorAddress="0x..." 
+ * <SubscribeButton
+ *   creatorAddress="0x..."
  *   variant="outline"
  *   size="lg"
  *   className="my-custom-class"
  * />
- * 
+ *
  * // With comprehensive error handling
- * <SubscribeButton 
- *   creatorAddress="0x..." 
+ * <SubscribeButton
+ *   creatorAddress="0x..."
  *   onSubscriptionSuccess={(hash) => {
  *     toast({ title: "Subscribed!", description: "Access granted to premium content" })
  *     router.push('/dashboard/subscriptions')
