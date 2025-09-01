@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, useEffect } from 'react'
 import { useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
-import { type Address } from 'viem'
+import { type Address, formatUnits } from 'viem'
 
 // Import your established foundational layers
 import { getContractAddresses } from '@/lib/contracts/config'
@@ -98,20 +98,78 @@ export interface SubscriptionPurchaseWithApprovalResult {
   readonly isSuccess: boolean
 }
 
+// ===== MINIAPP UTILITY FUNCTIONS =====
+
+/**
+ * MiniApp Transaction Configuration
+ *
+ * Returns optimized transaction configuration for miniapp environments
+ * to prevent common issues like "insufficient payment" errors.
+ */
+function getMiniAppTransactionConfig(): any {
+  return {
+    // Use prepared mode to bypass simulation issues in miniapps
+    __mode: 'prepared',
+    // Additional miniapp-specific optimizations can be added here
+  }
+}
+
+/**
+ * Enhanced Balance Validation for MiniApp
+ *
+ * Performs additional validation specific to miniapp environments
+ * where balance synchronization might be delayed.
+ */
+async function validateMiniAppBalance(
+  userBalance: bigint,
+  subscriptionPrice: bigint,
+  balanceHook: any
+): Promise<{ isValid: boolean; error?: string }> {
+  // Add buffer for potential gas costs in miniapp
+  const buffer = BigInt(1000000) // 1 USDC buffer
+  const requiredAmount = subscriptionPrice + buffer
+
+  if (userBalance < requiredAmount) {
+    return {
+      isValid: false,
+      error: `Insufficient USDC balance. Required: ${formatUnits(requiredAmount, 6)} USDC (including buffer), Available: ${formatUnits(userBalance, 6)} USDC`
+    }
+  }
+
+  // Force refresh balance before final validation
+  await balanceHook.refetch()
+  const latestBalance = balanceHook.data || BigInt(0)
+
+  if (latestBalance < requiredAmount) {
+    return {
+      isValid: false,
+      error: `Balance verification failed. Please refresh and try again.`
+    }
+  }
+
+  return { isValid: true }
+}
+
 // ===== MAIN HOOK IMPLEMENTATION =====
 
 /**
  * Enhanced Subscription Purchase Hook with Approval Flow
- * 
+ *
  * This hook implements the complete subscription purchase workflow, including:
  * - Creator profile validation
  * - Balance and allowance checking
  * - USDC approval management
  * - Subscription execution
  * - Comprehensive error handling
- * 
+ *
  * It follows the same architectural patterns as your content purchase system,
  * ensuring consistency across your platform.
+ *
+ * MINIAPP OPTIMIZATIONS:
+ * - Enhanced balance validation with buffers
+ * - Transaction timeout handling
+ * - Miniapp-specific error messages
+ * - Improved synchronization for embedded environments
  */
 export function useSubscriptionPurchaseWithApproval(
   creatorAddress: Address | undefined,
@@ -183,7 +241,7 @@ export function useSubscriptionPurchaseWithApproval(
   })
 
   // ===== COMPUTED REQUIREMENTS =====
-  
+
   const requirements = useMemo((): SubscriptionPurchaseRequirements => {
     // Default state when data is not available
     const defaultRequirements: SubscriptionPurchaseRequirements = {
@@ -199,8 +257,8 @@ export function useSubscriptionPurchaseWithApproval(
 
     // Return loading state if any critical data is still loading
     if (
-      creatorProfileQuery.isLoading || 
-      userBalance.isLoading || 
+      creatorProfileQuery.isLoading ||
+      userBalance.isLoading ||
       usdcAllowance.isLoading ||
       !contractAddresses
     ) {
@@ -230,8 +288,18 @@ export function useSubscriptionPurchaseWithApproval(
     const currentBalance = userBalance.data || BigInt(0)
     const currentAllowance = usdcAllowance.data || BigInt(0)
 
-    // Calculate financial requirements
-    const hasEnoughBalance = currentBalance >= subscriptionPrice
+    // ===== MINIAPP-SPECIFIC BALANCE VALIDATION =====
+    // In miniapp environments, add extra buffer for potential gas costs
+    const isMiniApp = typeof window !== 'undefined' &&
+      (window.location.pathname.startsWith('/mini') ||
+       window.location.search.includes('miniapp=true') ||
+       document.querySelector('meta[name="fc:miniapp"]') !== null)
+
+    // Add a small buffer for miniapp transactions to account for gas estimation differences
+    const balanceBuffer = isMiniApp ? BigInt(1000000) : BigInt(0) // 1 USDC buffer for miniapp
+
+    // Calculate financial requirements with miniapp considerations
+    const hasEnoughBalance = currentBalance >= (subscriptionPrice + balanceBuffer)
     const needsApproval = currentAllowance < subscriptionPrice
     const canProceed = hasEnoughBalance && !needsApproval
 
@@ -426,11 +494,11 @@ export function useSubscriptionPurchaseWithApproval(
       let retryCount = 0
       const maxRetries = 3
       let allowanceValid = false
-      
+
       while (retryCount < maxRetries && !allowanceValid) {
         // Wait for allowance query to refresh and validate
         await usdcAllowance.refetch()
-        
+
         const currentAllowance = usdcAllowance.data || BigInt(0)
         if (currentAllowance >= requirements.subscriptionPrice) {
           allowanceValid = true
@@ -442,7 +510,7 @@ export function useSubscriptionPurchaseWithApproval(
           }
         }
       }
-      
+
       if (!allowanceValid) {
         throw new Error('Allowance not yet updated on-chain after multiple attempts. Please try again in a few moments.')
       }
@@ -455,12 +523,62 @@ export function useSubscriptionPurchaseWithApproval(
         error: null
       }))
 
-      await subscriptionWrite.writeContractAsync({
+      // ===== MINIAPP-SPECIFIC TRANSACTION HANDLING =====
+      // Check if we're in a miniapp environment
+      const isMiniApp = typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/mini') ||
+         window.location.search.includes('miniapp=true') ||
+         document.querySelector('meta[name="fc:miniapp"]') !== null)
+
+      let transactionOptions: any = {}
+
+      if (isMiniApp) {
+        console.log('🔧 Applying miniapp-specific transaction optimizations')
+
+        // Use miniapp-optimized transaction configuration
+        transactionOptions = getMiniAppTransactionConfig()
+
+        // Add additional validation for miniapp environment
+        console.log('📊 Miniapp transaction validation:', {
+          subscriptionPrice: requirements.subscriptionPrice.toString(),
+          userBalance: requirements.userBalance.toString(),
+          hasEnoughBalance: requirements.hasEnoughBalance,
+          needsApproval: requirements.needsApproval,
+          isMiniApp
+        })
+
+        // Enhanced balance validation for miniapp
+        const balanceValidation = await validateMiniAppBalance(
+          requirements.userBalance,
+          requirements.subscriptionPrice,
+          userBalance
+        )
+
+        if (!balanceValidation.isValid) {
+          throw new Error(balanceValidation.error || 'Balance validation failed')
+        }
+      }
+
+      // Execute transaction with miniapp-specific handling
+      const txPromise = subscriptionWrite.writeContractAsync({
         address: contractAddresses.SUBSCRIPTION_MANAGER,
         abi: SUBSCRIPTION_MANAGER_ABI,
         functionName: 'subscribeToCreator',
-        args: [creatorAddress]
+        args: [creatorAddress],
+        ...transactionOptions
       })
+
+      // Add timeout for miniapp transactions to prevent hanging
+      const timeoutPromise = isMiniApp
+        ? Promise.race([
+            txPromise,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Transaction timeout in miniapp environment')), 30000)
+            )
+          ])
+        : txPromise
+
+      await timeoutPromise
 
       setPurchaseState(prev => ({
         ...prev,
@@ -468,7 +586,26 @@ export function useSubscriptionPurchaseWithApproval(
       }))
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Subscription failed'
+      console.error('❌ Subscription execution failed:', error)
+
+      let errorMessage = 'Subscription failed'
+
+      // Enhanced error handling for miniapp-specific issues
+      if (error instanceof Error) {
+        // Handle specific miniapp transaction errors
+        if (error.message.includes('insufficient') || error.message.includes('payment')) {
+          errorMessage = 'Transaction failed due to payment validation. Please ensure you have sufficient USDC balance and try again.'
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Transaction timed out. Please check your connection and try again.'
+        } else if (error.message.includes('User rejected')) {
+          errorMessage = 'Transaction was cancelled by user.'
+        } else if (error.message.includes('network') || error.message.includes('chain')) {
+          errorMessage = 'Network error occurred. Please check your connection.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+
       setPurchaseState(prev => ({
         ...prev,
         currentStep: SubscriptionPurchaseStep.ERROR,
@@ -476,7 +613,7 @@ export function useSubscriptionPurchaseWithApproval(
       }))
       throw error
     }
-  }, [contractAddresses, creatorAddress, requirements, subscriptionWrite, approveToken.isConfirmed, usdcAllowance])
+  }, [contractAddresses, creatorAddress, requirements, subscriptionWrite, approveToken.isConfirmed, usdcAllowance, userBalance])
 
   /**
    * Reset Purchase Flow
@@ -524,24 +661,47 @@ export function useSubscriptionPurchaseWithApproval(
   }, [subscriptionConfirmation.isSuccess, queryClient])
 
   // ===== TRANSACTION MONITORING =====
-  
+
   // Monitor for transaction failures and provide recovery options
   useEffect(() => {
     if (subscriptionConfirmation.isError) {
       const error = subscriptionConfirmation.error
       let userFriendlyMessage = 'Subscription transaction failed'
-      
+
+      // Enhanced error handling for miniapp-specific issues
+      const isMiniApp = typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/mini') ||
+         window.location.search.includes('miniapp=true') ||
+         document.querySelector('meta[name="fc:miniapp"]') !== null)
+
       // Provide specific error messages for common issues
-      if (error?.message?.includes('insufficient funds')) {
-        userFriendlyMessage = 'Insufficient USDC balance for subscription'
+      if (error?.message?.includes('insufficient funds') || error?.message?.includes('insufficient payment')) {
+        userFriendlyMessage = isMiniApp
+          ? 'Transaction failed due to payment validation in miniapp. Please ensure you have sufficient USDC balance and try again. If the issue persists, try refreshing the miniapp.'
+          : 'Insufficient USDC balance for subscription'
       } else if (error?.message?.includes('allowance')) {
         userFriendlyMessage = 'USDC allowance insufficient. Please approve again.'
       } else if (error?.message?.includes('already subscribed')) {
         userFriendlyMessage = 'You are already subscribed to this creator'
       } else if (error?.message?.includes('creator not registered')) {
         userFriendlyMessage = 'Creator is not registered on the platform'
+      } else if (error?.message?.includes('gas') || error?.message?.includes('gas limit')) {
+        userFriendlyMessage = isMiniApp
+          ? 'Transaction failed due to gas estimation issues in miniapp. Please try again or contact support if the issue persists.'
+          : 'Transaction failed due to gas issues'
+      } else if (error?.message?.includes('network') || error?.message?.includes('timeout')) {
+        userFriendlyMessage = isMiniApp
+          ? 'Network connection issue in miniapp. Please check your connection and try again.'
+          : 'Network error occurred. Please try again.'
       }
-      
+
+      console.error('🔍 Subscription transaction error details:', {
+        isMiniApp,
+        errorMessage: error?.message,
+        errorName: error?.name,
+        userFriendlyMessage
+      })
+
       setPurchaseState(prev => ({
         ...prev,
         currentStep: SubscriptionPurchaseStep.ERROR,

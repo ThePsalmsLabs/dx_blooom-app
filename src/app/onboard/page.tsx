@@ -455,26 +455,26 @@ function OnboardingContent() {
     <div className="min-h-screen">
       {/* Modern Step Progress Header */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b">
-        <div className="max-w-xs xs:max-w-sm sm:max-w-4xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-3 xs:py-4">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => router.back()}
-              className="flex items-center gap-1 xs:gap-2 p-1 xs:p-2"
+              className="flex items-center gap-2"
             >
-              <ChevronLeft className="h-3 w-3 xs:h-4 xs:w-4" />
-              <span className="hidden xs:inline sm:inline">Back</span>
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Back</span>
             </Button>
 
-            <div className="flex-1 max-w-xs xs:max-w-sm sm:max-w-md mx-2 xs:mx-4">
+            <div className="flex-1 max-w-sm mx-4">
               <ModernStepIndicator
                 currentStep={currentStep}
                 isConnected={walletUI.isConnected}
               />
             </div>
 
-            <div className="text-xs xs:text-sm text-muted-foreground hidden sm:block">
+            <div className="text-sm text-muted-foreground hidden sm:block">
               {currentStep === 'welcome' && 'Welcome'}
               {currentStep === 'wallet' && 'Connect'}
               {currentStep === 'profile' && 'Profile'}
@@ -486,7 +486,7 @@ function OnboardingContent() {
 
       {/* Main Content Area */}
       <ScrollArea className="flex-1">
-        <div className="max-w-xs xs:max-w-sm sm:max-w-4xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-4 xs:py-6 sm:py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className={cn(
             "transition-all duration-300 ease-in-out",
             isTransitioning && "opacity-0 transform translate-y-4"
@@ -568,20 +568,20 @@ function ModernStepIndicator({ currentStep, isConnected }: ModernStepIndicatorPr
         return (
           <div key={step.id} className="flex items-center">
             <div className={cn(
-              "flex items-center justify-center w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 rounded-full border-2 transition-all duration-300",
+              "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300",
               status === 'completed' && "bg-primary border-primary text-primary-foreground",
               status === 'active' && "bg-primary/10 border-primary text-primary",
               status === 'pending' && "bg-muted border-muted text-muted-foreground"
             )}>
               {status === 'completed' ? (
-                <Check className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                <Check className="h-4 w-4" />
               ) : (
-                <IconComponent className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                <IconComponent className="h-4 w-4" />
               )}
             </div>
             {index < steps.length - 1 && (
               <div className={cn(
-                "w-4 xs:w-6 sm:w-8 h-0.5 mx-1 xs:mx-1.5 sm:mx-2 transition-colors duration-300",
+                "w-8 h-0.5 mx-2 transition-colors duration-300",
                 getStepStatus(steps[index + 1].id) !== 'pending' ? "bg-primary" : "bg-muted"
               )} />
             )}
@@ -601,18 +601,18 @@ interface WelcomeStepProps {
 
 function WelcomeStep({ onNext }: WelcomeStepProps) {
   return (
-    <div className="text-center space-y-4 xs:space-y-6 sm:space-y-8 py-6 xs:py-8 sm:py-12 px-2 xs:px-4">
+    <div className="text-center space-y-8 py-12">
       {/* Hero Section */}
-      <div className="space-y-4 xs:space-y-5 sm:space-y-6">
-        <div className="w-16 h-16 xs:w-18 xs:h-18 sm:w-20 sm:h-20 bg-gradient-to-r from-primary to-accent rounded-full mx-auto flex items-center justify-center">
-          <Sparkles className="h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 text-white" />
+      <div className="space-y-6">
+        <div className="w-20 h-20 bg-gradient-to-r from-primary to-accent rounded-full mx-auto flex items-center justify-center">
+          <Sparkles className="h-10 w-10 text-white" />
         </div>
 
-        <div className="space-y-3 xs:space-y-4">
-          <h1 className="text-3xl xs:text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent px-2">
+        <div className="space-y-4">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
             Welcome to Bloom
           </h1>
-          <p className="text-lg xs:text-xl sm:text-2xl text-muted-foreground max-w-xs xs:max-w-sm sm:max-w-3xl mx-auto leading-relaxed px-2">
+          <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             Transform your creative passion into a flourishing livelihood.
             Join Bloom's vibrant ecosystem where authentic creators thrive through
             transparent Web3 connections and fair blockchain-powered monetization.
@@ -621,38 +621,38 @@ function WelcomeStep({ onNext }: WelcomeStepProps) {
       </div>
 
       {/* Feature Grid */}
-      <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 xs:gap-5 sm:gap-6 max-w-xs xs:max-w-sm sm:max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
         <Card className="bg-gradient-to-br from-blue-500/5 to-purple-500/5 border-blue-500/20">
-          <CardContent className="p-4 xs:p-5 sm:p-6 text-center">
-            <div className="w-10 h-10 xs:w-11 xs:h-11 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg mx-auto mb-3 xs:mb-3 sm:mb-4 flex items-center justify-center">
-              <Users className="h-5 w-5 xs:h-5.5 xs:w-5.5 sm:h-6 sm:w-6 text-white" />
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg mx-auto mb-4 flex items-center justify-center">
+              <Users className="h-6 w-6 text-white" />
             </div>
-            <h3 className="font-semibold mb-2 text-sm xs:text-sm sm:text-base">Global Community</h3>
-            <p className="text-xs xs:text-sm sm:text-sm text-muted-foreground leading-relaxed">
+            <h3 className="font-semibold mb-2">Global Community</h3>
+            <p className="text-sm text-muted-foreground">
               Connect with creators and fans worldwide in a decentralized ecosystem
             </p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-green-500/5 to-emerald-500/5 border-green-500/20">
-          <CardContent className="p-4 xs:p-5 sm:p-6 text-center">
-            <div className="w-10 h-10 xs:w-11 xs:h-11 sm:w-12 sm:h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg mx-auto mb-3 xs:mb-3 sm:mb-4 flex items-center justify-center">
-              <DollarSign className="h-5 w-5 xs:h-5.5 xs:w-5.5 sm:h-6 sm:w-6 text-white" />
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg mx-auto mb-4 flex items-center justify-center">
+              <DollarSign className="h-6 w-6 text-white" />
             </div>
-            <h3 className="font-semibold mb-2 text-sm xs:text-sm sm:text-base">Fair Monetization</h3>
-            <p className="text-xs xs:text-sm sm:text-sm text-muted-foreground leading-relaxed">
+            <h3 className="font-semibold mb-2">Fair Monetization</h3>
+            <p className="text-sm text-muted-foreground">
               Keep 100% ownership of your content and earn directly from your audience
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500/5 to-pink-500/5 border-purple-500/20 xs:col-span-1 sm:col-span-2 md:col-span-1">
-          <CardContent className="p-4 xs:p-5 sm:p-6 text-center">
-            <div className="w-10 h-10 xs:w-11 xs:h-11 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg mx-auto mb-3 xs:mb-3 sm:mb-4 flex items-center justify-center">
-              <Zap className="h-5 w-5 xs:h-5.5 xs:w-5.5 sm:h-6 sm:w-6 text-white" />
+        <Card className="bg-gradient-to-br from-purple-500/5 to-pink-500/5 border-purple-500/20">
+          <CardContent className="p-6 text-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg mx-auto mb-4 flex items-center justify-center">
+              <Zap className="h-6 w-6 text-white" />
             </div>
-            <h3 className="font-semibold mb-2 text-sm xs:text-sm sm:text-base">Web3 Native</h3>
-            <p className="text-xs xs:text-sm sm:text-sm text-muted-foreground leading-relaxed">
+            <h3 className="font-semibold mb-2">Web3 Native</h3>
+            <p className="text-sm text-muted-foreground">
               Built on Base network with seamless NFT integration and smart contracts
             </p>
           </CardContent>
@@ -660,16 +660,16 @@ function WelcomeStep({ onNext }: WelcomeStepProps) {
       </div>
 
       {/* CTA Button */}
-      <div className="pt-6 xs:pt-7 sm:pt-8">
+      <div className="pt-8">
         <Button
           size="lg"
           onClick={onNext}
-          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 px-6 xs:px-7 sm:px-8 py-2 xs:py-3 sm:py-3 text-base xs:text-base sm:text-lg w-full xs:w-auto max-w-xs mx-auto"
+          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 px-8 py-3 text-lg"
         >
           Get Started
-          <ArrowRight className="ml-2 h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
+          <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
-        <p className="text-xs xs:text-sm sm:text-sm text-muted-foreground mt-3 xs:mt-3 sm:mt-4 px-2">
+        <p className="text-sm text-muted-foreground mt-4">
           Takes less than 2 minutes to set up your creator profile
         </p>
       </div>
@@ -688,15 +688,15 @@ interface WalletStepProps {
 
 function WalletStep({ walletUI, onNext, onPrev }: WalletStepProps) {
   return (
-    <div className="max-w-xs xs:max-w-sm sm:max-w-2xl mx-auto space-y-4 xs:space-y-6 sm:space-y-8 px-2 xs:px-4">
+    <div className="max-w-2xl mx-auto space-y-8">
       {/* Header */}
-      <div className="text-center space-y-3 xs:space-y-4">
-        <div className="w-14 h-14 xs:w-15 xs:h-15 sm:w-16 sm:h-16 bg-gradient-to-r from-primary to-accent rounded-full mx-auto flex items-center justify-center">
-          <Wallet className="h-7 w-7 xs:h-7 xs:w-7 sm:h-8 sm:w-8 text-white" />
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 bg-gradient-to-r from-primary to-accent rounded-full mx-auto flex items-center justify-center">
+          <Wallet className="h-8 w-8 text-white" />
         </div>
         <div>
-          <h2 className="text-2xl xs:text-2xl sm:text-3xl font-bold px-2">Connect Your Wallet</h2>
-          <p className="text-base xs:text-base sm:text-lg text-muted-foreground px-2">
+          <h2 className="text-3xl font-bold">Connect Your Wallet</h2>
+          <p className="text-lg text-muted-foreground">
             Link your wallet to unlock the full creator experience
           </p>
         </div>
@@ -704,59 +704,59 @@ function WalletStep({ walletUI, onNext, onPrev }: WalletStepProps) {
 
       {/* Wallet Connection Card */}
       <Card className="bg-gradient-to-br from-background to-primary/5">
-        <CardHeader className="pb-3 xs:pb-4 sm:pb-6">
-          <CardTitle className="flex items-center gap-2 text-base xs:text-base sm:text-lg">
-            <Wallet className="h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
             Wallet Connection
           </CardTitle>
-          <CardDescription className="text-sm xs:text-sm sm:text-base">
+          <CardDescription>
             Choose your preferred wallet to connect and get started
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 xs:space-y-5 sm:space-y-6">
+        <CardContent className="space-y-6">
           {!walletUI.isConnected ? (
-            <div className="text-center space-y-3 xs:space-y-4">
-              <p className="text-sm xs:text-sm sm:text-base text-muted-foreground px-2">
+            <div className="text-center space-y-4">
+              <p className="text-muted-foreground">
                 Connect your wallet to access creator features and start monetizing your content
               </p>
 
               {/* Wallet Connection Button */}
-              <div className="max-w-xs xs:max-w-xs sm:max-w-sm mx-auto">
+              <div className="max-w-sm mx-auto">
                 <Button
                   onClick={walletUI.connect}
                   disabled={false}
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-sm xs:text-sm sm:text-base py-2 xs:py-2 sm:py-3"
+                  className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
                   size="lg"
                 >
                   {false ? (
                     <>
-                      <Loader2 className="mr-2 h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Connecting...
                     </>
                   ) : (
                     <>
-                      <Wallet className="mr-2 h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4" />
+                      <Wallet className="mr-2 h-4 w-4" />
                       Connect Wallet
                     </>
                   )}
                 </Button>
               </div>
 
-              {false && (
-                <Alert variant="destructive" className="text-left">
-                  <AlertCircle className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4" />
-                  <AlertDescription className="text-xs xs:text-xs sm:text-sm">Error message</AlertDescription>
+              {walletUI.error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{walletUI.error}</AlertDescription>
                 </Alert>
               )}
             </div>
           ) : (
-            <div className="text-center space-y-3 xs:space-y-4">
-              <div className="w-10 h-10 xs:w-11 xs:h-11 sm:w-12 sm:h-12 bg-green-500 rounded-full mx-auto flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-white" />
+            <div className="text-center space-y-4">
+              <div className="w-12 h-12 bg-green-500 rounded-full mx-auto flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-green-700 text-sm xs:text-sm sm:text-base">Wallet Connected!</h3>
-                <p className="text-xs xs:text-xs sm:text-sm text-muted-foreground">
+                <h3 className="font-semibold text-green-700">Wallet Connected!</h3>
+                <p className="text-sm text-muted-foreground">
                   {formatAddress(walletUI.address as `0x${string}`)}
                 </p>
               </div>
@@ -764,12 +764,12 @@ function WalletStep({ walletUI, onNext, onPrev }: WalletStepProps) {
           )}
 
           {/* Smart Account Info */}
-          <div className="bg-muted/50 p-3 xs:p-3 sm:p-4 rounded-lg">
-            <div className="flex items-start gap-2 xs:gap-2 sm:gap-3">
-              <Shield className="h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-primary mt-0.5 flex-shrink-0" />
+          <div className="bg-muted/50 p-4 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Shield className="h-5 w-5 text-primary mt-0.5" />
               <div>
-                <h4 className="font-medium mb-1 text-sm xs:text-sm sm:text-base">Smart Account Benefits</h4>
-                <ul className="text-xs xs:text-xs sm:text-sm text-muted-foreground space-y-0.5 xs:space-y-0.5 sm:space-y-1">
+                <h4 className="font-medium mb-1">Smart Account Benefits</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• Gasless transactions for better UX</li>
                   <li>• Account recovery and security features</li>
                   <li>• Simplified wallet management</li>
@@ -782,26 +782,18 @@ function WalletStep({ walletUI, onNext, onPrev }: WalletStepProps) {
       </Card>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-4 xs:pt-5 sm:pt-6 gap-2 xs:gap-3 sm:gap-0">
-        <Button
-          variant="outline"
-          onClick={onPrev}
-          className="flex-1 xs:flex-none text-sm xs:text-sm sm:text-base py-2 xs:py-2 sm:py-3"
-          size="sm"
-        >
-          <ChevronLeft className="mr-1 xs:mr-1 sm:mr-2 h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4" />
-          <span className="hidden xs:inline">Back</span>
-          <span className="xs:hidden">Back</span>
+      <div className="flex justify-between pt-6">
+        <Button variant="outline" onClick={onPrev}>
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          Back
         </Button>
         <Button
           onClick={onNext}
           disabled={!walletUI.isConnected}
-          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex-1 xs:flex-none text-sm xs:text-sm sm:text-base py-2 xs:py-2 sm:py-3"
-          size="sm"
+          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
         >
-          <span className="hidden xs:inline">Continue</span>
-          <span className="xs:hidden">Continue</span>
-          <ArrowRight className="ml-1 xs:ml-1 sm:ml-2 h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4" />
+          Continue
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -846,15 +838,15 @@ function ProfileStep({
     }, [formData, onFormChange])
 
   return (
-    <div className="max-w-xs xs:max-w-sm sm:max-w-2xl mx-auto space-y-4 xs:space-y-6 sm:space-y-8 px-2 xs:px-4">
+    <div className="max-w-2xl mx-auto space-y-8">
       {/* Header */}
-      <div className="text-center space-y-3 xs:space-y-4">
-        <div className="w-14 h-14 xs:w-15 xs:h-15 sm:w-16 sm:h-16 bg-gradient-to-r from-primary to-accent rounded-full mx-auto flex items-center justify-center">
-          <User className="h-7 w-7 xs:h-7 xs:w-7 sm:h-8 sm:w-8 text-white" />
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 bg-gradient-to-r from-primary to-accent rounded-full mx-auto flex items-center justify-center">
+          <User className="h-8 w-8 text-white" />
         </div>
         <div>
-          <h2 className="text-2xl xs:text-2xl sm:text-3xl font-bold px-2">Set Up Your Profile</h2>
-          <p className="text-base xs:text-base sm:text-lg text-muted-foreground px-2">
+          <h2 className="text-3xl font-bold">Set Up Your Profile</h2>
+          <p className="text-lg text-muted-foreground">
             Configure your creator profile and subscription pricing
           </p>
         </div>
@@ -862,20 +854,20 @@ function ProfileStep({
 
       {/* Profile Form */}
       <Card className="bg-gradient-to-br from-background to-primary/5">
-        <CardHeader className="pb-3 xs:pb-4 sm:pb-6">
-          <CardTitle className="flex items-center gap-2 text-base xs:text-base sm:text-lg">
-            <User className="h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
             Creator Profile
           </CardTitle>
-          <CardDescription className="text-sm xs:text-sm sm:text-base">
+          <CardDescription>
             Tell your audience about yourself and set your subscription price
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 xs:space-y-5 sm:space-y-6">
+        <CardContent className="space-y-6">
           {/* Subscription Price */}
-          <div className="space-y-2 xs:space-y-3">
-            <Label htmlFor="subscriptionPrice" className="flex items-center gap-2 text-sm xs:text-sm sm:text-base font-medium">
-              <DollarSign className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4" />
+          <div className="space-y-3">
+            <Label htmlFor="subscriptionPrice" className="flex items-center gap-2 text-base font-medium">
+              <DollarSign className="h-4 w-4" />
               Monthly Subscription Price
             </Label>
             <div className="relative">
@@ -889,34 +881,34 @@ function ProfileStep({
                 value={formData.subscriptionPrice}
                 onChange={handleInputChange('subscriptionPrice')}
                 className={cn(
-                  "pl-7 xs:pl-8 text-base xs:text-base sm:text-lg h-10 xs:h-10 sm:h-11",
+                  "pl-8 text-lg",
                   formErrors.subscriptionPrice && "border-destructive"
                 )}
               />
-              <span className="absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm xs:text-sm sm:text-base">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
                 $
               </span>
-              <span className="absolute right-2.5 xs:right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs xs:text-xs sm:text-sm">
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 USDC/month
               </span>
             </div>
             {formErrors.subscriptionPrice && (
-              <p className="text-xs xs:text-xs sm:text-sm text-destructive">{formErrors.subscriptionPrice}</p>
+              <p className="text-sm text-destructive">{formErrors.subscriptionPrice}</p>
             )}
-            <p className="text-xs xs:text-xs sm:text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Set your monthly subscription price between $0.01 and $100.00
             </p>
           </div>
 
           {/* Bio */}
-          <div className="space-y-2 xs:space-y-3">
-            <Label htmlFor="bio" className="text-sm xs:text-sm sm:text-base font-medium">
+          <div className="space-y-3">
+            <Label htmlFor="bio" className="text-base font-medium">
               Bio <span className="text-muted-foreground">(optional)</span>
             </Label>
             <textarea
               id="bio"
               className={cn(
-                "flex min-h-[80px] xs:min-h-[90px] sm:min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none",
+                "flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none",
                 formErrors.bio && "border-destructive"
               )}
               placeholder="Tell your audience about yourself, your creative journey, and what they can expect from your content..."
@@ -925,7 +917,7 @@ function ProfileStep({
               maxLength={500}
             />
             {formErrors.bio && (
-              <p className="text-xs xs:text-xs sm:text-sm text-destructive">{formErrors.bio}</p>
+              <p className="text-sm text-destructive">{formErrors.bio}</p>
             )}
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{formData.bio.length}/500 characters</span>
@@ -933,8 +925,8 @@ function ProfileStep({
           </div>
 
           {/* Website URL */}
-          <div className="space-y-2 xs:space-y-3">
-            <Label htmlFor="websiteUrl" className="text-sm xs:text-sm sm:text-base font-medium">
+          <div className="space-y-3">
+            <Label htmlFor="websiteUrl" className="text-base font-medium">
               Website URL <span className="text-muted-foreground">(optional)</span>
             </Label>
             <Input
@@ -943,19 +935,16 @@ function ProfileStep({
               placeholder="https://yourwebsite.com"
               value={formData.websiteUrl}
               onChange={handleInputChange('websiteUrl')}
-              className={cn(
-                "h-10 xs:h-10 sm:h-11 text-sm xs:text-sm sm:text-base",
-                formErrors.websiteUrl ? "border-destructive" : ""
-              )}
+              className={formErrors.websiteUrl ? "border-destructive" : ""}
             />
             {formErrors.websiteUrl && (
-              <p className="text-xs xs:text-xs sm:text-sm text-destructive">{formErrors.websiteUrl}</p>
+              <p className="text-sm text-destructive">{formErrors.websiteUrl}</p>
             )}
           </div>
 
           {/* Social Handle */}
-          <div className="space-y-2 xs:space-y-3">
-            <Label htmlFor="socialHandle" className="text-sm xs:text-sm sm:text-base font-medium">
+          <div className="space-y-3">
+            <Label htmlFor="socialHandle" className="text-base font-medium">
               Social Media Handle <span className="text-muted-foreground">(optional)</span>
             </Label>
             <div className="relative">
@@ -964,9 +953,9 @@ function ProfileStep({
                 placeholder="@yourusername"
                 value={formData.socialHandle}
                 onChange={handleInputChange('socialHandle')}
-                className="pl-7 xs:pl-8 h-10 xs:h-10 sm:h-11 text-sm xs:text-sm sm:text-base"
+                className="pl-8"
               />
-              <span className="absolute left-2.5 xs:left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm xs:text-sm sm:text-base">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 @
               </span>
             </div>
@@ -1034,34 +1023,25 @@ function ProfileStep({
       )}
 
       {/* Navigation */}
-      <div className="flex justify-between pt-4 xs:pt-5 sm:pt-6 gap-2 xs:gap-3 sm:gap-0">
-        <Button
-          variant="outline"
-          onClick={onPrev}
-          className="flex-1 xs:flex-none text-sm xs:text-sm sm:text-base py-2 xs:py-2 sm:py-3"
-          size="sm"
-        >
-          <ChevronLeft className="mr-1 xs:mr-1 sm:mr-2 h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4" />
-          <span className="hidden xs:inline">Back</span>
-          <span className="xs:hidden">Back</span>
+      <div className="flex justify-between pt-6">
+        <Button variant="outline" onClick={onPrev}>
+          <ChevronLeft className="mr-2 h-4 w-4" />
+          Back
         </Button>
         <Button
           onClick={onSubmit}
           disabled={isLoading}
-          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex-1 xs:flex-none text-sm xs:text-sm sm:text-base py-2 xs:py-2 sm:py-3"
-          size="sm"
+          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
         >
           {isLoading ? (
             <>
-              <Loader2 className="mr-1 xs:mr-1 sm:mr-2 h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 animate-spin" />
-              <span className="hidden xs:inline">Creating...</span>
-              <span className="xs:hidden">Creating</span>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating Profile...
             </>
           ) : (
             <>
-              <span className="hidden xs:inline">Create Profile</span>
-              <span className="xs:hidden">Create</span>
-              <ArrowRight className="ml-1 xs:ml-1 sm:ml-2 h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4" />
+              Create Creator Profile
+              <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
         </Button>
@@ -1081,18 +1061,18 @@ function CompleteStep({ profile }: CompleteStepProps) {
   const router = useRouter()
 
   return (
-    <div className="max-w-xs xs:max-w-sm sm:max-w-2xl mx-auto space-y-4 xs:space-y-6 sm:space-y-8 px-2 xs:px-4">
+    <div className="max-w-2xl mx-auto space-y-8">
       {/* Success Header */}
-      <div className="text-center space-y-4 xs:space-y-5 sm:space-y-6">
-        <div className="w-16 h-16 xs:w-18 xs:h-18 sm:w-20 sm:h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto flex items-center justify-center">
-          <CheckCircle className="h-8 w-8 xs:h-9 xs:w-9 sm:h-10 sm:w-10 text-white" />
+      <div className="text-center space-y-6">
+        <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto flex items-center justify-center">
+          <CheckCircle className="h-10 w-10 text-white" />
         </div>
 
-        <div className="space-y-3 xs:space-y-4">
-          <h1 className="text-3xl xs:text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent px-2">
+        <div className="space-y-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
             Welcome to Bloom!
           </h1>
-          <p className="text-lg xs:text-lg sm:text-xl text-muted-foreground max-w-xs xs:max-w-sm sm:max-w-lg mx-auto px-2">
+          <p className="text-xl text-muted-foreground max-w-lg mx-auto">
             Congratulations! You're now officially a creator on the Bloom platform.
             Your profile has been registered on the blockchain and you're ready to start monetizing your content.
           </p>
@@ -1102,45 +1082,45 @@ function CompleteStep({ profile }: CompleteStepProps) {
       {/* Profile Summary */}
       {profile && (
         <Card className="bg-gradient-to-br from-green-500/5 to-emerald-500/5 border-green-500/20">
-          <CardHeader className="pb-3 xs:pb-4 sm:pb-6">
-            <CardTitle className="flex items-center gap-2 text-green-700 text-base xs:text-base sm:text-lg">
-              <Trophy className="h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-700">
+              <Trophy className="h-5 w-5" />
               Your Creator Profile
             </CardTitle>
-            <CardDescription className="text-sm xs:text-sm sm:text-base">
+            <CardDescription>
               Here's what you've set up - you can update these anytime from your dashboard
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 xs:space-y-4">
-            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 xs:gap-4">
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-green-600" />
-                  <span className="font-medium text-sm xs:text-sm sm:text-base">Subscription Price</span>
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                  <span className="font-medium">Subscription Price</span>
                 </div>
-                <p className="text-xl xs:text-xl sm:text-2xl font-bold text-green-700">
+                <p className="text-2xl font-bold text-green-700">
                   {formatCurrency(BigInt(profile.subscriptionPrice), 6, 'USDC')}
-                  <span className="text-xs xs:text-xs sm:text-sm font-normal text-muted-foreground">/month</span>
+                  <span className="text-sm font-normal text-muted-foreground">/month</span>
                 </p>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Users className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-green-600" />
-                  <span className="font-medium text-sm xs:text-sm sm:text-base">Subscribers</span>
+                  <Users className="h-4 w-4 text-green-600" />
+                  <span className="font-medium">Subscribers</span>
                 </div>
-                <p className="text-xl xs:text-xl sm:text-2xl font-bold text-green-700">
+                <p className="text-2xl font-bold text-green-700">
                   {profile.subscriberCount || 0}
                 </p>
               </div>
             </div>
 
-            <div className="pt-3 xs:pt-4 border-t border-green-500/20">
+            <div className="pt-4 border-t border-green-500/20">
               <div className="flex items-center gap-2">
-                <Clock className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-green-600" />
-                <span className="font-medium text-sm xs:text-sm sm:text-base">Registration Date</span>
+                <Clock className="h-4 w-4 text-green-600" />
+                <span className="font-medium">Registration Date</span>
               </div>
-              <p className="text-xs xs:text-xs sm:text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {new Date(Number(profile.registrationTime) * 1000).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -1154,48 +1134,48 @@ function CompleteStep({ profile }: CompleteStepProps) {
 
       {/* Next Steps */}
       <Card className="bg-gradient-to-br from-blue-500/5 to-indigo-500/5 border-blue-500/20">
-        <CardHeader className="pb-3 xs:pb-4 sm:pb-6">
-          <CardTitle className="flex items-center gap-2 text-base xs:text-base sm:text-lg">
-            <Zap className="h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-blue-600" />
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-600" />
             What's Next?
           </CardTitle>
-          <CardDescription className="text-sm xs:text-sm sm:text-base">
+          <CardDescription>
             Start building your creator presence on Bloom
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 xs:space-y-4">
-          <div className="grid gap-2 xs:gap-3">
-            <div className="flex items-start gap-2 xs:gap-3 p-2 xs:p-3 bg-blue-500/10 rounded-lg">
-              <div className="w-7 h-7 xs:w-8 xs:h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Upload className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-white" />
+        <CardContent className="space-y-4">
+          <div className="grid gap-3">
+            <div className="flex items-start gap-3 p-3 bg-blue-500/10 rounded-lg">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Upload className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h4 className="font-medium mb-1 text-sm xs:text-sm sm:text-base">Upload Your First Content</h4>
-                <p className="text-xs xs:text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                <h4 className="font-medium mb-1">Upload Your First Content</h4>
+                <p className="text-sm text-muted-foreground">
                   Share your creative work and start building your audience
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 xs:gap-3 p-2 xs:p-3 bg-purple-500/10 rounded-lg">
-              <div className="w-7 h-7 xs:w-8 xs:h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Target className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-white" />
+            <div className="flex items-start gap-3 p-3 bg-purple-500/10 rounded-lg">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Target className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h4 className="font-medium mb-1 text-sm xs:text-sm sm:text-base">Customize Your Profile</h4>
-                <p className="text-xs xs:text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                <h4 className="font-medium mb-1">Customize Your Profile</h4>
+                <p className="text-sm text-muted-foreground">
                   Add more details, links, and personalize your creator page
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 xs:gap-3 p-2 xs:p-3 bg-green-500/10 rounded-lg">
-              <div className="w-7 h-7 xs:w-8 xs:h-8 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                <TrendingUp className="h-3 w-3 xs:h-3 xs:w-3 sm:h-4 sm:w-4 text-white" />
+            <div className="flex items-start gap-3 p-3 bg-green-500/10 rounded-lg">
+              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                <TrendingUp className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h4 className="font-medium mb-1 text-sm xs:text-sm sm:text-base">Track Your Growth</h4>
-                <p className="text-xs xs:text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                <h4 className="font-medium mb-1">Track Your Growth</h4>
+                <p className="text-sm text-muted-foreground">
                   Monitor subscribers, revenue, and engagement analytics
                 </p>
               </div>
@@ -1205,32 +1185,30 @@ function CompleteStep({ profile }: CompleteStepProps) {
       </Card>
 
       {/* CTA Buttons */}
-      <div className="flex flex-col xs:flex-col sm:flex-row gap-3 xs:gap-4 pt-4 xs:pt-5 sm:pt-6">
+      <div className="flex flex-col sm:flex-row gap-4 pt-6">
         <Button
           onClick={() => router.push('/dashboard')}
-          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex-1 text-sm xs:text-sm sm:text-base py-2 xs:py-2 sm:py-3"
+          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex-1"
           size="lg"
         >
-          <BarChart3 className="mr-2 h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
-          <span className="hidden xs:inline">Go to Dashboard</span>
-          <span className="xs:hidden">Dashboard</span>
+          <BarChart3 className="mr-2 h-5 w-5" />
+          Go to Dashboard
         </Button>
 
         <Button
           variant="outline"
           onClick={() => router.push('/upload')}
-          className="flex-1 text-sm xs:text-sm sm:text-base py-2 xs:py-2 sm:py-3"
+          className="flex-1"
           size="lg"
         >
-          <Upload className="mr-2 h-4 w-4 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
-          <span className="hidden xs:inline">Upload Content</span>
-          <span className="xs:hidden">Upload</span>
+          <Upload className="mr-2 h-5 w-5" />
+          Upload Content
         </Button>
       </div>
 
       {/* Footer Message */}
-      <div className="text-center pt-3 xs:pt-4">
-        <p className="text-xs xs:text-xs sm:text-sm text-muted-foreground px-2">
+      <div className="text-center pt-4">
+        <p className="text-sm text-muted-foreground">
           🎉 Welcome to the creator economy! Your journey starts now.
         </p>
       </div>
