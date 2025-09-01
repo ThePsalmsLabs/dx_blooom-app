@@ -687,7 +687,9 @@ export function RouteGuards({
   const handlePermissionResolution = useCallback((resolutionPath: string) => {
     switch (resolutionPath) {
       case 'wallet-connect':
-        // Wallet connection handled by WalletConnectButton
+        // Actually trigger wallet connection instead of just commenting
+        console.log('🔗 RouteGuards: Triggering wallet connection')
+        walletUI.connect()
         break
       case 'network-switch':
         if (switchChain) {
@@ -704,7 +706,7 @@ export function RouteGuards({
       default:
         console.warn(`Unknown resolution path: ${resolutionPath}`)
     }
-  }, [switchChain, router])
+  }, [walletUI, switchChain, router])
 
   // Handle access denied callback
   useEffect(() => {
