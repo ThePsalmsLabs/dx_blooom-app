@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { type Address } from 'viem'
 import {
-  Calendar,
   DollarSign,
   Users,
   FileText,
@@ -14,18 +13,12 @@ import {
   Heart,
   MessageCircle,
   Share2,
-  Eye,
   Clock,
   Zap,
   Trophy,
   Target,
   Sparkles,
-  BookOpen,
   Video,
-  Music,
-  Image as ImageIcon,
-  Code,
-  Folder,
   CheckCircle,
   BarChart3
 } from 'lucide-react'
@@ -52,10 +45,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/seperator'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 // Import utilities
-import { formatCurrency, formatAddress, formatRelativeTime, formatAbsoluteTime } from '@/lib/utils'
+import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 
 export default function CreatorProfilePage() {
   const params = useParams()

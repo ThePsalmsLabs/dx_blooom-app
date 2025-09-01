@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -20,7 +20,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { 
   Play, 
   Eye, 
-  Users, 
   RefreshCw, 
   Wallet,
   AlertCircle 

@@ -106,9 +106,8 @@ import {
 import { useContentById, useCreatorProfile } from '@/hooks/contracts/core'
 import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 import { type Address } from 'viem'
-import { categoryToString, type ContentWithMetadata } from '@/types/contracts'
+import { categoryToString } from '@/types/contracts'
 
-import { toast } from 'sonner'
 
 // ===== COMPONENT INTERFACE DEFINITIONS =====
 

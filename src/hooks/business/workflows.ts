@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import { Address, Hash, parseEventLogs, parseUnits } from 'viem'
+import { Address, parseEventLogs } from 'viem'
 import { useChainId, useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, useBalance } from 'wagmi'
-import { simulateContract, waitForTransactionReceipt } from 'wagmi/actions'
+import { simulateContract } from 'wagmi/actions'
 import { createPublicClient, http } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { useQueryClient } from '@tanstack/react-query'
@@ -19,7 +19,7 @@ import {
 } from '@/hooks/contracts/core'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { getContractAddresses } from '@/lib/contracts/config'
-import { formatCurrency, formatTokenBalance, formatAddress } from '@/lib/utils'
+import { formatTokenBalance } from '@/lib/utils'
 import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
 import {
   getX402MiddlewareConfig,
@@ -4174,69 +4174,94 @@ export function useCreatorOnboarding(
   }, [])
 
   const register = useCallback(async (subscriptionPrice: bigint, profileData: string) => {
+    // DEBUG: Enhanced logging for MiniApp creator registration
+    console.log('🔍 CREATOR REGISTRATION DEBUG:', {
+      userAddress,
+      isRegistered,
+      subscriptionPrice: subscriptionPrice.toString(),
+      profileData,
+      chainId,
+      network: process.env.NETWORK,
+      isMiniApp: typeof window !== 'undefined' ? (
+        window.location.pathname.startsWith('/mini') ||
+        window.parent !== window ||
+        document.referrer.includes('farcaster')
+      ) : false
+    })
+
     if (!userAddress) {
-      setWorkflowState(prev => ({ 
+      console.error('❌ Creator Registration Failed: No user address')
+      setWorkflowState(prev => ({
         ...prev,
-        currentStep: 'error', 
-        error: new Error('Wallet not connected') 
+        currentStep: 'error',
+        error: new Error('Wallet not connected')
       }))
       return
     }
-    
+
     if (isRegistered) {
-      setWorkflowState(prev => ({ 
+      console.error('❌ Creator Registration Failed: Already registered')
+      setWorkflowState(prev => ({
         ...prev,
-        currentStep: 'error', 
-        error: new Error('Already registered as creator') 
+        currentStep: 'error',
+        error: new Error('Already registered as creator')
       }))
       return
     }
-    
+
     if (!profileData || profileData.trim().length === 0) {
-      setWorkflowState(prev => ({ 
+      console.error('❌ Creator Registration Failed: Empty profile data')
+      setWorkflowState(prev => ({
         ...prev,
-        currentStep: 'error', 
-        error: new Error('Profile data cannot be empty') 
+        currentStep: 'error',
+        error: new Error('Profile data cannot be empty')
       }))
       return
     }
-    
+
     if (subscriptionPrice < BigInt(10000) || subscriptionPrice > BigInt(100000000)) {
-      setWorkflowState(prev => ({ 
+      console.error('❌ Creator Registration Failed: Invalid subscription price', subscriptionPrice.toString())
+      setWorkflowState(prev => ({
         ...prev,
-        currentStep: 'error', 
-        error: new Error('Subscription price must be between $0.01 and $100.00') 
+        currentStep: 'error',
+        error: new Error('Subscription price must be between $0.01 and $100.00')
       }))
       return
     }
-    
+
     try {
-      setWorkflowState(prev => ({ 
-        ...prev, 
+      console.log('✅ Starting Creator Registration Transaction...')
+      setWorkflowState(prev => ({
+        ...prev,
         currentStep: 'registering',
         error: null,
         hasJustRegistered: false
       }))
-      
+
       debug.log('🚀 Enhanced Hook: Starting Creator Registration')
       debug.log('Subscription Price (BigInt):', subscriptionPrice.toString())
       debug.log('Profile Data:', profileData)
       debug.log('User Address:', userAddress)
-      
-      registerCreator.write({
+
+      // Call the contract write function
+      console.log('📝 Calling registerCreator.write()...')
+      const result = registerCreator.write({
         subscriptionPrice,
         profileData
       })
-      
+
+      console.log('📤 Contract write result:', result)
+      console.log('⏳ Transaction initiated, waiting for confirmation...')
+
     } catch (error) {
-      console.error('Registration hook error:', error)
-      setWorkflowState(prev => ({ 
+      console.error('❌ Registration hook error:', error)
+      setWorkflowState(prev => ({
         ...prev,
-        currentStep: 'error', 
+        currentStep: 'error',
         error: error instanceof Error ? error : new Error('Registration failed')
       }))
     }
-  }, [userAddress, isRegistered, registerCreator])
+  }, [userAddress, isRegistered, registerCreator, chainId])
   
   const reset = useCallback(() => {
     setWorkflowState({

@@ -8,8 +8,7 @@ import {
   ShoppingCart,
   Zap, 
   Share2, 
-  Loader2, 
-  AlertCircle,
+  Loader2,
   Wallet,
   Users,
   CheckCircle2,
@@ -27,7 +26,6 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Tooltip,
   TooltipContent,

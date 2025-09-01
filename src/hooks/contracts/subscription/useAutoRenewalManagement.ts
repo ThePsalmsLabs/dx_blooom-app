@@ -35,8 +35,7 @@
  * - Real-time monitoring of auto-renewal health and performance
  */
 
-import { 
-    useReadContract,
+import {
     useWriteContract, 
     useWaitForTransactionReceipt,
     useChainId,

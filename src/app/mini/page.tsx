@@ -31,10 +31,8 @@ import { ErrorBoundary } from 'react-error-boundary'
 import {
   TrendingUp,
   Users,
-  Play,
   Star,
   Sparkles,
-  Eye,
   Heart,
   Zap,
   Globe,

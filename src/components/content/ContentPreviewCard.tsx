@@ -18,7 +18,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -28,7 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 import { useContentById, useHasContentAccess, useCreatorProfile } from '@/hooks/contracts/core'
-import { ContentCategory, categoryToString } from '@/types/contracts'
+import { categoryToString } from '@/types/contracts'
 import { formatCurrency, formatRelativeTime, formatAddress, cn } from '@/lib/utils'
 
 /**

@@ -15,25 +15,22 @@
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react'
-import { useChainId, useReadContract, usePublicClient } from 'wagmi'
+import { useChainId, usePublicClient } from 'wagmi'
 import { useQueryClient } from '@tanstack/react-query'
 import { type Address } from 'viem'
 
 // Import all subscription strategies
 import { 
   useSubscriptionPurchaseWithApproval, 
-  SubscriptionPurchaseStep,
-  type SubscriptionPurchaseWithApprovalResult 
+  SubscriptionPurchaseStep 
 } from './useSubscriptionWithApproval'
 import { 
   useSubscriptionWithPermit,
-  PermitSubscriptionStep,
-  type PermitSubscriptionResult 
+  PermitSubscriptionStep 
 } from './useSubscriptionWithPermit'
 import {
   useCommerceProtocolSubscription,
-  CommerceSubscriptionStep,
-  type CommerceSubscriptionResult
+  CommerceSubscriptionStep
 } from './useCommerceProtocolSubscription'
 
 // Import contract configuration

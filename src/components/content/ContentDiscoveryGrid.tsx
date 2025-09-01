@@ -75,7 +75,6 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 import { ContentCategory, categoryToString } from '@/types/contracts'
 

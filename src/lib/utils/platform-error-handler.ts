@@ -1,7 +1,6 @@
 'use client'
 
 import { toast } from 'sonner'
-import { formatWeb3Error } from '../utils'
 import { getCleanErrorMessage } from './toast'
 import { type Address } from 'viem'
 

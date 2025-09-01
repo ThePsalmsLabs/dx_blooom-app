@@ -25,7 +25,7 @@ import {
   XCircle,
   Zap
 } from 'lucide-react'
-import { zoraMonitor, useZoraMonitoring } from '@/lib/services/zora-monitoring'
+import { useZoraMonitoring } from '@/lib/services/zora-monitoring'
 import type { ZoraOperationMetrics, ZoraError } from '@/lib/services/zora-monitoring'
 
 interface MonitoringDashboardProps {

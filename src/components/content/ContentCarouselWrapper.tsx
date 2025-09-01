@@ -1,10 +1,9 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
 import { ContentCarousel } from '@/components/ui/carousel'
 import { Eye, Lock, Unlock } from 'lucide-react'
 import { cn } from '@/lib/utils'

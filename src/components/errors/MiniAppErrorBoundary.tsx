@@ -18,11 +18,8 @@
 'use client'
 
 import React, { Component, ErrorInfo, ReactNode, useState, useMemo, useEffect, useCallback } from 'react'
-import {
-  MiniAppErrorBoundary as ErrorBoundaryReplacement,
-  ErrorBoundaryProvider,
-  useErrorBoundary
-} from './ErrorBoundaryReplacement'
+
+
 import type { EnhancedMiniAppContextValue } from '@/contexts/MiniAppProvider'
 
 // Import UI components

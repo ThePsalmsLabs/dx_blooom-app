@@ -6,7 +6,7 @@
  * provides proper error handling.
  */
 
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 import { type Address } from 'viem'
 import { useCreatorProfile, useHasContentAccess } from '@/hooks/contracts/core'
 import type { Content, ContentWithMetadata } from '@/types/contracts'

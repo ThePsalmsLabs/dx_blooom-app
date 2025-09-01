@@ -7,7 +7,7 @@
 
 import React, { useCallback, useMemo } from 'react'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
-import { useX402ContentPurchaseFlow, PaymentMethod } from '@/hooks/business/workflows'
+import { useX402ContentPurchaseFlow } from '@/hooks/business/workflows'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useTokenAllowance } from '@/hooks/contracts/core'

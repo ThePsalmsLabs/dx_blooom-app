@@ -90,7 +90,7 @@ import {
 
 // Import utilities and types
 import { cn, formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
-import { enhancedToast, handleUIError } from '@/lib/utils/toast'
+import { handleUIError } from '@/lib/utils/toast'
 import { categoryToString } from '@/types/contracts'
 import type { Address } from 'viem'
 

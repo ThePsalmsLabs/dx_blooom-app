@@ -36,16 +36,11 @@ import {
   ExternalLink,
   CheckCircle,
   Zap,
-  Heart,
   Target,
-  Star,
   Trophy,
   Users,
   TrendingUp,
   Clock,
-  Smartphone,
-  Monitor,
-  Tablet,
   Upload,
   BarChart3
 } from 'lucide-react'
@@ -61,10 +56,7 @@ import {
   Label,
   Alert,
   AlertDescription,
-  Progress,
-  Separator,
   useToast,
-  Badge,
   ScrollArea
 } from '@/components/ui/index'
 
@@ -76,12 +68,14 @@ const RouteGuards = lazy(() => import('@/components/layout/RouteGuards').then(m 
 
 // Import business logic
 import { useCreatorOnboarding } from '@/hooks/business/workflows'
-import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 
 // Import utilities
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 import type { Creator } from '@/types/contracts'
 import { debug } from '@/lib/utils/debug'
+
+// Import MiniApp components
+import { NetworkChecker } from '@/components/miniapp/NetworkChecker'
 
 /**
  * Page-level interfaces that define our component's contract
@@ -238,10 +232,13 @@ function OnboardingContent() {
   
   // Enhanced form submission with better error handling
   const handleSubmit = useCallback(async () => {
+    console.log('🔍 ONBOARD PAGE: Form submission started')
+
     const errors = validateForm(formData)
     setFormErrors(errors)
-    
+
     if (Object.keys(errors).length > 0) {
+      console.log('❌ ONBOARD PAGE: Form validation failed:', errors)
       toast({
         title: "Validation Error",
         description: "Please fix the errors in the form before submitting.",
@@ -249,35 +246,53 @@ function OnboardingContent() {
       })
       return
     }
-    
+
     try {
       const subscriptionPriceWei = BigInt(Math.floor(parseFloat(formData.subscriptionPrice) * 1000000))
       const profileData = constructProfileData(formData)
-      
+
+      console.log('📊 ONBOARD PAGE: Prepared data:', {
+        subscriptionPrice: formData.subscriptionPrice,
+        subscriptionPriceWei: subscriptionPriceWei.toString(),
+        profileData,
+        walletConnected: walletUI.isConnected,
+        walletAddress: walletUI.address,
+        chainId: 8453, // Base mainnet
+        isMiniApp: typeof window !== 'undefined' ? (
+          window.location.pathname.startsWith('/mini') ||
+          window.parent !== window ||
+          document.referrer.includes('farcaster')
+        ) : false
+      })
+
       if (!profileData || profileData.trim().length === 0) {
-         throw new Error('Profile data cannot be empty')
+        throw new Error('Profile data cannot be empty')
       }
-      
+
       debug.log('🚀 Enhanced Page: Submitting Registration')
       debug.log('Form Data:', formData)
       debug.log('Subscription Price (wei):', subscriptionPriceWei.toString())
       debug.log('Profile Data:', profileData)
-      
-      onboarding.register(subscriptionPriceWei, profileData)
-      
+
+      console.log('📤 ONBOARD PAGE: Calling onboarding.register()...')
+      const registerResult = onboarding.register(subscriptionPriceWei, profileData)
+      console.log('📤 ONBOARD PAGE: Register result:', registerResult)
+
       toast({
         title: "Registration Started",
         description: "Your creator registration is being processed on the blockchain.",
       })
+
+      console.log('✅ ONBOARD PAGE: Form submission completed successfully')
     } catch (error) {
-      console.error('Enhanced submission error:', error)
+      console.error('❌ ONBOARD PAGE: Enhanced submission error:', error)
       toast({
         title: "Registration Failed",
         description: (error as Error).message || "There was an error processing your registration. Please try again.",
         variant: "destructive"
       })
     }
-  }, [formData, validateForm, constructProfileData, onboarding, toast])
+  }, [formData, validateForm, constructProfileData, onboarding, toast, walletUI])
   
   // Enhanced success handling with better navigation logic
   useEffect(() => {
@@ -864,6 +879,15 @@ function ProfileStep({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Network Checker - Show for MiniApp context */}
+          {typeof window !== 'undefined' && (
+            window.location.pathname.startsWith('/mini') ||
+            window.parent !== window ||
+            document.referrer.includes('farcaster')
+          ) && (
+            <NetworkChecker showOnlyIfWrong={false} />
+          )}
+
           {/* Subscription Price */}
           <div className="space-y-3">
             <Label htmlFor="subscriptionPrice" className="flex items-center gap-2 text-base font-medium">

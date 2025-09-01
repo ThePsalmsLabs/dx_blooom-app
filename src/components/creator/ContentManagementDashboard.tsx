@@ -48,13 +48,11 @@ import {
   Grid3x3,
   List,
   MoreHorizontal,
-  CheckCircle,
   TrendingUp,
   TrendingDown,
   BarChart3,
   Plus,
   RefreshCw,
-  Loader2,
   AlertTriangle
 } from 'lucide-react'
 

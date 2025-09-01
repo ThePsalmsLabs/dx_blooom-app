@@ -20,8 +20,7 @@ import type { EnhancedWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   storeWalletState,
   sendWalletStateToParent,
-  isMiniAppContext,
-  getWalletState
+  isMiniAppContext
 } from '@/lib/utils/miniapp-communication'
 
 /**
@@ -157,9 +156,9 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
   
   // Return the unified interface that AppLayout expects
   return {
-    // Connection status - prioritize MiniApp state for accurate display
-    isConnected: miniAppWallet.isConnected,
-    isConnecting: miniAppWallet.isConnecting,
+    // Connection status - use unified wallet state for MiniApp compatibility
+    isConnected: walletUI.isConnected,
+    isConnecting: walletUI.isConnecting,
     
     // Address information - provide both full and formatted addresses
     address, // Full address for contract calls

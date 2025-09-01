@@ -1,4 +1,3 @@
-import { parseEther } from 'viem'
 
 export interface NFTMetadata {
   name: string

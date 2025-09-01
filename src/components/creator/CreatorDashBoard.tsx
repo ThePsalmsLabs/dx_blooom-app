@@ -86,7 +86,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn, formatCurrency, formatNumber } from '@/lib/utils'
-import { Basename, BasenameWithAddress } from '@/components/ui/basename'
+import { BasenameWithAddress } from '@/components/ui/basename'
 
 // Import our architectural layers
 import {

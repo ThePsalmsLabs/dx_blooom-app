@@ -59,12 +59,10 @@ import {
   Skeleton
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
-import { CompactBasename } from '@/components/ui/basename'
 
 // Import your actual hooks and providers
 import { useMiniApp } from '@/contexts/MiniAppProvider'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
-import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // ================================================
 // PRODUCTION TYPE DEFINITIONS

@@ -27,7 +27,7 @@
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react'
 import { useChainId } from 'wagmi'
-import { useLogin, useLogout, usePrivy } from '@privy-io/react-auth'
+import { usePrivy } from '@privy-io/react-auth'
 import { useMiniAppWalletContext } from '@/contexts/MiniAppWalletContext'
 import { type Address } from 'viem'
 
@@ -36,9 +36,7 @@ import { formatAddress } from '@/lib/utils'
 import {
   storeWalletState,
   sendWalletStateToParent,
-  isMiniAppContext,
-  listenForWalletState,
-  shouldRedirectToMiniApp
+  isMiniAppContext
 } from '@/lib/utils/miniapp-communication'
 // Import our business logic hooks to compose them into UI-focused interfaces
 import {

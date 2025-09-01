@@ -29,10 +29,8 @@ import {
   Sparkles,
   Loader2,
   ExternalLink,
-  DollarSign,
   AlertTriangle,
   CheckCircle,
-  Copy,
   Share,
   TrendingUp
 } from 'lucide-react'
@@ -60,7 +58,6 @@ import {
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/seperator'
 import {
   Tooltip,
   TooltipContent,
@@ -75,7 +72,7 @@ import { cn, formatAddress } from '@/lib/utils'
 
 // Import Zora types
 import type { ZoraNFTMetadata } from '@/types/zora'
-import type { Content, ContentWithMetadata } from '@/types/contracts'
+import type { ContentWithMetadata } from '@/types/contracts'
 import { categoryToString } from '@/types/contracts'
 
 // ===== INTERFACES =====

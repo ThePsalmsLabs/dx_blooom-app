@@ -23,14 +23,10 @@ import {
   Users,
   Sparkles,
   TrendingUp,
-  Heart,
-  Star,
   ArrowRight,
   CheckCircle,
-  Zap,
   DollarSign,
   Shield,
-  Globe,
   FileText,
   Target
 } from 'lucide-react'

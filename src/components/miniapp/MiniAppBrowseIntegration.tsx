@@ -48,14 +48,13 @@ import { SocialContextIntegration } from '@/components/miniapp/MiniAppContentPur
 
 // Import your existing UI components and utilities
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { enhancedToast, handleUIError } from '@/lib/utils/toast'
+import { handleUIError } from '@/lib/utils/toast'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 
 // Import icons for enhanced user experience
 import { 
@@ -68,7 +67,6 @@ import {
   Grid3x3,
   List,
   RefreshCw,
-  AlertCircle,
   Zap,
   Share2,
   ArrowDown

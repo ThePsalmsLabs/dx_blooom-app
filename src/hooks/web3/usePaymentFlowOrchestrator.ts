@@ -27,7 +27,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient, useWalletClient, useSendCalls } from 'wagmi'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { Address, encodeFunctionData, type PublicClient, type WalletClient, type SendCallsParameters, type SendCallsReturnType } from 'viem'
+import { Address, encodeFunctionData, type PublicClient, type WalletClient } from 'viem'
 import { simulateContract } from 'wagmi/actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { 
@@ -53,7 +53,7 @@ import { getContractAddresses } from '@/lib/contracts/config'
 import { COMMERCE_PROTOCOL_INTEGRATION_ABI, CONTENT_REGISTRY_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
 import { USDC_DECIMALS } from '@/lib/contracts/helpers/usdcHelpers'
-import { debug, createDebugLogger } from '@/lib/utils/debug'
+import { debug } from '@/lib/utils/debug'
 
 /**
  * Payment Intent Flow Error Types
@@ -385,10 +385,10 @@ const executePermit2Flow = async (
   userAddress: Address
 ): Promise<PaymentResult> => {
   const startTime = Date.now()
-  let intentCreationTime = 0
-  let signatureWaitTime = 0
-  let executionTime = 0
-  let confirmationTime = 0
+  const intentCreationTime = 0
+  const signatureWaitTime = 0
+  const executionTime = 0
+  const confirmationTime = 0
 
   try {
     // Get contract addresses for current chain
@@ -515,10 +515,10 @@ const executeBatchFlow = async (
   sendCalls?: ReturnType<typeof useSendCalls>['sendCalls']
 ): Promise<PaymentResult> => {
   const startTime = Date.now()
-  let intentCreationTime = 0
-  let signatureWaitTime = 0
-  let executionTime = 0
-  let confirmationTime = 0
+  const intentCreationTime = 0
+  const signatureWaitTime = 0
+  const executionTime = 0
+  const confirmationTime = 0
 
   try {
     // Get contract addresses for current chain
@@ -636,10 +636,10 @@ const executeSequentialFlow = async (
   userAddress: Address
 ): Promise<PaymentResult> => {
   const startTime = Date.now()
-  let intentCreationTime = 0
-  let signatureWaitTime = 0
-  let executionTime = 0
-  let confirmationTime = 0
+  const intentCreationTime = 0
+  const signatureWaitTime = 0
+  const executionTime = 0
+  const confirmationTime = 0
 
   try {
     // Get contract addresses for current chain
@@ -843,9 +843,9 @@ export function useEnhancedPaymentOrchestrator(
     requiredAmount: bigint
   }): Promise<EnhancedPaymentResult> => {
     const startTime = Date.now()
-    let approvalTime = 0
-    let purchaseTime = 0
-    let recoveryAttempts = 0
+    const approvalTime = 0
+    const purchaseTime = 0
+    const recoveryAttempts = 0
 
     try {
       // Step 1: Execute approval if needed

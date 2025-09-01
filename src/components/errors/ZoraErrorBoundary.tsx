@@ -22,7 +22,7 @@ import {
   getErrorCategory,
   type ZoraError
 } from '@/lib/utils/zora-errors'
-import { enhancedToast, handleUIError } from '@/lib/utils/toast'
+import { handleUIError } from '@/lib/utils/toast'
 
 // ===== PROPS INTERFACES =====
 

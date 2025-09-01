@@ -22,7 +22,7 @@ import {
   extractTokenIdFromUpdatedEvent
 } from '@/lib/utils/zora-events'
 import { type ZoraNFTMetadata, type ZoraCollectionAnalytics } from '@/types/zora'
-import { zoraMonitor, withMonitoring } from './zora-monitoring'
+import { withMonitoring } from './zora-monitoring'
 
 // Get Zora addresses from the centralized configuration
 function getZoraAddresses(chainId: number) {

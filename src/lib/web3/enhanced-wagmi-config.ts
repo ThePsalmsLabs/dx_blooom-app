@@ -393,6 +393,20 @@ export const validateRPCConfiguration = async () => {
 export function getCurrentChain() {
   // FIXED: Use mainnet by default, only use sepolia if explicitly set
   const network = process.env.NETWORK as 'base' | 'base-sepolia' | undefined
+
+  // In MiniApp context, prefer Base mainnet for production
+  if (typeof window !== 'undefined') {
+    const isMiniApp = window.location.pathname.startsWith('/mini') ||
+                     window.parent !== window ||
+                     document.referrer.includes('farcaster') ||
+                     document.referrer.includes('warpcast')
+
+    if (isMiniApp && !network) {
+      // Default to mainnet for MiniApp production
+      return base
+    }
+  }
+
   if (network === 'base-sepolia') return baseSepolia
   return base // Default to mainnet
 }
