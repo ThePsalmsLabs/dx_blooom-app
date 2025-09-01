@@ -150,27 +150,27 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            {/* Platform Statistics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {/* Platform Statistics Grid - Mobile Optimized */}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
               <Card className="bg-gradient-to-br from-blue-500/5 to-purple-500/5 border-blue-500/20">
-                <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center gap-2">
-                    <FileText className="h-6 w-6 text-blue-600" />
-                    Content Pieces
+                <CardHeader className="text-center p-3 sm:p-4">
+                  <CardTitle className="flex items-center justify-center gap-1 sm:gap-2">
+                    <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                    <span className="text-sm sm:text-base">Content</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
+                <CardContent className="text-center p-3 sm:p-4">
                   {platformAnalytics.isLoading ? (
                     <div className="animate-pulse">
-                      <div className="h-8 bg-muted rounded mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
+                      <div className="h-6 sm:h-8 bg-muted rounded mb-1 sm:mb-2"></div>
+                      <div className="h-3 sm:h-4 bg-muted rounded w-3/4 mx-auto"></div>
                     </div>
                   ) : (
                     <>
-                      <div className="text-3xl font-bold text-blue-600 mb-2">
-                        {platformAnalytics.platformStats?.totalContent ? Number(platformAnalytics.platformStats.totalContent).toLocaleString() : '0'}+
+                      <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mb-1 sm:mb-2">
+                        {platformAnalytics.platformStats?.totalContent ? Number(platformAnalytics.platformStats.totalContent).toLocaleString() : '0'}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-xs sm:text-sm text-muted-foreground">
                         {platformAnalytics.platformStats?.activeContent ? Number(platformAnalytics.platformStats.activeContent).toLocaleString() : '0'} active
                       </div>
                     </>
@@ -179,24 +179,24 @@ export default function ProfilePage() {
               </Card>
 
               <Card className="bg-gradient-to-br from-green-500/5 to-emerald-500/5 border-green-500/20">
-                <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center gap-2">
-                    <Users className="h-6 w-6 text-green-600" />
-                    Active Creators
+                <CardHeader className="text-center p-3 sm:p-4">
+                  <CardTitle className="flex items-center justify-center gap-1 sm:gap-2">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                    <span className="text-sm sm:text-base">Creators</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
+                <CardContent className="text-center p-3 sm:p-4">
                   {allCreators.isLoading ? (
                     <div className="animate-pulse">
-                      <div className="h-8 bg-muted rounded mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
+                      <div className="h-6 sm:h-8 bg-muted rounded mb-1 sm:mb-2"></div>
+                      <div className="h-3 sm:h-4 bg-muted rounded w-3/4 mx-auto"></div>
                     </div>
                   ) : (
                     <>
-                      <div className="text-3xl font-bold text-green-600 mb-2">
-                        {allCreators.totalCount?.toLocaleString() || '0'}+
+                      <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mb-1 sm:mb-2">
+                        {allCreators.totalCount?.toLocaleString() || '0'}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-xs sm:text-sm text-muted-foreground">
                         {featuredCreators.filter(c => c.profile.isVerified).length} verified
                       </div>
                     </>
@@ -205,25 +205,25 @@ export default function ProfilePage() {
               </Card>
 
               <Card className="bg-gradient-to-br from-purple-500/5 to-pink-500/5 border-purple-500/20">
-                <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center gap-2">
-                    <DollarSign className="h-6 w-6 text-purple-600" />
-                    Creator Earnings
+                <CardHeader className="text-center p-3 sm:p-4">
+                  <CardTitle className="flex items-center justify-center gap-1 sm:gap-2">
+                    <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+                    <span className="text-sm sm:text-base">Earnings</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
+                <CardContent className="text-center p-3 sm:p-4">
                   {platformAnalytics.isLoading || allCreators.isLoading ? (
                     <div className="animate-pulse">
-                      <div className="h-8 bg-muted rounded mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
+                      <div className="h-6 sm:h-8 bg-muted rounded mb-1 sm:mb-2"></div>
+                      <div className="h-3 sm:h-4 bg-muted rounded w-3/4 mx-auto"></div>
                     </div>
                   ) : (
                     <>
-                      <div className="text-3xl font-bold text-purple-600 mb-2">
-                        ${featuredCreators.reduce((sum, creator) => sum + Number(creator.profile.totalEarnings) / 1000000, 0).toFixed(0)}K+
+                      <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mb-1 sm:mb-2">
+                        ${featuredCreators.reduce((sum, creator) => sum + Number(creator.profile.totalEarnings) / 1000000, 0).toFixed(0)}K
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        Total platform earnings
+                      <div className="text-xs sm:text-sm text-muted-foreground">
+                        Total earnings
                       </div>
                     </>
                   )}
@@ -231,26 +231,26 @@ export default function ProfilePage() {
               </Card>
 
               <Card className="bg-gradient-to-br from-orange-500/5 to-red-500/5 border-orange-500/20">
-                <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center gap-2">
-                    <TrendingUp className="h-6 w-6 text-orange-600" />
-                    Platform Health
+                <CardHeader className="text-center p-3 sm:p-4">
+                  <CardTitle className="flex items-center justify-center gap-1 sm:gap-2">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                    <span className="text-sm sm:text-base">Health</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center">
+                <CardContent className="text-center p-3 sm:p-4">
                   {platformAnalytics.isLoading ? (
                     <div className="animate-pulse">
-                      <div className="h-8 bg-muted rounded mb-2"></div>
-                      <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
+                      <div className="h-6 sm:h-8 bg-muted rounded mb-1 sm:mb-2"></div>
+                      <div className="h-3 sm:h-4 bg-muted rounded w-3/4 mx-auto"></div>
                     </div>
                   ) : (
                     <>
-                      <div className="text-3xl font-bold text-orange-600 mb-2">
+                      <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 mb-1 sm:mb-2">
                         {platformAnalytics.platformStats?.platformHealth.contentActivityRatio ?
                           Math.round(platformAnalytics.platformStats.platformHealth.contentActivityRatio * 100) : 0}%
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        Content active rate
+                      <div className="text-xs sm:text-sm text-muted-foreground">
+                        Activity rate
                       </div>
                     </>
                   )}
@@ -268,59 +268,61 @@ export default function ProfilePage() {
               </div>
 
               {allCreators.isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <Card key={index} className="animate-pulse">
-                      <CardHeader className="text-center">
-                        <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-3"></div>
-                        <div className="space-y-2">
-                          <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
-                          <div className="h-3 bg-muted rounded w-1/2 mx-auto"></div>
+                      <CardHeader className="text-center p-3 sm:p-4">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-muted rounded-full mx-auto mb-2 sm:mb-3"></div>
+                        <div className="space-y-1 sm:space-y-2">
+                          <div className="h-3 sm:h-4 bg-muted rounded w-3/4 mx-auto"></div>
+                          <div className="h-2 sm:h-3 bg-muted rounded w-1/2 mx-auto"></div>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="h-8 bg-muted rounded"></div>
-                          <div className="h-8 bg-muted rounded"></div>
+                      <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                          <div className="h-6 sm:h-8 bg-muted rounded"></div>
+                          <div className="h-6 sm:h-8 bg-muted rounded"></div>
                         </div>
-                        <div className="h-10 bg-muted rounded"></div>
+                        <div className="h-8 sm:h-10 bg-muted rounded"></div>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               ) : featuredCreators.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {featuredCreators.map((creator) => (
                     <Card key={creator.address} className="hover:shadow-lg transition-all duration-300 cursor-pointer group">
-                      <CardHeader className="text-center">
-                        <Avatar className="w-16 h-16 mx-auto mb-3 ring-4 ring-background">
-                          <AvatarFallback className="text-lg font-semibold bg-gradient-to-r from-primary to-accent text-white">
+                      <CardHeader className="text-center p-3 sm:p-4">
+                        <Avatar className="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-2 sm:mb-3 ring-2 sm:ring-4 ring-background">
+                          <AvatarFallback className="text-sm sm:text-lg font-semibold bg-gradient-to-r from-primary to-accent text-white">
                             {formatAddress(creator.address).slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <CardTitle className="flex items-center justify-center gap-2">
-                            {formatAddress(creator.address)}
+                          <CardTitle className="flex items-center justify-center gap-1 sm:gap-2 text-sm sm:text-base">
+                            <span className="truncate max-w-[120px] sm:max-w-none">
+                              {formatAddress(creator.address)}
+                            </span>
                             {creator.profile.isVerified && (
-                              <Badge variant="secondary" className="text-xs">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Verified
+                              <Badge variant="secondary" className="text-xs px-1 py-0">
+                                <CheckCircle className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
+                                <span className="hidden sm:inline">Verified</span>
                               </Badge>
                             )}
                           </CardTitle>
-                          <CardDescription>Creator</CardDescription>
+                          <CardDescription className="text-xs sm:text-sm">Creator</CardDescription>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4 text-center">
+                      <CardContent className="space-y-2 sm:space-y-3 p-3 sm:p-4">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center">
                           <div>
-                            <div className="text-lg font-bold text-primary">
+                            <div className="text-sm sm:text-lg font-bold text-primary">
                               {Number(creator.profile.subscriberCount).toLocaleString()}
                             </div>
                             <div className="text-xs text-muted-foreground">Subscribers</div>
                           </div>
                           <div>
-                            <div className="text-lg font-bold text-green-600">
+                            <div className="text-sm sm:text-lg font-bold text-green-600">
                               {formatCurrency(creator.profile.subscriptionPrice, 6, 'USDC')}
                             </div>
                             <div className="text-xs text-muted-foreground">per month</div>
@@ -329,11 +331,12 @@ export default function ProfilePage() {
 
                         <Button
                           variant="outline"
-                          className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+                          size="sm"
+                          className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors text-xs sm:text-sm h-8 sm:h-10"
                           onClick={() => router.push(`/creator/${creator.address}`)}
                         >
                           View Profile
-                          <ArrowRight className="ml-2 h-4 w-4" />
+                          <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </CardContent>
                     </Card>
@@ -370,45 +373,45 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Platform Benefits Section */}
+            {/* Platform Benefits Section - Mobile Optimized */}
             <Card className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 border-primary/20">
-              <CardHeader className="text-center">
-                <CardTitle className="flex items-center justify-center gap-2">
-                  <Sparkles className="h-6 w-6 text-primary" />
+              <CardHeader className="text-center p-4 sm:p-6">
+                <CardTitle className="flex items-center justify-center gap-2 text-lg sm:text-xl">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                   Why Choose Bloom?
                 </CardTitle>
-                <CardDescription className="text-base">
+                <CardDescription className="text-sm sm:text-base">
                   Join a thriving creator economy powered by Web3 technology
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-center space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              <CardContent className="text-center space-y-4 sm:space-y-6 p-4 sm:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-left">
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mb-3">
-                      <Shield className="h-6 w-6 text-blue-600" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                      <Shield className="h-4 w-4 sm:h-6 sm:w-6 text-blue-600" />
                     </div>
-                    <h3 className="font-semibold mb-2">Blockchain-Powered</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Blockchain-Powered</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-tight">
                       Transparent, decentralized platform with no intermediaries or platform fees
                     </p>
                   </div>
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mb-3">
-                      <DollarSign className="h-6 w-6 text-green-600" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                      <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 text-green-600" />
                     </div>
-                    <h3 className="font-semibold mb-2">Direct Creator Support</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Direct Creator Support</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-tight">
                       {platformAnalytics.platformStats?.totalContent ?
                         `${Number(platformAnalytics.platformStats.totalContent).toLocaleString()}+ pieces of content` :
                         'Premium content'} from creators you support directly
                     </p>
                   </div>
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center mb-3">
-                      <Target className="h-6 w-6 text-purple-600" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                      <Target className="h-4 w-4 sm:h-6 sm:w-6 text-purple-600" />
                     </div>
-                    <h3 className="font-semibold mb-2">NFT Integration</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold mb-1 sm:mb-2 text-sm sm:text-base">NFT Integration</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-tight">
                       Transform content into collectible NFTs with Zora marketplace integration
                     </p>
                   </div>
