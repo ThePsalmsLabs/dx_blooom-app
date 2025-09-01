@@ -1,10 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
-import { useParams } from 'next/navigation'
+import React, { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { type Address } from 'viem'
 import {
-  Calendar,
   DollarSign,
   Users,
   FileText,
@@ -14,18 +13,12 @@ import {
   Heart,
   MessageCircle,
   Share2,
-  Eye,
   Clock,
   Zap,
   Trophy,
   Target,
   Sparkles,
-  BookOpen,
   Video,
-  Music,
-  Image as ImageIcon,
-  Code,
-  Folder,
   CheckCircle,
   BarChart3
 } from 'lucide-react'
@@ -52,13 +45,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 // import { Separator } from '@/components/ui/separator' // Component not available in current UI library
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
 
 // Import utilities
 import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 
 export default function CreatorProfilePage() {
   const params = useParams()
+  const _router = useRouter()
   const creatorAddress = params.address as Address
   const walletUI = useWalletConnectionUI()
   const [activeTab, setActiveTab] = useState('content')
@@ -66,6 +60,27 @@ export default function CreatorProfilePage() {
   // Fetch creator data
   const creatorProfile = useCreatorProfile(creatorAddress)
   const creatorContent = useCreatorContent(creatorAddress)
+
+  // Handle scroll to subscription section when coming from home page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if (hash === '#subscribe') {
+        // Small delay to ensure the page is fully rendered
+        setTimeout(() => {
+          const subscriptionElement = document.getElementById('subscription-section')
+          if (subscriptionElement) {
+            subscriptionElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            })
+            // Clean up the hash from URL after scrolling
+            window.history.replaceState(null, '', window.location.pathname)
+          }
+        }, 500)
+      }
+    }
+  }, [])
 
   return (
     <AppLayout>
@@ -316,8 +331,8 @@ export default function CreatorProfilePage() {
                               <span className="text-xs text-muted-foreground">Anonymous Subscriber</span>
                             </div>
                             <p className="text-sm text-muted-foreground italic">
-                              "This creator brings such authenticity to Web3 content. Their unique perspective
-                              on blockchain technology makes complex topics accessible and engaging."
+                              &ldquo;This creator brings such authenticity to Web3 content. Their unique perspective
+                              on blockchain technology makes complex topics accessible and engaging.&rdquo;
                             </p>
                           </div>
 
@@ -330,10 +345,10 @@ export default function CreatorProfilePage() {
                               </div>
                               <span className="text-xs text-muted-foreground">Anonymous Subscriber</span>
                             </div>
-                            <p className="text-sm text-muted-foreground italic">
-                              "Finally found content that combines real expertise with genuine passion.
-                              Supporting this creator feels like investing in the future of digital ownership."
-                            </p>
+                                                          <p className="text-sm text-muted-foreground italic">
+                                &ldquo;Finally found content that combines real expertise with genuine passion.
+                                Supporting this creator feels like investing in the future of digital ownership.&rdquo;
+                              </p>
                           </div>
                         </div>
                       </CardContent>
@@ -414,7 +429,7 @@ export default function CreatorProfilePage() {
               {/* Sidebar */}
               <div className="lg:col-span-1 space-y-6">
                 {/* Subscription Card */}
-                <div className="sticky top-4 lg:top-6 space-y-6">
+                <div id="subscription-section" className="sticky top-4 lg:top-6 space-y-6">
                   <CreatorSubscriptionPurchase
                     creatorAddress={creatorAddress}
                     onSubscriptionSuccess={() => {

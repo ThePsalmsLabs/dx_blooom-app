@@ -59,7 +59,7 @@ import { CreatorsCarousel } from '@/components/ui/carousel'
 // Import architectural layers following established patterns
 import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
-import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
+
 import { ContentCarouselWrapper } from '@/components/content/ContentCarouselWrapper'
 
 // Import business logic and UI integration hooks
@@ -118,7 +118,7 @@ function CreatorsSection() {
       
       return () => clearTimeout(timer)
     }
-  }, [allCreators.totalCount, allCreators.creators.length, allCreators.isLoading, allCreators.loadMore])
+  }, [allCreators.totalCount, allCreators.creators.length, allCreators.isLoading, allCreators.loadMore, allCreators])
 
   // Additional safety check - if we have total count but no creators after a delay, try loading again
   useEffect(() => {
@@ -134,7 +134,7 @@ function CreatorsSection() {
       
       return () => clearTimeout(timer)
     }
-  }, [allCreators.totalCount, allCreators.creators.length, allCreators.isLoading, allCreators.loadMore])
+  }, [allCreators.totalCount, allCreators.creators.length, allCreators.isLoading, allCreators.loadMore, allCreators])
 
   // Enhanced debug logging for development
   if (process.env.NODE_ENV === 'development') {
@@ -469,7 +469,7 @@ export default function HomePage() {
       // Connect wallet first using unified wallet UI
       walletUI.connect()
     }
-  }, [walletUI.isConnected, walletUI.connect, isCreator, router])
+  }, [walletUI, isCreator, router])
 
   const handleContentTabChange = useCallback((category: ContentCategory | 'featured') => {
     setPageState(prev => ({ ...prev, activeContentTab: category }))
@@ -706,11 +706,11 @@ export default function HomePage() {
                         </div>
                       </div>
                       <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => router.push(`/creator/${creator.address}`)}
+                        variant="default"
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                        onClick={() => router.push(`/creator/${creator.address}#subscribe`)}
                       >
-                        View Profile
+                        Subscribe
                       </Button>
                     </CardContent>
                   </Card>
@@ -754,11 +754,11 @@ export default function HomePage() {
                       </div>
                     </div>
                     <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => router.push(`/creator/${creator.address}`)}
+                      variant="default"
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                      onClick={() => router.push(`/creator/${creator.address}#subscribe`)}
                     >
-                      View Profile
+                      Subscribe
                     </Button>
                   </CardContent>
                 </Card>
