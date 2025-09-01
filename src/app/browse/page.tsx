@@ -503,50 +503,50 @@ function BrowsePageClient() {
                   category: value === 'all' ? 'all' : parseInt(value) as ContentCategory
                 })}
               >
-                <TabsList className="grid grid-cols-2 gap-1 sm:grid-cols-3 sm:gap-1 md:flex md:gap-2 md:overflow-x-auto md:no-scrollbar lg:grid lg:w-full lg:grid-cols-6">
+                <TabsList className="flex gap-1 sm:gap-2 overflow-x-auto no-scrollbar w-full justify-start sm:justify-center">
                   <TabsTrigger
                     value="all"
-                    className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3 data-[state=active]:ring-1 data-[state=active]:ring-primary"
+                    className="flex-1 sm:flex-initial min-w-[64px] sm:min-w-[88px] px-3 py-2.5 sm:px-4 text-xs sm:text-sm font-medium data-[state=active]:ring-1 data-[state=active]:ring-primary shrink-0"
                     title="All Content"
                   >
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <Grid3x3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <Grid3x3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">All</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="0" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Articles">
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <TabsTrigger value="0" className="flex-1 sm:flex-initial min-w-[64px] sm:min-w-[88px] px-3 py-2.5 sm:px-4 text-xs sm:text-sm font-medium shrink-0" title="Articles">
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Articles</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="1" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Videos">
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <VideoIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <TabsTrigger value="1" className="flex-1 sm:flex-initial min-w-[64px] sm:min-w-[88px] px-3 py-2.5 sm:px-4 text-xs sm:text-sm font-medium shrink-0" title="Videos">
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <VideoIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Videos</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="2" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Audio">
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <Music className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <TabsTrigger value="2" className="flex-1 sm:flex-initial min-w-[64px] sm:min-w-[88px] px-3 py-2.5 sm:px-4 text-xs sm:text-sm font-medium shrink-0" title="Audio">
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <Music className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Audio</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="3" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Images">
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <TabsTrigger value="3" className="flex-1 sm:flex-initial min-w-[64px] sm:min-w-[88px] px-3 py-2.5 sm:px-4 text-xs sm:text-sm font-medium shrink-0" title="Images">
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <ImageIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Images</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="4" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Documents">
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <Folder className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <TabsTrigger value="4" className="flex-1 sm:flex-initial min-w-[64px] sm:min-w-[88px] px-3 py-2.5 sm:px-4 text-xs sm:text-sm font-medium shrink-0" title="Documents">
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <Folder className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Docs</span>
                     </span>
                   </TabsTrigger>
-                  <TabsTrigger value="5" className="min-w-[60px] sm:min-w-[92px] md:min-w-0 px-2 py-2 sm:px-3" title="Courses">
-                    <span className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                      <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <TabsTrigger value="5" className="flex-1 sm:flex-initial min-w-[64px] sm:min-w-[88px] px-3 py-2.5 sm:px-4 text-xs sm:text-sm font-medium shrink-0" title="Courses">
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Courses</span>
                     </span>
                   </TabsTrigger>
