@@ -126,6 +126,16 @@ export default function RootLayout({
         <link rel="icon" href="/images/miniapp-icon-192.png?v=1" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/images/miniapp-og-square.png?v=1" />
 
+        {/* Farcaster Mini App Embed Meta Tags */}
+        <meta property="fc:miniapp" content="v1" />
+        <meta property="fc:miniapp:url" content="https://dxbloom.com/mini" />
+        <meta property="fc:miniapp:name" content="Bloom" />
+        <meta property="fc:miniapp:image" content="https://dxbloom.com/images/miniapp-og-image.png" />
+        <meta property="fc:miniapp:description" content="Premium content, pay with USDC" />
+        <meta property="fc:miniapp:button:1" content="Open App" />
+        <meta property="fc:miniapp:button:1:action" content="link" />
+        <meta property="fc:miniapp:button:1:target" content="https://dxbloom.com/mini" />
+
         {/* Enhanced Meta Tags for Better SEO */}
         <meta name="theme-color" content="#6366f1" />
         <meta name="color-scheme" content="light dark" />

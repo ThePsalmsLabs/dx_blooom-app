@@ -101,7 +101,8 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
   import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
   import { ShareButton } from '@/components/ui/share-button'
-  
+  import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
+
   // ================================================
   // ENHANCED MINIAPP LAYOUT TYPES
   // ================================================
@@ -752,6 +753,15 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	
 	return (
 	  <div className={layoutClassName}>
+		{/* Farcaster Embed for Mini App Pages */}
+		<FarcasterEmbed
+		  title="Bloom - Premium Content"
+		  description="Discover premium content from top creators. Purchase with instant USDC payments on Base."
+		  image="https://dxbloom.com/images/miniapp-og-image.png"
+		  buttonText="Open Mini App"
+		  buttonTarget="https://dxbloom.com/mini"
+		/>
+
 		{/* Social Context Indicator */}
 		{miniAppEnvironment.isMiniApp && (
 		  <SocialContextIndicator />

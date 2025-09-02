@@ -20,6 +20,7 @@
 import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
+import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
 import {
   ArrowLeft,
   Share2,
@@ -281,6 +282,16 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
 
   return (
     <AppLayout>
+      {/* Farcaster Embed for Content Sharing */}
+      {contentQuery.data && (
+        <FarcasterEmbed
+          title={`${contentQuery.data.title} - Bloom`}
+          description={contentQuery.data.description || "Premium content on Bloom"}
+          image="https://dxbloom.com/images/miniapp-og-image.png"
+          buttonText="View Content"
+          buttonTarget={`https://dxbloom.com/content/${contentId}`}
+        />
+      )}
       <RouteGuards requiredLevel='public'>
         <div className="container mx-auto px-4 py-6 max-w-4xl">
           {/* Navigation Breadcrumb */}

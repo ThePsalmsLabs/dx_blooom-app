@@ -75,6 +75,7 @@ import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 
 // Import your existing creator components
 import { CreatorCard } from '@/components/creators/CreatorCard'
+import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
 import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
 
 // Import your existing types
@@ -861,6 +862,15 @@ function MiniAppCreatorsCore() {
   
   return (
     <div className="min-h-screen bg-background">
+      {/* Farcaster Embed for Creators Page */}
+      <FarcasterEmbed
+        title="Top Creators on Bloom"
+        description="Discover amazing creators and their premium content. Support creators directly with USDC payments."
+        image="https://dxbloom.com/images/miniapp-og-image.png"
+        buttonText="Browse Creators"
+        buttonTarget="https://dxbloom.com/mini/creators"
+      />
+
       {/* Fixed Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
