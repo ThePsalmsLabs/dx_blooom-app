@@ -16,7 +16,12 @@ interface FarcasterManifest {
     readonly payload: string
     readonly signature: string
   }
-  
+
+  /** Base Builder verification for mini app ownership */
+  readonly baseBuilder?: {
+    readonly allowedAddresses: readonly string[]
+  }
+
   /** Mini App configuration for embedded application functionality */
   readonly miniapp: {
     readonly version: string
@@ -86,6 +91,12 @@ function buildFarcasterManifest(): FarcasterManifest {
       header: "eyJmaWQiOjg3Mjg2MiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEFDNzNkZTEzN0NiZjQ4MTgxMzY2RWI4MjVjNGYzNTNiMzFkODI5NzYifQ",
       payload: "eyJkb21haW4iOiJkeGJsb29tLmNvbSJ9",
       signature: "MHhlNGI5NmQ2ZTBjZDM0OGE0NjdhZDYxYTAxOGIxY2UwZmRmOTdkZjhkYjYwNzI0YTgxYThiNmMyMTI2NjU4ZGRmM2ZmYmI1ZTJmNzQ5NTMwMzllOWEzZDlkZTVkNzI3ZTU2ZWU1OTlmZTNmMWZlNmFmMWY2YjcyNmQxMDY0NmUxMTFj"
+    },
+
+    // Base Builder verification connects your mini app with your Base Build account
+    // This verifies ownership and enables enhanced Base ecosystem integration
+    baseBuilder: {
+      allowedAddresses: ["0xbdA97b283f9C93C1EA025b6240f299D81E6c0823"]
     },
 
     // Mini App configuration enables your platform to run as an embedded application

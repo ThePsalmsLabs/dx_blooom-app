@@ -1,100 +1,54 @@
 /**
- * Content Upload Form Component
- * File: src/components/content/ContentUploadForm.tsx
- * 
- * This component represents the foundation of your content economy ecosystem.
- * It handles the complete content creation workflow from file upload through
- * real IPFS integration to blockchain registration, demonstrating how our 
- * sophisticated architectural layers enable complex real-world functionality.
+ * Content Upload Component - Streamlined Creator Experience
+ *
+ * A clean, intuitive upload interface inspired by modern social platforms.
+ * Focuses on content creation simplicity while maintaining powerful backend functionality.
  * 
  * Key Features:
- * - Real IPFS upload with progress tracking using XMLHttpRequest
- * - Multi-step workflow with clear progress indication
- * - File validation and IPFS upload management
- * - Rich metadata input with real-time validation
- * - Pricing configuration with creator guidance
- * - Seamless integration with smart contract registration
- * - Comprehensive error handling and recovery options
- * - Responsive design optimized for creator workflows
- * - Optimized to prevent infinite re-render loops
- * 
- * This component showcases how complex Web3 operations can be transformed
- * into intuitive form-based experiences that feel familiar to creators from
- * traditional content platforms while providing blockchain-specific benefits.
+ * - Drag & drop upload with instant preview
+ * - Progressive disclosure for metadata
+ * - Smart categorization based on content type
+ * - Mobile-first responsive design
+ * - Seamless publishing workflow
  */
 
 'use client'
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import {
   Upload,
-  FileText,
   Image as ImageIcon,
   Video,
-  Music,
-  File,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-  DollarSign,
-  Tag,
-  Globe,
+  FileText,
   X,
-  Plus,
-  Info,
-  Wifi,
-  WifiOff,
-  Zap
+  ChevronRight,
+  Sparkles,
+  Loader2,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn, validateFileTypeSupport, getRecommendedCategoriesForFileType } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 // Import our UI integration hooks and utilities
 import { useContentPublishingUI } from '@/hooks/ui/integration'
 import { TransactionStatusModal } from '@/components/web3/TransactionStatus'
 import { ContentCategory, categoryToString } from '@/types/contracts'
 
-// ===== REAL IPFS INTEGRATION WITH PROGRESS TRACKING =====
+// ===== STREAMLINED UPLOAD FUNCTION =====
 
-/**
- * Uploads a file to IPFS using the Pinata service with real progress tracking.
- * @param file The file to upload
- * @param onProgress Callback to report upload progress
- * @returns Promise resolving to the IPFS hash and gateway URL or an error
- */
-async function uploadToIPFS(file: File, onProgress?: (progress: number) => void): Promise<{ hash: string; error?: string; gateway?: string }> {
+async function uploadFile(file: File, onProgress?: (progress: number) => void): Promise<{ hash: string; error?: string }> {
   return new Promise((resolve, reject) => {
-    console.log('🚀 Starting real IPFS upload via Pinata for file:', file.name, 'Size:', file.size)
-    
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/ipfs/upload', true)
     
-    // Track upload progress
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         const percentComplete = (event.loaded / event.total) * 100
-        console.log(`📈 Upload progress: ${percentComplete.toFixed(2)}%`)
         onProgress?.(percentComplete)
       }
     }
@@ -103,37 +57,20 @@ async function uploadToIPFS(file: File, onProgress?: (progress: number) => void)
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const result = JSON.parse(xhr.responseText)
-          console.log('✅ IPFS upload successful:', result)
-          
           if (result.success && result.hash) {
-            if (!validateIPFSHashFormat(result.hash)) {
-              reject(new Error('IPFS service returned invalid hash format'))
-            } else {
-              resolve({ hash: result.hash, gateway: result.gateway })
-            }
+            resolve({ hash: result.hash })
           } else {
-            reject(new Error('Invalid response from IPFS service'))
+            reject(new Error('Upload failed'))
           }
-        } catch (parseError) {
-          console.error('❌ Failed to parse IPFS response:', parseError)
-          reject(new Error('Failed to parse response from IPFS service'))
+        } catch {
+          reject(new Error('Upload failed'))
         }
       } else {
-        try {
-          const errorData = JSON.parse(xhr.responseText)
-          console.error('❌ IPFS API error response:', errorData)
-          reject(new Error(errorData.details || errorData.error || `Upload failed: ${xhr.status}`))
-        } catch {
-          console.error('❌ IPFS upload failed:', xhr.statusText)
-          reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`))
-        }
+        reject(new Error('Upload failed'))
       }
     }
-    
-    xhr.onerror = () => {
-      console.error('💥 Network error during upload')
-      reject(new Error('Network error during upload'))
-    }
+
+    xhr.onerror = () => reject(new Error('Network error'))
     
     const formData = new FormData()
     formData.append('file', file)
@@ -141,118 +78,22 @@ async function uploadToIPFS(file: File, onProgress?: (progress: number) => void)
   })
 }
 
-/**
- * Validates the IPFS hash format to ensure it's either CID v0 or v1.
- * @param hash The IPFS hash to validate
- * @returns True if the hash is valid, false otherwise
- */
-function validateIPFSHashFormat(hash: string): boolean {
-  if (!hash || hash.length < 10) return false
-  
-  // CID v0 (Qm... format, 46 characters)
-  if (hash.startsWith('Qm') && hash.length === 46) {
-    const base58Pattern = /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/
-    return base58Pattern.test(hash)
-  }
-  
-  // CID v1 (baf..., bae..., etc., 32+ characters)
-  const cidV1Prefixes = ['baf', 'bae', 'bag', 'bah', 'bai', 'baj']
-  const hasValidPrefix = cidV1Prefixes.some(prefix => hash.startsWith(prefix))
-  if (hasValidPrefix && hash.length >= 32) {
-    return /^[a-z2-7]+$/.test(hash) // Base32 encoding validation
-  }
-  
-  return false
-}
+// ===== CLEAN FORM INTERFACE =====
 
-// ===== ENHANCED FORM VALIDATION =====
-
-interface ContentFormData {
+interface UploadData {
   title: string
   description: string
-  category: ContentCategory | null
   price: string
-  tags: string[]
   accessType: 'free' | 'premium'
   file: File | null
-  ipfsHash: string
-  ipfsGateway: string
+  hash: string
 }
 
-interface ValidationErrors {
-  title?: string
-  description?: string
-  category?: string
-  price?: string
-  tags?: string
-  file?: string
-  ipfsHash?: string
-}
-
-/**
- * Validates the form data against smart contract constraints and requirements.
- * @param formData The content form data to validate
- * @returns An object containing validation errors, if any
- */
-function validateFormData(formData: ContentFormData): ValidationErrors {
-  const errors: ValidationErrors = {}
-  
-  // Title validation
-  if (!formData.title.trim()) {
-    errors.title = 'Title is required'
-  } else if (formData.title.length > 200) {
-    errors.title = 'Title must be less than 200 characters (smart contract limit)'
-  }
-  
-  // Description validation
-  if (!formData.description.trim()) {
-    errors.description = 'Description is required'
-  } else if (formData.description.length > 1000) {
-    errors.description = 'Description must be less than 1000 characters (smart contract limit)'
-  }
-  
-  // Category validation
-  if (!formData.category) {
-    errors.category = 'Category is required'
-  }
-  
-  // Price validation for premium content
-  if (formData.accessType === 'premium') {
-    const priceNum = parseFloat(formData.price)
-    if (!formData.price || isNaN(priceNum)) {
-      errors.price = 'Valid price is required'
-    } else if (priceNum < 0.01) {
-      errors.price = 'Minimum price is $0.01 (smart contract requirement)'
-    } else if (priceNum > 50) {
-      errors.price = 'Maximum price is $50.00 (smart contract limit)'
-    }
-  }
-  
-  // Tags validation
-  if (formData.tags.length > 10) {
-    errors.tags = 'Maximum 10 tags allowed (smart contract limit)'
-  } else {
-    for (const tag of formData.tags) {
-      if (tag.length > 30) {
-        errors.tags = 'Each tag must be 30 characters or less (smart contract limit)'
-        break
-      }
-    }
-  }
-  
-  // File and IPFS validation
-  if (!formData.file && !formData.ipfsHash) {
-    errors.file = 'Please select a file to upload'
-  } else if (formData.ipfsHash && !validateIPFSHashFormat(formData.ipfsHash)) {
-    errors.ipfsHash = 'Invalid IPFS hash format'
-  }
-  
-  return errors
-}
+type UploadStep = 'upload' | 'details' | 'publish'
 
 // ===== MAIN COMPONENT =====
 
-interface ContentUploadFormProps {
+interface ContentUploadProps {
   userAddress?: string
   onSuccess?: (contentId: bigint) => void
   onCancel?: () => void
@@ -260,271 +101,66 @@ interface ContentUploadFormProps {
   className?: string
 }
 
-export function ContentUploadForm({
+export function ContentUpload({
   userAddress,
   onSuccess,
   onCancel,
   variant = 'page',
   className
-}: ContentUploadFormProps) {
+}: ContentUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // ===== OPTIMIZATION: LAZY LOAD EXPENSIVE HOOKS =====
-  // Prevent the expensive publishing UI hook from blocking initial render
-  const [hasInteracted, setHasInteracted] = useState(false)
-
-  // Auto-enable interaction after a short delay to pre-load data
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setHasInteracted(true)
-    }, 300) // Reduced to 300ms for faster initial load
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Always call the hook to maintain hooks order, but use conditional logic elsewhere
   const publishingUI = useContentPublishingUI(userAddress as `0x${string}` | undefined)
   
-  // Form state management
-  const [formData, setFormData] = useState<ContentFormData>({
+  // State management
+  const [currentStep, setCurrentStep] = useState<UploadStep>('upload')
+  const [uploadData, setUploadData] = useState<UploadData>({
     title: '',
     description: '',
-    category: null,
     price: '1.00',
-    tags: [],
     accessType: 'premium',
     file: null,
-    ipfsHash: '',
-    ipfsGateway: ''
+    hash: ''
   })
   
-  // UI state management
-  const [showTransactionModal, setShowTransactionModal] = useState(false)
-  const [tagInput, setTagInput] = useState('')
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
-  const [networkStatus, setNetworkStatus] = useState<'online' | 'offline'>('online')
-  
-  // Memoized values to prevent unnecessary re-renders
-  const publishedContentId = useMemo(() => publishingUI.publishedContentId, [publishingUI.publishedContentId])
-  const isProcessing = useMemo(() => publishingUI.publishingActions.isProcessing, [publishingUI.publishingActions.isProcessing])
-  
-  // Stable callback for onSuccess
-  const stableOnSuccess = useCallback((contentId: bigint) => {
-    onSuccess?.(contentId)
-  }, [onSuccess])
-  
-  // Monitor network status
-  useEffect(() => {
-    const handleOnline = () => setNetworkStatus('online')
-    const handleOffline = () => setNetworkStatus('offline')
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-  
-  // Handle successful content publication
-  useEffect(() => {
-    if (publishedContentId) {
-      console.log('🎉 Content published successfully:', publishedContentId)
-      stableOnSuccess(publishedContentId)
-      // Reset form on successful publication
-      setFormData({
-        title: '',
-        description: '',
-        category: null,
-        price: '1.00',
-        tags: [],
-        accessType: 'premium',
-        file: null,
-        ipfsHash: '',
-        ipfsGateway: ''
-      })
-      setUploadStatus('idle')
-      setShowTransactionModal(false)
-    }
-  }, [publishedContentId, stableOnSuccess])
-  
-  // Show transaction modal during registration
-  useEffect(() => {
-    if (isProcessing && !showTransactionModal) {
-      setShowTransactionModal(true)
-    }
-  }, [isProcessing, showTransactionModal])
-  
-  // ===== EVENT HANDLERS =====
-  
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Handle file selection
+  const handleFileSelect = useCallback(async (files: FileList | null) => {
+    const file = files?.[0]
     if (!file) return
     
-    console.log('📁 File selected:', file.name, 'Type:', file.type, 'Size:', file.size)
+    // Basic file validation
+    if (file.size > 50 * 1024 * 1024) {
+      alert('File size must be less than 50MB')
+      return
+    }
     
-    // Reset previous state
-    setValidationErrors(prev => ({ ...prev, file: undefined, ipfsHash: undefined }))
-    setUploadStatus('idle')
+    setIsUploading(true)
     setUploadProgress(0)
     
-    // File size validation (50MB limit)
-    if (file.size > 50 * 1024 * 1024) {
-      setValidationErrors(prev => ({
-        ...prev,
-        file: 'File size must be less than 50MB'
-      }))
-      return
-    }
-    
-    // Enhanced file type validation with category suggestions
-    const fileTypeValidation = validateFileTypeSupport(file.type)
-
-    if (!fileTypeValidation.isSupported) {
-      setValidationErrors(prev => ({
-        ...prev,
-        file: `File type "${file.type}" is not supported. Please use supported formats like JPEG, PNG, MP4, PDF, Markdown, etc.`
-      }))
-      return
-    }
-
-    // Auto-suggest category based on file type
-    if (fileTypeValidation.category && !formData.category) {
-      setFormData(prev => ({
-        ...prev,
-        category: fileTypeValidation.category
-      }))
-
-      // Show success message about auto-categorization
-      console.log(`🎯 Auto-categorized file as "${categoryToString(fileTypeValidation.category!)}"`)
-    }
-    
-    // Check network status
-    if (networkStatus === 'offline') {
-      setValidationErrors(prev => ({
-        ...prev,
-        file: 'No internet connection. Please check your network and try again.'
-      }))
-      return
-    }
-    
-    // Start upload
-    setFormData(prev => ({ ...prev, file, ipfsHash: '', ipfsGateway: '' }))
-    setIsUploading(true)
-    setUploadStatus('uploading')
-    
     try {
-      const uploadResult = await uploadToIPFS(file, (progress) => {
+      const result = await uploadFile(file, (progress) => {
         setUploadProgress(progress)
       })
       
-      if (uploadResult.error) {
-        console.error('❌ Upload failed:', uploadResult.error)
-        setValidationErrors(prev => ({
-          ...prev,
-          file: uploadResult.error
-        }))
-        setFormData(prev => ({ ...prev, file: null }))
-        setUploadStatus('error')
-      } else {
-        console.log('✅ Upload successful, hash:', uploadResult.hash)
-        setFormData(prev => ({ 
-          ...prev, 
-          ipfsHash: uploadResult.hash,
-          ipfsGateway: uploadResult.gateway || ''
-        }))
-        setUploadStatus('success')
-      }
-    } catch (error) {
-      console.error('💥 Upload error:', error)
-      setValidationErrors(prev => ({
+      setUploadData(prev => ({
         ...prev,
-        file: error instanceof Error ? error.message : 'Upload failed. Please try again.'
+        file,
+        hash: result.hash
       }))
-      setFormData(prev => ({ ...prev, file: null }))
-      setUploadStatus('error')
+
+      setCurrentStep('details')
+    } catch (error) {
+      alert('Upload failed. Please try again.')
     } finally {
       setIsUploading(false)
     }
-  }, [networkStatus])
-  
-  const handleAddTag = useCallback(() => {
-    const tag = tagInput.trim().toLowerCase()
-    if (tag && !formData.tags.includes(tag) && formData.tags.length < 10) {
-      setFormData(prev => ({ ...prev, tags: [...prev.tags, tag] }))
-      setTagInput('')
-    }
-  }, [tagInput, formData.tags])
-  
-  const handleRemoveTag = useCallback((tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }))
-  }, [])
-  
-  const handleSubmit = useCallback(async (event: React.FormEvent) => {
-    event.preventDefault()
-    
-    console.log('📝 Form submission started with data:', formData)
-    
-    const errors = validateFormData(formData)
-    setValidationErrors(errors)
-    
-    if (Object.keys(errors).length > 0) {
-      console.log('❌ Form validation failed:', errors)
-      return
-    }
-    
-    if (!publishingUI.canPublish) {
-      console.log('❌ Cannot publish - creator requirements not met')
-      return
-    }
-    
-    try {
-      const priceInWei = formData.accessType === 'premium' 
-        ? BigInt(Math.round(parseFloat(formData.price) * 1e6)) // USDC has 6 decimals
-        : BigInt(0)
-      
-      const publishData = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        ipfsHash: formData.ipfsHash,
-        category: formData.category!,
-        payPerViewPrice: priceInWei,
-        tags: formData.tags
-      }
-      
-      console.log('🚀 Publishing content with data:', publishData)
-      
-      publishingUI.publishingActions.publishAction(publishData)
-      setShowTransactionModal(true)
-    } catch (error) {
-      console.error('💥 Error preparing publish data:', error)
-      setValidationErrors(prev => ({
-        ...prev,
-        price: 'Invalid price format'
-      }))
-    }
-  }, [formData, publishingUI.canPublish, publishingUI.publishingActions])
-  
-  // Get file type icon
-  const getFileIcon = useCallback((file: File | null) => {
-    if (!file) return <File className="h-8 w-8" />
-    
-    if (file.type.startsWith('image/')) return <ImageIcon className="h-8 w-8" />
-    if (file.type.startsWith('video/')) return <Video className="h-8 w-8" />
-    if (file.type.startsWith('audio/')) return <Music className="h-8 w-8" />
-    if (file.type === 'application/pdf' || file.type.startsWith('text/')) return <FileText className="h-8 w-8" />
-    
-    return <File className="h-8 w-8" />
   }, [])
   
   // Handle drag and drop
-  const [isDragging, setIsDragging] = useState(false)
-  
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(true)
@@ -538,575 +174,331 @@ export function ContentUploadForm({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    
-    const files = e.dataTransfer.files
-    if (files.length > 0 && fileInputRef.current) {
-      fileInputRef.current.files = files
-      handleFileSelect({ target: { files } } as React.ChangeEvent<HTMLInputElement>)
-    }
+    handleFileSelect(e.dataTransfer.files)
   }, [handleFileSelect])
+
+  // Handle publishing
+  const handlePublish = useCallback(async () => {
+    if (!uploadData.file || !uploadData.hash) return
+
+    setIsPublishing(true)
+
+    try {
+      const priceInWei = uploadData.accessType === 'premium'
+        ? BigInt(Math.round(parseFloat(uploadData.price) * 1e6))
+        : BigInt(0)
+
+      const publishData = {
+        title: uploadData.title.trim(),
+        description: uploadData.description.trim(),
+        ipfsHash: uploadData.hash,
+        category: 1 as ContentCategory, // Default category
+        payPerViewPrice: priceInWei,
+        tags: []
+      }
+
+      publishingUI.publishingActions.publishAction(publishData)
+    } catch (error) {
+      console.error('Publish error:', error)
+      alert('Failed to publish. Please try again.')
+      setIsPublishing(false)
+    }
+  }, [uploadData, publishingUI])
+
+  // Handle success
+  useEffect(() => {
+    if (publishingUI.publishedContentId) {
+      onSuccess?.(publishingUI.publishedContentId)
+    }
+  }, [publishingUI.publishedContentId, onSuccess])
+
+  // Get file preview icon
+  const getFileIcon = useCallback((file: File | null) => {
+    if (!file) return <Upload className="h-8 w-8" />
+
+    if (file.type.startsWith('image/')) return <ImageIcon className="h-8 w-8" />
+    if (file.type.startsWith('video/')) return <Video className="h-8 w-8" />
+    return <FileText className="h-8 w-8" />
+  }, [])
   
   // ===== RENDER =====
   
-  const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Creator Requirements Check */}
-      {!publishingUI.canPublish && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {publishingUI.creatorRequirements.registrationText}
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {/* File Upload Section */}
-      <div className="space-y-4">
-        <Label htmlFor="file-upload" className="text-sm md:text-base">Content File</Label>
+  const renderUploadStep = () => (
+    <div className="max-w-md mx-auto">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold mb-2">Create new post</h2>
+        <p className="text-muted-foreground">Share your content with the world</p>
+      </div>
+
         <div
           className={cn(
-            'border-2 border-dashed rounded-lg p-4 md:p-8 text-center transition-colors min-h-[120px] md:min-h-[200px] flex flex-col justify-center',
-            isDragging && 'border-primary bg-primary/5',
-            uploadStatus === 'error' && 'border-red-500',
-            uploadStatus === 'success' && 'border-green-500',
-            'hover:border-primary hover:bg-primary/5'
+          "relative border-2 border-dashed rounded-2xl p-8 transition-all duration-300 cursor-pointer",
+          isDragging ? "border-primary bg-primary/5 scale-[1.02]" : "border-border hover:border-primary/50",
+          "min-h-[300px] flex flex-col items-center justify-center"
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
         >
           <input
             ref={fileInputRef}
-            id="file-upload"
             type="file"
-            onChange={handleFileSelect}
-            accept=".txt,.md,.markdown,.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.webm,.mov,.avi,.mp3,.wav,.ogg,.csv,.json,.css,.js,.zip,.rar"
+          accept="image/*,video/*,.pdf,.txt,.md"
+          onChange={(e) => handleFileSelect(e.target.files)}
             className="hidden"
             disabled={isUploading}
           />
           
-          {uploadStatus === 'idle' && (
-            <div className="space-y-3 md:space-y-4">
-              <Upload className="h-10 w-10 md:h-12 md:w-12 mx-auto text-muted-foreground" />
-              <div>
-                <p className="text-base md:text-lg font-medium px-2">Drop your file here or click to browse</p>
-                <p className="text-xs md:text-sm text-muted-foreground px-2">
-                  Supports documents, images, videos, and audio files up to 50MB
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading || networkStatus === 'offline'}
-                className="text-sm md:text-base"
-              >
-                {networkStatus === 'offline' ? (
-                  <>
-                    <WifiOff className="h-4 w-4 mr-2" />
-                    Offline
-                  </>
-                ) : (
-                  'Choose File'
-                )}
-              </Button>
+        {isUploading ? (
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+            <div className="space-y-2">
+              <p className="font-medium">Uploading...</p>
+              <Progress value={uploadProgress} className="w-48 mx-auto" />
+              <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</p>
             </div>
-          )}
-          
-          {uploadStatus === 'uploading' && (
-            <div className="space-y-3 md:space-y-4">
-              <Loader2 className="h-10 w-10 md:h-12 md:w-12 mx-auto animate-spin text-primary" />
-              <div>
-                <p className="text-base md:text-lg font-medium">Uploading to IPFS...</p>
-                <Progress value={uploadProgress} className="mt-2" />
-                <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                  {Math.round(uploadProgress)}% complete
-                </p>
               </div>
+        ) : (
+          <div className="text-center space-y-6">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+              <Upload className="h-8 w-8 text-muted-foreground" />
             </div>
-          )}
-          
-          {uploadStatus === 'success' && formData.file && (
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex items-center justify-center space-x-3 md:space-x-4">
-                {getFileIcon(formData.file)}
-                <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
-              </div>
-              <div>
-                <p className="text-sm md:text-lg font-medium text-green-700 truncate px-2" title={formData.file.name}>
-                  {formData.file.name}
-                </p>
-                <p className="text-xs md:text-sm text-muted-foreground">
-                  Successfully uploaded to IPFS
-                </p>
-                <p className="text-xs text-muted-foreground mt-1 font-mono">
-                  Hash: {formData.ipfsHash.slice(0, 15)}...
-                </p>
-                {formData.ipfsGateway && (
-                  <a
-                    href={formData.ipfsGateway}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline block mt-1"
-                  >
-                    View on IPFS Gateway
-                  </a>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, file: null, ipfsHash: '', ipfsGateway: '' }))
-                  setUploadStatus('idle')
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = ''
-                  }
-                }}
-                className="text-xs md:text-sm"
-              >
-                <X className="h-3 w-3 md:h-4 md:w-4 mr-2" />
-                Remove File
-              </Button>
+            <div className="space-y-2">
+              <p className="text-lg font-medium">Drag photos or videos here</p>
+              <p className="text-sm text-muted-foreground">Or click to select files</p>
             </div>
-          )}
-          
-          {uploadStatus === 'error' && (
-            <div className="space-y-3 md:space-y-4">
-              <AlertCircle className="h-10 w-10 md:h-12 md:w-12 mx-auto text-red-500" />
-              <div>
-                <p className="text-base md:text-lg font-medium text-red-700">Upload Failed</p>
-                <p className="text-xs md:text-sm text-muted-foreground px-2">
-                  {validationErrors.file || 'Please try again'}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setUploadStatus('idle')
-                  setValidationErrors(prev => ({ ...prev, file: undefined }))
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = ''
-                  }
-                }}
-                className="text-sm md:text-base"
-              >
-                Try Again
+            <Button variant="outline" className="rounded-full px-6">
+              Select from computer
               </Button>
             </div>
           )}
         </div>
-        {validationErrors.file && (
-          <p className="text-sm text-red-500">{validationErrors.file}</p>
-        )}
+    </div>
+  )
+
+  const renderDetailsStep = () => (
+    <div className="max-w-md mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCurrentStep('upload')}
+          className="p-2"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-medium">Details</span>
+        <Button
+          onClick={() => setCurrentStep('publish')}
+          disabled={!uploadData.title.trim()}
+          className="rounded-full px-4"
+        >
+          Next
+        </Button>
       </div>
       
-      {/* Content Metadata Section */}
-      {uploadStatus === 'success' && (
-        <div className="space-y-4 md:space-y-6">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 md:h-5 md:w-5" />
-            <h3 className="text-base md:text-lg font-medium">Content Details</h3>
+      {/* File Preview */}
+      <div className="mb-6 p-4 bg-muted/50 rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-background rounded-lg flex items-center justify-center">
+            {getFileIcon(uploadData.file)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{uploadData.file?.name}</p>
+            <p className="text-sm text-muted-foreground">
+              {(uploadData.file?.size || 0) < 1024 * 1024
+                ? `${((uploadData.file?.size || 0) / 1024).toFixed(1)} KB`
+                : `${((uploadData.file?.size || 0) / (1024 * 1024)).toFixed(1)} MB`
+              }
+            </p>
+          </div>
+        </div>
           </div>
           
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="flex flex-row gap-1 sm:gap-2 md:gap-3 p-1 bg-gradient-to-r from-muted/50 to-muted/30 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm w-full overflow-x-auto scrollbar-hide">
-              <TabsTrigger
-                value="basic"
-                className="flex-1 min-w-[100px] sm:min-w-[120px] px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 hover:bg-background/80 hover:shadow-md data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:border-primary/20 flex items-center justify-center gap-1 sm:gap-2"
-              >
-                <FileText className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate hidden sm:inline">Basic Info</span>
-                <span className="truncate sm:hidden">Basic</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="pricing"
-                className="flex-1 min-w-[90px] sm:min-w-[100px] px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 hover:bg-background/80 hover:shadow-md data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:border-primary/20 flex items-center justify-center gap-1 sm:gap-2"
-              >
-                <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate">Pricing</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="tags"
-                className="flex-1 min-w-[120px] sm:min-w-[140px] px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-300 hover:bg-background/80 hover:shadow-md data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-foreground data-[state=active]:border data-[state=active]:border-primary/20 flex items-center justify-center gap-1 sm:gap-2"
-              >
-                <Tag className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate hidden sm:inline">Tags & Category</span>
-                <span className="truncate sm:hidden">Tags</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="basic" className="space-y-4">
-              {/* Title Input */}
-              <div className="space-y-2">
-                <Label htmlFor="title" className="text-sm md:text-base">Title *</Label>
+      {/* Form Fields */}
+      <div className="space-y-4">
+        <div>
                 <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Enter content title"
-                  className={cn('text-sm md:text-base', validationErrors.title && 'border-red-500')}
+            placeholder="Write a caption..."
+            value={uploadData.title}
+            onChange={(e) => setUploadData(prev => ({ ...prev, title: e.target.value }))}
+            className="border-0 px-0 text-lg placeholder:text-muted-foreground focus-visible:ring-0 resize-none"
                   maxLength={200}
                 />
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{validationErrors.title && (
-                    <span className="text-red-500">{validationErrors.title}</span>
-                  )}</span>
-                  <span>{formData.title.length}/200</span>
+          <div className="text-xs text-muted-foreground text-right mt-1">
+            {uploadData.title.length}/200
                 </div>
               </div>
               
-              {/* Description Input */}
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm md:text-base">Description *</Label>
                 <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe your content..."
+          placeholder="Add a description..."
+          value={uploadData.description}
+          onChange={(e) => setUploadData(prev => ({ ...prev, description: e.target.value }))}
+          className="border-0 px-0 placeholder:text-muted-foreground focus-visible:ring-0 resize-none"
                   rows={3}
-                  className={cn('text-sm md:text-base resize-none', validationErrors.description && 'border-red-500')}
-                  maxLength={1000}
-                />
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{validationErrors.description && (
-                    <span className="text-red-500">{validationErrors.description}</span>
-                  )}</span>
-                  <span>{formData.description.length}/1000</span>
-                </div>
+          maxLength={500}
+        />
+
+        {/* Access Type Toggle */}
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+          <div>
+            <p className="font-medium">Premium content</p>
+            <p className="text-sm text-muted-foreground">Charge for access</p>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="pricing" className="space-y-4">
-              {/* Access Type Selection */}
-              <div className="space-y-3">
-                <Label className="text-sm md:text-base">Access Type</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button
-                    type="button"
-                    variant={formData.accessType === 'free' ? 'default' : 'outline'}
-                    onClick={() => setFormData(prev => ({ ...prev, accessType: 'free' }))}
-                    className="h-auto p-3 md:p-4 flex flex-col items-center gap-2 min-h-[80px] md:min-h-[100px]"
-                  >
-                    <Globe className="h-4 w-4 md:h-5 md:w-5" />
-                    <span className="text-sm md:text-base font-medium">Free</span>
-                    <span className="text-xs text-muted-foreground hidden sm:block">Open access</span>
+            variant="ghost"
+            size="sm"
+            onClick={() => setUploadData(prev => ({
+              ...prev,
+              accessType: prev.accessType === 'free' ? 'premium' : 'free'
+            }))}
+            className="w-12 h-6 rounded-full bg-background border"
+          >
+            <div className={cn(
+              "w-4 h-4 rounded-full transition-transform",
+              uploadData.accessType === 'premium' ? "translate-x-6 bg-primary" : "translate-x-0 bg-muted-foreground"
+            )} />
                   </Button>
-                  <Button
-                    type="button"
-                    variant={formData.accessType === 'premium' ? 'default' : 'outline'}
-                    onClick={() => setFormData(prev => ({ ...prev, accessType: 'premium' }))}
-                    className="h-auto p-3 md:p-4 flex flex-col items-center gap-2 min-h-[80px] md:min-h-[100px]"
-                  >
-                    <DollarSign className="h-4 w-4 md:h-5 md:w-5" />
-                    <span className="text-sm md:text-base font-medium">Pay-per-view</span>
-                    <span className="text-xs text-muted-foreground hidden sm:block">One-time purchase</span>
-                  </Button>
-                </div>
               </div>
               
-              {/* Price Input for Premium Content */}
-              {formData.accessType === 'premium' && (
-                <div className="space-y-2">
-                  <Label htmlFor="price" className="text-sm md:text-base">Price (USDC)</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Price Input */}
+        {uploadData.accessType === 'premium' && (
+          <div className="flex items-center gap-2">
+            <span className="text-lg">$</span>
                     <Input
-                      id="price"
                       type="number"
-                      step="0.01"
+              placeholder="1.00"
+              value={uploadData.price}
+              onChange={(e) => setUploadData(prev => ({ ...prev, price: e.target.value }))}
+              className="text-lg border-0 px-0 focus-visible:ring-0"
                       min="0.01"
                       max="50"
-                      value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                      placeholder="1.00"
-                      className={cn('pl-9 text-sm md:text-base', validationErrors.price && 'border-red-500')}
-                    />
-                  </div>
-                  {validationErrors.price && (
-                    <p className="text-sm text-red-500">{validationErrors.price}</p>
-                  )}
-                  <p className="text-xs md:text-sm text-muted-foreground">
-                    Price range: $0.01 - $50.00
-                  </p>
+              step="0.01"
+            />
+            <span className="text-sm text-muted-foreground">USDC</span>
                 </div>
-              )}
-              
-              {/* Access Type Information */}
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  {formData.accessType === 'free' && 'Free content is accessible to all users without payment.'}
-                  {formData.accessType === 'premium' && 'Pay-per-view content requires a one-time purchase for permanent access.'}
-                </AlertDescription>
-              </Alert>
-            </TabsContent>
-            
-            <TabsContent value="tags" className="space-y-4">
-              {/* Category Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select
-                  value={formData.category?.toString() || ''}
-                  onValueChange={(value) => setFormData(prev => ({
-                    ...prev,
-                    category: parseInt(value) as ContentCategory
-                  }))}
-                >
-                  <SelectTrigger className={cn(
-                    validationErrors.category && 'border-red-500',
-                    formData.category && 'border-green-500 bg-green-50'
-                  )}>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(ContentCategory)
-                      .filter(value => typeof value === 'number')
-                      .map((category) => {
-                        const isRecommended = formData.file && getRecommendedCategoriesForFileType(formData.file.type).includes(category as ContentCategory)
-                        return (
-                          <SelectItem
-                            key={category}
-                            value={category.toString()}
-                            className={cn(
-                              isRecommended && 'bg-blue-50 text-blue-700 font-medium',
-                              'relative'
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span>{categoryToString(category as ContentCategory)}</span>
-                              {isRecommended && (
-                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                                  Recommended
-                                </Badge>
-                              )}
-                            </div>
-                          </SelectItem>
-                        )
-                      })}
-                  </SelectContent>
-                </Select>
-
-                {formData.file && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <div className="text-sm">
-                        <p className="font-medium text-blue-800">File Type Detected</p>
-                        <p className="text-blue-700 mt-1">
-                          {validateFileTypeSupport(formData.file.type).message}
-                        </p>
-                        {formData.category && (
-                          <p className="text-green-600 mt-1 font-medium">
-                            ✓ Category auto-selected based on file type
-                          </p>
                         )}
                       </div>
                     </div>
-                  </div>
-                )}
-                {validationErrors.category && (
-                  <p className="text-sm text-red-500">{validationErrors.category}</p>
-                )}
-              </div>
-              
-              {/* Tags Input */}
-              <div className="space-y-3">
-                <Label htmlFor="tags" className="text-sm md:text-base">Tags</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="tags"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                    placeholder="Add tags to help users discover your content"
-                    disabled={formData.tags.length >= 10}
-                    maxLength={30}
-                    className="text-sm md:text-base"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddTag}
-                    disabled={!tagInput.trim() || formData.tags.length >= 10}
-                    className="shrink-0"
-                  >
-                    <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formData.tags.length}/10 tags
-                </p>
+  )
 
-                {formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 md:gap-2">
-                    {formData.tags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="gap-1 text-xs md:text-sm px-2 py-1">
-                        <Tag className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                        <span className="truncate max-w-[80px] md:max-w-none">{tag}</span>
+  const renderPublishStep = () => (
+    <div className="max-w-md mx-auto">
+      <div className="flex items-center justify-between mb-6">
                         <Button
-                          type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveTag(tag)}
-                          className="h-3 w-3 md:h-4 md:w-4 p-0 hover:bg-transparent ml-1"
+          onClick={() => setCurrentStep('details')}
+          className="p-2"
                         >
-                          <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
+          <ChevronRight className="h-4 w-4 rotate-180" />
                         </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-                {validationErrors.tags && (
-                  <p className="text-sm text-red-500">{validationErrors.tags}</p>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      )}
-      
-      {/* Form Actions */}
-      <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
-        {onCancel && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={isUploading || isProcessing}
-            className="min-w-[100px] sm:min-w-[120px] text-sm md:text-base"
-          >
-            Cancel
-          </Button>
-        )}
+        <span className="text-sm font-medium">Ready to publish</span>
+        <div className="w-8" />
+      </div>
 
-        {/* Retry button when there's an error */}
-        {publishingUI.transactionStatus.status === 'failed' && publishingUI.publishingActions.retry && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={publishingUI.publishingActions.retry}
-            disabled={isUploading || isProcessing}
-            className="min-w-[100px] sm:min-w-[120px] text-sm md:text-base"
-          >
-            Try Again
-          </Button>
-        )}
+      {/* Final Preview */}
+      <div className="space-y-4">
+        <div className="p-4 bg-muted/50 rounded-xl">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-background rounded-lg flex items-center justify-center">
+              {getFileIcon(uploadData.file)}
+                  </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">{uploadData.file?.name}</p>
+              </div>
+        </div>
+
+          {uploadData.title && (
+            <p className="font-medium mb-2">{uploadData.title}</p>
+          )}
+
+          {uploadData.description && (
+            <p className="text-sm text-muted-foreground mb-3">{uploadData.description}</p>
+          )}
+
+          {uploadData.accessType === 'premium' && (
+            <div className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+              <Sparkles className="h-3 w-3" />
+              ${uploadData.price} USDC
+            </div>
+          )}
+        </div>
 
         <Button
-          type="submit"
-          disabled={
-            uploadStatus !== 'success' ||
-            isUploading ||
-            isProcessing ||
-            networkStatus === 'offline'
-          }
-          className="min-w-[140px] sm:min-w-[120px] text-sm md:text-base"
+          onClick={handlePublish}
+          disabled={isPublishing}
+          className="w-full rounded-full h-12 text-base font-medium"
         >
-          {isProcessing ? (
+          {isPublishing ? (
             <>
-              <Loader2 className="h-3 w-3 md:h-4 md:w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Publishing...
             </>
           ) : (
-            'Publish Content'
+            <>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Share content
+            </>
           )}
         </Button>
       </div>
-    </form>
+    </div>
   )
+
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 'upload':
+        return renderUploadStep()
+      case 'details':
+        return renderDetailsStep()
+      case 'publish':
+        return renderPublishStep()
+      default:
+        return renderUploadStep()
+    }
+  }
   
   // Render based on variant
   return (
-    <>
+    <div className={cn('min-h-screen bg-background', className)}>
       {variant === 'modal' ? (
-        <Card className={cn('max-w-4xl mx-auto', className)}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Upload Content
-              {networkStatus === 'offline' && (
-                <WifiOff className="h-4 w-4 text-red-500" />
-              )}
-              {networkStatus === 'online' && isUploading && (
-                <Wifi className="h-4 w-4 text-blue-500 animate-pulse" />
-              )}
-            </CardTitle>
-            <CardDescription>
-              Share your content with the world and start earning
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {formContent}
-          </CardContent>
-        </Card>
+        <div className="p-6">
+          {renderCurrentStep()}
+        </div>
       ) : (
-        <div className={cn('max-w-4xl mx-auto p-6', className)}>
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Upload Content
-                {networkStatus === 'offline' && (
-                  <WifiOff className="h-4 w-4 text-red-500" />
-                )}
-                {networkStatus === 'online' && isUploading && (
-                  <Wifi className="h-4 w-4 text-blue-500 animate-pulse" />
-                )}
-              </h1>
-              <Badge variant="outline" className="text-sm border-purple-500/50 text-purple-600 bg-purple-500/10">
-                <Zap className="h-3 w-3 mr-1" />
-                Zora NFT Ready
-              </Badge>
-            </div>
-            <p className="text-muted-foreground mt-2">
-              Share your content with the world, mint as NFTs on Zora, and start earning through subscriptions and NFT sales
-            </p>
-          </div>
-          {formContent}
+        <div className="container max-w-md mx-auto py-8 px-4">
+          {renderCurrentStep()}
         </div>
       )}
       
       <TransactionStatusModal
-        isOpen={showTransactionModal}
-        onClose={() => setShowTransactionModal(false)}
+        isOpen={publishingUI.transactionStatus.status === 'confirming' || publishingUI.transactionStatus.status === 'confirmed'}
+        onClose={() => {}}
         transactionStatus={publishingUI.transactionStatus}
       />
-    </>
+    </div>
   )
 }
 
+// Export alias for backward compatibility
+const ContentUploadForm = ContentUpload
+export { ContentUploadForm }
+
 /**
- * Usage Examples and Integration Patterns
+ * Usage Examples:
  * 
- * // Basic usage for content creation page
- * <ContentUploadForm
+ * // Basic page usage
+ * <ContentUpload
  *   userAddress={userAddress}
- *   onSuccess={(contentId) => {
- *     router.push(`/content/${contentId}`)
- *     toast.success('Content published successfully!')
- *   }}
+ *   onSuccess={(contentId) => router.push(`/content/${contentId}`)}
  * />
  * 
- * // Modal variant for quick upload
- * <ContentUploadForm
+ * // Modal variant
+ * <ContentUpload
  *   userAddress={userAddress}
  *   variant="modal"
- *   onSuccess={(contentId) => {
- *     setShowUploadModal(false)
- *     refreshContentList()
- *   }}
- *   onCancel={() => setShowUploadModal(false)}
- * />
- * 
- * // Integration with creator dashboard
- * <ContentUploadForm
- *   userAddress={userAddress}
- *   onSuccess={(contentId) => {
- *     analytics.track('Content Published', { contentId })
- *     updateCreatorStats()
- *   }}
+ *   onSuccess={(contentId) => setShowModal(false)}
  * />
  */
