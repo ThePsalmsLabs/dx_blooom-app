@@ -125,6 +125,8 @@ export function ContentUpload({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [publishStatus, setPublishStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle')
+  const [publishError, setPublishError] = useState<string>('')
   const [isDragging, setIsDragging] = useState(false)
 
   // Handle file selection
@@ -178,9 +180,24 @@ export function ContentUpload({
   }, [handleFileSelect])
 
   // Handle publishing
-  const handlePublish = useCallback(async () => {
-    if (!uploadData.file || !uploadData.hash) return
+  const handlePublish = useCallback(() => {
+    if (!uploadData.file || !uploadData.hash) {
+      console.error('❌ Cannot publish: missing file or hash')
+      setPublishStatus('error')
+      setPublishError('File upload incomplete. Please try again.')
+      return
+    }
 
+    if (!uploadData.title.trim()) {
+      console.error('❌ Cannot publish: missing title')
+      setPublishStatus('error')
+      setPublishError('Title is required')
+      return
+    }
+
+    // Reset previous states
+    setPublishStatus('processing')
+    setPublishError('')
     setIsPublishing(true)
 
     try {
@@ -197,17 +214,80 @@ export function ContentUpload({
         tags: []
       }
 
+      console.log('🚀 Publishing content:', {
+        ...publishData,
+        userAddress: userAddress,
+        canPublish: publishingUI.canPublish,
+        currentStep: publishingUI.currentStepText,
+        transactionStatus: publishingUI.transactionStatus.status,
+        isWalletConnected: !!userAddress
+      })
+
+      // Check if user can publish
+      if (!publishingUI.canPublish) {
+        console.error('❌ Cannot publish: user not eligible')
+        setPublishStatus('error')
+        setPublishError(publishingUI.creatorRequirements.registrationText)
+        setIsPublishing(false)
+        return
+      }
+
       publishingUI.publishingActions.publishAction(publishData)
     } catch (error) {
-      console.error('Publish error:', error)
-      alert('Failed to publish. Please try again.')
+      console.error('❌ Publish error:', error)
+      setPublishStatus('error')
+      setPublishError(error instanceof Error ? error.message : 'Failed to publish')
       setIsPublishing(false)
     }
-  }, [uploadData, publishingUI])
+  }, [uploadData, publishingUI, userAddress])
 
-  // Handle success
+  // Monitor publishing workflow state changes
+  useEffect(() => {
+    // Access the transaction status and error message from the publishing UI
+    const transactionStatus = publishingUI.transactionStatus.status
+    const hasError = publishingUI.errorMessage !== null
+    const isProcessing = publishingUI.publishingActions.isProcessing
+
+    console.log('📊 Publishing status changed:', {
+      transactionStatus,
+      hasError,
+      isProcessing,
+      publishedId: publishingUI.publishedContentId,
+      errorMessage: publishingUI.errorMessage
+    })
+
+    if (isProcessing || transactionStatus === 'submitting' || transactionStatus === 'confirming') {
+      setPublishStatus('processing')
+      setIsPublishing(true)
+      setPublishError('')
+    } else if (transactionStatus === 'confirmed' && publishingUI.publishedContentId) {
+      setPublishStatus('success')
+      setIsPublishing(false)
+      setPublishError('')
+      console.log('✅ Content published successfully:', publishingUI.publishedContentId)
+      onSuccess?.(publishingUI.publishedContentId)
+    } else if (transactionStatus === 'failed' || hasError) {
+      setPublishStatus('error')
+      setPublishError(publishingUI.errorMessage || publishingUI.transactionStatus.formattedStatus || 'Publishing failed')
+      setIsPublishing(false)
+    } else if (transactionStatus === 'idle') {
+      setPublishStatus('idle')
+      setPublishError('')
+      setIsPublishing(false)
+    }
+  }, [
+    publishingUI.transactionStatus.status,
+    publishingUI.errorMessage,
+    publishingUI.publishedContentId,
+    publishingUI.publishingActions.isProcessing,
+    publishingUI.transactionStatus.formattedStatus,
+    onSuccess
+  ])
+
+  // Handle successful content publication
   useEffect(() => {
     if (publishingUI.publishedContentId) {
+      console.log('🎉 Content published successfully:', publishingUI.publishedContentId)
       onSuccess?.(publishingUI.publishedContentId)
     }
   }, [publishingUI.publishedContentId, onSuccess])
@@ -383,20 +463,38 @@ export function ContentUpload({
                     </div>
   )
 
-  const renderPublishStep = () => (
+    const renderPublishStep = () => (
     <div className="max-w-md mx-auto">
       <div className="flex items-center justify-between mb-6">
-                        <Button
-                          variant="ghost"
-                          size="sm"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setCurrentStep('details')}
           className="p-2"
-                        >
+          disabled={isPublishing}
+        >
           <ChevronRight className="h-4 w-4 rotate-180" />
-                        </Button>
-        <span className="text-sm font-medium">Ready to publish</span>
+        </Button>
+        <span className="text-sm font-medium">
+          {publishStatus === 'processing' ? 'Publishing...' :
+           publishStatus === 'success' ? 'Published!' :
+           'Ready to publish'}
+        </span>
         <div className="w-8" />
       </div>
+
+      {/* Publishing Progress Indicator */}
+      {publishStatus === 'processing' && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">Publishing your content...</span>
+          </div>
+          <div className="text-xs text-blue-600">
+            {publishingUI.transactionStatus.progress.progressText || publishingUI.currentStepText || 'Processing...'}
+          </div>
+        </div>
+      )}
 
       {/* Final Preview */}
       <div className="space-y-4">
@@ -426,17 +524,47 @@ export function ContentUpload({
           )}
         </div>
 
+        {publishStatus === 'error' && publishError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600 font-medium">❌ Publishing failed</p>
+            <p className="text-sm text-red-500 mt-1">{publishError}</p>
+          </div>
+        )}
+
+        {/* Creator Registration Warning */}
+        {!publishingUI.canPublish && (
+          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <p className="text-sm text-orange-800 font-medium">⚠️ Creator registration required</p>
+            <p className="text-sm text-orange-700 mt-1">
+              {publishingUI.creatorRequirements.registrationText}
+            </p>
+          </div>
+        )}
+
         <Button
           onClick={handlePublish}
-          disabled={isPublishing}
+          disabled={isPublishing || publishStatus === 'success' || !publishingUI.canPublish}
           className="w-full rounded-full h-12 text-base font-medium"
         >
-          {isPublishing ? (
+          {publishStatus === 'processing' && (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Publishing...
             </>
-          ) : (
+          )}
+          {publishStatus === 'success' && (
+            <>
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Content Published!
+            </>
+          )}
+          {publishStatus === 'error' && (
+            <>
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Try Again
+            </>
+          )}
+          {publishStatus === 'idle' && (
             <>
               <Sparkles className="h-4 w-4 mr-2" />
               Share content
