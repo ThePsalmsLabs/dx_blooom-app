@@ -49,60 +49,87 @@ export function CreatorCard({
 
   const creator = creatorProfile.data
 
-  // Compact variant for mobile/mini app
+  // Compact variant for mobile/mini app - Optimized for 3-column grid
   if (variant === 'compact') {
     return (
-      <Card 
-        className={`group hover:shadow-md transition-all duration-200 cursor-pointer border-border/50 hover:border-border ${className}`} 
+      <Card
+        className={`group hover:shadow-lg transition-all duration-200 cursor-pointer border-border/50 hover:border-primary/20 hover:shadow-primary/5 ${className}`}
         onClick={onClick}
       >
-        <CardContent className="p-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <Avatar className="w-10 h-10 flex-shrink-0 ring-2 ring-background">
-              <AvatarImage 
-                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${creatorAddress}`} 
+        <CardContent className="p-3 h-full flex flex-col">
+          {/* Header Section */}
+          <div className="flex items-center gap-2.5 mb-3 min-w-0">
+            <Avatar className="w-8 h-8 flex-shrink-0 ring-1 ring-background">
+              <AvatarImage
+                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${creatorAddress}`}
                 alt={`${formatAddress(creatorAddress)} avatar`}
               />
-              <AvatarFallback className="text-xs font-medium bg-muted">
+              <AvatarFallback className="text-[10px] font-semibold bg-muted">
                 {formatAddress(creatorAddress).slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1 min-w-0 overflow-hidden">
-              <div className="flex items-center gap-1.5 mb-1">
-                <h3 className="font-medium text-sm truncate text-foreground">
+              <div className="flex items-center gap-1 mb-1">
+                <h3 className="font-semibold text-xs truncate text-foreground">
                   {formatAddress(creatorAddress)}
                 </h3>
                 {creator.isVerified && (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                  <CheckCircle2 className="h-3 w-3 text-blue-500 flex-shrink-0" />
                 )}
               </div>
-              
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1 min-w-0">
-                  <Users className="h-3 w-3 flex-shrink-0" />
+
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-0.5 min-w-0">
+                  <Users className="h-2.5 w-2.5 flex-shrink-0" />
                   <span className="truncate">{creator.subscriberCount}</span>
                 </span>
-                <span className="flex items-center gap-1 min-w-0">
-                  <FileText className="h-3 w-3 flex-shrink-0" />
+                <span className="flex items-center gap-0.5 min-w-0">
+                  <FileText className="h-2.5 w-2.5 flex-shrink-0" />
                   <span className="truncate">{creator.contentCount}</span>
                 </span>
               </div>
             </div>
+          </div>
 
-            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-              <div className="text-xs font-medium text-blue-600 whitespace-nowrap">
-                {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}/mo
-              </div>
-              {showSubscribeButton && (
-                <SubscribeButton
-                  creatorAddress={creatorAddress}
-                  size="sm"
-                  variant="outline"
-                  className="h-6 px-2 text-xs whitespace-nowrap"
-                />
-              )}
+          {/* Subscription Price */}
+          <div className="mb-3 min-w-0">
+            <div className="text-[10px] text-muted-foreground mb-0.5">Monthly</div>
+            <div className="text-xs font-bold text-blue-600 truncate">
+              {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}
             </div>
+          </div>
+
+          {/* Action Buttons - Responsive and Compact */}
+          <div className="flex gap-1.5 mt-auto">
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation()
+                router.push(`/creator/${creatorAddress}`)
+              }}
+              size="sm"
+              className="text-[10px] h-6 px-2 flex-1 min-w-0 hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              <span className="truncate">View</span>
+            </Button>
+            {showSubscribeButton && (
+              <SubscribeButton
+                creatorAddress={creatorAddress}
+                size="sm"
+                variant="default"
+                className="text-[10px] h-6 px-2 flex-1 min-w-0 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              />
+            )}
+            <ShareButton
+              contentId={BigInt(0)}
+              title={`Check out creator ${formatAddress(creatorAddress)}`}
+              description={`${creator.subscriberCount} subscribers • ${creator.contentCount} content • ${formatCurrency(creator.totalEarnings, 6, 'USDC')} earned`}
+              creatorAddress={creatorAddress}
+              creatorName={formatAddress(creatorAddress)}
+              variant="compact"
+              className="text-[10px] h-6 px-2 flex-1 min-w-0"
+            />
           </div>
         </CardContent>
       </Card>
@@ -284,15 +311,26 @@ export function CreatorCard({
 function CreatorCardSkeleton({ variant }: { variant: string }) {
   if (variant === 'compact') {
     return (
-      <Card className="animate-pulse">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-muted rounded-full flex-shrink-0" />
+      <Card className="animate-pulse h-full">
+        <CardContent className="p-3 h-full flex flex-col">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 bg-muted rounded-full flex-shrink-0" />
             <div className="flex-1 space-y-2 min-w-0">
-              <div className="h-3 bg-muted rounded w-24" />
-              <div className="h-2 bg-muted rounded w-16" />
+              <div className="h-3 bg-muted rounded w-20" />
+              <div className="flex gap-3">
+                <div className="h-2 bg-muted rounded w-8" />
+                <div className="h-2 bg-muted rounded w-6" />
+              </div>
             </div>
-            <div className="w-12 h-6 bg-muted rounded flex-shrink-0" />
+          </div>
+          <div className="space-y-1 mb-3">
+            <div className="h-2 bg-muted rounded w-12" />
+            <div className="h-3 bg-muted rounded w-10" />
+          </div>
+          <div className="flex gap-1.5 mt-auto">
+            <div className="flex-1 h-6 bg-muted rounded" />
+            <div className="flex-1 h-6 bg-muted rounded" />
+            <div className="flex-1 h-6 bg-muted rounded" />
           </div>
         </CardContent>
       </Card>

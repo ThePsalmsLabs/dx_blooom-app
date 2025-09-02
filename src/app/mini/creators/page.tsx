@@ -373,9 +373,9 @@ function MiniAppCreatorsLoadingSkeleton() {
         </div>
         
         {/* Creators Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 sm:h-36 w-full" />
           ))}
         </div>
       </div>
@@ -454,12 +454,12 @@ function MiniAppCreatorsCore() {
   
   const handleTabChange = useCallback((tab: MiniAppCreatorsState['activeTab']) => {
     updateState({ activeTab: tab, currentPage: 1 })
-    
+
     // Update URL without causing reload
     const newUrl = new URL(window.location.href)
     newUrl.searchParams.set('tab', tab)
     window.history.pushState(null, '', newUrl.toString())
-    
+
     // Track analytics
     const category = CREATOR_CATEGORIES.find(c => c.id === tab)
     if (category) {
@@ -469,6 +469,31 @@ function MiniAppCreatorsCore() {
       })
     }
   }, [updateState, trackCreatorInteraction])
+
+  // Keyboard navigation for tabs
+  const handleKeyDown = useCallback((event: React.KeyboardEvent, currentTab: string) => {
+    const currentIndex = CREATOR_CATEGORIES.findIndex(cat => cat.id === currentTab)
+    let newIndex = currentIndex
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      newIndex = currentIndex > 0 ? currentIndex - 1 : CREATOR_CATEGORIES.length - 1
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault()
+      newIndex = currentIndex < CREATOR_CATEGORIES.length - 1 ? currentIndex + 1 : 0
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      newIndex = 0
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      newIndex = CREATOR_CATEGORIES.length - 1
+    }
+
+    if (newIndex !== currentIndex) {
+      const newTab = CREATOR_CATEGORIES[newIndex].id as MiniAppCreatorsState['activeTab']
+      handleTabChange(newTab)
+    }
+  }, [handleTabChange])
   
   const handleSearch = useCallback((query: string) => {
     updateState({ searchQuery: query, currentPage: 1 })
@@ -654,44 +679,95 @@ function MiniAppCreatorsCore() {
   SearchAndFilters.displayName = 'SearchAndFilters'
   
   const CategoryTabs = React.memo(() => (
-    <Tabs value={creatorsState.activeTab} onValueChange={(value) => handleTabChange(value as MiniAppCreatorsState['activeTab'])} className="w-full">
-      <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:grid-cols-4 md:w-full">
+    <div className="space-y-4">
+      {/* Tab Navigation Instructions */}
+      <div className="sr-only">
+        Use arrow keys to navigate between creator categories
+      </div>
+
+      {/* Mobile Navigation Hint */}
+      <div className="block sm:hidden text-center mb-2">
+        <p className="text-xs text-muted-foreground">
+          Swipe or tap to explore creator categories
+        </p>
+      </div>
+
+      <Tabs
+        value={creatorsState.activeTab}
+        onValueChange={(value) => handleTabChange(value as MiniAppCreatorsState['activeTab'])}
+        className="w-full"
+        orientation="horizontal"
+      >
+        <TabsList
+          className="grid grid-cols-2 gap-2 p-1 h-auto bg-muted/50 sm:flex sm:flex-row sm:justify-center sm:items-center sm:gap-1 sm:p-1 sm:h-12 sm:flex-wrap md:gap-2 md:justify-start lg:gap-3 xl:gap-4 xl:flex-nowrap rounded-xl shadow-sm border border-border/50"
+          onKeyDown={(e) => handleKeyDown(e, creatorsState.activeTab)}
+          role="tablist"
+          aria-label="Creator categories"
+        >
         {CREATOR_CATEGORIES.map((category) => (
-          <TabsTrigger 
-            key={category.id} 
+          <TabsTrigger
+            key={category.id}
             value={category.id}
-            className="flex items-center gap-1 text-xs px-2"
+            className="flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-2.5 h-auto min-h-[44px] w-full sm:w-auto sm:min-w-[100px] rounded-lg transition-all duration-200 hover:bg-background hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:border data-[state=active]:border-primary/20 data-[state=active]:ring-2 data-[state=active]:ring-primary/10 touch-manipulation select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <category.icon className="h-3 w-3" />
-            <span className="hidden sm:inline">{category.label}</span>
+            <category.icon className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate text-center leading-tight">{category.label}</span>
             {category.badge && (
-              <Badge variant="secondary" className="text-xs ml-1 hidden sm:inline">
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0.5 ml-0.5 bg-primary/10 text-primary border-primary/20 font-medium"
+              >
                 {category.badge}
               </Badge>
             )}
           </TabsTrigger>
         ))}
       </TabsList>
-      
+
+      {/* Active Tab Indicator */}
+      <div className="flex justify-center sm:justify-start">
+        <div className="text-center sm:text-left">
+          {(() => {
+            const activeCategory = CREATOR_CATEGORIES.find(cat => cat.id === creatorsState.activeTab)
+            return activeCategory ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20">
+                <activeCategory.icon className="h-3 w-3" />
+                {activeCategory.label}
+                {activeCategory.badge && (
+                  <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-0">
+                    {activeCategory.badge}
+                  </Badge>
+                )}
+              </div>
+            ) : null
+          })()}
+        </div>
+      </div>
+
       {CREATOR_CATEGORIES.map((category) => (
-        <TabsContent key={category.id} value={category.id} className="mt-4">
-          <div className="mb-4 text-center">
-            <p className="text-sm text-muted-foreground">
+        <TabsContent key={category.id} value={category.id} className="mt-6 animate-in fade-in-50 duration-300">
+          <div className="mb-4 p-4 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl border border-primary/10">
+            <div className="flex items-center gap-3 mb-2">
+              <category.icon className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-primary">{category.label}</h3>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
               {category.description}
             </p>
           </div>
         </TabsContent>
       ))}
     </Tabs>
+    </div>
   ))
   CategoryTabs.displayName = 'CategoryTabs'
   
   const CreatorsGrid = React.memo(() => {
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 w-full" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 sm:h-36 w-full" />
           ))}
         </div>
       )
@@ -724,14 +800,14 @@ function MiniAppCreatorsCore() {
     
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {currentCreators.slice(0, 12).map((creator) => (
             <CreatorCard
               key={creator.address}
               creatorAddress={creator.address}
               variant="compact"
               showSubscribeButton={true}
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02] h-fit"
               onClick={() => handleCreatorSelect(creator.address)}
             />
           ))}
