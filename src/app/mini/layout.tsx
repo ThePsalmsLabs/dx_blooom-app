@@ -100,6 +100,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   import { useIsCreatorRegistered } from '@/hooks/contracts/core'
   import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
   import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
+  import { ShareButton } from '@/components/ui/share-button'
   
   // ================================================
   // ENHANCED MINIAPP LAYOUT TYPES
@@ -766,25 +767,36 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			showNavigation={!deviceContext.isMobile || layoutState.connectionQuality !== 'poor'}
 			showHeader={true}
 			headerContent={
-			  layoutState.socialContext.isAvailable && socialProfile ? (
-				<div className="flex items-center space-x-2">
-				  <Avatar className="h-6 w-6">
-					<AvatarImage src={socialProfile.farcasterProfile?.pfpUrl} />
-					<AvatarFallback>
-					  {socialProfile.farcasterProfile?.displayName?.charAt(0) || '?'}
-					</AvatarFallback>
-				  </Avatar>
-				  <span className="text-sm font-medium hidden sm:inline">
-					{socialProfile.farcasterProfile?.displayName}
-				  </span>
-				  {layoutState.capabilities.canShare && (
+			  <div className="flex items-center space-x-3">
+				{layoutState.socialContext.isAvailable && socialProfile && (
+				  <>
+					<Avatar className="h-6 w-6">
+					  <AvatarImage src={socialProfile.farcasterProfile?.pfpUrl} />
+					  <AvatarFallback>
+						{socialProfile.farcasterProfile?.displayName?.charAt(0) || '?'}
+					  </AvatarFallback>
+					</Avatar>
+					<span className="text-sm font-medium hidden sm:inline">
+					  {socialProfile.farcasterProfile?.displayName}
+					</span>
+				  </>
+				)}
+				{layoutState.capabilities.canShare && (
+				  <ShareButton
+					contentId={BigInt(0)} // Platform share
+					title="Discover amazing content on @dxbloom!"
+					description="Premium content platform with instant USDC payments on Base. Join creators and unlock exclusive content! 🚀"
+					variant="ghost"
+					className="text-xs h-7 px-2"
+				  />
+				)}
+				{layoutState.socialContext.isAvailable && socialProfile && layoutState.capabilities.canShare && (
 					<Badge variant="secondary" className="text-xs">
 					  <Share2 className="h-3 w-3 mr-1" />
 					  Social
 					</Badge>
 				  )}
-				</div>
-			  ) : undefined
+			  </div>
 			}
 		  >
 		  {/* Enhanced content area with MiniApp optimizations */}

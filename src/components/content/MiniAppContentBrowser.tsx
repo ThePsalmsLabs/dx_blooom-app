@@ -17,16 +17,18 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { 
-  Play, 
-  Eye, 
-  RefreshCw, 
+import {
+  Play,
+  Eye,
+  RefreshCw,
   Wallet,
-  AlertCircle 
+  AlertCircle,
+  Share2
 } from 'lucide-react'
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
+import { ShareButton } from '@/components/ui/share-button'
 import type { Address } from 'viem'
 
 interface MiniAppContentBrowserProps {
@@ -238,11 +240,34 @@ function MiniAppContentBrowserCore({
                     {formatCurrency(BigInt(1000000))} {/* 0.01 USDC in wei */}
                   </Badge>
                 </div>
-                <MiniAppPurchaseButton 
+
+                {/* Social Proof Indicators */}
+                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    <span>1.2k views</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Share2 className="h-3 w-3" />
+                    <span>42 shares</span>
+                  </div>
+                </div>
+                <MiniAppPurchaseButton
                   contentId={contentId}
                   title={`Content #${contentId.toString()}`}
                   className="w-full"
                 />
+
+                {/* Share Button */}
+                <div className="flex gap-2 pt-2">
+                  <ShareButton
+                    contentId={contentId}
+                    title={`Content #${contentId.toString()}`}
+                    description="Premium content on Bloom platform"
+                    variant="compact"
+                    className="flex-1"
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}

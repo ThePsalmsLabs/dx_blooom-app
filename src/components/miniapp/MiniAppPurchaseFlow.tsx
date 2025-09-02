@@ -14,6 +14,8 @@ import { useTokenAllowance } from '@/hooks/contracts/core'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { useChainId } from 'wagmi'
 import { formatTokenBalance } from '@/lib/utils'
+import { useMiniAppSocial } from '@/hooks/business/miniapp-social'
+import { enhancedToast } from '@/lib/utils/toast'
 
 /**
  * Farcaster Embed Interface
@@ -248,6 +250,9 @@ export function MiniAppPurchaseFlow({
     contractAddresses?.PAY_PER_VIEW
   )
 
+  // Social sharing functionality
+  const { canShare, shareContent } = useMiniAppSocial()
+
   // Extract payment validation data
   const userBalance = purchaseFlow.userBalance || BigInt(0)
   const userAllowance = tokenAllowance.data || BigInt(0)
@@ -285,20 +290,32 @@ export function MiniAppPurchaseFlow({
       if (onPurchaseComplete) {
         onPurchaseComplete()
       }
-      
-      // Trigger social sharing if available and content embed exists
-      if (socialContext.canShare && contentEmbed && purchaseFlow.content) {
-        const shareText = 'Just unlocked premium content on Content Platform! 🔓'
-        
-        await socialContext.shareToCast(shareText, [contentEmbed])
-        
-        console.log('Purchase success shared to Farcaster')
+
+      // Trigger social sharing if available and content data exists
+      if (canShare && purchaseFlow.content) {
+        try {
+          const shareParams = {
+            contentId: contentId,
+            title: purchaseFlow.content.title,
+            description: purchaseFlow.content.description,
+            creatorAddress: purchaseFlow.content.creator as `0x${string}`,
+            creatorName: 'Creator',
+            customText: `Just unlocked "${purchaseFlow.content.title}" on @dxbloom! Premium content with instant USDC payments 🚀`
+          }
+
+          await shareContent(shareParams)
+          enhancedToast.success('Purchase shared to Farcaster!')
+          console.log('Purchase success shared to Farcaster')
+        } catch (shareError) {
+          console.warn('Social sharing failed after purchase:', shareError)
+          // Don't show error toast for sharing failures - purchase was successful
+        }
       }
     } catch (error) {
       console.error('Error in purchase success handler:', error)
       // Don't throw - we don't want social sharing failures to affect the purchase flow
     }
-  }, [onPurchaseComplete, socialContext, contentEmbed, purchaseFlow.content])
+  }, [onPurchaseComplete, canShare, shareContent, purchaseFlow.content, contentId])
   
   // Enhanced props for ContentPurchaseCard with Mini App support
   const enhancedPropsForWeb3Card = {

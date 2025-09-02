@@ -13,6 +13,7 @@ import {
 import { formatCurrency, formatAddress } from '@/lib/utils'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 import { SubscribeButton } from '@/components/subscription/SubscribeButton'
+import { ShareButton } from '@/components/ui/share-button'
 import type { Address } from 'viem'
 
 interface CreatorCardProps {
@@ -250,8 +251,8 @@ export function CreatorCard({
 
         {/* Action Buttons Section */}
         <div className="flex gap-2 mt-auto">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleViewProfile}
             size="sm"
             className="text-xs h-7 px-2.5 flex-1 min-w-0"
@@ -265,6 +266,15 @@ export function CreatorCard({
               className="text-xs h-7 px-2.5 flex-1 min-w-0"
             />
           )}
+          <ShareButton
+            contentId={BigInt(0)} // Use 0 for creator profile sharing
+            title={`Check out creator ${formatAddress(creatorAddress)}`}
+            description={`${creator.subscriberCount} subscribers • ${creator.contentCount} content pieces • ${formatCurrency(creator.totalEarnings, 6, 'USDC')} earned`}
+            creatorAddress={creatorAddress}
+            creatorName={formatAddress(creatorAddress)}
+            variant="compact"
+            className="text-xs h-7 px-2.5 flex-1 min-w-0"
+          />
         </div>
       </CardContent>
     </Card>

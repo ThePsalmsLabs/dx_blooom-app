@@ -56,8 +56,14 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  Skeleton
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from '@/components/ui/index'
+
+import { ShareButton } from '@/components/ui/share-button'
 
 // Import layout components
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -353,7 +359,10 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
                 )}
 
                 {/* Content Actions */}
-                <ContentActionsCard contentId={contentId} />
+                <ContentActionsCard
+                  contentId={contentId}
+                  contentData={contentQuery.data}
+                />
               </div>
             </div>
           </div>
@@ -742,26 +751,39 @@ function AccessStatusCard({
 
 /**
  * Content Actions Card Component
- * 
+ *
  * This component provides additional actions users can take with content.
  */
-function ContentActionsCard({ contentId: _contentId }: { contentId: bigint }) {
+function ContentActionsCard({
+  contentId,
+  contentData
+}: {
+  contentId: bigint
+  contentData: any
+}) {
   return (
     <Card>
       <CardContent className="p-6">
         <h3 className="font-semibold mb-4">Actions</h3>
-        
+
         <div className="space-y-3">
-          <Button variant="outline" size="sm" className="w-full justify-start">
-            <Share2 className="h-4 w-4 mr-2" />
-            Share Content
-          </Button>
-          
+          {contentData && (
+            <ShareButton
+              contentId={contentId}
+              title={contentData.title}
+              description={contentData.description}
+              creatorAddress={contentData.creator as `0x${string}`}
+              creatorName={`Creator ${contentData.creator.slice(0, 6)}...`}
+              variant="default"
+              className="w-full"
+            />
+          )}
+
           <Button variant="outline" size="sm" className="w-full justify-start">
             <Bookmark className="h-4 w-4 mr-2" />
             Save for Later
           </Button>
-          
+
           <Button variant="outline" size="sm" className="w-full justify-start text-red-600 hover:text-red-700">
             <Flag className="h-4 w-4 mr-2" />
             Report Content

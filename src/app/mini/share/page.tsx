@@ -69,29 +69,8 @@ export default function MiniAppSharePage() {
         window.open(twitterUrl, '_blank')
       }
       
-      // Track share analytics
+      // Track share analytics (handled by useMiniAppSocial hook)
       setShareCount(prev => prev + 1)
-      
-      // Send analytics to your backend
-      try {
-        await fetch('/api/analytics/share', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            platform,
-            contentId,
-            creatorAddress,
-            shareType,
-            referralCode,
-            userAddress: walletUI.address,
-            farcasterFid: farcasterContext?.user?.fid,
-            shareUrl,
-            timestamp: Date.now()
-          })
-        })
-      } catch (analyticsError) {
-        console.warn('Analytics tracking failed:', analyticsError)
-      }
       
       console.log('Share tracked:', { platform, contentId, creatorAddress, shareType, referralCode, userAddress: walletUI.address, farcasterContext: farcasterContext?.user?.fid })
     } catch (error) {

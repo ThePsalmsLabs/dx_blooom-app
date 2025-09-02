@@ -103,6 +103,7 @@ import {
 } from '@/hooks/web3/usePaymentFlowOrchestrator'
 
 // Import error recovery system
+import { CustomPurchaseModal } from '@/components/ui/custom-purchase-modal'
 
 /**
  * Payment Intent Phases
@@ -1786,13 +1787,41 @@ export function OrchestratedContentPurchaseCard({
         </CardFooter>
       </Card>
 
-      {/* Payment Method Selection Modal */}
-      <PaymentMethodSelector
+      {/* Custom Purchase Modal */}
+      <CustomPurchaseModal
         isOpen={paymentState.showMethodSelector}
         onClose={handleModalClose}
+        contentId={contentId}
+        contentTitle={content.title}
         contentPrice={content.payPerViewPrice}
-        availableMethods={availablePaymentMethods}
-        onMethodSelect={handleMethodSelect}
+        creatorAddress={content.creator}
+        onPurchaseSuccess={(method, txHash) => {
+          debug.log('Purchase successful:', { method, txHash })
+          // Handle successful purchase
+          if (onPurchaseSuccess) {
+            onPurchaseSuccess(contentId, {
+              success: true,
+              intentId: null,
+              transactionHash: txHash as `0x${string}`,
+              signature: null,
+              totalDuration: 0,
+              performanceMetrics: {
+                intentCreationTime: 0,
+                signatureWaitTime: 0,
+                executionTime: 0,
+                confirmationTime: 0
+              },
+              recoveryAttempts: 0,
+              errorCategory: null,
+              finalError: null
+            })
+          }
+        }}
+        onPurchaseError={(method, error) => {
+          debug.error('Purchase failed:', { method, error })
+          // Handle purchase error - could add error callback here if needed
+          console.error('Purchase error:', error)
+        }}
       />
     </>
   )
