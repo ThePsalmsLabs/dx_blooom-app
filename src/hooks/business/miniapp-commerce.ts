@@ -338,9 +338,24 @@ export function useUnifiedMiniAppPurchaseFlow(
   const authResult = useMiniAppAuth()
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
-  
+
   // Existing purchase flow infrastructure
   const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, userAddress || address)
+
+  // Extract stable values to prevent infinite re-renders
+  const stableAuthValues = useMemo(() => ({
+    isAuthenticated: authResult.isAuthenticated ?? false,
+    environmentType: authResult.environmentType ?? 'unknown',
+    userAddress: authResult.user?.address,
+    socialVerification: authResult.socialVerification
+  }), [authResult.isAuthenticated, authResult.environmentType, authResult.user?.address, authResult.socialVerification])
+
+  const stablePurchaseValues = useMemo(() => ({
+    content: basePurchaseFlow.content,
+    canPurchase: basePurchaseFlow.canExecutePayment ?? false,
+    isLoading: basePurchaseFlow.isLoading ?? false,
+    flowState: basePurchaseFlow.executionState ?? { step: 'idle' }
+  }), [basePurchaseFlow.content, basePurchaseFlow.canExecutePayment, basePurchaseFlow.isLoading, basePurchaseFlow.executionState])
   
   // Farcaster context for social verification
   const farcasterContext = useFarcasterContext()
@@ -400,21 +415,43 @@ export function useUnifiedMiniAppPurchaseFlow(
    * This function analyzes the current context and returns the optimal
    * purchase strategy with detailed reasoning and alternatives.
    */
+  // Create stable auth object for analysis
+  const stableAuthForAnalysis = useMemo(() => ({
+    ...authResult,
+    isAuthenticated: stableAuthValues.isAuthenticated,
+    environmentType: stableAuthValues.environmentType,
+    user: authResult.user,
+    socialVerification: stableAuthValues.socialVerification
+  }), [
+    authResult.isAuthenticated,
+    authResult.environmentType,
+    authResult.user?.address,
+    stableAuthValues.isAuthenticated,
+    stableAuthValues.environmentType,
+    stableAuthValues.socialVerification
+  ])
+
   const getOptimalPurchaseStrategy = useCallback((): StrategyAnalysisResult => {
     return analyzePurchaseStrategies(
-      authResult,
+      stableAuthForAnalysis,
       isConnected,
-      basePurchaseFlow.content?.payPerViewPrice, // Changed from contentDetails to content
-      authResult.environmentType,
+      stablePurchaseValues.content?.payPerViewPrice,
+      stableAuthValues.environmentType,
       finalConfig
     )
-  }, [authResult, isConnected, basePurchaseFlow.content, finalConfig])
+  }, [
+    stableAuthForAnalysis,
+    isConnected,
+    stablePurchaseValues.content?.payPerViewPrice,
+    stableAuthValues.environmentType,
+    finalConfig
+  ])
 
-  // Current strategy analysis
+  // Current strategy analysis - removed state updates to prevent infinite loops
   const strategyAnalysis = useMemo(() => {
     try {
       const analysis = getOptimalPurchaseStrategy()
-      
+
       // Validate strategy analysis
       if (!analysis || !analysis.selectedStrategy) {
         console.warn('Invalid strategy analysis, falling back to standard flow')
@@ -427,11 +464,11 @@ export function useUnifiedMiniAppPurchaseFlow(
           estimatedSteps: 2
         }
       }
-      
+
       return analysis
     } catch (error) {
       console.error('Strategy analysis failed:', error)
-      
+
       // Return safe fallback
       return {
         selectedStrategy: 'standard-flow' as const,
@@ -444,7 +481,7 @@ export function useUnifiedMiniAppPurchaseFlow(
     }
   }, [getOptimalPurchaseStrategy])
 
-  // Update unified state when strategy analysis changes
+  // Update unified state when strategy analysis changes - use stable values to prevent infinite loops
   useEffect(() => {
     setUnifiedState(prev => ({
       ...prev,
@@ -452,7 +489,7 @@ export function useUnifiedMiniAppPurchaseFlow(
       strategyAnalysis,
       isOptimized: strategyAnalysis.confidence > 80
     }))
-  }, [strategyAnalysis])
+  }, [strategyAnalysis.selectedStrategy, strategyAnalysis.confidence])
 
   // ===== SOCIAL CONTEXT COMPUTATION =====
   

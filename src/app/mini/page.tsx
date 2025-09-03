@@ -307,12 +307,11 @@ function MiniAppHomeCore() {
   })
   
   // Production hooks
-  const { 
-    context: miniAppContext, 
-    isMiniApp, 
-    isReady,
+  const {
+    context: miniAppContext,
+    isMiniApp,
     socialUser,
-    hasSocialContext 
+    hasSocialContext
   } = useMiniApp()
   
   // Get wallet connection status using MiniApp-specific hook
@@ -366,9 +365,9 @@ function MiniAppHomeCore() {
   // ================================================
   // PRODUCTION ANALYTICS TRACKING
   // ================================================
-  
+
   useEffect(() => {
-    if (isReady && isMiniApp) {
+    if (isMiniApp) {
       trackInteraction('home_page_viewed', {
         has_social_context: hasSocialContext,
         is_connected: isConnected,
@@ -376,12 +375,12 @@ function MiniAppHomeCore() {
         user_fid: socialUser?.fid || null
       })
     }
-  }, [isReady, isMiniApp, hasSocialContext, isConnected, isCreator, socialUser, trackInteraction])
-  
+  }, [isMiniApp, hasSocialContext, isConnected, isCreator, socialUser, trackInteraction])
+
   // ================================================
   // PRODUCTION RENDER COMPONENTS
   // ================================================
-  
+
   const WelcomeHeader = React.memo(() => (
     <div className="text-center space-y-3 mb-6">
       <div className="flex items-center justify-center gap-2">
@@ -510,13 +509,7 @@ function MiniAppHomeCore() {
   // ================================================
   // PRODUCTION MAIN RENDER
   // ================================================
-  
-  // Show loading skeleton while core data is loading
-  // Only show skeleton for essential data, not for wallet-dependent data
-  if (!isReady) {
-    return <MiniAppHomeLoadingSkeleton />
-  }
-  
+
   return (
     <div className="min-h-screen bg-background">
       {/* Fixed Navigation Header */}

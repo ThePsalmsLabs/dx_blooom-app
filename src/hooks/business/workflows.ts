@@ -279,7 +279,7 @@ export interface PurchaseProgress {
 /**
  * Token Information Interface
  */
-interface TokenInfo {
+export interface TokenInfo {
   address: Address
   symbol: string
   name: string

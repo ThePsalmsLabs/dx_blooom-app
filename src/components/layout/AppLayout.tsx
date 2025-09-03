@@ -359,10 +359,10 @@ export function AppLayout({
           )}
 
           {/* Main Content Area */}
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto pt-14 sm:pt-16">
             {/* Network Warning Banner */}
             {!isNetworkSupported && <NetworkWarningBanner />}
-            
+
             {/* Offline Warning Banner */}
             {!layoutState.isOnline && <OfflineWarningBanner />}
 
@@ -471,7 +471,7 @@ function AppHeader({
   // Portfolio integration for header display
   const { totalPortfolioValue, isLoading: balancesLoading } = useEnhancedTokenBalances()
   return (
-    <header className="border-b border-border/60 bg-background/95 backdrop-blur-lg relative z-40 shadow-sm">
+    <header className="border-b border-border/60 bg-background/95 backdrop-blur-lg fixed top-0 left-0 right-0 z-50 shadow-sm">
       <div className="container mx-auto px-2 sm:px-4">
         <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Left side - Logo and navigation toggle */}

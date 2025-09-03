@@ -172,9 +172,58 @@ export function MiniAppPurchaseButton({
   
   // Enhanced purchase flow with MiniApp batch transaction support
   const purchaseFlow = useUnifiedMiniAppPurchaseFlow(contentId, userAddress)
-  
+
   // Social sharing and engagement tracking capabilities
   const socialFlow = useMiniAppSocial()
+
+  // Ensure purchaseFlow has the expected structure with defaults
+  const safePurchaseFlow = useMemo(() => {
+    // Only recreate when specific properties change, not the whole object
+    const flowState = purchaseFlow?.flowState || { step: 'idle', progress: 0 }
+    const canPurchase = purchaseFlow?.canPurchase ?? false
+    const canUseBatchTransaction = purchaseFlow?.canUseBatchTransaction ?? false
+    const content = purchaseFlow?.content || null
+    const isLoading = purchaseFlow?.isLoading ?? false
+    
+    return {
+      ...purchaseFlow,
+      flowState,
+      canPurchase,
+      canUseBatchTransaction,
+      content,
+      isLoading
+    }
+  }, [
+    purchaseFlow?.flowState?.step,
+    purchaseFlow?.canPurchase,
+    purchaseFlow?.canUseBatchTransaction,
+    purchaseFlow?.content,
+    purchaseFlow?.isLoading
+  ])
+
+  // Ensure socialFlow has the expected structure with defaults
+  const safeSocialFlow = useMemo(() => {
+    // Only recreate when specific properties change, not the whole object
+    const sharingState = socialFlow?.sharingState || { 
+      isSharing: false, 
+      lastShareResult: null, 
+      shareCount: 0, 
+      error: null 
+    }
+    const canShare = socialFlow?.canShare ?? false
+    
+    return {
+      ...socialFlow,
+      sharingState,
+      canShare
+    }
+  }, [
+    socialFlow?.sharingState?.isSharing,
+    socialFlow?.sharingState?.lastShareResult,
+    socialFlow?.sharingState?.shareCount,
+    socialFlow?.sharingState?.error,
+    socialFlow?.canShare
+  ])
   
   // ===== COMPONENT STATE MANAGEMENT =====
   
@@ -195,7 +244,7 @@ export function MiniAppPurchaseButton({
    * batch transaction execution, social context tracking, and success callbacks.
    */
   const handlePurchaseAction = useCallback(async (): Promise<void> => {
-    if (!purchaseFlow.canUseBatchTransaction && !purchaseFlow.canPurchase) {
+    if (!safePurchaseFlow.canUseBatchTransaction && !safePurchaseFlow.canPurchase) {
       console.warn('Purchase not available in current state')
       return
     }
@@ -219,20 +268,20 @@ export function MiniAppPurchaseButton({
       }
 
       // Track purchase start
-      trackMiniAppEvent.purchaseStarted(contentId.toString(), formatUsdc(purchaseFlow.requiredAmount))
+      trackMiniAppEvent.purchaseStarted(contentId.toString(), formatUsdc(safePurchaseFlow.content?.requiredAmount || 0))
 
       console.group('🚀 MiniApp Purchase Button: Initiating Purchase')
       console.log('Content ID:', contentId.toString())
-      console.log('Batch Transaction Available:', purchaseFlow.canUseBatchTransaction)
-      console.log('Estimated Gas Savings:', purchaseFlow.performanceMetrics.gasSavingsPercentage)
+      console.log('Batch Transaction Available:', safePurchaseFlow.canUseBatchTransaction)
+      console.log('Estimated Gas Savings:', safePurchaseFlow.performanceMetrics?.gasSavingsPercentage || 0)
       console.groupEnd()
 
       // Execute the enhanced purchase flow
-      await purchaseFlow.purchaseWithBatchTransaction()
+      await safePurchaseFlow.purchaseWithBatchTransaction?.()
 
       // Track the purchase for social analytics
-      if (socialFlow.socialUser.fid) {
-        socialFlow.trackPurchase(contentId, purchaseFlow.requiredAmount)
+      if (safeSocialFlow.socialUser?.fid) {
+        safeSocialFlow.trackPurchase?.(contentId, safePurchaseFlow.content?.requiredAmount || 0)
       }
 
       // Update component state for success
@@ -248,8 +297,8 @@ export function MiniAppPurchaseButton({
       onAccessGranted?.(contentId)
 
       // Track purchase completion
-      const txHash = purchaseFlow.unifiedState.batchTransactionHash || 'unknown'
-      trackMiniAppEvent.purchaseCompleted(contentId.toString(), formatUsdc(purchaseFlow.requiredAmount), txHash)
+      const txHash = safePurchaseFlow.unifiedState?.batchTransactionHash || 'unknown'
+      trackMiniAppEvent.purchaseCompleted(contentId.toString(), formatUsdc(safePurchaseFlow.content?.requiredAmount || 0), txHash)
 
       console.log('✅ Purchase completed successfully')
 
@@ -284,7 +333,7 @@ export function MiniAppPurchaseButton({
    * social content that drives engagement and viral distribution.
    */
   const handleShareAction = useCallback(async (): Promise<void> => {
-    if (!socialFlow.canShare) {
+    if (!safeSocialFlow.canShare) {
       console.warn('Social sharing not available in current context')
       return
     }
@@ -301,11 +350,11 @@ export function MiniAppPurchaseButton({
       console.group('📱 MiniApp Purchase Button: Initiating Share')
       console.log('Content ID:', contentId.toString())
       console.log('Content Title:', title)
-      console.log('Social User:', socialFlow.socialUser)
+      console.log('Social User:', safeSocialFlow.socialUser)
       console.groupEnd()
 
       // Execute enhanced social sharing
-      const shareResult = await socialFlow.shareContent({
+      const shareResult = await safeSocialFlow.shareContent?.({
         contentId,
         title,
         description,
@@ -373,8 +422,8 @@ export function MiniAppPurchaseButton({
     }
 
     // Handle processing states
-    if (buttonState.isProcessingAction || purchaseFlow.flowState.step === 'purchasing') {
-      const isSharing = socialFlow.sharingState.isSharing
+    if (buttonState.isProcessingAction || safePurchaseFlow.flowState.step === 'purchasing') {
+      const isSharing = safeSocialFlow.sharingState.isSharing
       return {
         variant: 'default',
         onClick: () => {},
@@ -387,21 +436,21 @@ export function MiniAppPurchaseButton({
     }
 
     // Handle purchased content - show sharing option
-    if (purchaseFlow.hasAccess) {
+    if (safePurchaseFlow.content?.hasAccess) {
       return {
-        variant: (socialFlow.canShare ? 'outline' : 'secondary'),
-        onClick: socialFlow.canShare ? handleShareAction : () => {},
-        disabled: !socialFlow.canShare,
+        variant: (safeSocialFlow.canShare ? 'outline' : 'secondary'),
+        onClick: safeSocialFlow.canShare ? handleShareAction : () => {},
+        disabled: !safeSocialFlow.canShare,
         icon: Share2,
-        text: socialFlow.canShare ? 'Share' : 'Owned',
-        className: socialFlow.canShare
+        text: safeSocialFlow.canShare ? 'Share' : 'Owned',
+        className: safeSocialFlow.canShare
           ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
           : 'bg-green-100 text-green-700 cursor-default'
       }
     }
 
     // Handle insufficient funds
-    if (!purchaseFlow.canPurchase) {
+    if (!safePurchaseFlow.canPurchase) {
       return {
         variant: 'outline',
         onClick: () => {},
@@ -413,7 +462,7 @@ export function MiniAppPurchaseButton({
     }
 
     // Handle batch transaction ready state (MiniApp enhancement)
-    if (purchaseFlow.canUseBatchTransaction) {
+    if (safePurchaseFlow.canUseBatchTransaction) {
       return {
         variant: 'glow',
         onClick: handlePurchaseAction,
@@ -451,15 +500,15 @@ export function MiniAppPurchaseButton({
    * purchase flow errors, ensuring consistent error presentation.
    */
   useEffect(() => {
-    if (purchaseFlow.flowState.step === 'error' && purchaseFlow.flowState.error) {
+    if (safePurchaseFlow.flowState.step === 'error' && safePurchaseFlow.flowState.error) {
       setButtonState(prev => ({
         ...prev,
         lastActionResult: 'error',
-        lastActionError: purchaseFlow.flowState.error ?? null,
+        lastActionError: safePurchaseFlow.flowState.error ?? null,
         isProcessingAction: false
       }))
     }
-  }, [purchaseFlow.flowState])
+  }, [safePurchaseFlow.flowState])
 
   // ===== ENHANCED CONTEXT DISPLAY =====
   
@@ -475,17 +524,17 @@ export function MiniAppPurchaseButton({
     const contextItems = []
 
     // Show batch transaction benefit
-    if (purchaseFlow.canUseBatchTransaction) {
+    if (safePurchaseFlow.canUseBatchTransaction) {
       contextItems.push(
         <div key="batch-info" className="flex items-center gap-2 text-xs text-blue-600">
           <Zap className="h-3 w-3" />
-                          <span>Single-click purchase (saves ~{purchaseFlow.performanceMetrics.gasSavingsPercentage}% gas)</span>
+                          <span>Single-click purchase (saves ~{safePurchaseFlow.performanceMetrics?.gasSavingsPercentage || 0}% gas)</span>
         </div>
       )
     }
 
     // Show social context
-    if (socialFlow.isMiniAppEnvironment && socialFlow.socialUser.fid) {
+    if (safeSocialFlow.isMiniAppEnvironment && safeSocialFlow.socialUser?.fid) {
       contextItems.push(
         <div key="social-info" className="flex items-center gap-2 text-xs text-purple-600">
           <Share2 className="h-3 w-3" />

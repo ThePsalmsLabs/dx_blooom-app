@@ -177,7 +177,10 @@ export function CustomModal({
 
               {/* Close button */}
               <button
-                onClick={onClose}
+                onClick={() => {
+                  console.log('🚪 CustomModal: X button clicked')
+                  onClose()
+                }}
                 className={cn(
                   "flex-shrink-0 rounded-full p-2 text-muted-foreground cursor-pointer",
                   "hover:bg-muted hover:text-foreground",

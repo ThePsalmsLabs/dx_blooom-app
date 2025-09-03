@@ -128,6 +128,7 @@ export function ContentUpload({
   const [publishStatus, setPublishStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle')
   const [publishError, setPublishError] = useState<string>('')
   const [isDragging, setIsDragging] = useState(false)
+  const [showTransactionModal, setShowTransactionModal] = useState(false)
 
   // Handle file selection
   const handleFileSelect = useCallback(async (files: FileList | null) => {
@@ -199,6 +200,7 @@ export function ContentUpload({
     setPublishStatus('processing')
     setPublishError('')
     setIsPublishing(true)
+    setShowTransactionModal(true)
 
     try {
       const priceInWei = uploadData.accessType === 'premium'
@@ -266,6 +268,10 @@ export function ContentUpload({
       setPublishError('')
       console.log('✅ Content published successfully:', publishingUI.publishedContentId)
       onSuccess?.(publishingUI.publishedContentId)
+      // Auto-close modal after 3 seconds on success
+      setTimeout(() => {
+        setShowTransactionModal(false)
+      }, 3000)
     } else if (transactionStatus === 'failed' || hasError) {
       setPublishStatus('error')
       setPublishError(publishingUI.errorMessage || publishingUI.transactionStatus.formattedStatus || 'Publishing failed')
@@ -274,6 +280,7 @@ export function ContentUpload({
       setPublishStatus('idle')
       setPublishError('')
       setIsPublishing(false)
+      setShowTransactionModal(false)
     }
   }, [
     publishingUI.transactionStatus.status,
@@ -602,9 +609,14 @@ export function ContentUpload({
       )}
       
       <TransactionStatusModal
-        isOpen={publishingUI.transactionStatus.status === 'confirming' || publishingUI.transactionStatus.status === 'confirmed'}
-        onClose={() => {}}
+        isOpen={showTransactionModal}
+        onClose={() => setShowTransactionModal(false)}
         transactionStatus={publishingUI.transactionStatus}
+        transactionTitle="Content Publishing"
+        onSuccess={() => {
+          console.log('Transaction completed successfully')
+          setShowTransactionModal(false)
+        }}
       />
     </div>
   )

@@ -1,10 +1,10 @@
 'use client'
 
-import React, { ReactNode, useEffect, useMemo, useState, useCallback } from 'react'
-import { QueryClient } from '@tanstack/react-query'
+import React, { ReactNode, useEffect, useState, useCallback } from 'react'
+
 
 // Import your existing sophisticated provider and configuration systems
-import { EnhancedMiniAppProvider } from '@/contexts/MiniAppProvider'
+import { UnifiedMiniAppProvider } from '@/contexts/UnifiedMiniAppProvider'
 import { Toaster } from '@/components/ui/sonner'
 
 // Import error boundary and monitoring systems
@@ -121,10 +121,6 @@ function detectApplicationContext(forceContext?: 'web' | 'miniapp'): ContextDete
     const hasMiniAppSDK = 'MiniKit' in window || 'miniapp' in window
     
     // Check user agent for mobile indicators
-    const userAgent = navigator.userAgent.toLowerCase()
-    const isMobileUserAgent = userAgent.includes('mobile') || 
-                              userAgent.includes('android') || 
-                              userAgent.includes('iphone')
     
     // Determine if this is a MiniApp context
     const isMiniApp = isMiniAppPath || 
@@ -246,7 +242,7 @@ function LayoutErrorFallback({ error, resetError }: { error: Error; resetError: 
           <Alert>
             <AlertDescription>
               There was a problem initializing the application layout. This usually happens
-              when there's a configuration issue or network problem.
+              when there&apos;s a configuration issue or network problem.
             </AlertDescription>
           </Alert>
           
@@ -330,30 +326,7 @@ export function MiniAppLayout({
     initializationTime: null
   })
 
-  // Create React Query client with dynamic configuration
-  const queryClient = useMemo(() => {
-    const config = layoutState.layoutConfig?.queryClientConfig || {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
-      refetchOnWindowFocus: true
-    }
 
-    return new QueryClient({
-      defaultOptions: {
-        queries: {
-          staleTime: config.staleTime,
-          gcTime: config.gcTime,
-          refetchOnWindowFocus: config.refetchOnWindowFocus,
-          retry: (failureCount: number, error: Error) => {
-            // Smart retry logic based on error type
-            if (error?.message?.includes('Network')) return failureCount < 3
-            if (error?.message?.includes('Contract')) return failureCount < 2
-            return false
-          }
-        }
-      }
-    })
-  }, [layoutState.layoutConfig])
 
   // ===== INITIALIZATION LOGIC =====
 
@@ -426,7 +399,7 @@ export function MiniAppLayout({
     if (layoutState.layoutConfig?.enableErrorReporting) {
       // Example: sendErrorToService(error, errorInfo, layoutState.contextDetection)
     }
-  }, [layoutState.layoutConfig, layoutState.contextDetection])
+  }, [layoutState.layoutConfig])
 
   // ===== RENDER LOGIC =====
 
@@ -457,11 +430,10 @@ export function MiniAppLayout({
       onError={handleLayoutError}
       onReset={initializeLayout}
     >
-      <EnhancedMiniAppProvider
-        forceEnvironment={contextDetection?.isMiniApp ? 'farcaster' : 'web'}
+      <UnifiedMiniAppProvider
         enableAnalytics={layoutConfig?.enablePerformanceTracking || false}
+        enableOptimizations={true}
         fallbackToWeb={true}
-        debugMode={process.env.NODE_ENV === 'development'}
       >
             {/* Apply context-specific styling using your design token system */}
             <div 
@@ -490,7 +462,7 @@ export function MiniAppLayout({
                 Init: {layoutState.initializationTime?.toFixed(1)}ms
               </div>
             )}
-          </EnhancedMiniAppProvider>
+          </UnifiedMiniAppProvider>
     </ErrorBoundary>
   )
 }

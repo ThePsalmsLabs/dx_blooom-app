@@ -698,7 +698,7 @@ export function UnifiedAppProvider({
 
   const router = useRouter()
   const pathname = usePathname()
-  const { user, authenticated, logout } = usePrivy() // Use Privy for connection state and logout
+  const { user: _user, authenticated: _authenticated, logout } = usePrivy() // Use Privy for connection state and logout
   const walletUI = useWalletConnectionUI() // Use unified wallet UI for consistent state
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
@@ -971,7 +971,7 @@ export function UnifiedAppProvider({
     clearErrors: () => {
       dispatch({ type: 'ERRORS_CLEARED' })
     }
-  }), [router, connect, disconnect, connectors, queryClient])
+  }), [router, connect, disconnect, connectors, queryClient, logout])
 
   // ===== CONTEXT UTILITIES =====
 
@@ -1121,30 +1121,7 @@ export function useUnifiedAppUtils(): UnifiedAppContextValue['utils'] {
 // UTILITY FUNCTIONS
 // ================================================
 
-/**
- * Determines user role based on address and creator status
- */
-function determineUserRole(address?: Address, isRegisteredCreator?: boolean): UserRole {
-  if (!address) return 'disconnected'
-  
-  // Implement admin address detection
-  const adminAddresses: Address[] = [
-    // Add admin addresses here - these would be environment variables in production
-    process.env.NEXT_PUBLIC_ADMIN_ADDRESS_1 as Address,
-    process.env.NEXT_PUBLIC_ADMIN_ADDRESS_2 as Address,
-    process.env.NEXT_PUBLIC_ADMIN_ADDRESS_3 as Address,
-  ].filter(Boolean) as Address[]
-  
-  if (adminAddresses.includes(address)) {
-    return 'admin'
-  }
-  
-  if (isRegisteredCreator) {
-    return 'creator'
-  }
-  
-  return 'consumer'
-}
+
 
 /**
  * High-Order Component for providing unified app context

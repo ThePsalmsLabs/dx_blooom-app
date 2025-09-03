@@ -45,10 +45,8 @@ import React, {
 	ReactNode 
   } from 'react'
   import { ErrorBoundary } from 'react-error-boundary'
-  import { useRouter, usePathname } from 'next/navigation'
-  import { useChainId } from 'wagmi'
-  import { WagmiProvider } from 'wagmi'
-  import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+
   import {
 	AlertCircle,
 	RefreshCw,
@@ -85,13 +83,13 @@ import React, {
   import type {
 	EnhancedSocialProfile
   } from '@/types/miniapp'
-  import { 
-	EnhancedMiniAppProvider,
+  import {
+	UnifiedMiniAppProvider,
 	useMiniAppState,
 	useMiniAppActions,
 	useMiniAppEnvironment,
 	useEnhancedSocialProfile
-  } from '@/contexts/MiniAppProvider'
+  } from '@/contexts/UnifiedMiniAppProvider'
 
   import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
 import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
@@ -102,6 +100,77 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
   import { ShareButton } from '@/components/ui/share-button'
   import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
+
+  // ================================================
+  // TYPE DEFINITIONS FOR BROWSER APIS
+  // ================================================
+
+  /**
+   * Navigator Connection API Interface
+   */
+  interface NavigatorConnection {
+    readonly effectiveType: 'slow-2g' | '2g' | '3g' | '4g'
+    readonly addEventListener: (type: string, listener: () => void) => void
+    readonly removeEventListener: (type: string, listener: () => void) => void
+  }
+
+  /**
+   * Extended Navigator Interface
+   */
+  interface ExtendedNavigator extends Navigator {
+    readonly connection?: NavigatorConnection
+    readonly mozConnection?: NavigatorConnection
+    readonly webkitConnection?: NavigatorConnection
+    readonly getBattery?: () => Promise<BatteryManager>
+  }
+
+  /**
+   * Battery Manager Interface
+   */
+  interface BatteryManager {
+    readonly level: number
+    readonly charging: boolean
+  }
+
+  /**
+   * Performance Memory Interface
+   */
+  interface PerformanceMemory {
+    readonly usedJSHeapSize: number
+    readonly jsHeapSizeLimit: number
+  }
+
+  /**
+   * Extended Performance Interface
+   */
+  interface ExtendedPerformance extends Performance {
+    readonly memory?: PerformanceMemory
+  }
+
+  /**
+   * Analytics Tracking Interface
+   */
+  interface AnalyticsTracker {
+    readonly track: (event: string, properties: Record<string, unknown>) => void
+  }
+
+  /**
+   * Extended Window Interface
+   */
+  interface ExtendedWindow extends Window {
+    readonly analytics?: AnalyticsTracker
+  }
+
+  /**
+   * Performance Metrics Interface
+   */
+  interface PerformanceMetrics {
+    readonly loadTime: number
+    readonly renderTime: number
+    readonly interactionDelay: number
+    readonly memoryUsage: number
+    readonly renderScore: number
+  }
 
   // ================================================
   // ENHANCED MINIAPP LAYOUT TYPES
@@ -116,12 +185,12 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   interface EnhancedMiniAppLayoutProps {
 	readonly children: ReactNode
 	readonly className?: string
-	readonly enableSocialFeatures?: boolean
+
 	readonly enableAnalytics?: boolean
 	readonly showDebugInfo?: boolean
 	readonly fallbackToWeb?: boolean
-	readonly customErrorBoundary?: React.ComponentType<any>
-	readonly loadingComponent?: React.ComponentType<any>
+	readonly customErrorBoundary?: React.ComponentType<{ error: Error; resetErrorBoundary: () => void }>
+	readonly loadingComponent?: React.ComponentType<{ progress?: number }>
   }
   
   /**
@@ -370,9 +439,9 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		}
 		
 		// Connection detection
-		const connection = (navigator as any).connection || 
-						  (navigator as any).mozConnection || 
-						  (navigator as any).webkitConnection
+		const connection = (navigator as ExtendedNavigator).connection ||
+						  (navigator as ExtendedNavigator).mozConnection ||
+						  (navigator as ExtendedNavigator).webkitConnection
 		
 		let connectionType: DeviceContext['connectionType'] = 'wifi'
 		if (connection) {
@@ -396,7 +465,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		let batteryLevel: number | null = null
 		let isLowPowerMode = false
 		if ('getBattery' in navigator) {
-		  (navigator as any).getBattery().then((battery: any) => {
+		  (navigator as ExtendedNavigator).getBattery()?.then((battery: BatteryManager) => {
 			batteryLevel = battery.level
 			isLowPowerMode = battery.level < 0.2 && !battery.charging
 		  }).catch(() => {
@@ -429,14 +498,14 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	  
 	  // Connection change detection
 	  if ('connection' in navigator) {
-		(navigator as any).connection.addEventListener('change', updateDeviceContext)
+		(navigator as ExtendedNavigator).connection?.addEventListener('change', updateDeviceContext)
 	  }
-	  
+
 	  return () => {
 		window.removeEventListener('resize', updateDeviceContext)
 		window.removeEventListener('orientationchange', updateDeviceContext)
 		if ('connection' in navigator) {
-		  (navigator as any).connection.removeEventListener('change', updateDeviceContext)
+		  (navigator as ExtendedNavigator).connection?.removeEventListener('change', updateDeviceContext)
 		}
 	  }
 	}, [])
@@ -454,10 +523,10 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
    * This provides real-time performance monitoring that builds upon your
    * existing patterns while adding MiniApp-specific optimization tracking.
    */
-  function PerformanceMonitor({ 
-	onPerformanceUpdate 
-  }: { 
-	onPerformanceUpdate?: (metrics: any) => void 
+  function PerformanceMonitor({
+	onPerformanceUpdate
+  }: {
+	onPerformanceUpdate?: (metrics: PerformanceMetrics) => void
   }) {
 	const [metrics, setMetrics] = useState({
 	  loadTime: 0,
@@ -481,8 +550,10 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		// Memory usage (if available)
 		let memoryUsage = 0
 		if ('memory' in performance) {
-		  const memory = (performance as any).memory
-		  memoryUsage = memory.usedJSHeapSize / memory.jsHeapSizeLimit
+		  const memory = (performance as ExtendedPerformance).memory
+		  if (memory) {
+			memoryUsage = memory.usedJSHeapSize / memory.jsHeapSizeLimit
+		  }
 		}
 		
 		// Calculate render score based on various factors
@@ -607,50 +678,29 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
    * your existing AppLayout while adding MiniApp-specific optimizations.
    */
   function MiniAppLayoutContent({ children }: { children: ReactNode }) {
-	const chainId = useChainId()
-	const pathname = usePathname()
-	const router = useRouter()
+
 	
 	// Use MiniApp-specific wallet UI hook for proper state synchronization
 	const walletUI = useMiniAppWalletUI()
-	
+
 	// Get the FULL address from walletUI, not the formatted one
 	const fullAddress = walletUI.address
-	const isConnected = walletUI.isConnected
-	
+
 	// Integration with your existing hooks - use full address for contract calls
-	const { data: isCreatorRegistered } = useIsCreatorRegistered(fullAddress as `0x${string}` | undefined)
+	useIsCreatorRegistered(fullAddress as `0x${string}` | undefined)
 	
 	// MiniApp-specific hooks
 	const miniAppState = useMiniAppState()
 	const miniAppActions = useMiniAppActions()
 	const miniAppEnvironment = useMiniAppEnvironment()
 	const socialProfile = useEnhancedSocialProfile()
-	
+
 	// Device and performance monitoring
 	const deviceContext = useDeviceContext()
-	
-	// Layout state management
-	const [layoutState, setLayoutState] = useState<MiniAppLayoutState>({
-	  isInitialized: false,
-	  isReady: false,
-	  hasErrors: false,
-	  loadingProgress: 0,
-	  connectionQuality: 'good',
-	  socialContext: {
-		isAvailable: false,
-		userProfile: null,
-		shareCount: 0,
-		engagementScore: 0
-	  },
-	  capabilities: {
-		canShare: false,
-		canBatchTransactions: false,
-		hasEnhancedFeatures: false,
-		performanceLevel: 'medium'
-	  }
-	})
-	
+
+	// Simplified layout state - only track errors, not initialization
+	const [hasErrors, setHasErrors] = useState(false)
+
 	// Initialize layout when MiniApp is ready
 	useEffect(() => {
 	  const initializeLayout = async () => {
@@ -659,67 +709,30 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			// Signal ready to MiniApp platform
 			await miniAppActions.signalReady()
 		  }
-		  
-		  // Update layout state based on MiniApp capabilities
-		  setLayoutState(prev => ({
-			...prev,
-			isInitialized: true,
-			isReady: true,
-			loadingProgress: 100,
-			connectionQuality: deviceContext.connectionType === 'wifi' ? 'excellent' :
-							 deviceContext.connectionType === '4g' ? 'good' :
-							 deviceContext.connectionType === '3g' ? 'fair' : 'poor',
-			socialContext: {
-			  isAvailable: Boolean(socialProfile),
-			  userProfile: socialProfile,
-			  shareCount: miniAppState.socialEngagement.shareCount,
-			  engagementScore: miniAppState.socialEngagement.engagementScore
-			},
-			capabilities: {
-			  canShare: miniAppState.capabilities.social.canShare,
-			  canBatchTransactions: miniAppState.capabilities.wallet.canBatchTransactions,
-			  hasEnhancedFeatures: miniAppEnvironment.confidence > 0.8,
-			  performanceLevel: deviceContext.connectionType === 'wifi' && !deviceContext.isLowPowerMode ? 'high' :
-							   deviceContext.connectionType === '4g' ? 'medium' : 'low'
-			}
-		  }))
+		  setHasErrors(false)
 		} catch (error) {
 		  console.error('Layout initialization failed:', error)
-		  setLayoutState(prev => ({
-			...prev,
-			hasErrors: true,
-			isReady: true
-		  }))
+		  setHasErrors(true)
 		}
 	  }
-	  
+
 	  initializeLayout()
 	}, [
 	  miniAppEnvironment.isMiniApp,
 	  miniAppState.sdkState.isReady,
-	  miniAppActions,
-	  socialProfile,
-	  miniAppState.capabilities,
-	  miniAppState.socialEngagement,
-	  deviceContext,
-	  miniAppEnvironment.confidence
+	  miniAppActions
 	])
-	
+
 	// Performance monitoring
-	const handlePerformanceUpdate = useCallback((metrics: any) => {
+	const handlePerformanceUpdate = useCallback((metrics: PerformanceMetrics) => {
 	  // Could send to analytics service
 	  if (process.env.NODE_ENV === 'development') {
 		console.debug('MiniApp Performance:', metrics)
 	  }
 	}, [])
-	
-	// Determine user role using your existing patterns
-	const userRole = useMemo(() => {
-	  if (!isConnected || !fullAddress) return 'disconnected'
-	  if (isCreatorRegistered) return 'creator'
-	  return 'consumer'
-	}, [isConnected, fullAddress, isCreatorRegistered])
-	
+
+
+
 	// Apply device-specific optimizations
 	const layoutClassName = useMemo(() => {
 	  return cn(
@@ -731,7 +744,8 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		  'overflow-x-hidden'
 		],
 		// Performance-based optimizations
-		layoutState.capabilities.performanceLevel === 'low' && [
+		(deviceContext.connectionType === 'wifi' && !deviceContext.isLowPowerMode ? 'high' :
+		 deviceContext.connectionType === '4g' ? 'medium' : 'low') === 'low' && [
 		  'will-change-auto', // Disable hardware acceleration for low-end devices
 		  'reduced-motion'
 		],
@@ -741,14 +755,14 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		]
 	  )
 	}, [
-	  deviceContext.isMobile, 
-	  deviceContext.connectionType, 
-	  layoutState.capabilities.performanceLevel
+	  deviceContext.isMobile,
+	  deviceContext.connectionType,
+	  deviceContext.isLowPowerMode
 	])
-	
-	// Show loading state while initializing
-	if (!layoutState.isInitialized) {
-	  return <MiniAppLayoutLoading progress={layoutState.loadingProgress} />
+
+	// Simplified loading check - only show loading if there are errors
+	if (hasErrors) {
+	  return <MiniAppLayoutLoading progress={100} />
 	}
 	
 	return (
@@ -766,19 +780,19 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		{miniAppEnvironment.isMiniApp && (
 		  <SocialContextIndicator />
 		)}
-		
+
 		{/* Performance Monitor (development only) */}
 		<PerformanceMonitor onPerformanceUpdate={handlePerformanceUpdate} />
-		
+
 		{/* Your existing AppLayout enhanced for MiniApp with wallet context */}
 		<MiniAppWalletProvider>
 		  <AppLayout
 			className="miniapp-layout"
-			showNavigation={!deviceContext.isMobile || layoutState.connectionQuality !== 'poor'}
+			showNavigation={!deviceContext.isMobile || deviceContext.connectionType !== 'slow'}
 			showHeader={true}
 			headerContent={
 			  <div className="flex items-center space-x-3">
-				{layoutState.socialContext.isAvailable && socialProfile && (
+				{socialProfile && (
 				  <>
 					<Avatar className="h-6 w-6">
 					  <AvatarImage src={socialProfile.farcasterProfile?.pfpUrl} />
@@ -791,7 +805,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 					</span>
 				  </>
 				)}
-				{layoutState.capabilities.canShare && (
+				{miniAppState.capabilities.social.canShare && (
 				  <ShareButton
 					contentId={BigInt(0)} // Platform share
 					title="Discover amazing content on @dxbloom!"
@@ -800,7 +814,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 					className="text-xs h-7 px-2"
 				  />
 				)}
-				{layoutState.socialContext.isAvailable && socialProfile && layoutState.capabilities.canShare && (
+				{socialProfile && miniAppState.capabilities.social.canShare && (
 					<Badge variant="secondary" className="text-xs">
 					  <Share2 className="h-3 w-3 mr-1" />
 					  Social
@@ -814,11 +828,12 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			{/* Enhanced content wrapper */}
 			<div className={cn(
 			  'transition-all duration-200',
-			  layoutState.capabilities.performanceLevel === 'low' && 'transition-none'
+			  (deviceContext.connectionType === 'wifi' && !deviceContext.isLowPowerMode ? 'high' :
+			   deviceContext.connectionType === '4g' ? 'medium' : 'low') === 'low' && 'transition-none'
 			)}>
 			  {children}
 			</div>
-			
+
 			{/* Connection quality indicator */}
 			{deviceContext.connectionType === 'slow' && (
 			  <div className="fixed bottom-4 left-4 z-40">
@@ -830,14 +845,14 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 				</Alert>
 			  </div>
 			)}
-			
+
 			{/* Error state overlay */}
-			{layoutState.hasErrors && (
+			{hasErrors && (
 			  <div className="fixed inset-0 bg-background/80 backdrop-blur z-50 flex items-center justify-center">
 				<Alert className="max-w-md mx-4">
 				  <AlertCircle className="h-4 w-4" />
 				  <AlertDescription>
-					Some MiniApp features may not be working correctly. 
+					Some MiniApp features may not be working correctly.
 					<Button
 					  variant="link"
 					  size="sm"
@@ -925,7 +940,6 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   export default function EnhancedMiniAppLayout({
 	children,
 	className,
-	enableSocialFeatures = true,
 	enableAnalytics = true,
 	showDebugInfo = process.env.NODE_ENV === 'development',
 	fallbackToWeb = true,
@@ -933,66 +947,26 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	loadingComponent: CustomLoadingComponent
   }: EnhancedMiniAppLayoutProps) {
 	
-	// State for layout initialization
-	const [configError, setConfigError] = useState<Error | null>(null)
-	const [isConfigReady, setIsConfigReady] = useState(true)
-	
-	// Query client for React Query
-	const [queryClient] = useState(() => new QueryClient({
-	  defaultOptions: {
-		queries: {
-		  retry: (failureCount, error) => {
-			// Reduce retries in MiniApp context to improve performance
-			return failureCount < 2
-		  },
-		  staleTime: 1000 * 60 * 5, // 5 minutes - longer in MiniApp for performance
-		  gcTime: 1000 * 60 * 10, // 10 minutes (updated from cacheTime)
-		}
-	  }
-	}))
-	
+
+
 	// Initialize error recovery system
 	useEffect(() => {
 	  initializeErrorRecovery()
-	}, [])
-
-	// Initialize layout
-	useEffect(() => {
-	  setIsConfigReady(true)
 	}, [])
 	
 	// Error boundary component selection
 	const ErrorBoundaryComponent = CustomErrorBoundary || ErrorBoundary
 	const LoadingComponent = CustomLoadingComponent || MiniAppLayoutLoading
 	
-	// Show loading while config initializes
-	if (!isConfigReady) {
-	  return <LoadingComponent progress={75} />
-	}
-	
-	// Show error if config failed
-	if (configError) {
-	  return (
-		<div className="min-h-screen flex items-center justify-center bg-background p-4">
-		  <Alert className="max-w-md">
-			<AlertCircle className="h-4 w-4" />
-			<AlertDescription>
-			  Failed to initialize MiniApp. Please try refreshing the page.
-			</AlertDescription>
-		  </Alert>
-		</div>
-	  )
-	}
-	
 	return (
 	  <ErrorBoundaryComponent
 		FallbackComponent={MiniAppLayoutErrorFallback}
-		onError={(error, errorInfo) => {
+		onError={(_error, errorInfo) => {
 		  console.error('MiniApp Layout Error:', error, errorInfo)
 		  
 		  // Report to analytics if enabled
-		  if (enableAnalytics && typeof window !== 'undefined' && (window as any).analytics) {
-			(window as any).analytics.track('miniapp_layout_error', {
+		  if (enableAnalytics && typeof window !== 'undefined' && (window as ExtendedWindow).analytics) {
+			(window as ExtendedWindow).analytics?.track('miniapp_layout_error', {
 			  error_message: error.message,
 			  error_stack: error.stack,
 			  error_info: errorInfo,
@@ -1011,10 +985,10 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			  </div>
 			)}
 			<FastRPCProvider>
-			  <EnhancedMiniAppProvider
+			  <UnifiedMiniAppProvider
 				enableAnalytics={enableAnalytics}
+				enableOptimizations={true}
 				fallbackToWeb={fallbackToWeb}
-				debugMode={showDebugInfo}
 			  >
 					<Suspense fallback={<LoadingComponent progress={90} />}>
 					  <div className={cn('enhanced-miniapp-layout', className)}>
@@ -1023,7 +997,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 						</MiniAppLayoutContent>
 					  </div>
 					</Suspense>
-				</EnhancedMiniAppProvider>
+				</UnifiedMiniAppProvider>
 			</FastRPCProvider>
 
 	  </ErrorBoundaryComponent>

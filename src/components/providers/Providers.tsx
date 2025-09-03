@@ -5,7 +5,7 @@ import { UnifiedAppProvider } from '@/providers/UnifiedAppProvider'
 import { MiniKitProvider } from '@/components/providers/MiniKitProvider'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { Web3Provider } from '@/components/providers/Web3Provider'
-import { EnhancedMiniAppProvider } from '@/contexts/MiniAppProvider'
+import { UnifiedMiniAppProvider } from '@/contexts/UnifiedMiniAppProvider'
 import { BackendHealthProvider } from '@/contexts/BackendHealthContext'
 import { OnchainKitProvider } from '@/components/providers/OnchainKitProvider'
 import { Toaster } from 'sonner'
@@ -20,7 +20,7 @@ export function Providers({ children }: ProvidersProps) {
       <Web3Provider>
         <ThemeProvider>
           <MiniKitProvider>
-            <EnhancedMiniAppProvider>
+            <UnifiedMiniAppProvider>
               <BackendHealthProvider>
                 <UnifiedAppProvider forceContext="web">
                   {children}
@@ -49,7 +49,7 @@ export function Providers({ children }: ProvidersProps) {
                   />
                 </UnifiedAppProvider>
               </BackendHealthProvider>
-            </EnhancedMiniAppProvider>
+            </UnifiedMiniAppProvider>
           </MiniKitProvider>
         </ThemeProvider>
       </Web3Provider>

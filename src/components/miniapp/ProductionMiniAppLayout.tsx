@@ -2,20 +2,19 @@
 
 // Production-ready layout integrating MiniApp provider and optimization
 import React from 'react'
-import { EnhancedMiniAppProvider } from '@/contexts/MiniAppProvider'
+import { UnifiedMiniAppProvider } from '@/contexts/UnifiedMiniAppProvider'
 import { useMiniAppOptimization } from '@/hooks/miniapp/useMiniAppOptimization'
 
 interface ProductionMiniAppLayoutProps {
 	children: React.ReactNode
-	showNavigation?: boolean
 	showHeader?: boolean
 }
 
-export function ProductionMiniAppLayout({ children, showNavigation = false, showHeader = true }: ProductionMiniAppLayoutProps): React.ReactElement {
+export function ProductionMiniAppLayout({ children, showHeader = true }: ProductionMiniAppLayoutProps): React.ReactElement {
 	const { optimization, isMiniAppContext } = useMiniAppOptimization()
 
 	return (
-		<EnhancedMiniAppProvider>
+		<UnifiedMiniAppProvider>
 			<div
 				className={`min-h-screen ${isMiniAppContext ? 'miniapp-optimized' : ''}`}
 				data-connection={optimization.connectionType}
@@ -59,7 +58,7 @@ export function ProductionMiniAppLayout({ children, showNavigation = false, show
 					}
 				`}</style>
 			</div>
-		</EnhancedMiniAppProvider>
+		</UnifiedMiniAppProvider>
 	)
 }
 

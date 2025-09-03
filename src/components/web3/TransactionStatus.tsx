@@ -76,6 +76,20 @@ export function TransactionStatusModal({
   onSuccess,
   className
 }: TransactionStatusModalProps) {
+  // Debug logging for modal state
+  React.useEffect(() => {
+    console.log('🔍 TransactionStatusModal state:', {
+      isOpen,
+      status: transactionStatus.status,
+      hasOnClose: !!onClose
+    })
+  }, [isOpen, transactionStatus.status, onClose])
+
+  // Enhanced close handler with logging
+  const handleClose = React.useCallback(() => {
+    console.log('🔒 TransactionStatusModal: Close button clicked')
+    onClose()
+  }, [onClose])
   // Handle successful transaction completion
   React.useEffect(() => {
     if (transactionStatus.status === 'confirmed' && onSuccess) {
@@ -108,7 +122,7 @@ export function TransactionStatusModal({
   return (
     <CustomModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={`${transactionTitle} Status`}
       description={transactionStatus.formattedStatus}
       maxWidth="sm:max-w-md"
@@ -154,7 +168,7 @@ export function TransactionStatusModal({
           canRetry={transactionStatus.canRetry}
           onRetry={transactionStatus.retry}
           onReset={transactionStatus.reset}
-          onClose={onClose}
+          onClose={handleClose}
         />
       </div>
     </CustomModal>
@@ -408,18 +422,41 @@ function TransactionActionsSection({
   onReset: () => void
   onClose: () => void
 }) {
+  // Debug logging for button states
+  React.useEffect(() => {
+    console.log('🔘 TransactionActionsSection state:', {
+      status,
+      canRetry,
+      shouldShowClose: status === 'confirmed' || status === 'failed' || status === 'idle'
+    })
+  }, [status, canRetry])
+
+  const handleRetry = React.useCallback(() => {
+    console.log('🔄 Retry button clicked')
+    onRetry()
+  }, [onRetry])
+
+  const handleReset = React.useCallback(() => {
+    console.log('🔄 Reset button clicked')
+    onReset()
+  }, [onReset])
+
+  const handleClose = React.useCallback(() => {
+    console.log('❌ Close/Done button clicked')
+    onClose()
+  }, [onClose])
   return (
     <div className="flex flex-col gap-2">
       {/* Status-specific actions */}
       {status === 'failed' && (
         <div className="flex gap-2">
           {canRetry && (
-            <Button onClick={onRetry} variant="default" className="flex-1">
+            <Button onClick={handleRetry} variant="default" className="flex-1">
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry Transaction
             </Button>
           )}
-          <Button onClick={onReset} variant="outline" className="flex-1">
+          <Button onClick={handleReset} variant="outline" className="flex-1">
             Reset
           </Button>
         </div>
@@ -427,7 +464,7 @@ function TransactionActionsSection({
 
       {/* Close button */}
       {(status === 'confirmed' || status === 'failed' || status === 'idle') && (
-        <Button onClick={onClose} variant="outline" className="w-full">
+        <Button onClick={handleClose} variant="outline" className="w-full">
           <X className="h-4 w-4 mr-2" />
           {status === 'confirmed' ? 'Done' : 'Close'}
         </Button>
