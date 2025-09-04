@@ -512,13 +512,22 @@ export function UnifiedMiniAppProvider({
     const userAgent = navigator.userAgent.toLowerCase()
     const url = window.location
 
-    const isMiniApp = (
-      userAgent.includes('farcaster') ||
-      userAgent.includes('warpcast') ||
-      url.pathname.startsWith('/mini') ||
-      new URL(window.location.href).searchParams.get('miniApp') === 'true' ||
-      window.parent !== window
-    )
+    const indicators = {
+      farcasterUA: userAgent.includes('farcaster'),
+      warpcastUA: userAgent.includes('warpcast'),
+      miniPath: url.pathname.startsWith('/mini'),
+      miniParam: new URL(window.location.href).searchParams.get('miniApp') === 'true',
+      embedded: window.parent !== window
+    }
+
+    const isMiniApp = Object.values(indicators).some(Boolean)
+    
+    console.log('🔍 MiniApp Context Detection:', {
+      userAgent: userAgent.substring(0, 50) + '...',
+      pathname: url.pathname,
+      indicators,
+      result: isMiniApp ? 'miniapp' : 'web'
+    })
 
     return isMiniApp ? 'miniapp' : 'web'
   }, [])
@@ -561,20 +570,27 @@ export function UnifiedMiniAppProvider({
     }
 
     const initPromise = (async () => {
-      if (appContext !== 'miniapp') return
+      if (appContext !== 'miniapp') {
+        console.log('🔍 Not in MiniApp context, skipping SDK initialization')
+        return
+      }
 
       try {
+        console.log('🚀 Initializing MiniApp SDK...')
         dispatch({ type: 'SET_LOADING', payload: 'loading' })
 
         const { sdk } = await import('@farcaster/miniapp-sdk')
         sdkRef.current = sdk
+        console.log('✅ MiniApp SDK imported successfully')
 
         // Signal ready to MiniApp platform
+        console.log('📡 Calling sdk.actions.ready()...')
         await sdk.actions.ready()
+        console.log('✅ sdk.actions.ready() completed - splash screen should dismiss')
 
         dispatch({ type: 'SET_LOADING', payload: 'success' })
       } catch (error) {
-        console.warn('SDK initialization failed:', error)
+        console.error('❌ SDK initialization failed:', error)
         dispatch({ type: 'SET_ERROR', payload: error as Error })
         dispatch({ type: 'SET_LOADING', payload: 'error' })
       }

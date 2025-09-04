@@ -123,7 +123,7 @@ const PRODUCTION_NAVIGATION_SECTIONS: readonly NavigationSection[] = [
       {
         id: 'home',
         label: 'Home',
-        href: '/',
+        href: '/mini',
         icon: Home,
         roles: ['disconnected', 'consumer', 'creator', 'admin'],
         contexts: ['web', 'miniapp', 'embedded', 'social_share'],
@@ -133,7 +133,7 @@ const PRODUCTION_NAVIGATION_SECTIONS: readonly NavigationSection[] = [
       {
         id: 'browse',
         label: 'Discover',
-        href: '/browse',
+        href: '/mini/browse',
         icon: Compass,
         roles: ['disconnected', 'consumer', 'creator', 'admin'],
         contexts: ['web', 'miniapp', 'embedded', 'social_share'],
@@ -143,7 +143,7 @@ const PRODUCTION_NAVIGATION_SECTIONS: readonly NavigationSection[] = [
       {
         id: 'creators',
         label: 'Creators',
-        href: '/creators',
+        href: '/mini/creators',
         icon: Users,
         roles: ['disconnected', 'consumer', 'creator', 'admin'],
         contexts: ['web', 'miniapp'],
@@ -162,7 +162,7 @@ const PRODUCTION_NAVIGATION_SECTIONS: readonly NavigationSection[] = [
       {
         id: 'upload',
         label: 'Create Content',
-        href: '/create',
+        href: '/upload',
         icon: Upload,
         roles: ['creator', 'admin'],
         contexts: ['web', 'miniapp'],
@@ -661,6 +661,48 @@ function AdaptiveNavigationCore({
     </Sheet>
   ) : null
   
+  // ================================================
+  // MINIAPP-OPTIMIZED RENDERING
+  // ================================================
+  
+  // In miniapp context, show navigation items directly instead of hiding behind hamburger menu
+  if (currentContext === 'miniapp') {
+    return (
+      <div className="flex items-center justify-between w-full">
+        {/* Miniapp navigation bar - horizontal layout */}
+        <nav 
+          className="flex items-center space-x-4 flex-1" 
+          role="navigation" 
+          aria-label="Main navigation"
+        >
+          {filteredSections
+            .flatMap(section => section.items)
+            .slice(0, 4) // Limit to 4 main items for mobile space
+            .map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleNavigate(item)}
+                className={cn(
+                  "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  pathname === item.href
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+                type="button"
+              >
+                {item.icon && <item.icon className="h-4 w-4" />}
+                <span className="hidden sm:inline">{item.label}</span>
+              </button>
+            ))}
+        </nav>
+        
+        {/* Mobile menu for additional items */}
+        {mobileNavigation}
+      </div>
+    )
+  }
+  
+  // Standard responsive layout for web
   return (
     <>
       <div className="hidden md:block">

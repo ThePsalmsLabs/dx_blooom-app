@@ -792,8 +792,8 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		<MiniAppWalletProvider>
 		  <AppLayout
 			className="miniapp-layout"
-			showNavigation={!deviceContext.isMobile || deviceContext.connectionType !== 'slow'}
-			showHeader={true}
+			showNavigation={false}
+			showHeader={false}
 			headerContent={
 			  <div className="flex items-center space-x-3">
 				{socialProfile && socialProfile.userProfile && (
@@ -955,6 +955,35 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	// Initialize error recovery system
 	useEffect(() => {
 	  initializeErrorRecovery()
+	}, [])
+
+	// Fallback ready() call to ensure splash screen dismisses
+	useEffect(() => {
+	  let timeoutId: NodeJS.Timeout
+
+	  const ensureReady = async () => {
+		try {
+		  // Only try this if we're in a MiniApp context
+		  if (window.parent !== window || window.location.pathname.startsWith('/mini')) {
+			console.log('🔄 Fallback: Attempting to call sdk.actions.ready()...')
+			
+			const { sdk } = await import('@farcaster/miniapp-sdk')
+			await sdk.actions.ready()
+			console.log('✅ Fallback: sdk.actions.ready() completed successfully')
+		  }
+		} catch (error) {
+		  console.warn('⚠️ Fallback ready() call failed (this may be normal):', error)
+		}
+	  }
+
+	  // Call ready() after a short delay to ensure other providers have initialized
+	  timeoutId = setTimeout(ensureReady, 2000)
+
+	  return () => {
+		if (timeoutId) {
+		  clearTimeout(timeoutId)
+		}
+	  }
 	}, [])
 	
 	// Error boundary component selection

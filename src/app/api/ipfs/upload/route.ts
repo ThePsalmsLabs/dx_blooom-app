@@ -230,12 +230,29 @@ export async function POST(request: NextRequest) {
     })
     
     } catch (pinataError) {
-      console.error('❌ Pinata upload error:', pinataError)
-      throw pinataError // Re-throw to be caught by outer catch
+      // Better error handling for fetch failures
+      let errorMessage = 'Unknown Pinata upload error'
+
+      if (pinataError instanceof TypeError && pinataError.message.includes('fetch')) {
+        errorMessage = 'Network error: Unable to connect to IPFS service. Please check your internet connection.'
+      } else if (pinataError instanceof Error) {
+        errorMessage = pinataError.message
+      } else if (typeof pinataError === 'string') {
+        errorMessage = pinataError
+      } else {
+        try {
+          errorMessage = JSON.stringify(pinataError)
+        } catch {
+          errorMessage = String(pinataError)
+        }
+      }
+
+      console.error('❌ Pinata upload error:', errorMessage)
+      throw new Error(errorMessage) // Re-throw with better message
     }
 
   } catch (error) {
-    console.error('💥 IPFS upload error:', error)
+    console.error('💥 IPFS upload error:', error instanceof Error ? error.message : String(error))
 
     // Provide detailed error information for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

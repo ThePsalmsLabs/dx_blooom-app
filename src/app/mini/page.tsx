@@ -64,6 +64,7 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
 import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
+import { NavigationDebug } from '@/components/debug/NavigationDebug'
 
 // ================================================
 // PRODUCTION TYPE DEFINITIONS
@@ -563,6 +564,9 @@ function MiniAppHomeCore() {
       
       {/* Performance Monitor (Development Only) */}
       <PerformanceMonitor />
+      
+      {/* Navigation Debug (Development Only) */}
+      {process.env.NODE_ENV === 'development' && <NavigationDebug />}
     </div>
   )
 }

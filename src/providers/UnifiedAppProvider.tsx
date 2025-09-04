@@ -568,7 +568,7 @@ function useContextDetection(forceContext?: ApplicationContext): ApplicationCont
     // Check for MiniApp indicators
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
-      const isMiniAppRoute = url.pathname.startsWith('/miniapp')
+      const isMiniAppRoute = url.pathname.startsWith('/miniapp') || url.pathname.startsWith('/mini')
       const isMiniAppParam = url.searchParams.get('context') === 'miniapp'
       const isEmbedded = window.parent !== window
       const hasFrameContext = window.location !== window.parent.location

@@ -56,7 +56,7 @@ export function clearWagmiStorage(): void {
 
     console.log('✅ Wagmi storage cleared successfully')
   } catch (error) {
-    console.error('Failed to clear wagmi storage:', error)
+    console.error('Failed to clear wagmi storage:', error instanceof Error ? error.message : String(error))
   }
 }
 
@@ -86,7 +86,7 @@ export function clearMiniKitStorage(): void {
 
     console.log('✅ MiniKit storage cleared successfully')
   } catch (error) {
-    console.error('Failed to clear MiniKit storage:', error)
+    console.error('Failed to clear MiniKit storage:', error instanceof Error ? error.message : String(error))
   }
 }
 
@@ -119,7 +119,7 @@ export function resetAllStorage(): void {
 
     console.log('✅ All application storage reset successfully')
   } catch (error) {
-    console.error('Failed to reset storage:', error)
+    console.error('Failed to reset storage:', error instanceof Error ? error.message : String(error))
   }
 }
 
@@ -176,10 +176,51 @@ export async function checkNetworkConnectivity(): Promise<boolean> {
  * Applies multiple recovery strategies based on error type
  */
 export async function comprehensiveErrorRecovery(
-  error: Error | string,
+  error: Error | string | unknown,
   context: string = 'unknown'
 ): Promise<void> {
-  const errorMessage = typeof error === 'string' ? error : error.message
+  // Better error serialization to prevent empty object issues
+  let errorMessage: string
+  let errorDetails: any
+
+  if (typeof error === 'string') {
+    errorMessage = error
+    errorDetails = error
+  } else if (error instanceof Error) {
+    errorMessage = error.message || 'Unknown error'
+    errorDetails = {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      cause: error.cause
+    }
+  } else if (error === null || error === undefined) {
+    // Handle null/undefined errors explicitly
+    errorMessage = 'No error details available'
+    errorDetails = 'Empty or null error'
+  } else if (typeof error === 'object') {
+    // Handle objects that aren't Error instances
+    try {
+      const stringified = JSON.stringify(error)
+      if (stringified === '{}') {
+        errorMessage = 'Empty error object'
+        errorDetails = 'Received an empty object'
+      } else {
+        errorMessage = stringified.length > 200
+          ? 'Complex error object (too large to display)'
+          : stringified
+        errorDetails = error
+      }
+    } catch {
+      // If JSON.stringify fails, try to extract meaningful properties
+      const extractedMessage = (error as any)?.message || (error as any)?.error || (error as any)?.details
+      errorMessage = extractedMessage || 'Object error (unable to serialize)'
+      errorDetails = error
+    }
+  } else {
+    errorMessage = String(error)
+    errorDetails = error
+  }
 
   // Determine error type and apply appropriate recovery
   if (errorMessage.includes('connections.get') || errorMessage.includes('wagmi')) {
@@ -277,10 +318,33 @@ export function initializeErrorRecovery(): void {
 
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason)
+    // Better handling of promise rejection reasons to avoid empty object logging
+    let reason: any = event.reason
+
+    if (reason === undefined || reason === null) {
+      reason = 'Unhandled promise rejection with no reason'
+    } else if (typeof reason === 'object' && !reason.message && !reason.name) {
+      // If it's an object but not an Error, try to serialize it
+      try {
+        reason = JSON.stringify(reason)
+      } catch {
+        reason = String(reason)
+      }
+    }
+
+    // Better logging with proper error serialization
+    const logReason = reason === null || reason === undefined
+      ? 'No error details available'
+      : reason instanceof Error
+        ? reason.message
+        : typeof reason === 'object'
+          ? JSON.stringify(reason, null, 2) || 'Empty object'
+          : String(reason)
+
+    console.error('Unhandled promise rejection:', logReason)
 
     comprehensiveErrorRecovery(
-      event.reason instanceof Error ? event.reason : String(event.reason),
+      reason instanceof Error ? reason : reason,
       'unhandled_promise'
     )
 
@@ -290,7 +354,16 @@ export function initializeErrorRecovery(): void {
 
   // Handle unhandled errors
   window.addEventListener('error', (event) => {
-    console.error('Unhandled error:', event.error)
+    // Better logging with proper error serialization
+    const logError = event.error === null || event.error === undefined
+      ? 'No error object available'
+      : event.error instanceof Error
+        ? event.error.message
+        : typeof event.error === 'object'
+          ? JSON.stringify(event.error, null, 2) || 'Empty error object'
+          : String(event.error)
+
+    console.error('Unhandled error:', logError)
 
     if (event.error) {
       comprehensiveErrorRecovery(event.error, 'unhandled_error')
@@ -302,7 +375,7 @@ export function initializeErrorRecovery(): void {
   // Handle service worker errors (if applicable)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('error', (event) => {
-      console.error('Service worker error:', event)
+      console.error('Service worker error:', event instanceof ErrorEvent ? event.message : String(event))
 
       comprehensiveErrorRecovery(
         'Service worker encountered an error',
@@ -353,7 +426,7 @@ export function emergencyRecovery(): void {
     }, 3000)
 
   } catch (error) {
-    console.error('Emergency recovery failed:', error)
+    console.error('Emergency recovery failed:', error instanceof Error ? error.message : String(error))
 
     // Last resort - force reload immediately
     if (typeof window !== 'undefined') {
@@ -393,7 +466,7 @@ export function recoverWagmiCorruption(): void {
     })
 
   } catch (error) {
-    console.error('Wagmi recovery failed:', error)
+    console.error('Wagmi recovery failed:', error instanceof Error ? error.message : String(error))
     // Fall back to full emergency recovery
     emergencyRecovery()
   }

@@ -34,7 +34,7 @@ import {
 } from '@/hooks/commerce/useSocialPurchaseFlow'
 
 // Import your existing integrations and utilities
-import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
+import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 import { formatCurrency, formatAddress } from '@/lib/utils'
 
 // ================================================

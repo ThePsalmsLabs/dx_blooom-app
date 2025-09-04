@@ -150,25 +150,53 @@ export const enhancedToast = {
 /**
  * Utility to extract user-friendly error messages
  */
-export const getCleanErrorMessage = (error: Error | string): string => {
+export const getCleanErrorMessage = (error: Error | string | unknown): string => {
   if (typeof error === 'string') return error
-  
-  // Clean up common error patterns
-  let message = error.message || 'An unexpected error occurred'
-  
-  // Remove technical details that users don't need
-  message = message.replace(/Request Arguments:[\s\S]*?Details:/, '')
-  message = message.replace(/Cannot read properties of undefined.*?reading.*?'/g, 'Data loading error')
-  message = message.replace(/viem@.*?Version:/g, '')
-  message = message.replace(/0x[a-fA-F0-9]{40,}/g, '[Address]')
-  message = message.replace(/0x[a-fA-F0-9]{64}/g, '[Transaction]')
-  
-  // Truncate very long messages
-  if (message.length > 200) {
-    message = message.substring(0, 200) + '...'
+
+  if (error instanceof Error) {
+    // Clean up common error patterns
+    let message = error.message || 'An unexpected error occurred'
+
+    // Remove technical details that users don't need
+    message = message.replace(/Request Arguments:[\s\S]*?Details:/, '')
+    message = message.replace(/Cannot read properties of undefined.*?reading.*?'/g, 'Data loading error')
+    message = message.replace(/viem@.*?Version:/g, '')
+    message = message.replace(/0x[a-fA-F0-9]{40,}/g, '[Address]')
+    message = message.replace(/0x[a-fA-F0-9]{64}/g, '[Transaction]')
+
+    // Truncate very long messages
+    if (message.length > 200) {
+      message = message.substring(0, 200) + '...'
+    }
+
+    return message
   }
-  
-  return message
+
+  // Handle non-Error objects to prevent [object Object]
+  if (error && typeof error === 'object') {
+    // Try to extract a meaningful message from common error object patterns
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message
+    }
+    if ('error' in error && typeof error.error === 'string') {
+      return error.error
+    }
+    if ('details' in error && typeof error.details === 'string') {
+      return error.details
+    }
+
+    // If we can't find a string message, try to stringify safely
+    try {
+      const stringified = JSON.stringify(error)
+      return stringified.length > 200 ? 'Complex error object' : stringified
+    } catch {
+      // If JSON.stringify fails, provide a fallback
+      return 'Error object (unable to display details)'
+    }
+  }
+
+  // Handle null, undefined, or other types
+  return error ? String(error) : 'An unexpected error occurred'
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { UnifiedAppProvider } from '@/providers/UnifiedAppProvider'
 import { MiniKitProvider } from '@/components/providers/MiniKitProvider'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
@@ -9,12 +9,18 @@ import { UnifiedMiniAppProvider } from '@/contexts/UnifiedMiniAppProvider'
 import { BackendHealthProvider } from '@/contexts/BackendHealthContext'
 import { OnchainKitProvider } from '@/components/providers/OnchainKitProvider'
 import { Toaster } from 'sonner'
+import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 
 interface ProvidersProps {
   children: React.ReactNode
 }
 
 export function Providers({ children }: ProvidersProps) {
+  // Initialize error recovery system for all app contexts
+  useEffect(() => {
+    initializeErrorRecovery()
+  }, [])
+
   return (
     <OnchainKitProvider>
       <Web3Provider>
@@ -22,7 +28,7 @@ export function Providers({ children }: ProvidersProps) {
           <MiniKitProvider>
             <UnifiedMiniAppProvider>
               <BackendHealthProvider>
-                <UnifiedAppProvider forceContext="web">
+                <UnifiedAppProvider>
                   {children}
                   {/* Enhanced Toaster with beautiful glassmorphism styling */}
                   <Toaster

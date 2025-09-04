@@ -92,6 +92,15 @@ export interface MiniAppAuthState {
   readonly error: Error | null
   readonly isInitialized: boolean
   readonly environmentType: 'web' | 'miniapp' | 'unknown'
+  readonly farcasterAuth?: {
+    readonly fid: number
+    readonly username: string
+    readonly displayName?: string
+    readonly pfpUrl?: string
+    readonly isVerified: boolean
+    readonly signature: string
+    readonly message: string
+  }
 }
 
 /**
@@ -543,6 +552,94 @@ export function useMiniAppAuth(): MiniAppAuthResult {
   // ===== AUTHENTICATION ACTIONS =====
   
   /**
+   * Farcaster Quick Auth Implementation
+   * 
+   * This function implements Farcaster's recommended Quick Auth flow instead of
+   * direct SIWF implementation. Quick Auth is the preferred method for miniapps
+   * as it handles the authentication complexity while providing a secure JWT token.
+   */
+  const signInWithFarcaster = useCallback(async (): Promise<void> => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true, error: null }))
+      debug.log('🎭 Starting Farcaster Quick Auth flow')
+      
+      // Import the Farcaster SDK dynamically
+      const { sdk } = await import('@farcaster/miniapp-sdk')
+      
+      // Wait for the SDK to be ready
+      await sdk.actions.ready()
+      
+      debug.log('📝 Getting Quick Auth token from Farcaster')
+      
+      // Use Quick Auth to get a JWT token (recommended approach)
+      const authResult = await sdk.quickAuth.getToken()
+      
+      if (!authResult || !authResult.token) {
+        throw new Error('Failed to get authentication token from Farcaster')
+      }
+      
+      debug.log('✅ Quick Auth token received:', {
+        hasToken: !!authResult.token,
+        tokenLength: authResult.token.length
+      })
+      
+      // Verify the JWT token on our backend
+      const verificationResponse = await fetch('/api/auth/verify-quickauth', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authResult.token}`
+        },
+        body: JSON.stringify({
+          token: authResult.token
+        })
+      })
+      
+      if (!verificationResponse.ok) {
+        throw new Error('Failed to verify authentication token')
+      }
+      
+      const verificationResult = await verificationResponse.json()
+      
+      if (!verificationResult.valid) {
+        throw new Error('Invalid authentication token')
+      }
+      
+      // Update auth state with verified Farcaster credentials
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: false,
+        isInitialized: true,
+        environmentType: 'miniapp',
+        farcasterAuth: {
+          fid: verificationResult.fid,
+          username: verificationResult.username,
+          displayName: verificationResult.displayName,
+          pfpUrl: verificationResult.pfpUrl,
+          isVerified: true,
+          signature: '', // Quick Auth doesn't expose raw signatures
+          message: 'Authenticated via Farcaster Quick Auth'
+        }
+      }))
+      
+      debug.log('✅ Farcaster Quick Auth completed successfully')
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Farcaster authentication failed'
+      console.error('❌ Farcaster Quick Auth error:', errorMessage)
+      
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: false,
+        isError: true,
+        error: error instanceof Error ? error : new Error(errorMessage)
+      }))
+      
+      throw error
+    }
+  }, [])
+  
+  /**
    * Login Function
    * 
    * This function handles the login process for both web and MiniApp environments,
@@ -552,25 +649,11 @@ export function useMiniAppAuth(): MiniAppAuthResult {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }))
       
-      // Check if we're in a MiniApp environment and have Farcaster context
-      if (environmentType === 'miniapp' && farcasterContext?.user) {
-        // In MiniApp, we can use Farcaster context for social authentication
-        debug.log('🚀 MiniApp social login initiated')
-        
-        // Validate Farcaster user data
-        if (!farcasterContext.user.fid || !farcasterContext.user.username) {
-          throw new Error('Invalid Farcaster user data')
-        }
-        
-        // Set authentication state to reflect social login
-        setAuthState(prev => ({ 
-          ...prev, 
-          isLoading: false,
-          isInitialized: true,
-          environmentType: 'miniapp'
-        }))
-        
-        debug.log('✅ MiniApp social login completed')
+      // Check if we're in a MiniApp environment
+      if (environmentType === 'miniapp') {
+        // Use proper Farcaster Sign-In flow
+        debug.log('🚀 MiniApp environment detected, using Farcaster Sign-In')
+        await signInWithFarcaster()
       } else {
         // Standard web authentication - trigger wallet connection
         debug.log('🚀 Web wallet login initiated')
@@ -598,7 +681,7 @@ export function useMiniAppAuth(): MiniAppAuthResult {
         error: error instanceof Error ? error : new Error(errorMessage)
       }))
     }
-  }, [environmentType, farcasterContext, walletUI.isConnected])
+  }, [environmentType, signInWithFarcaster, walletUI.isConnected])
 
   /**
    * Logout Function

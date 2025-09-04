@@ -112,7 +112,12 @@ function buildFarcasterManifest(): FarcasterManifest {
       splashBackgroundColor: "#FF6B35",
       webhookUrl: `${normalizedBaseUrl}/api/farcaster/webhook`,
       subtitle: "Premium content, pay with USDC",
-      description: "Discover premium content from top creators. Purchase with instant USDC payments on Base. Support creators directly through subscriptions and one-time purchases.",
+      description: "Discover premium content from top creators. Purchase with instant USDC payments on Base network. Support creators directly through subscriptions.",
+      screenshotUrls: [
+        `${normalizedBaseUrl}/images/miniapp-screenshot-1.png`,
+        `${normalizedBaseUrl}/images/miniapp-screenshot-2.png`,
+        `${normalizedBaseUrl}/images/miniapp-screenshot-3.png`
+      ],
       primaryCategory: "social",
       tags: ["content", "social", "subscription", "onchain", "premium"],
       heroImageUrl: `${normalizedBaseUrl}/images/miniapp-og-image.png`,
@@ -121,11 +126,13 @@ function buildFarcasterManifest(): FarcasterManifest {
       ogDescription: "Discover premium content from top creators. Purchase with instant USDC payments on Base.",
       ogImageUrl: `${normalizedBaseUrl}/images/miniapp-og-image.png`,
       castShareUrl: `${normalizedBaseUrl}/mini/share`,
+      noindex: process.env.NODE_ENV === 'development',
       requiredChains: ["eip155:8453"], // Base mainnet
       requiredCapabilities: [
         "actions.signIn",
         "wallet.getEthereumProvider",
-        "actions.swapToken"
+        "actions.swapToken",
+        "actions.composeCast"
       ],
       canonicalDomain: "dxbloom.com"
     }

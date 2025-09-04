@@ -498,7 +498,7 @@ export function handlePlatformError(
     // Determine severity
     const severity = options.severity || determineErrorSeverity(category, context, error)
 
-    // Generate user-friendly message
+    // Generate user-friendly message with better error serialization
     const message = generateErrorMessage(error, category, context, severity)
 
     // Get device context
@@ -627,14 +627,37 @@ export function handlePlatformError(
 
     // Log error for monitoring (in production, this would go to your error tracking service)
     if (process.env.NODE_ENV === 'development') {
+      // Properly serialize error object to avoid empty object logging
+      const errorToLog = typeof error === 'string'
+        ? error
+        : error instanceof Error
+          ? {
+              message: error.message,
+              name: error.name,
+              stack: error.stack,
+              cause: error.cause
+            }
+          : error || 'Unknown error'
+
       console.error('[Platform Error Handler]', {
-        error: typeof error === 'string' ? error : error.message,
+        error: errorToLog,
         metadata,
         recoveryActions: recoveryActions.map(a => a.label)
       })
     } else {
-      // Production error logging
-      console.error('[Error]', message, metadata)
+      // Production error logging - ensure proper serialization
+      const errorToLog = typeof error === 'string'
+        ? error
+        : error instanceof Error
+          ? error.message
+          : error && typeof error === 'object'
+            ? JSON.stringify(error)
+            : String(error || 'Unknown error')
+
+      console.error('[Error]', message, {
+        ...metadata,
+        originalError: errorToLog
+      })
     }
 
     return {

@@ -42,7 +42,7 @@ export function useZoraService() {
     try {
       return new ZoraIntegrationService(publicClient, walletClient, chainId)
     } catch (error) {
-      console.error('Failed to initialize Zora service:', error)
+      console.error('Failed to initialize Zora service:', error instanceof Error ? error.message : String(error))
       return null
     }
   }, [publicClient, walletClient, chainId])
@@ -84,7 +84,7 @@ export function useCreatorZoraCollection() {
           setCollectionAddress(collection.zoraCollectionAddress)
         }
       } catch (error) {
-        console.error('Error loading collection address:', error)
+        console.error('Error loading collection address:', error instanceof Error ? error.message : String(error))
       }
     }
 
@@ -147,13 +147,13 @@ export function useCreatorZoraCollection() {
 
           const dbResult = await dbService.storeCreatorCollection(collectionData)
           if (!dbResult.success) {
-            console.error('Failed to store collection atomically:', dbResult.error)
+            console.error('Failed to store collection atomically:', dbResult.error || 'Unknown error')
             // Don't throw here as the collection was created successfully on-chain
           } else {
             console.log('✅ Collection stored atomically:', dbResult.transactionId)
           }
         } catch (error) {
-          console.error('Error storing collection in database:', error)
+          console.error('Error storing collection in database:', error instanceof Error ? error.message : String(error))
           // Don't throw here as the collection was created successfully
         }
 
@@ -304,7 +304,7 @@ export function useContentNFTMinting(collectionAddress?: Address) {
 
           const dbResult = await dbService.storeContentNFTRecord(nftRecord)
           if (!dbResult.success) {
-            console.error('Failed to store NFT record atomically:', dbResult.error)
+            console.error('Failed to store NFT record atomically:', dbResult.error || 'Unknown error')
             // Don't throw here as the NFT was minted successfully on-chain
           } else {
             console.log('✅ NFT record stored atomically:', dbResult.transactionId)
@@ -385,14 +385,14 @@ export function useContentNFTStatus(contentId: string, creatorAddress?: Address)
             setNftData({ isMinted: false })
           }
         } catch (error) {
-          console.error('Error fetching NFT details:', error)
+          console.error('Error fetching NFT details:', error instanceof Error ? error.message : String(error))
           setNftData({ isMinted: false })
         }
       } else {
         setNftData({ isMinted: false })
       }
     } catch (error) {
-      console.error('Error checking NFT status:', error)
+      console.error('Error checking NFT status:', error instanceof Error ? error.message : String(error))
       setNftData({ isMinted: false })
     }
   }, [service, contentId, creatorAddress])
@@ -452,7 +452,7 @@ export function useZoraCollectionAnalytics(collectionAddress?: Address) {
 
       setAnalytics(realAnalytics)
     } catch (error) {
-      console.error('Error fetching collection analytics:', error)
+      console.error('Error fetching collection analytics:', error instanceof Error ? error.message : String(error))
       setAnalytics(prev => ({
         ...prev,
         loading: false,
@@ -652,7 +652,7 @@ export function useIntegratedContentPublishing() {
 
           const dbResult = await dbService.storeContentNFTRecord(nftRecord)
           if (!dbResult.success) {
-            console.error('Failed to store NFT record atomically:', dbResult.error)
+            console.error('Failed to store NFT record atomically:', dbResult.error || 'Unknown error')
             // Don't throw here as the NFT was minted successfully on-chain
           } else {
             console.log('✅ NFT record stored atomically:', dbResult.transactionId)
@@ -759,11 +759,26 @@ async function uploadMetadataToIPFS(metadata: ZoraNFTMetadata): Promise<{ succes
     const formData = new FormData()
     formData.append('file', metadataFile)
 
-    const response = await fetch('/api/ipfs/upload', { 
-      method: 'POST', 
-      body: formData 
+    const response = await fetch('/api/ipfs/upload', {
+      method: 'POST',
+      body: formData
     })
-    
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      let errorMessage = 'IPFS upload failed'
+
+      try {
+        const errorData = JSON.parse(errorText)
+        errorMessage = errorData.error || errorData.details || errorMessage
+      } catch {
+        // If response isn't JSON, use the raw text
+        errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`
+      }
+
+      throw new Error(`IPFS upload failed: ${errorMessage}`)
+    }
+
     const result = await response.json() as { success?: boolean; hash?: string; error?: string }
     
     if (!response.ok || !result?.hash) {
@@ -775,7 +790,7 @@ async function uploadMetadataToIPFS(metadata: ZoraNFTMetadata): Promise<{ succes
       hash: result.hash
     }
   } catch (error) {
-    console.error('Error uploading metadata to IPFS:', error)
+    console.error('Error uploading metadata to IPFS:', error instanceof Error ? error.message : String(error))
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed'
