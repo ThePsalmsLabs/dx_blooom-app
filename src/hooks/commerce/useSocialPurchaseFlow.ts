@@ -45,12 +45,22 @@ import { getContractAddresses } from '@/lib/contracts/config'
 import { PAY_PER_VIEW_ABI, ERC20_ABI } from '@/lib/contracts/abis'
 
 // Import your existing MiniApp and social integrations
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useSocialCommerceAnalytics } from '@/hooks/useSocialCommerceAnalytics'
 
 // Import your existing utilities
 import { formatAddress } from '@/lib/utils'
 import type { Content, Creator } from '@/types/contracts'
+
+// MiniApp context interface for recommendation source determination
+interface MiniAppContext {
+  readonly isMiniApp: boolean
+  readonly socialUser?: {
+    readonly fid?: number
+    readonly username?: string
+    readonly displayName?: string
+  } | null
+}
 
 // ================================================
 // SOCIAL PURCHASE INTERFACES
@@ -194,7 +204,8 @@ class SocialPurchaseAnalyzer {
     content: Content,
     creator: Creator | null,
     userAddress: Address | undefined,
-    miniAppContext: ReturnType<typeof useMiniApp>
+    miniAppUtils: ReturnType<typeof useMiniAppUtils>,
+    socialState: ReturnType<typeof useSocialState>
   ): Promise<SocialPurchaseContext> {
     
     // Extract social profiles from your existing MiniApp context
@@ -206,11 +217,11 @@ class SocialPurchaseAnalyzer {
       followerCount: 0
     } : null
     
-    const userSocialProfile = miniAppContext.socialUser ? {
-      fid: miniAppContext.socialUser.fid || null,
-      username: miniAppContext.socialUser.username || null,
-      displayName: miniAppContext.socialUser.displayName || null,
-      verified: false // socialUser doesn't have verified property
+    const userSocialProfile = socialState.userProfile ? {
+      fid: socialState.userProfile.fid || null,
+      username: null, // socialState.userProfile may not have username
+      displayName: socialState.userProfile.displayName || null,
+      verified: false // socialState.userProfile may not have verified property
     } : null
     
     // Calculate social proof level based on your analytics
@@ -223,7 +234,7 @@ class SocialPurchaseAnalyzer {
     
     // Determine recommendation source
     const recommendationSource = this.determineRecommendationSource(
-      miniAppContext,
+      miniAppUtils,
       socialProofLevel
     )
     
@@ -255,7 +266,7 @@ class SocialPurchaseAnalyzer {
     needsApproval: boolean,
     isMiniApp: boolean,
     socialContext: SocialPurchaseContext,
-    paymentAmount: bigint
+    _paymentAmount: bigint
   ): BatchTransactionConfig {
     
     const isAvailable = isMiniApp && needsApproval
@@ -295,7 +306,11 @@ class SocialPurchaseAnalyzer {
     content: Content,
     creator: Creator | null,
     socialContext: SocialPurchaseContext,
-    miniAppCapabilities: any
+    miniAppCapabilities: {
+      wallet: { canConnect: boolean; canBatchTransactions: boolean };
+      social: { canShare: boolean; canCompose: boolean; canAccessSocialGraph: boolean };
+      platform: { canUseNotifications: boolean };
+    }
   ): ViralSharingStrategy {
     
     // Calculate viral potential based on social context
@@ -305,8 +320,8 @@ class SocialPurchaseAnalyzer {
       socialContext
     )
     
-    const immediateShareEnabled = viralPotentialScore > 0.7 && 
-      miniAppCapabilities?.canShare
+    const immediateShareEnabled = viralPotentialScore > 0.7 &&
+      miniAppCapabilities?.social?.canShare
     
     // Generate optimized share text
     const suggestedShareText = this.generateOptimizedShareText(
@@ -337,13 +352,13 @@ class SocialPurchaseAnalyzer {
   
   // Helper methods
   private static calculateSocialProofLevel(
-    creatorProfile: any,
-    userProfile: any,
+    creatorProfile: { fid: number | null; username: string | null; displayName: string; verified: boolean; followerCount: number } | null,
+    userProfile: { fid: number | null; username: string | null; displayName: string | null; verified: boolean } | null,
     mutualConnections: number
   ): SocialPurchaseContext['socialProofLevel'] {
     if (mutualConnections > 5 || (creatorProfile?.verified && userProfile?.verified)) {
       return 'high'
-    } else if (mutualConnections > 0 || creatorProfile?.followerCount > 1000) {
+    } else if (mutualConnections > 0 || (creatorProfile?.followerCount && creatorProfile.followerCount > 1000)) {
       return 'medium'
     } else if (creatorProfile?.verified || userProfile?.verified) {
       return 'low'
@@ -352,18 +367,19 @@ class SocialPurchaseAnalyzer {
   }
   
   private static determineRecommendationSource(
-    miniAppContext: any,
+    miniAppUtils: ReturnType<typeof useMiniAppUtils>,
     socialProofLevel: string
   ): SocialPurchaseContext['recommendationSource'] {
+    // Using miniAppUtils directly instead of MiniAppContext interface
     if (socialProofLevel === 'high') return 'connections'
     if (socialProofLevel === 'medium') return 'followers'
-    if (miniAppContext.isMiniApp) return 'trending'
+    if (miniAppUtils.isMiniApp) return 'trending'
     return 'direct'
   }
   
   private static calculateSocialScore(
-    creatorProfile: any,
-    userProfile: any,
+    creatorProfile: { fid: number | null; username: string | null; displayName: string; verified: boolean; followerCount: number } | null,
+    userProfile: { fid: number | null; username: string | null; displayName: string | null; verified: boolean } | null,
     mutualConnections: number,
     socialProofLevel: string
   ): number {
@@ -438,7 +454,12 @@ export function useSocialPurchaseFlow(
   const basePurchaseFlow = useUnifiedContentPurchaseFlow(contentId, effectiveUserAddress as `0x${string}` | undefined)
   
   // Your existing integrations
-  const miniAppContext = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const socialState = useSocialState()
+  const miniAppContext = {
+    isMiniApp: miniAppUtils.isMiniApp,
+    socialUser: socialState.userProfile
+  }
   const socialAnalytics = useSocialCommerceAnalytics()
   const contentQuery = useContentById(contentId)
   const creatorRegistered = useIsCreatorRegistered(contentQuery.data?.creator)
@@ -447,8 +468,8 @@ export function useSocialPurchaseFlow(
   const { 
     sendCalls, 
     data: batchTxHash, 
-    isPending: isBatchPending, 
-    error: batchError 
+    isPending: _isBatchPending,
+    error: _batchError 
   } = useSendCalls()
   
   // Contract addresses
@@ -462,7 +483,7 @@ export function useSocialPurchaseFlow(
   
   // ===== STATE MANAGEMENT =====
   
-  const [socialState, setSocialState] = useState<SocialPurchaseState>({
+  const [purchaseState, setPurchaseState] = useState<SocialPurchaseState>({
     step: 'idle',
     message: 'Ready to purchase',
     progress: 0,
@@ -502,7 +523,8 @@ export function useSocialPurchaseFlow(
             registrationTime: BigInt(0)
           } : null, // Create Creator object from boolean
           effectiveUserAddress as `0x${string}` | undefined,
-          miniAppContext
+          miniAppUtils,
+          socialState
         )
         setSocialContext(context)
       } catch (error) {
@@ -544,7 +566,11 @@ export function useSocialPurchaseFlow(
         registrationTime: BigInt(0)
       } : null, // Create Creator object from boolean
       socialContext,
-      miniAppContext
+      {
+        wallet: { canConnect: true, canBatchTransactions: true },
+        social: { canShare: true, canCompose: true, canAccessSocialGraph: true },
+        platform: { canUseNotifications: true }
+      }
     )
   }, [contentQuery.data, socialContext, creatorRegistered.data, miniAppContext])
   
@@ -555,70 +581,27 @@ export function useSocialPurchaseFlow(
    * 
    * This method orchestrates the complete social purchase flow.
    */
-  const executeSocialPurchase = useCallback(async (): Promise<void> => {
-    if (!contentQuery.data || !contractAddresses || !effectiveUserAddress) return
-    
-    performanceStartTime.current = Date.now()
-    
-    try {
-      setSocialState(prev => ({ ...prev, step: 'purchasing' }))
-      
-      // Track purchase initiation
-      await socialAnalytics.trackSocialConversion(
-        BigInt(contentQuery.data.creator.slice(2) + contentQuery.data.ipfsHash.slice(2)), // Create unique ID from available data
-        miniAppContext.socialUser?.fid || 0,
-        contentQuery.data.payPerViewPrice
-      )
-      
-      // Determine optimal purchase strategy
-      if (batchConfig?.shouldUseBatch) {
-        await executeBatchPurchase()
-      } else {
-        await executeSequentialPurchase()
-      }
-      
-      // Handle post-purchase viral sharing
-      if (viralStrategy?.immediateShareEnabled) {
-        await triggerImmediateShare()
-      }
-      
-      setSocialState(prev => ({ 
-        ...prev, 
-        step: 'completed',
-        socialAnalyticsTracked: true
-      }))
-      
-    } catch (error) {
-      setSocialState(prev => ({ 
-        ...prev, 
-        step: 'error', 
-        error: error as Error 
-      }))
-      throw error
-    }
-  }, [
-    contentQuery.data, 
-    contractAddresses, 
-    effectiveUserAddress, 
-    batchConfig, 
-    viralStrategy, 
-    socialAnalytics,
-    miniAppContext
-  ])
-  
-  /**
-   * Execute Batch Purchase (EIP-5792)
-   * 
-   * This method handles the optimized batch transaction flow.
-   */
+  // Declare helper functions first
+  const executeSequentialPurchase = useCallback(async (): Promise<void> => {
+    // Use your existing purchase flow with social tracking
+          await basePurchaseFlow.executePayment()
+
+    // Track the sequential transaction usage
+    await socialAnalytics.trackSocialConversion(
+      contentQuery.data ? BigInt(contentQuery.data.creator.slice(2) + contentQuery.data.ipfsHash.slice(2)) : BigInt(0),
+      miniAppContext.socialUser?.fid || 0,
+      contentQuery.data?.payPerViewPrice || BigInt(0)
+    )
+  }, [basePurchaseFlow, socialAnalytics, contentQuery.data, miniAppContext.socialUser])
+
   const executeBatchPurchase = useCallback(async (): Promise<void> => {
     if (!contentQuery.data || !contractAddresses || !effectiveUserAddress || !sendCalls) {
       throw new Error('Batch purchase prerequisites not met')
     }
-    
+
     try {
-      setSocialState(prev => ({ ...prev, step: 'purchasing' }))
-      
+      setPurchaseState(prev => ({ ...prev, step: 'purchasing' }))
+
       const calls = [
         {
           to: contractAddresses.USDC,
@@ -639,15 +622,15 @@ export function useSocialPurchaseFlow(
           value: BigInt(0)
         }
       ]
-      
+
       await sendCalls({ calls })
-      
+
       // Track batch transaction usage
       await socialAnalytics.trackBatchTransaction(
         batchTxHash?.id || 'pending',
         calls.length
       )
-      
+
     } catch (error) {
       console.error('Batch purchase failed:', error)
       // Fallback to sequential purchase
@@ -659,54 +642,88 @@ export function useSocialPurchaseFlow(
     effectiveUserAddress,
     sendCalls,
     batchTxHash,
-    socialAnalytics
+    socialAnalytics,
+    executeSequentialPurchase
   ])
-  
-  /**
-   * Execute Sequential Purchase
-   * 
-   * This method handles the traditional two-step purchase flow with social tracking.
-   */
-  const executeSequentialPurchase = useCallback(async (): Promise<void> => {
-    // Use your existing purchase flow with social tracking
-          await basePurchaseFlow.executePayment()
-    
-    // Track the sequential transaction usage
-    await socialAnalytics.trackSocialConversion(
-      contentQuery.data ? BigInt(contentQuery.data.creator.slice(2) + contentQuery.data.ipfsHash.slice(2)) : BigInt(0),
-      miniAppContext.socialUser?.fid || 0,
-      contentQuery.data?.payPerViewPrice || BigInt(0)
-    )
-  }, [basePurchaseFlow.executePayment, socialAnalytics, contentQuery.data, miniAppContext.socialUser])
-  
-  /**
-   * Trigger Immediate Viral Sharing
-   * 
-   * This method handles post-purchase viral sharing integration.
-   */
+
   const triggerImmediateShare = useCallback(async (): Promise<void> => {
     if (!viralStrategy || !miniAppContext.isMiniApp) return
-    
+
     try {
       // Would integrate with your SocialSharingHub
       const shareData = {
         text: viralStrategy.suggestedShareText,
         embeds: viralStrategy.shareEmbeds
       }
-      
+
       // Track viral sharing attempt
       await socialAnalytics.trackSocialDiscovery(
         contentQuery.data ? BigInt(contentQuery.data.creator.slice(2) + contentQuery.data.ipfsHash.slice(2)) : BigInt(0),
         'post_purchase_share'
       )
-      
+
       console.log('Triggered immediate share:', shareData)
-      
+
     } catch (error) {
       console.warn('Immediate sharing failed:', error)
       // Don't throw - sharing failure shouldn't break purchase flow
     }
   }, [viralStrategy, miniAppContext.isMiniApp, socialAnalytics, contentQuery.data])
+
+  const executeSocialPurchase = useCallback(async (): Promise<void> => {
+    if (!contentQuery.data || !contractAddresses || !effectiveUserAddress) return
+
+    performanceStartTime.current = Date.now()
+
+    try {
+      setPurchaseState(prev => ({ ...prev, step: 'purchasing' }))
+
+      // Track purchase initiation
+      await socialAnalytics.trackSocialConversion(
+        BigInt(contentQuery.data.creator.slice(2) + contentQuery.data.ipfsHash.slice(2)), // Create unique ID from available data
+        miniAppContext.socialUser?.fid || 0,
+        contentQuery.data.payPerViewPrice
+      )
+
+      // Determine optimal purchase strategy
+      if (batchConfig?.shouldUseBatch) {
+        await executeBatchPurchase()
+      } else {
+        await executeSequentialPurchase()
+      }
+
+      // Handle post-purchase viral sharing
+      if (viralStrategy?.immediateShareEnabled) {
+        await triggerImmediateShare()
+      }
+
+      setPurchaseState(prev => ({
+        ...prev,
+        step: 'completed',
+        socialAnalyticsTracked: true
+      }))
+
+    } catch (error) {
+      setPurchaseState(prev => ({
+        ...prev,
+        step: 'error',
+        error: error as Error
+      }))
+      throw error
+    }
+  }, [
+    contentQuery.data,
+    contractAddresses,
+    effectiveUserAddress,
+    batchConfig,
+    viralStrategy,
+    socialAnalytics,
+    miniAppContext,
+    executeBatchPurchase,
+    executeSequentialPurchase,
+    triggerImmediateShare
+  ])
+  
   
   // ===== TRACKING METHODS =====
   
@@ -738,7 +755,7 @@ export function useSocialPurchaseFlow(
   // ===== FLOW CONTROL =====
   
   const reset = useCallback((): void => {
-    setSocialState({
+    setPurchaseState({
       step: 'idle',
       message: 'Ready to purchase',
       progress: 0,
@@ -769,14 +786,14 @@ export function useSocialPurchaseFlow(
     hasAccess: basePurchaseFlow.hasAccess,
     isLoading: basePurchaseFlow.isLoading,
     error: null, // Since flowState.error is optional
-    currentStep: getPurchaseFlowStepMessage(socialState.step),
+    currentStep: getPurchaseFlowStepMessage(purchaseState.step),
           canAfford: basePurchaseFlow.canExecutePayment,
       needsApproval: false, // moved to orchestrator
       userBalance: basePurchaseFlow.selectedToken?.balance || BigInt(0),
-    
+
     // Social commerce state
-    socialState,
-    socialContext: socialState.socialContext,
+    socialState: purchaseState,
+    socialContext: purchaseState.socialContext,
     batchTransactionAvailable: batchConfig?.isAvailable || false,
     viralSharingReady: viralStrategy?.immediateShareEnabled || false,
     

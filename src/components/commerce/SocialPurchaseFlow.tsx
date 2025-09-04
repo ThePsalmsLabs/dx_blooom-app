@@ -76,7 +76,7 @@ import {
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 
 // Import your existing integrations
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // ================================================
 // COMPONENT INTERFACES
@@ -457,7 +457,8 @@ export default function SocialPurchaseFlow({
   
   const router = useRouter()
   const walletUI = useWalletConnectionUI()
-  const miniAppContext = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppContext = miniAppUtils
   const effectiveUserAddress = userAddress || walletUI.address
 
   // ===== BUSINESS LOGIC INTEGRATION =====

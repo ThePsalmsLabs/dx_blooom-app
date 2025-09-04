@@ -20,7 +20,7 @@
 import React, { Component, ErrorInfo, ReactNode, useState, useMemo, useEffect, useCallback } from 'react'
 
 
-import type { EnhancedMiniAppContextValue } from '@/contexts/MiniAppProvider'
+import type { UnifiedMiniAppContextValue, UnifiedAppState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import UI components
 import {
@@ -47,7 +47,7 @@ import {
 } from 'lucide-react'
 
 // Import hooks and types
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import type { CompatibilityTestSuiteResult } from '@/utils/miniapp/compatibility'
 import { useCompatibilityTesting } from '@/utils/miniapp/compatibility'
 
@@ -113,7 +113,7 @@ export interface EnhancedErrorInfo extends ErrorInfo {
   readonly category: MiniAppErrorCategory
   readonly severity: ErrorSeverity
   readonly context: {
-    readonly miniAppContext?: EnhancedMiniAppContextValue
+    readonly miniAppContext?: UnifiedMiniAppContextValue
     readonly compatibilityInfo?: CompatibilityTestSuiteResult
     readonly userAgent: string
     readonly url: string
@@ -167,7 +167,7 @@ interface ErrorBoundaryState {
 function classifyError(
   error: Error, 
   errorInfo: ErrorInfo,
-  miniAppContext?: EnhancedMiniAppContextValue
+  miniAppContext?: UnifiedMiniAppContextValue
 ): MiniAppErrorCategory {
   const errorMessage = error.message.toLowerCase()
   const errorStack = error.stack?.toLowerCase() || ''
@@ -184,7 +184,7 @@ function classifyError(
   if (errorMessage.includes('social') ||
       errorMessage.includes('sharing') ||
       errorMessage.includes('cast') ||
-      errorMessage.includes('context') && miniAppContext?.environment?.isMiniApp) {
+      errorMessage.includes('context') && miniAppContext?.utils?.isMiniApp) {
     return 'social_integration'
   }
   
@@ -252,19 +252,19 @@ function classifyError(
 function determineErrorSeverity(
   category: MiniAppErrorCategory,
   error: Error,
-  miniAppContext?: EnhancedMiniAppContextValue
+  miniAppContext?: UnifiedMiniAppContextValue
 ): ErrorSeverity {
   // Critical errors that completely break the user experience
-  if (category === 'system_error' || 
+  if (category === 'system_error' ||
       category === 'render_error' ||
-      (category === 'sdk_initialization' && miniAppContext?.environment?.isMiniApp)) {
+      (category === 'sdk_initialization' && miniAppContext?.utils?.isMiniApp)) {
     return 'critical'
   }
   
   // High severity errors that significantly impact functionality
   if (category === 'blockchain_connectivity' ||
       category === 'permission_denied' ||
-      (category === 'social_integration' && miniAppContext?.enhancedUser)) {
+      (category === 'social_integration' && miniAppContext?.utils?.isMiniApp)) {
     return 'high'
   }
   
@@ -285,7 +285,7 @@ function determineErrorSeverity(
 function generateRecoveryActions(
   category: MiniAppErrorCategory,
   severity: ErrorSeverity,
-  miniAppContext?: EnhancedMiniAppContextValue,
+  miniAppContext?: UnifiedMiniAppContextValue,
   compatibilityInfo?: CompatibilityTestSuiteResult,
   onRetry?: () => void,
   onNavigateHome?: () => void,
@@ -354,7 +354,7 @@ function generateRecoveryActions(
   }
   
   // Provide social platform specific options
-  if (category === 'social_integration' && miniAppContext?.environment?.isMiniApp) {
+  if (category === 'social_integration' && miniAppContext?.utils?.isMiniApp) {
     actions.push({
       type: 'external_link',
       label: 'Open in Browser',
@@ -396,9 +396,9 @@ function generateRecoveryActions(
 function generateUserMessage(
   category: MiniAppErrorCategory,
   severity: ErrorSeverity,
-  miniAppContext?: EnhancedMiniAppContextValue
+  miniAppContext?: UnifiedMiniAppContextValue
 ): string {
-  const contextPrefix = miniAppContext?.environment?.isMiniApp ? 'In this social context, ' : ''
+  const contextPrefix = miniAppContext?.utils?.isMiniApp ? 'In this social context, ' : ''
   
   switch (category) {
     case 'sdk_initialization':
@@ -447,7 +447,7 @@ function generateUserMessage(
  */
 class MiniAppErrorBoundaryClass extends Component<
   MiniAppErrorBoundaryProps & {
-    miniAppContext?: EnhancedMiniAppContextValue
+    miniAppContext?: UnifiedMiniAppContextValue
     compatibilityInfo?: CompatibilityTestSuiteResult
   },
   ErrorBoundaryState
@@ -455,7 +455,7 @@ class MiniAppErrorBoundaryClass extends Component<
   private retryTimeoutId: NodeJS.Timeout | null = null
   
   constructor(props: MiniAppErrorBoundaryProps & {
-    miniAppContext?: EnhancedMiniAppContextValue
+    miniAppContext?: UnifiedMiniAppContextValue
     compatibilityInfo?: CompatibilityTestSuiteResult
   }) {
     super(props)
@@ -798,7 +798,7 @@ function DefaultErrorUI({
                   <div><span className="font-semibold">Technical:</span> {errorInfo.technicalMessage}</div>
                   <div><span className="font-semibold">Timestamp:</span> {new Date(errorInfo.timestamp).toLocaleString()}</div>
                   {errorInfo.context.miniAppContext && (
-                    <div><span className="font-semibold">Context:</span> {errorInfo.context.miniAppContext.environment?.isMiniApp ? 'MiniApp' : 'Web'}</div>
+                    <div><span className="font-semibold">Context:</span> {errorInfo.context.miniAppContext.utils?.isMiniApp ? 'MiniApp' : 'Web'}</div>
                   )}
                 </div>
               </div>
@@ -838,7 +838,7 @@ function MiniAppErrorFallback({
 }: {
   error: Error
   resetErrorBoundary: () => void
-  miniAppContext?: EnhancedMiniAppContextValue
+  miniAppContext?: UnifiedMiniAppContextValue
   compatibilityInfo?: CompatibilityTestSuiteResult
 }) {
   const [isRecovering, setIsRecovering] = useState(false)
@@ -849,7 +849,7 @@ function MiniAppErrorFallback({
 
   // Check if this is the specific connections.get error
   const isConnectionsError = error.message.includes('connections.get is not a function')
-  const isMiniAppEnvironment = miniAppContext?.environment?.isMiniApp || false
+  const isMiniAppEnvironment = miniAppContext?.utils?.isMiniApp || false
 
   // Enhanced error analysis
   const errorAnalysis = useMemo(() => {
@@ -1118,105 +1118,68 @@ function MiniAppErrorFallback({
  */
 export function MiniAppErrorBoundary(props: MiniAppErrorBoundaryProps) {
   // Access context from Components 1 and 2 for intelligent error handling
-  const legacyMiniApp = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const socialState = useSocialState()
+  const legacyMiniApp = { ...miniAppUtils, ...socialState }
   const { runQuickTests } = useCompatibilityTesting()
   
   // State for compatibility information
   const [compatibilityInfo, setCompatibilityInfo] = useState<CompatibilityTestSuiteResult | undefined>()
   
   // Create enhanced context from legacy context for compatibility
-  const enhancedContext: EnhancedMiniAppContextValue | undefined = useMemo(() => {
+  const enhancedContext: UnifiedMiniAppContextValue | undefined = useMemo(() => {
     if (!legacyMiniApp) return undefined
-    
+
+    // Create a minimal UnifiedAppState that matches the interface
+    const appState: UnifiedAppState = {
+      context: 'web',
+      isConnected: false,
+      userAddress: null,
+      capabilities: {
+        wallet: { canConnect: false, canBatchTransactions: false, supportedChains: [] },
+        social: { canShare: false, canCompose: false, canAccessSocialGraph: false },
+        platform: { canDeepLink: false, canAccessClipboard: false, canAccessCamera: false }
+      },
+      socialContext: {
+        isAvailable: false,
+        userProfile: null,
+        canShare: false,
+        canCompose: false,
+        trustScore: 0
+      },
+      transactionState: {
+        status: 'idle',
+        transactionHash: null,
+        formattedStatus: 'Ready',
+        canRetry: false,
+        progress: {
+          submitted: false,
+          confirming: false,
+          confirmed: false,
+          progressText: 'Ready'
+        },
+        retry: () => {},
+        reset: () => {},
+        viewTransaction: () => {}
+      },
+      loadingState: 'idle',
+      error: null
+    }
+
     return {
-      state: {
-        context: legacyMiniApp.context,
-        capabilities: legacyMiniApp.capabilities,
-        errors: legacyMiniApp.errors,
-        loadingState: legacyMiniApp.loadingState,
-        socialProfile: null,
-        socialInteractions: [],
-        connectionStatus: 'connected',
-        shareableContent: [],
-        pendingShares: [],
-        shareHistory: [],
-        performanceMetrics: {
-          initializationTime: 0,
-          averageResponseTime: 0,
-          errorRate: 0,
-          lastMetricsUpdate: new Date()
-        },
-        analyticsData: {
-          sessionId: 'session-' + Date.now(),
-          sessionStartTime: new Date(),
-          pageViews: 0,
-          interactions: 0,
-          conversionEvents: []
-        },
-        sdkState: {
-          isInitialized: legacyMiniApp.isReady,
-          isReady: legacyMiniApp.isReady,
-          initializationAttempts: 0,
-          lastError: null,
-          readyCallbackFired: legacyMiniApp.isReady,
-          contextData: null
-        },
-        socialEngagement: {
-          sessionStartTime: new Date(),
-          totalInteractions: 0,
-          shareCount: 0,
-          engagementScore: 0,
-          lastInteractionTime: null,
-          conversionEvents: []
-        },
-        capabilityMonitoring: {
-          lastCapabilityCheck: null,
-          capabilityChanges: 0,
-          degradedCapabilities: [],
-          enhancedCapabilities: []
-        },
-        performance: {
-          loadTime: 0,
-          renderTime: 0,
-          interactionCount: 0,
-          errorCount: 0,
-          lastUpdateTime: new Date()
-        },
-        warnings: []
-      },
+      state: appState,
       actions: {
-        initializeSDK: async () => true,
-        signalReady: async () => {},
-        refreshCapabilities: async () => legacyMiniApp.capabilities,
-        shareContent: legacyMiniApp.shareContent,
-        composeCast: async () => ({ success: false }),
-        trackInteraction: legacyMiniApp.trackInteraction,
-        refreshSocialProfile: async () => null,
-        updateSocialVerification: async () => {},
-        handleError: () => {},
-        clearErrors: () => {},
-        retryFailedOperation: async () => false
+        connectWallet: async () => {},
+        disconnectWallet: () => {},
+        shareContent: async () => {},
+        executeTransaction: async () => {},
+        resetError: () => {}
       },
-      environment: {
-        detection: { isMiniApp: legacyMiniApp.isMiniApp } as any,
-        isMiniApp: legacyMiniApp.isMiniApp,
-        isEmbedded: legacyMiniApp.isEmbedded,
-        hasSDK: legacyMiniApp.isReady,
-        confidence: legacyMiniApp.isMiniApp ? 1 : 0
-      },
-      enhancedUser: legacyMiniApp.socialUser ? {
-        connectionStatus: 'connected',
-        socialVerification: { isVerified: false, verificationLevel: 'none', lastVerified: null },
-        socialMetrics: { followerCount: 0, followingCount: 0, castCount: 0, socialScore: 0, influenceScore: 0 },
-        platformSocialContext: null,
-        farcasterProfile: legacyMiniApp.socialUser
-      } as any : null,
       utils: {
-        formatSocialHandle: (username: string) => `@${username}`,
-        getSocialVerificationBadge: () => null,
-        getOptimalShareText: () => '',
-        estimateEngagement: () => 0,
-        canPerformAction: () => false
+        isMiniApp: legacyMiniApp.isMiniApp || false,
+        isMobile: false,
+        canPerformAction: () => false,
+        formatAddress: (addr: string) => addr
       }
     }
   }, [legacyMiniApp])
@@ -1246,12 +1209,13 @@ export function MiniAppErrorBoundary(props: MiniAppErrorBoundaryProps) {
  * Allows components to report errors manually when needed
  */
 export function useErrorReporting() {
-  const miniAppContext = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppContext = miniAppUtils
   
   const reportError = useCallback((
     error: Error,
     category: MiniAppErrorCategory,
-    additionalContext?: Record<string, any>
+    additionalContext?: Record<string, unknown>
   ) => {
     // This would integrate with your error reporting service
     console.error('Manual error report:', {
@@ -1271,7 +1235,8 @@ export function useErrorReporting() {
  * Provides common error recovery functions
  */
 export function useErrorRecovery() {
-  const legacyMiniApp = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const legacyMiniApp = miniAppUtils
   
   const recoverFromNetworkError = useCallback(async () => {
     // Attempt to refresh network connections

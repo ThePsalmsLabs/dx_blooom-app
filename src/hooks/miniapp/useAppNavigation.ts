@@ -30,7 +30,7 @@
 
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useContextDetection } from '@/utils/context/detection'
 import { useErrorReporting } from '@/components/errors/MiniAppErrorBoundary'
 
@@ -153,7 +153,10 @@ export function useAppNavigation() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const miniAppContext = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppState = useMiniAppState()
+  const socialState = useSocialState()
+  const miniAppContext = miniAppUtils
   const { contextData } = useContextDetection()
   const { reportError } = useErrorReporting()
   
@@ -245,7 +248,7 @@ export function useAppNavigation() {
     currentContext: currentNavigationContext,
     canNavigateInternally: socialCapabilities.canChangeUrl,
     canOpenExternalLinks: socialCapabilities.canOpenNewWindow,
-    hasSocialContext: miniAppContext.hasSocialContext,
+    hasSocialContext: socialState.isAvailable,
     isEmbedded: (contextData?.socialContext?.embedDepth ?? 0) > 0,
     backStack,
     socialReferrer
@@ -253,7 +256,7 @@ export function useAppNavigation() {
     pathname,
     currentNavigationContext,
     socialCapabilities,
-    miniAppContext.hasSocialContext,
+    socialState.isAvailable,
     contextData?.socialContext?.embedDepth,
     backStack,
     socialReferrer
@@ -340,9 +343,9 @@ export function useAppNavigation() {
     const urlParams = new URLSearchParams()
     
     // Preserve social context if requested and available
-    if (params.preserveSocialContext && miniAppContext.hasSocialContext) {
-      if (miniAppContext.socialUser?.fid) {
-        urlParams.set('fid', miniAppContext.socialUser.fid.toString())
+    if (params.preserveSocialContext && socialState.isAvailable) {
+      if (socialState.userProfile?.fid) {
+        urlParams.set('fid', socialState.userProfile.fid.toString())
       }
       
       if (currentNavigationContext === 'miniapp') {
@@ -380,8 +383,8 @@ export function useAppNavigation() {
     return finalPath
     
   }, [
-    miniAppContext.hasSocialContext,
-    miniAppContext.socialUser?.fid,
+    socialState.isAvailable,
+    socialState.userProfile?.fid,
     currentNavigationContext,
     socialReferrer,
     contextData?.platform
@@ -472,14 +475,14 @@ export function useAppNavigation() {
         strategy,
         path: finalUrl,
         context: currentNavigationContext,
-        preservedSocialContext: params.preserveSocialContext && miniAppContext.hasSocialContext
+        preservedSocialContext: params.preserveSocialContext && socialState.isAvailable
       })
       
       return {
         success: true,
         strategy,
         actualPath: finalUrl,
-        preservedContext: (params.preserveSocialContext ?? false) && miniAppContext.hasSocialContext,
+        preservedContext: (params.preserveSocialContext ?? false) && socialState.isAvailable,
         warnings: []
       }
       
@@ -509,7 +512,7 @@ export function useAppNavigation() {
     router,
     pathname,
     currentNavigationContext,
-    miniAppContext.hasSocialContext,
+    socialState.isAvailable,
     reportError
   ])
   

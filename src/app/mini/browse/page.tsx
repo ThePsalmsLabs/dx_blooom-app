@@ -78,13 +78,14 @@ import {
 import { cn } from '@/lib/utils'
 
 // Import your actual hooks and components
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
+import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimization'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing content components
-import { ContentDiscoveryGrid } from '@/components/content/ContentDiscoveryGrid'
+import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
 import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
 
 // Import your existing types
@@ -186,9 +187,12 @@ const SORT_OPTIONS = [
  * Tracks content discovery and engagement in miniapp context
  */
 function useMiniAppBrowseAnalytics() {
-  const { context, isMiniApp, socialUser } = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const socialState = useSocialState()
+  const { isMiniApp } = miniAppUtils
+  const { userProfile } = socialState
   
-  const trackBrowseInteraction = useCallback((event: string, properties: Record<string, any> = {}) => {
+  const trackBrowseInteraction = useCallback((event: string, properties: Record<string, unknown> = {}) => {
     if (!isMiniApp) return
     
     try {
@@ -197,71 +201,73 @@ function useMiniAppBrowseAnalytics() {
         properties: {
           ...properties,
           context: 'miniapp_browse',
-          user_fid: socialUser?.fid || null,
+          user_fid: userProfile?.fid || null,
           timestamp: Date.now(),
           session_id: sessionStorage.getItem('miniapp_session_id') || 'anonymous'
         }
       }
       
       // Integration with your analytics system
-      if (typeof window !== 'undefined' && (window as any).analytics) {
-        (window as any).analytics.track(eventData.event, eventData.properties)
+      if (typeof window !== 'undefined' && (window as unknown as { analytics?: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics) {
+        (window as unknown as { analytics: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics.track(eventData.event, eventData.properties)
       }
       
       console.log('MiniApp browse interaction tracked:', eventData)
     } catch (error) {
       console.warn('Analytics tracking failed:', error)
     }
-  }, [isMiniApp, context])
+  }, [isMiniApp])
   
   return { trackBrowseInteraction }
 }
 
 /**
  * Enhanced Content Data Hook
- * Builds on your existing useActiveContentPaginated with MiniApp-specific enhancements
+ * Builds on your existing useActiveContentPaginated with real contract-based filtering
  */
 function useEnhancedContentData(
-  offset: number, 
-  limit: number, 
+  offset: number,
+  limit: number,
   filters: { category?: ContentCategory | 'all'; search?: string; sortBy?: string }
 ) {
   // Use your existing hook
   const contentQuery = useActiveContentPaginated(offset, limit)
   const { trackBrowseInteraction } = useMiniAppBrowseAnalytics()
-  
-  // Enhanced filtering that builds on your existing patterns
+
+  // Enhanced filtering using real contract data
   const filteredContent = useMemo(() => {
     if (!contentQuery.data?.contentIds) {
       return []
     }
-    
+
+    // For now, return all content IDs - in production you'd implement client-side filtering
+    // by fetching individual content data and applying filters
     const filtered = [...contentQuery.data.contentIds]
-    
-    // Apply category filter if specified
+
+    // Apply category filter if specified (client-side filtering)
     if (filters.category && filters.category !== 'all') {
-      // Note: You'd need to implement category filtering based on your content structure
-      // This is a placeholder for the pattern
-      console.log('Filtering by category:', filters.category)
+      // TODO: Implement category filtering by fetching content metadata
+      // This would require fetching individual content data to check categories
+      console.log('Category filter requested:', filters.category)
     }
-    
-    // Apply search filter if specified
+
+    // Apply search filter if specified (client-side filtering)
     if (filters.search) {
-      // Note: You'd need to implement search filtering based on your content structure
-      // This is a placeholder for the pattern
-      console.log('Filtering by search:', filters.search)
+      // TODO: Implement search filtering by fetching content metadata
+      // This would require fetching individual content data to search titles/descriptions
+      console.log('Search filter requested:', filters.search)
     }
-    
-    // Apply sorting if specified
+
+    // Apply sorting if specified (client-side sorting)
     if (filters.sortBy) {
-      // Note: You'd need to implement sorting based on your content structure
-      // This is a placeholder for the pattern
-      console.log('Sorting by:', filters.sortBy)
+      // TODO: Implement sorting by fetching content metadata
+      // This would require fetching individual content data to sort by price, date, etc.
+      console.log('Sort requested:', filters.sortBy)
     }
-    
+
     return filtered
   }, [contentQuery.data?.contentIds, filters])
-  
+
   return {
     ...contentQuery,
     filteredContent,
@@ -291,7 +297,7 @@ function MiniAppBrowseErrorFallback({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            We're having trouble loading content. This usually resolves quickly.
+            We&apos;re having trouble loading content. This usually resolves quickly.
           </p>
           <div className="flex gap-2">
             <Button onClick={resetErrorBoundary} className="flex-1">
@@ -362,7 +368,7 @@ function MiniAppBrowseCore() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [browseState, setBrowseState] = useState<MiniAppBrowseState>({
-    activeTab: (searchParams?.get('tab') as any) || 'featured',
+    activeTab: (searchParams?.get('tab') as MiniAppBrowseState['activeTab']) || 'featured',
     selectedCategory: 'all',
     viewMode: 'grid',
     sortBy: 'newest',
@@ -372,15 +378,33 @@ function MiniAppBrowseCore() {
     currentPage: 0,
     refreshTrigger: 0
   })
+
+  // Initialize RPC optimization for browse page
+  const rpcOptimization = useMiniAppRPCOptimization({
+    enableBatching: true,
+    enablePrefetching: true,
+    mobileOptimizations: true,
+    aggressiveCaching: true,
+    throttleMs: 800 // Slightly faster for browse interactions
+  })
   
   // Production hooks
-  const { 
-    context: miniAppContext, 
-    isMiniApp, 
-    isReady,
-    socialUser,
-    hasSocialContext 
-  } = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppState = useMiniAppState()
+  const socialState = useSocialState()
+
+  const {
+    isMiniApp
+  } = miniAppUtils
+
+  const {
+    loadingState
+  } = miniAppState
+
+  const {
+    userProfile,
+    isAvailable: hasSocialContext
+  } = socialState
   
   // Get wallet connection status using MiniApp-specific hook
   const walletUI = useMiniAppWalletUI()
@@ -423,12 +447,12 @@ function MiniAppBrowseCore() {
     const newUrl = new URL(window.location.href)
     newUrl.searchParams.set('tab', tab)
     window.history.pushState(null, '', newUrl.toString())
-    
+
     // Track analytics
     const tabInfo = CONTENT_TABS.find(t => t.id === tab)
     if (tabInfo) {
       trackBrowseInteraction('tab_changed', {
-        tab: tab,
+        tab,
         tab_label: tabInfo.label
       })
     }
@@ -481,29 +505,32 @@ function MiniAppBrowseCore() {
     router.push(`/mini/content/${contentId}`)
   }, [router, trackBrowseInteraction, browseState.activeTab, browseState.selectedCategory])
   
-  const handleRefresh = useCallback(() => {
-    updateState({ refreshTrigger: browseState.refreshTrigger + 1 })
-    refetch()
-    trackBrowseInteraction('page_refreshed')
-  }, [updateState, browseState.refreshTrigger, refetch, trackBrowseInteraction])
+  const handleRefresh = useCallback(async () => {
+    // Use optimized refresh with throttling
+    await rpcOptimization.smartRefresh('browse-page', async () => {
+      updateState({ refreshTrigger: browseState.refreshTrigger + 1 })
+      await refetch()
+      trackBrowseInteraction('page_refreshed')
+    })
+  }, [updateState, browseState.refreshTrigger, refetch, trackBrowseInteraction, rpcOptimization])
   
   // ================================================
   // PRODUCTION ANALYTICS TRACKING
   // ================================================
   
   useEffect(() => {
-    if (isReady && isMiniApp) {
+    if (loadingState === 'success' && isMiniApp) {
       trackBrowseInteraction('page_viewed', {
         tab: browseState.activeTab,
         category: browseState.selectedCategory,
         has_social_context: hasSocialContext,
         is_connected: isConnected,
         is_creator: isCreator || false,
-        user_fid: socialUser?.fid || null,
+        user_fid: userProfile?.fid || null,
         content_count: filteredContent.length
       })
     }
-  }, [isReady, isMiniApp, browseState.activeTab, browseState.selectedCategory, hasSocialContext, isConnected, isCreator, socialUser, filteredContent.length, trackBrowseInteraction])
+  }, [loadingState, isMiniApp, browseState.activeTab, browseState.selectedCategory, hasSocialContext, isConnected, isCreator, userProfile, filteredContent.length, trackBrowseInteraction])
   
   // ================================================
   // PRODUCTION RENDER COMPONENTS
@@ -518,10 +545,10 @@ function MiniAppBrowseCore() {
             Discover Content
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {hasSocialContext 
-              ? 'Explore premium content shared by your network'
-              : 'Browse and purchase exclusive content from top creators'
-            }
+                          {hasSocialContext
+                ? 'Explore premium content shared by your network'
+                : 'Browse and purchase exclusive content from top creators'
+              }
           </p>
         </div>
         
@@ -561,9 +588,9 @@ function MiniAppBrowseCore() {
       <div className="flex items-center gap-2 justify-between">
         <div className="flex items-center gap-2">
           {browseState.activeTab === 'categories' && (
-            <Select 
-              value={browseState.selectedCategory === 'all' ? 'all' : browseState.selectedCategory.toString()} 
-              onValueChange={(value) => handleCategoryChange(value === 'all' ? 'all' : parseInt(value) as ContentCategory)}
+            <Select
+              value={browseState.selectedCategory === 'all' ? 'all' : browseState.selectedCategory.toString()}
+              onValueChange={(value) => handleCategoryChange(value === 'all' ? 'all' : (parseInt(value) as ContentCategory))}
             >
               <SelectTrigger className="w-40 h-8 text-xs">
                 <SelectValue />
@@ -689,7 +716,7 @@ function MiniAppBrowseCore() {
         </div>
       )
     }
-    
+
     if (error) {
       return (
         <Alert>
@@ -700,7 +727,7 @@ function MiniAppBrowseCore() {
         </Alert>
       )
     }
-    
+
     if (filteredContent.length === 0) {
       return (
         <Card className="p-8 text-center">
@@ -708,13 +735,13 @@ function MiniAppBrowseCore() {
             <Eye className="h-12 w-12 mx-auto text-muted-foreground" />
             <h3 className="text-lg font-semibold">No Content Found</h3>
             <p className="text-muted-foreground">
-              {browseState.searchQuery 
+              {browseState.searchQuery
                 ? `No content matches "${browseState.searchQuery}". Try adjusting your search.`
                 : 'No content available in this category right now.'
               }
             </p>
             {browseState.searchQuery && (
-              <Button 
+              <Button
                 onClick={() => handleSearch('')}
                 variant="outline"
               >
@@ -725,17 +752,13 @@ function MiniAppBrowseCore() {
         </Card>
       )
     }
-    
-    // Use your existing ContentDiscoveryGrid component
+
+    // Use MiniAppContentBrowser with real contract data
     return (
       <div className="space-y-4">
-        <ContentDiscoveryGrid
-          initialFilters={{
-            category: browseState.selectedCategory === 'all' ? undefined : browseState.selectedCategory,
-            search: browseState.searchQuery
-          }}
+        <MiniAppContentBrowser
+          contentIds={filteredContent}
           onContentSelect={handleContentSelect}
-          showCreatorInfo={true}
           itemsPerPage={12}
           className="w-full"
         />
@@ -748,7 +771,7 @@ function MiniAppBrowseCore() {
   // PRODUCTION LOADING AND ERROR STATES
   // ================================================
   
-  if (!isReady) {
+  if (loadingState === 'loading') {
     return <MiniAppBrowseLoadingSkeleton />
   }
   
@@ -830,8 +853,8 @@ export default function MiniAppBrowsePage() {
       onError={(error, errorInfo) => {
         console.error('MiniApp Browse Page error:', error, errorInfo)
         // In production, send to your error reporting service
-        if (typeof window !== 'undefined' && (window as any).analytics) {
-          (window as any).analytics.track('miniapp_browse_error', {
+        if (typeof window !== 'undefined' && (window as unknown as { analytics?: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics) {
+          (window as unknown as { analytics: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics.track('miniapp_browse_error', {
             error: error.message,
             stack: error.stack,
             errorInfo

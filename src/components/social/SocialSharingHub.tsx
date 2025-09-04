@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/index'
 
 // Import your existing MiniApp integration
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useMiniAppState, useMiniAppActions, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import icons
 import {
@@ -286,11 +286,9 @@ export default function SocialSharingHub({
 }: SocialSharingHubProps) {
   const walletUI = useWalletConnectionUI()
   const userAddress = walletUI.address as `0x${string}` | undefined
-  const {
-    isMiniApp,
-    capabilities,
-    shareContent: miniAppShare
-  } = useMiniApp()
+  const { isMiniApp } = useMiniAppUtils()
+  const { capabilities } = useMiniAppState()
+  const { shareContent: miniAppShare } = useMiniAppActions()
   
   // ===== STATE MANAGEMENT =====
   const [isSharing, setIsSharing] = useState(false)
@@ -329,37 +327,11 @@ export default function SocialSharingHub({
       
       if (isMiniApp && miniAppShare) {
         // Use MiniApp SDK for sharing
-        const miniAppResult = await miniAppShare({
-          contentId: content.id,
-          contentType: 'subscription',
-          shareMetadata: {
-            title: content.title,
-            description: content.description,
-            imageUrl: `${process.env.NEXT_PUBLIC_URL || window.location.origin}/api/og/content/${content.id}`,
-            tags: [content.category]
-          },
-          platformData: {
-            shareUrl: shareContent_generated.url,
-            embedUrl: shareContent_generated.url,
-            purchaseUrl: shareContent_generated.url
-          },
-          creatorInfo: {
-            creatorAddress: content.creator,
-            creatorName: formatAddress(content.creator),
-            isVerifiedCreator: creator.isVerified
-          },
-          analytics: {
-            shareTrackingId: `share_${content.id}_${Date.now()}`,
-            referralCode: userAddress ? `ref_${userAddress.slice(-8)}` : undefined,
-            campaignId: `social_${context}`,
-            expectedEngagement: viralPotential
-          }
-        })
+        await miniAppShare(content.id, content.title)
         
         result = {
-          success: miniAppResult.success,
+          success: true,
           shareId: `miniapp_${Date.now()}`,
-          castHash: miniAppResult.castHash,
           shareUrl: shareContent_generated.url
         }
       } else {

@@ -34,7 +34,7 @@ import {
 } from '@/hooks/commerce/useSocialPurchaseFlow'
 
 // Import your existing integrations and utilities
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { formatCurrency, formatAddress } from '@/lib/utils'
 
 // ================================================
@@ -428,7 +428,8 @@ export function useSocialPurchaseUI(
 ): SocialPurchaseUI {
   
   const router = useRouter()
-  const miniAppContext = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppContext = miniAppUtils
   
   // Business logic layer
   const purchaseFlow = useSocialPurchaseFlow(contentId, userAddress)

@@ -35,7 +35,7 @@ import {
 import { useAnalyticsContext } from '@/contexts/AnalyticsContext'
 import { useCreatorAnalytics } from '@/hooks/contracts/analytics/useCreatorAnalytics'
 import { usePlatformAnalytics } from '@/hooks/contracts/analytics/usePlatformAnalytics'
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import icons
 import {
@@ -412,7 +412,8 @@ export default function SocialCommerceAnalytics({
   className
 }: SocialCommerceAnalyticsProps) {
   const walletUI = useWalletConnectionUI()
-  const { isMiniApp } = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const { isMiniApp } = miniAppUtils
   
   // ===== STATE MANAGEMENT =====
   const [dashboardState, setDashboardState] = useState<SocialAnalyticsDashboardState>({

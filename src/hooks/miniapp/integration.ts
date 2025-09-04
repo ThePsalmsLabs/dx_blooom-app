@@ -32,7 +32,7 @@ import { useAccount, useChainId, useSendTransaction } from 'wagmi'
 import { type Address } from 'viem'
 
 // Import our sophisticated foundation systems
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useCompatibilityTesting } from '@/utils/miniapp/compatibility'
 import { useErrorReporting, useErrorRecovery } from '@/components/errors/MiniAppErrorBoundary'
 import { useContextDetection, useOptimizationRecommendations } from '@/utils/context/detection'
@@ -258,7 +258,10 @@ export function useEnhancedPurchaseFlow(
 ): EnhancedPurchaseFlowResult {
   
   // Access our sophisticated foundation systems
-  const miniAppContext = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppState = useMiniAppState()
+  const socialState = useSocialState()
+  const miniAppContext = miniAppUtils
   const { contextData } = useContextDetection()
   const optimizations = useOptimizationRecommendations()
   const { runQuickTests } = useCompatibilityTesting()
@@ -295,10 +298,10 @@ export function useEnhancedPurchaseFlow(
   // Determine if batch transactions are available and beneficial
   const canUseBatchTransaction = useMemo(() => {
     // Batch transactions require EIP-5792 support and MiniApp context
-    return (miniAppContext.capabilities?.wallet?.canBatchTransactions ?? false) && 
+    return (miniAppState.capabilities?.wallet?.canBatchTransactions ?? false) && 
            (compatibilityInfo?.summary?.blockchainSupport ?? false) && 
            isConnected
-  }, [miniAppContext.capabilities?.wallet?.canBatchTransactions, compatibilityInfo, isConnected])
+  }, [miniAppState.capabilities?.wallet?.canBatchTransactions, compatibilityInfo, isConnected])
   
   // Determine the recommended flow based on context and capabilities
   const recommendedFlow = useMemo(() => {
@@ -320,10 +323,10 @@ export function useEnhancedPurchaseFlow(
   
   // Social optimization analysis
   const socialOptimizations = useMemo(() => {
-    const shareAfterPurchase = miniAppContext.capabilities?.social?.canShare && 
+    const shareAfterPurchase = miniAppState.capabilities?.social?.canShare && 
                               contextData?.socialContext?.socialFeatures.canShare === true
     
-    const socialProofAvailable = Boolean(miniAppContext.socialUser) && 
+    const socialProofAvailable = Boolean(socialState.userProfile) && 
                                 contextData?.socialContext?.socialFeatures.hasUserProfile === true
     
     const quickShareText = shareAfterPurchase 
@@ -553,14 +556,17 @@ export function useEnhancedPurchaseFlow(
 export function useSocialCommerceIntegration(): SocialCommerceIntegration {
   
   // Access foundation systems
-  const miniAppContext = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppState = useMiniAppState()
+  const socialState = useSocialState()
+  const miniAppContext = miniAppUtils
   const { contextData } = useContextDetection()
   
   // Social user context analysis
   const socialUser = useMemo(() => {
-    const user = miniAppContext.socialUser
+    const user = socialState.userProfile
     
-    if (!user || !miniAppContext.socialUser) {
+    if (!user || !socialState.userProfile) {
       return {
         isAvailable: false,
         displayName: null,
@@ -573,9 +579,9 @@ export function useSocialCommerceIntegration(): SocialCommerceIntegration {
     
     // Determine verification status based on social platform verification
     let verificationStatus: 'verified' | 'unverified' | 'unknown' = 'unknown'
-    if (user.verifications && user.verifications.length > 0) {
+    if (user.isVerified) {
       verificationStatus = 'verified'
-    } else if (user.fid > 0) { // Farcaster users with FID are somewhat verified
+    } else if (user.fid && user.fid > 0) { // Farcaster users with FID are somewhat verified
       verificationStatus = 'unverified'
     }
     
@@ -583,15 +589,15 @@ export function useSocialCommerceIntegration(): SocialCommerceIntegration {
       isAvailable: true,
       displayName: user.displayName,
       username: user.username,
-      profileImage: user.pfpUrl || null,
+      profileImage: null, // Not available in current interface
       verificationStatus,
-      followerCount: user.followerCount || null
+      followerCount: null // Not available in current interface
     }
-  }, [miniAppContext.socialUser])
+  }, [socialState.userProfile])
   
   // Social sharing capabilities
   const sharing = useMemo(() => {
-    const isAvailable = miniAppContext.capabilities?.social?.canShare && 
+    const isAvailable = miniAppState.capabilities?.social?.canShare && 
                        contextData?.socialContext?.socialFeatures.canShare === true
     
     /**
@@ -675,14 +681,14 @@ export function useSocialCommerceIntegration(): SocialCommerceIntegration {
       shareContent,
       shareTransformer
     }
-  }, [miniAppContext.capabilities?.social?.canShare, contextData])
+  }, [miniAppState.capabilities?.social?.canShare, contextData])
   
   // Social verification and trust signals
   const verification = useMemo(() => {
-    const canVerifyPurchases = Boolean(miniAppContext.socialUser) && 
+    const canVerifyPurchases = Boolean(socialState.userProfile) && 
                               socialUser.verificationStatus === 'verified'
     
-    const canShowSocialProof = Boolean(miniAppContext.socialUser) && 
+    const canShowSocialProof = Boolean(socialState.userProfile) && 
                               socialUser.followerCount !== null && 
                               socialUser.followerCount > 0
     
@@ -701,7 +707,7 @@ export function useSocialCommerceIntegration(): SocialCommerceIntegration {
       canShowSocialProof,
       trustScore
     }
-  }, [miniAppContext.socialUser, socialUser])
+  }, [socialState.userProfile, socialUser])
   
   // Platform-specific optimizations
   const platformOptimizations = useMemo(() => {

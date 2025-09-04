@@ -23,6 +23,7 @@ import {
 } from '@/hooks/business/miniapp-commerce'
 import { useMiniAppSocial } from '@/hooks/business/miniapp-social'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
+import { useMiniAppPaymentOrchestrator } from '@/hooks/miniapp/useMiniAppPaymentOrchestrator'
 
 /**
  * Purchase Button Variant Types
@@ -173,6 +174,13 @@ export function MiniAppPurchaseButton({
   // Enhanced purchase flow with MiniApp batch transaction support
   const purchaseFlow = useUnifiedMiniAppPurchaseFlow(contentId, userAddress)
 
+  // Use the orchestrated payment system for proper error handling and monitoring
+  const paymentOrchestrator = useMiniAppPaymentOrchestrator({
+    enableSocialSharing: true,
+    enableBatchOptimization: true,
+    trackSocialMetrics: true
+  })
+
   // Social sharing and engagement tracking capabilities
   const socialFlow = useMiniAppSocial()
 
@@ -276,8 +284,19 @@ export function MiniAppPurchaseButton({
       console.log('Estimated Gas Savings:', safePurchaseFlow.performanceMetrics?.gasSavingsPercentage || 0)
       console.groupEnd()
 
-      // Execute the enhanced purchase flow
-      await safePurchaseFlow.purchaseWithBatchTransaction?.()
+      // Execute through the orchestrated payment system for proper error handling
+      if (paymentOrchestrator.canUseBatchTransactions && safePurchaseFlow.content?.requiredAmount) {
+        await paymentOrchestrator.executePayment({
+          contentId,
+          creator: safePurchaseFlow.content.creator as `0x${string}`,
+          ethAmount: safePurchaseFlow.content.requiredAmount,
+          maxSlippage: BigInt(200), // 2% slippage
+          deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour deadline
+        })
+      } else {
+        // Fallback to existing flow if orchestrator not available
+        await safePurchaseFlow.purchaseWithBatchTransaction?.()
+      }
 
       // Track the purchase for social analytics
       if (safeSocialFlow.socialUser?.fid) {

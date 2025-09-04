@@ -690,7 +690,15 @@ async function checkBatchTransactionSupport(): Promise<boolean> {
   if (typeof window === 'undefined' || !window.ethereum) return false
 
   try {
-    await window.ethereum.request({ method: 'wallet_sendCalls', params: [] })
+    await window.ethereum.request({
+      method: 'wallet_sendCalls',
+      params: [{
+        version: '1.0',
+        chainId: '0x2105', // Base mainnet
+        from: '0x0000000000000000000000000000000000000000',
+        calls: []
+      }]
+    })
     return true
   } catch {
     return false

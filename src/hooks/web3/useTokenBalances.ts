@@ -161,8 +161,9 @@ export const useTokenBalances = (): TokenBalanceState => {
     query: {
       refetchInterval: 30000,
       staleTime: 15000,
-      retry: 3,
-      enabled: !!contractAddresses?.PRICE_ORACLE
+      retry: false, // Don't retry on price oracle failures to prevent spam
+      enabled: !!contractAddresses?.PRICE_ORACLE,
+      // Note: onError removed in TanStack Query v5 - handle errors in components
     }
   })
   

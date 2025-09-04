@@ -41,10 +41,10 @@ import type { Address } from 'viem'
 import { UnifiedContentBrowser } from '@/components/content/UnifiedContentBrowser'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 import { usePlatformAnalytics } from '@/hooks/contracts/analytics/usePlatformAnalytics'
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import Component 3 for purchase integration
-import { SocialContextIntegration } from '@/components/miniapp/MiniAppContentPurchaseIntegration'
+import { UnifiedPurchaseFlow } from '@/components/purchase/UnifiedPurchaseFlow'
 
 // Import your existing UI components and utilities
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -229,12 +229,22 @@ export function MiniAppBrowseIntegration({
   const searchParams = useSearchParams()
   
   // Your sophisticated miniapp context
-  const { 
-    isMiniApp, 
-    isReady: isMiniAppReady,
-    capabilities,
-    socialUser: miniAppUser 
-  } = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppState = useMiniAppState()
+  const socialState = useSocialState()
+
+  const {
+    isMiniApp
+  } = miniAppUtils
+
+  const {
+    isConnected: isMiniAppConnected,
+    capabilities
+  } = miniAppState
+
+  const {
+    userProfile: miniAppUser
+  } = socialState
   
   // Your advanced analytics system
   const { platformStats: analyticsData, isLoading: analyticsLoading } = usePlatformAnalytics()
@@ -509,16 +519,30 @@ export function MiniAppBrowseIntegration({
       setIntegrationState(prev => ({ ...prev, activeTab: tabFromUrl }))
     }
   }, [searchParams, integrationState.activeTab])
-  
+
   // ===== LOADING AND ERROR STATES =====
-  
+
+  /**
+   * Error State Handling
+   *
+   * Show error as toast notification instead of inline Alert
+   * to avoid UI disruption.
+   */
+  React.useEffect(() => {
+    if (contentError) {
+      handleUIError(contentError, 'Content Loading', handleRefresh)
+    }
+  }, [contentError, handleRefresh])
+
+  // Don't render error state inline - handled by toast
+
   /**
    * Loading State Rendering
-   * 
+   *
    * This provides sophisticated loading states that match your existing
    * design system while optimizing for the miniapp context.
    */
-  if (!isMiniAppReady || (isContentLoading && !contentData)) {
+  if (!isMiniAppConnected || (isContentLoading && !contentData)) {
     return (
       <div className={`miniapp-browse-integration-loading ${className}`}>
         <Card>
@@ -557,18 +581,6 @@ export function MiniAppBrowseIntegration({
       </div>
     )
   }
-  
-  /**
-   * Error State Handling
-   * 
-   * Show error as toast notification instead of inline Alert
-   * to avoid UI disruption.
-   */
-  React.useEffect(() => {
-    if (contentError) {
-      handleUIError(contentError, 'Content Loading', handleRefresh)
-    }
-  }, [contentError, handleRefresh])
   
   // Don't render error state inline - handled by toast
   
@@ -742,13 +754,13 @@ export function MiniAppBrowseIntegration({
       {integrationState.showPurchaseModal && integrationState.selectedContentId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-background rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <SocialContextIntegration
+            <UnifiedPurchaseFlow
               contentId={integrationState.selectedContentId}
-              showSocialAnalytics={false}
+              context="miniapp"
               enableSocialFeatures={miniAppConfig.enableSocialFeatures}
-              layout="compact"
-              onPurchaseComplete={handlePurchaseComplete}
-              onContentShared={(contentId: bigint, platform: string) => handleSocialShare(contentId, platform)}
+              mode="standard"
+              onPurchaseSuccess={handlePurchaseComplete}
+              onSocialShare={(contentId: bigint, platform: string) => handleSocialShare(contentId, platform)}
               className="p-6"
             />
             
@@ -857,7 +869,8 @@ export default MiniAppBrowseIntegration
  * in the miniapp context, building on your existing analytics infrastructure.
  */
 export function useMiniAppBrowseAnalytics() {
-  const { isMiniApp } = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const { isMiniApp } = miniAppUtils
   const [metrics, setMetrics] = useState({
     contentLoadTime: 0,
     renderTime: 0,
@@ -866,7 +879,7 @@ export function useMiniAppBrowseAnalytics() {
     conversionRate: 0
   })
   
-  const trackInteraction = useCallback((interaction: string, data?: any) => {
+  const trackInteraction = useCallback((interaction: string, data?: Record<string, unknown>) => {
     if (!isMiniApp) return
     
     setMetrics(prev => ({

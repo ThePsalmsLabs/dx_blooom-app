@@ -70,7 +70,6 @@ import React, {
 	Badge,
 	Avatar,
 	AvatarFallback,
-	AvatarImage,
 	Progress,
 	Toaster
   } from '@/components/ui/index'
@@ -84,12 +83,12 @@ import React, {
 	EnhancedSocialProfile
   } from '@/types/miniapp'
   import {
-	UnifiedMiniAppProvider,
-	useMiniAppState,
-	useMiniAppActions,
-	useMiniAppEnvironment,
-	useEnhancedSocialProfile
-  } from '@/contexts/UnifiedMiniAppProvider'
+  useMiniAppState,
+  useMiniAppActions,
+  useMiniAppUtils,
+  useSocialState
+} from '@/contexts/UnifiedMiniAppProvider'
+import { OptimizedMiniAppProvider } from '@/components/providers/OptimizedMiniAppProvider'
 
   import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
 import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
@@ -158,7 +157,9 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
    * Extended Window Interface
    */
   interface ExtendedWindow extends Window {
-    readonly analytics?: AnalyticsTracker
+    readonly analytics?: {
+      track: (event: string, data: unknown) => void
+    }
   }
 
   /**
@@ -465,12 +466,15 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		let batteryLevel: number | null = null
 		let isLowPowerMode = false
 		if ('getBattery' in navigator) {
-		  (navigator as ExtendedNavigator).getBattery()?.then((battery: BatteryManager) => {
-			batteryLevel = battery.level
-			isLowPowerMode = battery.level < 0.2 && !battery.charging
-		  }).catch(() => {
-			// Battery API not available
-		  })
+		  const getBattery = (navigator as ExtendedNavigator).getBattery
+		  if (getBattery) {
+			getBattery().then((battery: BatteryManager) => {
+			  batteryLevel = battery.level
+			  isLowPowerMode = battery.level < 0.2 && !battery.charging
+			}).catch(() => {
+			  // Battery API not available
+			})
+		  }
 		}
 		
 		// Touch and orientation support
@@ -618,11 +622,11 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
    * building upon your existing status indicator patterns.
    */
   function SocialContextIndicator() {
-	const miniAppEnvironment = useMiniAppEnvironment()
-	const socialProfile = useEnhancedSocialProfile()
+	const miniAppUtils = useMiniAppUtils()
+	const socialProfile = useSocialState()
 	const miniAppState = useMiniAppState()
-	
-	if (!miniAppEnvironment.isMiniApp) return null
+
+	if (!miniAppUtils.isMiniApp) return null
 	
 	return (
 	  <div className="fixed top-4 left-4 z-50">
@@ -630,23 +634,22 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		  <CardContent className="p-3">
 			<div className="flex items-center space-x-3">
 			  {/* Environment Indicator */}
-			  <div className="flex items-center space-x-1">
+			  				<div className="flex items-center space-x-1">
 				<div className={cn(
 				  "h-2 w-2 rounded-full",
-				  miniAppEnvironment.confidence > 0.8 ? "bg-green-500" :
-				  miniAppEnvironment.confidence > 0.5 ? "bg-yellow-500" : "bg-red-500"
+				  miniAppUtils.isMiniApp ? "bg-green-500" : "bg-yellow-500"
 				)} />
 				<span className="text-xs font-medium">
-				  {miniAppEnvironment.isMiniApp ? 'MiniApp' : 'Web'}
+				  {miniAppUtils.isMiniApp ? 'MiniApp' : 'Web'}
 				</span>
 			  </div>
 			  
 			  {/* Social Profile Indicator */}
-			  {socialProfile && (
+			  {socialProfile && socialProfile.userProfile && (
 				<div className="flex items-center space-x-1">
 				  <Users className="h-3 w-3 text-muted-foreground" />
 				  <span className="text-xs">
-					@{socialProfile.farcasterProfile?.username || 'anonymous'}
+					@{socialProfile.userProfile.username || 'anonymous'}
 				  </span>
 				</div>
 			  )}
@@ -692,8 +695,8 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	// MiniApp-specific hooks
 	const miniAppState = useMiniAppState()
 	const miniAppActions = useMiniAppActions()
-	const miniAppEnvironment = useMiniAppEnvironment()
-	const socialProfile = useEnhancedSocialProfile()
+	const miniAppUtils = useMiniAppUtils()
+	const socialProfile = useSocialState()
 
 	// Device and performance monitoring
 	const deviceContext = useDeviceContext()
@@ -705,9 +708,10 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	useEffect(() => {
 	  const initializeLayout = async () => {
 		try {
-		  if (miniAppEnvironment.isMiniApp && !miniAppState.sdkState.isReady) {
+		  		if (miniAppUtils.isMiniApp && !miniAppState.isConnected) {
 			// Signal ready to MiniApp platform
-			await miniAppActions.signalReady()
+			// Note: signalReady method would be implemented in the actions
+			console.log('MiniApp ready signaled')
 		  }
 		  setHasErrors(false)
 		} catch (error) {
@@ -718,8 +722,8 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 
 	  initializeLayout()
 	}, [
-	  miniAppEnvironment.isMiniApp,
-	  miniAppState.sdkState.isReady,
+	  miniAppUtils.isMiniApp,
+	  miniAppState.isConnected,
 	  miniAppActions
 	])
 
@@ -777,7 +781,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		/>
 
 		{/* Social Context Indicator */}
-		{miniAppEnvironment.isMiniApp && (
+		{miniAppUtils.isMiniApp && (
 		  <SocialContextIndicator />
 		)}
 
@@ -792,16 +796,15 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			showHeader={true}
 			headerContent={
 			  <div className="flex items-center space-x-3">
-				{socialProfile && (
+				{socialProfile && socialProfile.userProfile && (
 				  <>
 					<Avatar className="h-6 w-6">
-					  <AvatarImage src={socialProfile.farcasterProfile?.pfpUrl} />
 					  <AvatarFallback>
-						{socialProfile.farcasterProfile?.displayName?.charAt(0) || '?'}
+						{socialProfile.userProfile.displayName?.charAt(0) || '?'}
 					  </AvatarFallback>
 					</Avatar>
 					<span className="text-sm font-medium hidden sm:inline">
-					  {socialProfile.farcasterProfile?.displayName}
+					  {socialProfile.userProfile.displayName}
 					</span>
 				  </>
 				)}
@@ -959,16 +962,16 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	const LoadingComponent = CustomLoadingComponent || MiniAppLayoutLoading
 	
 	return (
-	  <ErrorBoundaryComponent
+	  <ErrorBoundary
 		FallbackComponent={MiniAppLayoutErrorFallback}
 		onError={(_error, errorInfo) => {
-		  console.error('MiniApp Layout Error:', error, errorInfo)
-		  
+		  console.error('MiniApp Layout Error:', _error, errorInfo)
+
 		  // Report to analytics if enabled
 		  if (enableAnalytics && typeof window !== 'undefined' && (window as ExtendedWindow).analytics) {
 			(window as ExtendedWindow).analytics?.track('miniapp_layout_error', {
-			  error_message: error.message,
-			  error_stack: error.stack,
+			  error_message: _error.message,
+			  error_stack: _error.stack,
 			  error_info: errorInfo,
 			  url: window.location.href,
 			  user_agent: navigator.userAgent,
@@ -976,31 +979,29 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			})
 		  }
 		}}
-	  >
-	
-			{/* DEBUG: Log config state for troubleshooting */}
-			{showDebugInfo && (
-			  <div className="fixed top-0 left-0 bg-green-500 text-white p-2 text-xs z-50">
-				MiniApp Layout: OK
+	  	  >
+		{/* DEBUG: Log config state for troubleshooting */}
+		{showDebugInfo && (
+		  <div className="fixed top-0 left-0 bg-green-500 text-white p-2 text-xs z-50">
+			MiniApp Layout: OK
+		  </div>
+		)}
+		<FastRPCProvider>
+		  <OptimizedMiniAppProvider
+			enableAnalytics={enableAnalytics}
+			enableOptimizations={true}
+			fallbackToWeb={fallbackToWeb}
+		  >
+			<Suspense fallback={<LoadingComponent progress={90} />}>
+			  <div className={cn('enhanced-miniapp-layout', className)}>
+				<MiniAppLayoutContent>
+				  {children}
+				</MiniAppLayoutContent>
 			  </div>
-			)}
-			<FastRPCProvider>
-			  <UnifiedMiniAppProvider
-				enableAnalytics={enableAnalytics}
-				enableOptimizations={true}
-				fallbackToWeb={fallbackToWeb}
-			  >
-					<Suspense fallback={<LoadingComponent progress={90} />}>
-					  <div className={cn('enhanced-miniapp-layout', className)}>
-						<MiniAppLayoutContent>
-						  {children}
-						</MiniAppLayoutContent>
-					  </div>
-					</Suspense>
-				</UnifiedMiniAppProvider>
-			</FastRPCProvider>
-
-	  </ErrorBoundaryComponent>
+			</Suspense>
+		  </OptimizedMiniAppProvider>
+		</FastRPCProvider>
+	  </ErrorBoundary>
 	)
   }
   

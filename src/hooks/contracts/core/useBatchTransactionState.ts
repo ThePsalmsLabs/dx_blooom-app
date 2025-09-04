@@ -14,7 +14,7 @@ import {
 import type { Address, Hash } from 'viem'
 
 // Import Phase 1 MiniApp integration for context-aware analytics
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import existing performance monitoring from your Phase 1 infrastructure
 import { useMiniAppPerformanceMetrics } from '@/utils/performance/miniAppMetrics'
@@ -293,7 +293,12 @@ export function useBatchTransactionState(
   
   const chainId = useChainId()
   const publicClient = usePublicClient()
-  const { isMiniApp, context: miniAppContext, socialUser } = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppState = useMiniAppState()
+  const socialState = useSocialState()
+  const { isMiniApp } = miniAppUtils
+  const { context: miniAppContext } = miniAppState
+  const { userProfile } = socialState
   const { trackMiniAppMetrics } = useMiniAppPerformanceMetrics()
   
   // Merge user configuration with defaults for optimal behavior

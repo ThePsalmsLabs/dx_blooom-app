@@ -3,14 +3,14 @@
 // Complete production implementation combining MiniApp layout, optimization, analytics, and deferred components
 import React, { Suspense } from 'react'
 import dynamic from 'next/dynamic'
-import { ProductionMiniAppLayout } from '@/components/miniapp/ProductionMiniAppLayout'
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { UnifiedMiniAppLayout } from '@/components/layout/UnifiedMiniAppLayout'
+import { useMiniAppState, useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useMiniAppOptimization } from '@/hooks/miniapp/useMiniAppOptimization'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
 import { miniAppAnalytics } from '@/lib/miniapp/analytics'
 
-const ContentBrowser = dynamic(() => import('@/components/miniapp/EnhancedContentBrowser'), {
-	loading: () => <ContentBrowserSkeleton />, 
+const ContentBrowser = dynamic(() => import('@/components/content/UnifiedContentBrowser'), {
+	loading: () => <ContentBrowserSkeleton />,
 	ssr: false,
 })
 
@@ -66,7 +66,7 @@ class MiniAppErrorBoundary extends React.Component<{ children: React.ReactNode; 
 							<span className="text-2xl">😕</span>
 						</div>
 						<h3 className="text-lg font-semibold text-slate-900 mb-2">Something went wrong</h3>
-						<p className="text-slate-600 text-sm mb-4">We're having trouble loading the content. This might be a temporary issue.</p>
+						<p className="text-slate-600 text-sm mb-4">We&apos;re having trouble loading the content. This might be a temporary issue.</p>
 						<div className="space-y-2">
 							<button onClick={() => { this.setState({ hasError: false, error: undefined }); this.props.onRetry?.() }} className="w-full bg-blue-600 text-white py-2 px-4 rounded-xl font-medium text-sm hover:bg-blue-700 transition-colors">Try Again</button>
 							<button onClick={() => window.location.reload()} className="w-full bg-slate-100 text-slate-700 py-2 px-4 rounded-xl font-medium text-sm hover:bg-slate-200 transition-colors">Refresh Page</button>
@@ -81,51 +81,21 @@ class MiniAppErrorBoundary extends React.Component<{ children: React.ReactNode; 
 
 export function ProductionMiniAppHome(): React.ReactElement {
 	// MiniApp context and state
-	  const { isMiniApp, isReady, capabilities, socialUser } = useMiniApp()
+	const miniAppUtils = useMiniAppUtils()
+	const miniAppState = useMiniAppState()
+	const socialState = useSocialState()
+
+	const { isMiniApp } = miniAppUtils
+	const { isConnected: isMiniAppConnected, capabilities } = miniAppState
+	const { userProfile } = socialState
 	const { optimization } = useMiniAppOptimization()
 	const [shareOpen, setShareOpen] = React.useState(false)
 	const [sharePayload, setSharePayload] = React.useState<{ title?: string; url?: string; creator?: string } | null>(null)
 
-	// Map capabilities to match the expected interface
-	const mappedCapabilities = {
-		canShare: capabilities?.social?.canShare || false,
-		canSignIn: capabilities?.wallet?.canConnect || false,
-		canSendTransactions: capabilities?.wallet?.canBatchTransactions || false,
-		hasNotifications: capabilities?.social?.canReceiveNotifications || false
-	}
-
-	React.useEffect(() => {
-		if (isReady) {
-			miniAppAnalytics.track('miniapp_initialized', {
-				isMiniApp,
-				capabilities: mappedCapabilities,
-				optimization: { 
-					connectionType: optimization.connectionType, 
-					dataUsageMode: optimization.dataUsageMode, 
-					batchSize: optimization.batchSize 
-				},
-			})
-		}
-	}, [isReady, isMiniApp, mappedCapabilities, optimization])
-
-	if (!isReady) {
-		return (
-			<div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-				<div className="text-center">
-					<div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-						<div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-					</div>
-					<h2 className="text-xl font-semibold text-slate-900 mb-2">Loading Content Platform</h2>
-					<p className="text-slate-600">Preparing your personalized content experience...</p>
-				</div>
-			</div>
-		)
-	}
-
 	const handlePurchaseSuccess = React.useCallback((args: { id: number; title: string; creator?: string }) => {
 		// Track purchase success
 		trackMiniAppEvent.purchaseCompleted(args.id.toString(), '0', 'success')
-		
+
 		// Optionally trigger share modal after purchase
 		setSharePayload({
 			title: `Just purchased "${args.title}" by ${args.creator || 'a creator'}! Check it out:`,
@@ -144,16 +114,52 @@ export function ProductionMiniAppHome(): React.ReactElement {
 		setShareOpen(true)
 	}, [])
 
+	// Map capabilities to match the expected interface
+	const mappedCapabilities = {
+		canShare: capabilities?.social?.canShare || false,
+		canSignIn: capabilities?.wallet?.canConnect || false,
+		canSendTransactions: capabilities?.wallet?.canBatchTransactions || false,
+		hasNotifications: capabilities?.social?.canCompose || false
+	}
+
+	React.useEffect(() => {
+		if (isMiniAppConnected) {
+			miniAppAnalytics.track('miniapp_initialized', {
+				isMiniApp,
+				capabilities: mappedCapabilities,
+				optimization: {
+					connectionType: optimization.connectionType,
+					dataUsageMode: optimization.dataUsageMode,
+					batchSize: optimization.batchSize
+				},
+			})
+		}
+	}, [isMiniAppConnected, isMiniApp, mappedCapabilities, optimization])
+
+	if (!isMiniAppConnected) {
+		return (
+			<div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+				<div className="text-center">
+					<div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+						<div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+					</div>
+					<h2 className="text-xl font-semibold text-slate-900 mb-2">Loading Content Platform</h2>
+					<p className="text-slate-600">Preparing your personalized content experience...</p>
+				</div>
+			</div>
+		)
+	}
+
+
+
 	return (
 		<MiniAppErrorBoundary onRetry={() => window.location.reload()}>
-			<ProductionMiniAppLayout>
+			<UnifiedMiniAppLayout>
 				<Suspense fallback={<ContentBrowserSkeleton />}>
 					<ContentBrowser
-						optimized={optimization}
-						capabilities={mappedCapabilities}
-						onAnalyticsEvent={(event, properties) => miniAppAnalytics.track(event, properties)}
-						onPurchaseSuccess={handlePurchaseSuccess}
-						onShareIntent={handleShareIntent}
+						showSocialFeatures={true}
+						showCreatorInfo={true}
+						context="miniapp"
 					/>
 				</Suspense>
 
@@ -172,7 +178,7 @@ export function ProductionMiniAppHome(): React.ReactElement {
 						/>
 					)}
 				</Suspense>
-			</ProductionMiniAppLayout>
+			</UnifiedMiniAppLayout>
 		</MiniAppErrorBoundary>
 	)
 }

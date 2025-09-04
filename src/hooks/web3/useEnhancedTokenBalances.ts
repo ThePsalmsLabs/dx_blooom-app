@@ -112,14 +112,13 @@ const useEnhancedEthPrice = (
     args: [BigInt(1e6)], // 1 USDC
     query: {
       enabled: !!(
-        connectionState.hasValidChain && 
-        connectionState.hasContractAddresses && 
+        connectionState.hasValidChain &&
+        connectionState.hasContractAddresses &&
         contractAddresses?.PRICE_ORACLE
       ),
       refetchInterval: 30000,
       staleTime: 15000,
-      retry: 3,
-      retryDelay: 1000,
+      retry: false, // Don't retry on price oracle failures
     }
   })
 

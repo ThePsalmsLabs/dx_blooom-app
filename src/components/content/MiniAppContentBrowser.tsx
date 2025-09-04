@@ -10,31 +10,154 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+
 import {
   Play,
   Eye,
   RefreshCw,
   Wallet,
   AlertCircle,
-  Share2
+  Unlock
 } from 'lucide-react'
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
-import { useActiveContentPaginated } from '@/hooks/contracts/core'
+import { categoryToString } from '@/types/contracts'
+import {
+  useActiveContentPaginated,
+  useContentById,
+  useHasContentAccess,
+  useCreatorProfile
+} from '@/hooks/contracts/core'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
-import { ShareButton } from '@/components/ui/share-button'
+import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimization'
 import type { Address } from 'viem'
 
 interface MiniAppContentBrowserProps {
   itemsPerPage?: number
   onContentSelect?: (contentId: bigint) => void
   className?: string
+  contentIds?: readonly bigint[] // Optional: use specific content IDs instead of paginated fetch
+}
+
+/**
+ * MiniApp Content Card Component
+ * Displays real content data from the contract
+ */
+function MiniAppContentCard({
+  contentId,
+  onContentSelect,
+  userAddress
+}: {
+  contentId: bigint
+  onContentSelect?: (contentId: bigint) => void
+  userAddress?: string
+}) {
+  // Fetch real content data from contract
+  const contentQuery = useContentById(contentId)
+  const accessControl = useHasContentAccess(
+    userAddress as `0x${string}` | undefined,
+    contentId
+  )
+  const creatorProfile = useCreatorProfile(contentQuery.data?.creator)
+
+  const handleClick = () => {
+    if (onContentSelect) {
+      onContentSelect(contentId)
+    }
+  }
+
+  // Loading state
+  if (contentQuery.isLoading) {
+    return (
+      <Card className="overflow-hidden">
+        <div className="aspect-video bg-muted animate-pulse" />
+        <CardContent className="p-3 space-y-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-1/2" />
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Error state
+  if (contentQuery.error || !contentQuery.data) {
+    return (
+      <Card className="overflow-hidden border-destructive/50">
+        <div className="aspect-video bg-destructive/10 flex items-center justify-center">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+        </div>
+        <CardContent className="p-3">
+          <p className="text-xs text-destructive">Failed to load content</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const content = contentQuery.data
+
+  return (
+    <Card
+      className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+      onClick={handleClick}
+    >
+      {/* Content Preview */}
+      <div className="aspect-video bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center relative">
+        <Play className="h-8 w-8 text-muted-foreground" />
+        {accessControl.data && (
+          <div className="absolute top-2 right-2">
+            <Badge variant="secondary" className="text-xs">
+              <Unlock className="h-3 w-3 mr-1" />
+              Owned
+            </Badge>
+          </div>
+        )}
+      </div>
+
+      <CardContent className="p-3 space-y-2">
+        {/* Content Title */}
+        <h3 className="font-medium text-sm truncate" title={content.title}>
+          {content.title}
+        </h3>
+
+        {/* Content Description */}
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {content.description || 'No description available'}
+        </p>
+
+        {/* Category and Creator */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{categoryToString(content.category)}</span>
+          <span>by {formatAddress(content.creator)}</span>
+        </div>
+
+        {/* Price and Purchase Button */}
+        <div className="flex items-center justify-between pt-2">
+          <div className="text-sm font-semibold">
+            {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
+          </div>
+          <MiniAppPurchaseButton
+            contentId={contentId}
+            title={content.title}
+            userAddress={userAddress as Address}
+            creatorInfo={{
+              address: content.creator,
+              name: formatAddress(content.creator)
+            }}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 function MiniAppContentSkeleton() {
@@ -57,30 +180,82 @@ function MiniAppContentSkeleton() {
   )
 }
 
-function MiniAppContentBrowserCore({ 
-  itemsPerPage = 6, 
+function MiniAppContentBrowserCore({
+  itemsPerPage = 6,
   onContentSelect,
-  className 
+  className,
+  contentIds
 }: MiniAppContentBrowserProps) {
   const walletUI = useWalletConnectionUI()
   const [shouldLoadContent, setShouldLoadContent] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
 
-  // Only load content if wallet is connected or after a delay
+  // Initialize RPC optimization
+  const rpcOptimization = useMiniAppRPCOptimization({
+    enableBatching: true,
+    enablePrefetching: true,
+    mobileOptimizations: true,
+    aggressiveCaching: true,
+    throttleMs: 1000
+  })
+
+  // Intersection Observer for visibility-based loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting)
+      },
+      { threshold: 0.1 }
+    )
+
+    const element = document.getElementById('miniapp-content-browser')
+    if (element) {
+      observer.observe(element)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Optimized content loading strategy
   useEffect(() => {
     if (walletUI.isConnected) {
       setShouldLoadContent(true)
     } else {
       // Delay content loading for non-connected users to prioritize wallet connection
-      const timer = setTimeout(() => setShouldLoadContent(true), 2000)
+      const timer = setTimeout(() => setShouldLoadContent(true), 3000) // Increased delay
       return () => clearTimeout(timer)
     }
   }, [walletUI.isConnected])
 
-  // Only make contract calls when we should load content
+  // Use provided contentIds or fetch from contract
   const contentQuery = useActiveContentPaginated(
-    shouldLoadContent ? 0 : 0,
-    shouldLoadContent ? itemsPerPage : 0
+    shouldLoadContent && isVisible && !contentIds ? 0 : 0,
+    shouldLoadContent && isVisible && !contentIds ? itemsPerPage : 0
   )
+
+  // Create mock data structure when contentIds are provided
+  const providedContentData = useMemo(() => {
+    if (contentIds) {
+      return {
+        contentIds: contentIds.slice(0, itemsPerPage),
+        total: BigInt(contentIds.length)
+      }
+    }
+    return null
+  }, [contentIds, itemsPerPage])
+
+  // Use provided content IDs if available, otherwise use fetched data
+  const effectiveContentData = contentIds ? providedContentData : contentQuery.data
+  const isEffectiveLoading = contentIds ? false : contentQuery.isLoading
+  const hasEffectiveError = contentIds ? false : contentQuery.isError
+
+  // Apply RPC optimization metrics tracking
+  useEffect(() => {
+    if (effectiveContentData) {
+      // Track successful data fetch for metrics
+      console.log('📊 Content loaded successfully with optimization')
+    }
+  }, [effectiveContentData])
 
   const handleContentClick = useCallback((contentId: bigint) => {
     if (onContentSelect) {
@@ -88,9 +263,12 @@ function MiniAppContentBrowserCore({
     }
   }, [onContentSelect])
 
-  const handleRefresh = useCallback(() => {
-    contentQuery.refetch()
-  }, [contentQuery])
+  const handleRefresh = useCallback(async () => {
+    // Use smart refresh with throttling
+    await rpcOptimization.smartRefresh('content-browser', async () => {
+      await contentQuery.refetch()
+    })
+  }, [contentQuery, rpcOptimization])
 
   // Show wallet connection prompt if not connected
   if (!walletUI.isConnected) {
@@ -118,9 +296,9 @@ function MiniAppContentBrowserCore({
               </Button>
             </div>
             
-            {contentQuery.isLoading ? (
+            {isEffectiveLoading ? (
               <MiniAppContentSkeleton />
-            ) : contentQuery.isError ? (
+            ) : hasEffectiveError ? (
               <div className="text-center py-8">
                 <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                 <h3 className="font-medium mb-2">Unable to Load Content</h3>
@@ -134,30 +312,13 @@ function MiniAppContentBrowserCore({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4">
-                {contentQuery.data?.contentIds?.map((contentId) => (
-                  <Card key={contentId.toString()} className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
-                    <div className="aspect-video bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                      <Play className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <CardContent className="p-3 space-y-2">
-                      <h3 className="font-medium text-sm truncate">
-                        Content #{contentId.toString()}
-                      </h3>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        Connect your wallet to view details and purchase
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">
-                            {formatAddress('0x1234...5678' as Address)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs text-muted-foreground">
-                          Creator
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                {effectiveContentData?.contentIds?.map((contentId: bigint) => (
+                  <MiniAppContentCard
+                    key={contentId.toString()}
+                    contentId={contentId}
+                    onContentSelect={handleContentClick}
+                    userAddress={walletUI.address as Address}
+                  />
                 ))}
               </div>
             )}
@@ -169,11 +330,16 @@ function MiniAppContentBrowserCore({
 
   // Show content for connected users
   return (
-    <div className={cn("space-y-4", className)}>
+    <div id="miniapp-content-browser" className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Play className="h-5 w-5 text-primary" />
           Featured Content
+          {rpcOptimization.metrics.savedCalls > 0 && (
+            <Badge variant="secondary" className="text-xs ml-2">
+              {rpcOptimization.metrics.savedCalls} calls saved
+            </Badge>
+          )}
         </h2>
         <Button 
           variant="ghost" 
@@ -210,66 +376,12 @@ function MiniAppContentBrowserCore({
       ) : (
         <div className="grid grid-cols-2 gap-4">
           {contentQuery.data?.contentIds?.map((contentId) => (
-            <Card 
-              key={contentId.toString()} 
-              className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => handleContentClick(contentId)}
-            >
-              <div className="aspect-video bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                <Play className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <CardContent className="p-3 space-y-2">
-                <h3 className="font-medium text-sm truncate">
-                  Content #{contentId.toString()}
-                </h3>
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  Click to view details and purchase
-                </p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-xs">
-                        {formatAddress('0x1234...5678' as Address)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-muted-foreground">
-                      Creator
-                    </span>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {formatCurrency(BigInt(1000000))} {/* 0.01 USDC in wei */}
-                  </Badge>
-                </div>
-
-                {/* Social Proof Indicators */}
-                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    <span>1.2k views</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Share2 className="h-3 w-3" />
-                    <span>42 shares</span>
-                  </div>
-                </div>
-                <MiniAppPurchaseButton
-                  contentId={contentId}
-                  title={`Content #${contentId.toString()}`}
-                  className="w-full"
-                />
-
-                {/* Share Button */}
-                <div className="flex gap-2 pt-2">
-                  <ShareButton
-                    contentId={contentId}
-                    title={`Content #${contentId.toString()}`}
-                    description="Premium content on Bloom platform"
-                    variant="compact"
-                    className="flex-1"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <MiniAppContentCard
+              key={contentId.toString()}
+              contentId={contentId}
+              onContentSelect={handleContentClick}
+              userAddress={walletUI.address as Address}
+            />
           ))}
         </div>
       )}

@@ -61,7 +61,7 @@ import {
 import { cn } from '@/lib/utils'
 
 // Import your actual hooks and providers
-import { useMiniApp } from '@/contexts/MiniAppProvider'
+import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 
 // ================================================
@@ -239,21 +239,20 @@ const PRODUCTION_NAVIGATION_SECTIONS: readonly NavigationSection[] = [
  * Integrates with your actual EnhancedMiniAppProvider
  */
 function useNavigationContext(): NavigationContext {
-  const { context: miniAppContext, isMiniApp, isEmbedded } = useMiniApp()
-  
+  const miniAppUtils = useMiniAppUtils()
+  const { isMiniApp } = miniAppUtils
+
   return useMemo(() => {
     if (isMiniApp) {
-      if (isEmbedded) return 'embedded'
-      
       // Note: socialUser and hasSocialContext are available from useMiniApp hook directly
       // They're not properties of the context object
       const isFromSocial = false // Simplified for now
-      
+
       return isFromSocial ? 'social_share' : 'miniapp'
     }
-    
+
     return 'web'
-  }, [isMiniApp, isEmbedded, miniAppContext])
+  }, [isMiniApp])
 }
 
 /**
@@ -265,7 +264,8 @@ function useUserRole(): {
   isLoading: boolean
   error: Error | null
 } {
-  const { context: miniAppContext, isMiniApp } = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const { isMiniApp } = miniAppUtils
   const walletUI = useWalletConnectionUI()
   const { data: isCreator, isLoading, error } = useIsCreatorRegistered(
     walletUI.address ? (walletUI.address as `0x${string}`) : undefined
@@ -286,11 +286,12 @@ function useUserRole(): {
  * Integrates with your actual analytics system
  */
 function useNavigationAnalytics(enabled: boolean = true) {
-  const { isMiniApp, context } = useMiniApp()
-  
+  const miniAppUtils = useMiniAppUtils()
+  const { isMiniApp } = miniAppUtils
+
   const trackNavigation = useCallback((item: NavigationItem) => {
     if (!enabled || !item.analyticsEvent) return
-    
+
     try {
       // Track with your actual analytics system
       const eventData = {
@@ -303,18 +304,18 @@ function useNavigationAnalytics(enabled: boolean = true) {
           timestamp: Date.now()
         }
       }
-      
+
       // Replace with your actual analytics implementation
-      if (typeof window !== 'undefined' && (window as any).analytics) {
-        (window as any).analytics.track(eventData.event, eventData.properties)
+      if (typeof window !== 'undefined' && (window as { analytics?: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics) {
+        (window as { analytics?: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics!.track(eventData.event, eventData.properties)
       }
-      
+
       console.log('Navigation tracked:', eventData) // Remove in production
     } catch (error) {
       console.warn('Analytics tracking failed:', error)
     }
-  }, [enabled, isMiniApp, context])
-  
+  }, [enabled, isMiniApp])
+
   return { trackNavigation }
 }
 

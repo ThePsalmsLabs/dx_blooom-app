@@ -340,7 +340,15 @@ async function checkBatchTransactionSupport(): Promise<boolean> {
   if (typeof window === 'undefined' || !window.ethereum) return false
 
   try {
-    await window.ethereum.request({ method: 'wallet_sendCalls', params: [] })
+    await window.ethereum.request({
+      method: 'wallet_sendCalls',
+      params: [{
+        version: '1.0',
+        chainId: '0x2105', // Base mainnet
+        from: '0x0000000000000000000000000000000000000000',
+        calls: []
+      }]
+    })
     return true
   } catch {
     return false
@@ -641,7 +649,7 @@ export function UnifiedMiniAppProvider({
     }
   }, [state.capabilities.social.canShare])
 
-  const executeTransaction = useCallback(async (_type: string, _params: Record<string, unknown>): Promise<void> => {
+  const executeTransaction = useCallback(async (type: string, params: Record<string, unknown>): Promise<void> => {
     try {
       dispatch({ type: 'SET_TRANSACTION_STATE', payload: {
         ...state.transactionState,
@@ -653,8 +661,16 @@ export function UnifiedMiniAppProvider({
         }
       }})
 
-      // Transaction execution logic would go here
-      // This is a placeholder for the actual implementation
+      // Route to payment orchestrator for payment transactions
+      if (type === 'content_purchase' && params.contentId && params.ethAmount) {
+        // This should be handled by the MiniApp payment orchestrator
+        console.log('Content purchase should use useMiniAppPaymentOrchestrator:', params)
+        throw new Error('Use useMiniAppPaymentOrchestrator for content purchases')
+      }
+
+      // Handle other transaction types here
+      // For now, just log the transaction details
+      console.log('Transaction type:', type, 'Params:', params)
 
       dispatch({ type: 'SET_TRANSACTION_STATE', payload: {
         ...state.transactionState,

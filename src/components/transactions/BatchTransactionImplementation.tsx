@@ -79,6 +79,7 @@ import {
 
 import { OrchestratedPaymentFlowState } from '@/hooks/web3/usePaymentFlowOrchestrator'
 import { useMiniApp } from '@/components/social/MiniAppSDKIntegration'
+import { useMiniAppUtils, useMiniAppState } from '@/contexts/UnifiedMiniAppProvider'
 import { ERC20_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { getContractAddresses } from '@/lib/contracts/config'
 
@@ -276,7 +277,9 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
   const [isDetecting, setIsDetecting] = useState(true)
   const walletUI = useWalletConnectionUI()
   const { connector } = useAccount()
-  const miniApp = useMiniApp()
+  const miniAppUtils = useMiniAppUtils()
+  const miniAppState = useMiniAppState()
+  const miniApp = miniAppUtils
   const publicClient = usePublicClient()
   
   // Account type detection function
@@ -315,8 +318,8 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
             supportsGasEstimation: true
           },
           environmentCapabilities: {
-            clientSupport: miniApp.environment?.client === 'warpcast',
-            sdkVersion: miniApp.environment?.sdkInfo.version || '1.0.0',
+            clientSupport: miniAppState.context === 'miniapp',
+            sdkVersion: '1.0.0',
             hasNativeIntegration: accountType === 'smart_account'
           },
           limitations: [],
@@ -339,7 +342,7 @@ function BatchCapabilityDetector({ onCapabilityDetected, showDetails = false }: 
         }
         
         // Add limitations based on detected issues
-        if (!miniApp.environment?.sdkInfo.supportsBatchTransactions) {
+        if (!miniAppState.capabilities.wallet.canBatchTransactions) {
           mockCapability.limitations.push('MiniApp SDK version may not support batch transactions')
         }
         

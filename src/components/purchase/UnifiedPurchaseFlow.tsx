@@ -34,7 +34,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useBalance, useChainId } from 'wagmi'
+import { useChainId } from 'wagmi'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import {
   ShoppingCart,
@@ -85,8 +85,10 @@ import {
 import {
   useContentById,
   useHasContentAccess,
-  useIsCreatorRegistered
+  useIsCreatorRegistered,
+  useTokenBalance
 } from '@/hooks/contracts/core'
+import { getContractAddresses } from '@/lib/contracts/config'
 
 // Import utilities and types
 import { cn, formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
@@ -104,7 +106,7 @@ import type { Address } from 'viem'
 export type PurchaseContext = 'web' | 'miniapp'
 export type ViewportSize = 'mobile' | 'tablet' | 'desktop'
 export type PurchaseMode = 'standard' | 'batch' | 'social'
-export type PaymentMethod = 'eth' | 'usdc' | 'custom'
+export type PaymentMethod = 'usdc'
 
 /**
  * Transaction State Management
@@ -247,7 +249,7 @@ export function UnifiedPurchaseFlow({
   userAddress,
   className,
   mode = 'standard',
-  preferredPaymentMethod = 'eth',
+  preferredPaymentMethod = 'usdc',
   showTransactionDetails = true,
   enableSocialFeatures = true,
   onPurchaseSuccess,
@@ -278,15 +280,15 @@ export function UnifiedPurchaseFlow({
   const contentQuery = useContentById(contentId)
   const accessQuery = useHasContentAccess(effectiveUserAddress as `0x${string}` , contentId)
   const creatorRegistration = useIsCreatorRegistered(contentQuery.data?.creator)
-  
-  // User balance for payment validation
-  const balanceQuery = useBalance({
-    address: effectiveUserAddress as `0x${string}`,
-    chainId,
-    query: {
-      refetchInterval: autoRefreshBalance ? config.balanceRefreshInterval : false
-    }
-  })
+
+  // Contract addresses for USDC
+  const contractAddresses = getContractAddresses(chainId)
+
+  // User USDC balance for payment validation
+  const usdcBalanceQuery = useTokenBalance(
+    contractAddresses?.USDC,
+    effectiveUserAddress as `0x${string}`
+  )
 
   // ===== STATE MANAGEMENT =====
   
@@ -308,8 +310,8 @@ export function UnifiedPurchaseFlow({
   
   const content = contentQuery.data
   const hasAccess = accessQuery.data || false
-  const userBalance = balanceQuery.data?.value || BigInt(0)
-  const canAffordPurchase = content ? userBalance >= content.payPerViewPrice : false
+  const userUSDCBalance = usdcBalanceQuery.data || BigInt(0)
+  const canAffordPurchase = content ? userUSDCBalance >= content.payPerViewPrice : false
   
   // Context-aware display configuration
   const isMiniApp = context === 'miniapp'
@@ -691,7 +693,7 @@ export function UnifiedPurchaseFlow({
                 Price:
               </span>
               <span className="text-lg font-weight-adaptive-semibold text-adaptive-base">
-                {formatCurrency(content.payPerViewPrice)} ETH
+                {formatCurrency(content.payPerViewPrice, 6, 'USDC')} USDC
               </span>
             </div>
             
@@ -711,20 +713,20 @@ export function UnifiedPurchaseFlow({
                   <div className="text-xs text-muted-foreground space-y-1">
                     <div className="flex justify-between">
                       <span>Content Price:</span>
-                      <span>{formatCurrency(content.payPerViewPrice)} ETH</span>
+                      <span>{formatCurrency(content.payPerViewPrice, 6, 'USDC')} USDC</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Estimated Gas:</span>
-                      <span>~0.001 ETH</span>
+                      <span>~0.01 USDC</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Your Balance:</span>
-                      <span>{formatCurrency(userBalance)} ETH</span>
+                      <span>{formatCurrency(userUSDCBalance, 6, 'USDC')} USDC</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-weight-adaptive-medium">
                       <span>Total Cost:</span>
-                      <span>{formatCurrency(content.payPerViewPrice + BigInt('1000000000000000'))} ETH</span>
+                      <span>{formatCurrency(content.payPerViewPrice + BigInt('10000'), 6, 'USDC')} USDC</span>
                     </div>
                   </div>
                 </CollapsibleContent>

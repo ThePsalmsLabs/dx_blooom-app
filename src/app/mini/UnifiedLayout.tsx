@@ -51,3 +51,4 @@ export function MinimalMiniLayout({ children }: UnifiedMiniLayoutProps) {
 }
 
 export default UnifiedMiniLayout
+
