@@ -111,7 +111,7 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
     miniAppWallet.connect(connector)
   }, [miniAppWallet])
   
-  // MiniApp communication - send wallet state to parent window
+  // MiniApp communication - send wallet state to parent window (throttled)
   useEffect(() => {
     if (isMiniAppContext() && miniAppWallet.isConnected && walletUI.address) {
       const walletState = {
@@ -126,23 +126,40 @@ export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
       // Send to parent window for immediate communication
       sendWalletStateToParent(walletState)
 
-      console.log('📤 Sent wallet state to parent:', walletState)
+      // Only log in development and throttle to once per 5 seconds
+      if (process.env.NODE_ENV === 'development') {
+        const now = Date.now()
+        const lastLogKey = 'miniapp-wallet-state-last-log'
+        const lastLog = parseInt(localStorage.getItem(lastLogKey) || '0')
+        if (now - lastLog > 5000) { // 5 seconds throttle
+          console.log('📤 Sent wallet state to parent:', walletState)
+          localStorage.setItem(lastLogKey, now.toString())
+        }
+      }
     }
   }, [miniAppWallet.isConnected, walletUI.address, chainId])
 
-  // Debug logging to track state synchronization
+  // Debug logging to track state synchronization (heavily throttled)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 MiniApp Wallet UI State:', {
-        miniAppConnected: miniAppWallet.isConnected,
-        unifiedConnected: walletUI.isConnected,
-        miniAppConnecting: miniAppWallet.isConnecting,
-        unifiedConnecting: walletUI.isConnecting,
-        address: walletUI.address ? `${walletUI.address.slice(0, 6)}...${walletUI.address.slice(-4)}` : null,
-        miniAppError: miniAppWallet.error?.message,
-        miniAppStatus: miniAppWallet.status,
-        isMiniAppContext: isMiniAppContext()
-      })
+      const now = Date.now()
+      const lastDebugLogKey = 'miniapp-wallet-debug-last-log'
+      const lastDebugLog = parseInt(localStorage.getItem(lastDebugLogKey) || '0')
+      
+      // Only log once per 10 seconds to prevent spam
+      if (now - lastDebugLog > 10000) {
+        console.log('🔍 MiniApp Wallet UI State:', {
+          miniAppConnected: miniAppWallet.isConnected,
+          unifiedConnected: walletUI.isConnected,
+          miniAppConnecting: miniAppWallet.isConnecting,
+          unifiedConnecting: walletUI.isConnecting,
+          address: walletUI.address ? `${walletUI.address.slice(0, 6)}...${walletUI.address.slice(-4)}` : null,
+          miniAppError: miniAppWallet.error?.message,
+          miniAppStatus: miniAppWallet.status,
+          isMiniAppContext: isMiniAppContext()
+        })
+        localStorage.setItem(lastDebugLogKey, now.toString())
+      }
     }
   }, [
     miniAppWallet.isConnected,

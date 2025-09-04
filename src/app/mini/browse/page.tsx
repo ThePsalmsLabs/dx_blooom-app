@@ -82,6 +82,7 @@ import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/Uni
 import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimization'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { useContentByCategory } from '@/hooks/contracts/content/useContentDiscovery'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing content components
@@ -90,6 +91,9 @@ import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
 
 // Import your existing types
 import { ContentCategory } from '@/types/contracts'
+import { ContentCategory as DiscoveryContentCategory } from '@/hooks/contracts/content/useContentDiscovery'
+
+// Note: Mock data imports removed - using only real contract data
 
 // ================================================
 // PRODUCTION TYPE DEFINITIONS
@@ -160,16 +164,19 @@ const CONTENT_TABS: readonly ContentTab[] = [
   }
 ] as const
 
-const CATEGORY_OPTIONS: readonly CategoryOption[] = [
-  { id: 'all', label: 'All Content', icon: Grid3X3 },
-  { id: ContentCategory.VIDEO, label: 'Videos', icon: Play },
-  { id: ContentCategory.AUDIO, label: 'Audio', icon: Headphones },
-  { id: ContentCategory.ARTICLE, label: 'Articles', icon: FileText },
-  { id: ContentCategory.IMAGE, label: 'Images', icon: Image },
-  { id: ContentCategory.DOCUMENT, label: 'Documents', icon: BookOpen },
-  { id: ContentCategory.COURSE, label: 'Courses', icon: Star },
-  { id: ContentCategory.DATA, label: 'Data', icon: Eye }
-] as const
+// Generate category options - counts will be fetched from real contract data
+const getCategoryOptions = (): CategoryOption[] => {
+  return [
+    { id: 'all', label: 'All Content', icon: Grid3X3 },
+    { id: ContentCategory.VIDEO, label: 'Videos', icon: Play },
+    { id: ContentCategory.AUDIO, label: 'Audio', icon: Headphones },
+    { id: ContentCategory.ARTICLE, label: 'Articles', icon: FileText },
+    { id: ContentCategory.IMAGE, label: 'Images', icon: Image },
+    { id: ContentCategory.DOCUMENT, label: 'Documents', icon: BookOpen },
+    { id: ContentCategory.COURSE, label: 'Courses', icon: Star },
+    { id: ContentCategory.DATA, label: 'Data', icon: Eye }
+  ]
+}
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First', icon: Clock },
@@ -222,56 +229,80 @@ function useMiniAppBrowseAnalytics() {
 }
 
 /**
- * Enhanced Content Data Hook
- * Builds on your existing useActiveContentPaginated with real contract-based filtering
+ * Real Content Data Hook
+ * Uses only real contract data - no mock data fallback
  */
-function useEnhancedContentData(
+function useRealContentData(
   offset: number,
   limit: number,
   filters: { category?: ContentCategory | 'all'; search?: string; sortBy?: string }
 ) {
-  // Use your existing hook
-  const contentQuery = useActiveContentPaginated(offset, limit)
   const { trackBrowseInteraction } = useMiniAppBrowseAnalytics()
-
-  // Enhanced filtering using real contract data
-  const filteredContent = useMemo(() => {
-    if (!contentQuery.data?.contentIds) {
-      return []
+  
+  // Use category-specific hook if category filter is applied
+  const shouldUseAllContent = !filters.category || filters.category === 'all'
+  
+  // Fetch all content when no category filter, or category-specific content
+  const allContentQuery = useActiveContentPaginated(
+    shouldUseAllContent ? offset : 0, 
+    shouldUseAllContent ? limit : 0
+  )
+  
+  // Use category-specific content discovery when category is selected
+  const categoryContentQuery = useContentByCategory(
+    !shouldUseAllContent && filters.category !== 'all' ? (filters.category as unknown as DiscoveryContentCategory) : undefined,
+    { 
+      page: !shouldUseAllContent ? Math.floor(offset / limit) + 1 : 1, 
+      limit: !shouldUseAllContent ? limit : 12 
     }
+  )
+  
+  // Determine which query result to use
+  const effectiveQuery = shouldUseAllContent ? allContentQuery : categoryContentQuery
+  const contractContentIds = effectiveQuery.data?.contentIds || []
 
-    // For now, return all content IDs - in production you'd implement client-side filtering
-    // by fetching individual content data and applying filters
-    const filtered = [...contentQuery.data.contentIds]
-
-    // Apply category filter if specified (client-side filtering)
-    if (filters.category && filters.category !== 'all') {
-      // TODO: Implement category filtering by fetching content metadata
-      // This would require fetching individual content data to check categories
-      console.log('Category filter requested:', filters.category)
+  // Track analytics for real contract data
+  useEffect(() => {
+    if (effectiveQuery.data) {
+      if (contractContentIds.length > 0) {
+        trackBrowseInteraction('real_content_displayed', {
+          category: filters.category,
+          search: filters.search,
+          sort: filters.sortBy,
+          results_count: contractContentIds.length,
+          total_available: (effectiveQuery.data as any)?.total || contractContentIds.length
+        })
+      } else {
+        trackBrowseInteraction('empty_content_state', {
+          category: filters.category,
+          search: filters.search,
+          sort: filters.sortBy,
+          message: 'No content available in this category'
+        })
+      }
     }
+  }, [effectiveQuery.data, filters, contractContentIds.length, trackBrowseInteraction])
 
-    // Apply search filter if specified (client-side filtering)
-    if (filters.search) {
-      // TODO: Implement search filtering by fetching content metadata
-      // This would require fetching individual content data to search titles/descriptions
-      console.log('Search filter requested:', filters.search)
+  // Log successful category filtering for contract data
+  useEffect(() => {
+    if (!shouldUseAllContent && effectiveQuery.data) {
+      console.log('🏷️ Category filter applied to contract data:', filters.category, 'Found:', contractContentIds.length, 'items')
+      trackBrowseInteraction('category_filter_applied', { 
+        category: filters.category, 
+        results_count: contractContentIds.length 
+      })
     }
-
-    // Apply sorting if specified (client-side sorting)
-    if (filters.sortBy) {
-      // TODO: Implement sorting by fetching content metadata
-      // This would require fetching individual content data to sort by price, date, etc.
-      console.log('Sort requested:', filters.sortBy)
-    }
-
-    return filtered
-  }, [contentQuery.data?.contentIds, filters])
+  }, [shouldUseAllContent, filters.category, contractContentIds.length, effectiveQuery.data, trackBrowseInteraction])
 
   return {
-    ...contentQuery,
-    filteredContent,
-    trackBrowseInteraction
+    data: effectiveQuery.data,
+    isLoading: effectiveQuery.isLoading,
+    error: effectiveQuery.error,
+    refetch: effectiveQuery.refetch,
+    filteredContent: contractContentIds,
+    trackBrowseInteraction,
+    hasData: contractContentIds.length > 0,
+    isEmpty: contractContentIds.length === 0 && !effectiveQuery.isLoading && !effectiveQuery.error
   }
 }
 
@@ -414,15 +445,17 @@ function MiniAppBrowseCore() {
   // Use full address for contract calls
   const { data: isCreator } = useIsCreatorRegistered(fullAddress as `0x${string}` | undefined)
   
-  // Enhanced content data with your existing patterns
+  // Real content data - no mock data fallback
   const {
     data: contentData,
     isLoading,
     error,
     refetch,
     filteredContent,
-    trackBrowseInteraction
-  } = useEnhancedContentData(
+    trackBrowseInteraction,
+    hasData,
+    isEmpty
+  } = useRealContentData(
     browseState.currentPage * 12,
     12,
     {
@@ -536,6 +569,50 @@ function MiniAppBrowseCore() {
   // PRODUCTION RENDER COMPONENTS
   // ================================================
   
+  const CategorySelector = React.memo(({ 
+    selectedCategory, 
+    onCategoryChange 
+  }: { 
+    selectedCategory: ContentCategory | 'all'
+    onCategoryChange: (category: ContentCategory | 'all') => void 
+  }) => {
+    const categoryOptions = getCategoryOptions()
+    
+    return (
+      <div className="mb-6 px-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 max-w-4xl mx-auto">
+          {categoryOptions.map((category) => (
+            <Button
+              key={category.id}
+              variant={selectedCategory === category.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onCategoryChange(category.id)}
+              className="flex flex-col items-center justify-center gap-2 h-auto py-4 px-2 min-h-[80px] transition-all duration-200 hover:scale-105"
+            >
+              <category.icon className="h-5 w-5 flex-shrink-0" />
+              <span className="text-xs font-medium text-center leading-tight">{category.label}</span>
+            </Button>
+          ))}
+        </div>
+        
+        {/* Show selected category */}
+        {selectedCategory !== 'all' && (
+          <div className="mt-4 p-4 bg-muted/50 rounded-lg text-center max-w-2xl mx-auto">
+            <p className="text-sm text-muted-foreground">
+              Showing content in: <span className="font-medium text-foreground">
+                {categoryOptions.find(c => c.id === selectedCategory)?.label}
+              </span>
+            </p>
+            <div className="mt-2 text-xs text-muted-foreground">
+              💡 Tip: Use the search bar to find specific content within this category
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  })
+  CategorySelector.displayName = 'CategorySelector'
+  
   const BrowseHeader = React.memo(() => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -596,7 +673,7 @@ function MiniAppBrowseCore() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORY_OPTIONS.map((option) => (
+                {getCategoryOptions().map((option) => (
                   <SelectItem 
                     key={option.id} 
                     value={option.id === 'all' ? 'all' : option.id.toString()}
@@ -674,35 +751,47 @@ function MiniAppBrowseCore() {
   SearchAndFilters.displayName = 'SearchAndFilters'
   
   const ContentTabs = React.memo(() => (
-    <Tabs value={browseState.activeTab} onValueChange={(value) => handleTabChange(value as MiniAppBrowseState['activeTab'])} className="w-full">
-      <TabsList className="grid grid-cols-2 gap-1 sm:flex sm:gap-2 sm:overflow-x-auto sm:no-scrollbar md:grid md:grid-cols-4 md:w-full">
+    <div className="w-full">
+      <Tabs value={browseState.activeTab} onValueChange={(value) => handleTabChange(value as MiniAppBrowseState['activeTab'])} className="w-full">
+        <div className="w-full overflow-hidden">
+          <TabsList className="flex flex-row gap-1 w-full overflow-x-auto scrollbar-hide p-1 bg-muted/50 rounded-lg min-h-[40px]">
         {CONTENT_TABS.map((tab) => (
           <TabsTrigger 
             key={tab.id} 
             value={tab.id}
-            className="flex items-center gap-1 text-xs px-2"
+            className="flex items-center gap-1 text-xs px-3 py-2 min-w-0 flex-shrink-0 whitespace-nowrap rounded-md transition-all duration-200 hover:bg-background/80"
           >
-            <tab.icon className="h-3 w-3" />
-            <span className="hidden sm:inline">{tab.label}</span>
+            <tab.icon className="h-3 w-3 flex-shrink-0" />
+            <span className="hidden xs:inline text-xs font-medium truncate">{tab.label}</span>
             {tab.badge && (
-              <Badge variant="secondary" className="text-xs ml-1 hidden sm:inline">
+              <Badge variant="secondary" className="text-xs ml-1 hidden sm:inline-flex px-1 py-0">
                 {tab.badge}
               </Badge>
             )}
           </TabsTrigger>
         ))}
-      </TabsList>
-      
-      {CONTENT_TABS.map((tab) => (
-        <TabsContent key={tab.id} value={tab.id} className="mt-4">
-          <div className="mb-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              {tab.description}
-            </p>
-          </div>
-        </TabsContent>
-      ))}
-    </Tabs>
+          </TabsList>
+        </div>
+        
+        {CONTENT_TABS.map((tab) => (
+          <TabsContent key={tab.id} value={tab.id} className="mt-4 space-y-4">
+            <div className="text-center px-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {tab.description}
+              </p>
+            </div>
+            
+            {/* Categories Tab - Show Category Selector */}
+            {tab.id === 'categories' && (
+              <CategorySelector 
+                selectedCategory={browseState.selectedCategory}
+                onCategoryChange={handleCategoryChange}
+              />
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
   ))
   ContentTabs.displayName = 'ContentTabs'
   
@@ -728,16 +817,18 @@ function MiniAppBrowseCore() {
       )
     }
 
-    if (filteredContent.length === 0) {
+    if (isEmpty || filteredContent.length === 0) {
       return (
         <Card className="p-8 text-center">
           <div className="space-y-4">
             <Eye className="h-12 w-12 mx-auto text-muted-foreground" />
-            <h3 className="text-lg font-semibold">No Content Found</h3>
+            <h3 className="text-lg font-semibold">No Content Available</h3>
             <p className="text-muted-foreground">
               {browseState.searchQuery
                 ? `No content matches "${browseState.searchQuery}". Try adjusting your search.`
-                : 'No content available in this category right now.'
+                : browseState.selectedCategory !== 'all'
+                ? `No content available in the ${getCategoryOptions().find(c => c.id === browseState.selectedCategory)?.label.toLowerCase()} category yet.`
+                : 'No content has been published yet. Be the first to create content!'
               }
             </p>
             {browseState.searchQuery && (
@@ -747,6 +838,27 @@ function MiniAppBrowseCore() {
               >
                 Clear Search
               </Button>
+            )}
+            {browseState.selectedCategory !== 'all' && (
+              <Button
+                onClick={() => handleCategoryChange('all')}
+                variant="outline"
+              >
+                View All Content
+              </Button>
+            )}
+            {!isCreator && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Want to create content? Register as a creator to start publishing!
+                </p>
+                <Button
+                  onClick={() => router.push('/mini/onboard')}
+                  size="sm"
+                >
+                  Become a Creator
+                </Button>
+              </div>
             )}
           </div>
         </Card>

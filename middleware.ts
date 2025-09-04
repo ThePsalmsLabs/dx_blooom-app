@@ -420,15 +420,41 @@ function create402PaymentResponse(
 
   const headers = createSecureHeaders(true)
 
-  return new NextResponse(JSON.stringify(paymentRequirements), {
+  const response = new NextResponse(JSON.stringify(paymentRequirements), {
     status: 402,
     headers
   })
+
+  return addCSPHeaders(response)
+}
+
+/**
+ * Add CSP Headers to Response
+ *
+ * This function adds Content Security Policy headers to any response.
+ */
+function addCSPHeaders(response: NextResponse): NextResponse {
+  const cspHeader = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://auth.privy.io",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com https://auth.privy.io wss: https:",
+    "frame-src 'self' https://auth.privy.io",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ].join('; ')
+
+  response.headers.set('Content-Security-Policy', cspHeader)
+  return response
 }
 
 /**
  * Create Success Response with Payment Headers
- * 
+ *
  * This function demonstrates the pattern for passing payment verification data
  * to downstream route handlers without violating immutability constraints.
  * It uses custom HTTP headers to communicate payment status.
@@ -446,16 +472,17 @@ function createSuccessResponse(
   response.headers.set(PAYMENT_HEADERS.VERIFIED, 'true')
   response.headers.set(PAYMENT_HEADERS.AMOUNT, pricingInfo.amount.toString())
   response.headers.set(PAYMENT_HEADERS.RECIPIENT, pricingInfo.recipient)
-  
+
   if (verificationResult.transactionHash) {
     response.headers.set(PAYMENT_HEADERS.TRANSACTION_HASH, verificationResult.transactionHash)
   }
-  
+
   if (contentId) {
     response.headers.set(PAYMENT_HEADERS.CONTENT_ID, contentId)
   }
 
-  return response
+  // Add CSP headers
+  return addCSPHeaders(response)
 }
 
 /**
@@ -495,17 +522,19 @@ async function processPaymentRequest(
 
     // Handle cases where content is not available or not found
     if (!pricingInfo) {
-      return new NextResponse('Content not found', { 
+      const response = new NextResponse('Content not found', {
         status: 404,
         headers: createSecureHeaders()
       })
+      return addCSPHeaders(response)
     }
 
     if (!pricingInfo.contentActive) {
-      return new NextResponse('Content not available', { 
+      const response = new NextResponse('Content not available', {
         status: 403,
         headers: createSecureHeaders()
       })
+      return addCSPHeaders(response)
     }
 
     // Check for payment in request headers
@@ -529,10 +558,11 @@ async function processPaymentRequest(
     try {
       paymentProof = JSON.parse(paymentHeader)
     } catch (parseError) {
-      return new NextResponse('Invalid payment format', { 
+      const response = new NextResponse('Invalid payment format', {
         status: 400,
         headers: createSecureHeaders()
       })
+      return addCSPHeaders(response)
     }
 
     // Verify payment against expected parameters
@@ -546,7 +576,7 @@ async function processPaymentRequest(
     if (!verificationResult.verified) {
       console.warn('Payment verification failed:', verificationResult.error)
       // Return fresh payment requirements for retry
-      return create402PaymentResponse(
+      const response = create402PaymentResponse(
         pricingInfo.amount,
         pricingInfo.recipient,
         X402_NETWORK,
@@ -555,6 +585,7 @@ async function processPaymentRequest(
           description: `Payment verification failed: ${verificationResult.error}`
         }
       )
+      return addCSPHeaders(response)
     }
 
     // Payment verified successfully, create response with payment headers
@@ -567,16 +598,17 @@ async function processPaymentRequest(
 
   } catch (error) {
     console.error('Payment processing error:', error)
-    return new NextResponse('Payment processing error', { 
+    const response = new NextResponse('Payment processing error', {
       status: 500,
       headers: createSecureHeaders()
     })
+    return addCSPHeaders(response)
   }
 }
 
 /**
  * Next.js Middleware Entry Point
- * 
+ *
  * This is the main function that Next.js calls for every request matching
  * the matcher configuration. It determines whether requests need payment
  * processing and routes them appropriately.
@@ -597,19 +629,21 @@ export default async function middleware(request: NextRequest): Promise<NextResp
 
   if (!isProtectedRoute) {
     // Not a protected route, continue with normal Next.js processing
-    return NextResponse.next()
+    const response = NextResponse.next()
+    return addCSPHeaders(response)
   }
 
   // Process payment verification for protected route
   const paymentResponse = await processPaymentRequest(request, pathname)
-  
+
   if (paymentResponse) {
     // Payment processing returned a specific response (402, error, or success with headers)
-    return paymentResponse
+    return addCSPHeaders(paymentResponse)
   }
 
   // Payment verified and headers set, continue to route handler
-  return NextResponse.next()
+  const response = NextResponse.next()
+  return addCSPHeaders(response)
 }
 
 /**

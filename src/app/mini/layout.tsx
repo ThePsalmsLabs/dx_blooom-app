@@ -920,6 +920,37 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			--contrast-ratio: 1.1;
 		  }
 		  
+		  /* Custom responsive breakpoints for tabs */
+		  @media (min-width: 475px) {
+			.xs\:inline {
+			  display: inline;
+			}
+		  }
+		  
+		  /* Hide scrollbars for tab navigation */
+		  .scrollbar-hide {
+			-ms-overflow-style: none;
+			scrollbar-width: none;
+		  }
+		  
+		  .scrollbar-hide::-webkit-scrollbar {
+			display: none;
+		  }
+		  
+		  /* Smooth scrolling for tab navigation */
+		  .overflow-x-auto {
+			scroll-behavior: smooth;
+		  }
+		  
+		  /* Tab responsive improvements */
+		  .miniapp-layout [role="tablist"] {
+			scroll-snap-type: x mandatory;
+		  }
+		  
+		  .miniapp-layout [role="tab"] {
+			scroll-snap-align: start;
+		  }
+		  
 		  @media (max-width: 768px) {
 			.miniapp-layout {
 			  --sidebar-width: 0px;

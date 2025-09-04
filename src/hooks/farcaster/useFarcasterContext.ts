@@ -13,6 +13,8 @@ declare global {
     farcaster?: MiniKitSDK
     MiniKit?: MiniKitSDK
     miniKit?: MiniKitSDK
+    miniKitContextWarned?: boolean
+    miniKitExtractionWarned?: boolean
   }
 }
 
@@ -122,16 +124,46 @@ type MiniKitSDK = {
 // Importing directly avoids require() and preserves type safety
 import { useOptionalAuth } from '@/components/providers/AuthProvider'
 
-// Export a utility hook for MiniApp detection
+// Global cache for MiniApp detection to prevent repeated calls
+let miniAppDetectionCache: boolean | null = null
+let miniAppDetectionPromise: Promise<boolean> | null = null
+
+// Global cache for MiniKit context extraction
+let miniKitContextCache: MiniKitContext | null = null
+let miniKitContextPromise: Promise<MiniKitContext | null> | null = null
+let miniKitContextTimestamp = 0
+const MINI_KIT_CONTEXT_TTL = 30000 // 30 seconds
+
+// Optimized utility hook for MiniApp detection with caching
 export function useIsInMiniApp(): boolean {
   const [isInMiniApp, setIsInMiniApp] = useState(false)
+  const [isDetectionComplete, setIsDetectionComplete] = useState(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined') {
+      setIsDetectionComplete(true)
+      return
+    }
 
-    const checkMiniApp = async () => {
+    // If we already have a cached result, use it immediately
+    if (miniAppDetectionCache !== null) {
+      setIsInMiniApp(miniAppDetectionCache)
+      setIsDetectionComplete(true)
+      return
+    }
+
+    // If detection is already in progress, wait for it
+    if (miniAppDetectionPromise) {
+      miniAppDetectionPromise.then((result) => {
+        setIsInMiniApp(result)
+        setIsDetectionComplete(true)
+      })
+      return
+    }
+
+    const checkMiniApp = async (): Promise<boolean> => {
       try {
-        // First, check basic indicators
+        // First, check basic indicators (fast synchronous checks)
         const url = new URL(window.location.href)
         const urlIndicators = (
           url.pathname.startsWith('/mini') ||
@@ -152,34 +184,50 @@ export function useIsInMiniApp(): boolean {
 
         const basicDetection = urlIndicators || metaIndicators || iframeContext || farcasterReferrer || farcasterUserAgent
 
+        // If basic detection fails, we can immediately return false
         if (!basicDetection) {
-          setIsInMiniApp(false)
-          return
+          return false
         }
 
-        // If basic detection passes, try SDK detection
+        // If basic detection passes, try SDK detection with timeout
         try {
           const { sdk } = await import('@farcaster/miniapp-sdk')
           if (sdk?.isInMiniApp && typeof sdk.isInMiniApp === 'function') {
             const sdkResult = await Promise.race([
               sdk.isInMiniApp(),
-              new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000))
+              new Promise<boolean>((resolve) =>
+                setTimeout(() => resolve(basicDetection), 800) // Reduced timeout
+              )
             ])
-            setIsInMiniApp(sdkResult)
+            return sdkResult
           } else {
-            setIsInMiniApp(basicDetection)
+            return basicDetection
           }
         } catch (sdkError) {
           console.debug('SDK detection failed, using basic detection:', sdkError)
-          setIsInMiniApp(basicDetection)
+          return basicDetection
         }
       } catch (error) {
         console.warn('MiniApp detection failed:', error)
-        setIsInMiniApp(false)
+        return false
       }
     }
 
-    checkMiniApp()
+    // Create and cache the detection promise
+    miniAppDetectionPromise = checkMiniApp()
+
+    miniAppDetectionPromise.then((result) => {
+      miniAppDetectionCache = result
+      setIsInMiniApp(result)
+      setIsDetectionComplete(true)
+      // Clear the promise after completion
+      miniAppDetectionPromise = null
+    }).catch((error) => {
+      console.warn('MiniApp detection error:', error)
+      setIsInMiniApp(false)
+      setIsDetectionComplete(true)
+      miniAppDetectionPromise = null
+    })
   }, [])
 
   return isInMiniApp
@@ -224,12 +272,18 @@ export function useFarcasterContext(): FarcasterContext | undefined {
   const [_error, setError] = useState<Error | null>(null)
 
   /**
-   * MiniApp Environment Detection
+   * MiniApp Environment Detection - Optimized
    *
    * This function detects if we're running in a Farcaster MiniApp environment
-   * by checking various indicators including URL patterns and meta tags.
+   * using cached results to prevent repeated expensive operations.
    */
   const isMiniAppEnvironment = useMemo((): boolean => {
+    // First check if we have a cached result from useIsInMiniApp
+    if (miniAppDetectionCache !== null) {
+      return miniAppDetectionCache
+    }
+
+    // Fallback to basic synchronous detection
     if (typeof window === 'undefined') return false
 
     try {
@@ -267,10 +321,10 @@ export function useFarcasterContext(): FarcasterContext | undefined {
   }, [])
 
   /**
-   * MiniKit Context Extraction
+   * MiniKit Context Extraction - Optimized
    *
    * This function safely extracts Farcaster context from the MiniKit SDK,
-   * handling all potential errors and missing data gracefully.
+   * with caching and reduced redundant calls for better performance.
    */
   const extractMiniKitContext = useCallback(async (): Promise<MiniKitContext | null> => {
     try {
@@ -286,100 +340,160 @@ export function useFarcasterContext(): FarcasterContext | undefined {
         return null
       }
 
-      // Dynamically import MiniKit SDK to avoid SSR issues (primary method)
-      let sdk: MiniKitSDK | undefined
-      try {
-        const miniKitModule = await import('@farcaster/miniapp-sdk')
-        sdk = miniKitModule.sdk || miniKitModule.default
-      } catch (importError) {
-        console.warn('Failed to import MiniKit SDK:', importError)
-        return null
+      // Check global cache first
+      const now = Date.now()
+      if (miniKitContextCache && (now - miniKitContextTimestamp) < MINI_KIT_CONTEXT_TTL) {
+        console.log('Using cached MiniKit context')
+        return miniKitContextCache
       }
 
-      if (!sdk) {
-        console.warn('MiniKit SDK is not available after import')
-        return null
-      }
-
-      console.log('Successfully imported MiniKit SDK')
-
-      // FIRST: Check if we're actually in a MiniApp environment using the official method
-      let isInMiniApp = false
-      try {
-        if (sdk.isInMiniApp && typeof sdk.isInMiniApp === 'function') {
-          isInMiniApp = await Promise.race([
-            sdk.isInMiniApp(),
-            new Promise<boolean>((resolve) =>
-              setTimeout(() => resolve(false), 1000) // 1 second timeout
+      // If extraction is already in progress, wait for it with timeout
+      if (miniKitContextPromise) {
+        // Only log this once per session to avoid spam
+        if (!window.miniKitExtractionWarned) {
+          console.log('MiniKit context extraction already in progress, waiting...')
+          window.miniKitExtractionWarned = true
+        }
+        
+        try {
+          const result = await Promise.race([
+            miniKitContextPromise,
+            new Promise<null>((_, reject) => 
+              setTimeout(() => reject(new Error('Context extraction timeout')), 5000)
             )
           ])
-          console.log('MiniApp detection result:', isInMiniApp)
-        } else {
-          console.warn('MiniKit SDK does not have isInMiniApp method, using fallback detection')
-          // Fallback to basic iframe detection
-          isInMiniApp = window.parent !== window || document.referrer.includes('farcaster')
+          return result
+        } catch (error) {
+          console.warn('MiniKit context extraction timed out or failed, clearing promise')
+          miniKitContextPromise = null
+          window.miniKitExtractionWarned = false
+          return null
         }
-      } catch (detectionError) {
-        console.warn('MiniApp detection failed:', detectionError)
-        return null
+      }
+
+      // Use cached detection result if available to avoid redundant SDK calls
+      let isInMiniApp = miniAppDetectionCache
+
+      // If no cached result, do a quick synchronous check
+      if (isInMiniApp === null) {
+        const url = new URL(window.location.href)
+        const basicCheck = (
+          url.pathname.startsWith('/mini') ||
+          url.pathname.startsWith('/miniapp') ||
+          url.searchParams.get('miniApp') === 'true' ||
+          window.parent !== window ||
+          document.referrer.includes('farcaster')
+        )
+        isInMiniApp = basicCheck
       }
 
       if (!isInMiniApp) {
-        console.log('Not running in MiniApp environment according to SDK, skipping context extraction')
+        console.log('Not running in MiniApp environment, skipping context extraction')
         return null
       }
 
-      // SECOND: Wait for SDK to be ready with timeout
-      try {
-        if (sdk.actions?.ready && typeof sdk.actions.ready === 'function') {
-          await Promise.race([
-            sdk.actions.ready(),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('MiniKit SDK ready timeout')), 5000)
+      // Create and cache the extraction promise
+      miniKitContextPromise = (async () => {
+        // Dynamically import MiniKit SDK to avoid SSR issues
+        let sdk: MiniKitSDK | undefined
+        try {
+          const miniKitModule = await import('@farcaster/miniapp-sdk')
+          sdk = miniKitModule.sdk || miniKitModule.default
+        } catch (importError) {
+          console.warn('Failed to import MiniKit SDK:', importError)
+          return null
+        }
+
+        if (!sdk) {
+          console.warn('MiniKit SDK is not available after import')
+          return null
+        }
+
+        console.log('Successfully imported MiniKit SDK')
+
+        // SECOND: Wait for SDK to be ready with reduced timeout
+        try {
+          if (sdk.actions?.ready && typeof sdk.actions.ready === 'function') {
+            await Promise.race([
+              sdk.actions.ready(),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('MiniKit SDK ready timeout')), 3000) // Reduced timeout
+              )
+            ])
+            console.log('MiniKit SDK is ready')
+          } else {
+            console.warn('MiniKit SDK does not have actions.ready method, proceeding anyway')
+          }
+        } catch (readyError) {
+          console.warn('MiniKit SDK failed to become ready:', readyError)
+          // Continue anyway - some versions might not need explicit ready call
+        }
+
+        // THIRD: Extract context from SDK
+        let context: MiniKitContext | undefined
+        try {
+          // Handle both Promise and function cases
+          let contextPromise: Promise<unknown>
+          if (typeof sdk.context === 'function') {
+            contextPromise = sdk.context()
+          } else {
+            contextPromise = sdk.context
+          }
+
+          const rawContext = await Promise.race([
+            contextPromise,
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Context extraction timeout')), 2000) // Reduced timeout
             )
           ])
-          console.log('MiniKit SDK is ready')
-        } else {
-          console.warn('MiniKit SDK does not have actions.ready method, proceeding anyway')
-        }
-      } catch (readyError) {
-        console.warn('MiniKit SDK failed to become ready:', readyError)
-        // Continue anyway - some versions might not need explicit ready call
-      }
-
-      // THIRD: Extract context from SDK (only after confirming we're in MiniApp)
-      let context: MiniKitContext | undefined
-      try {
-        // Handle both Promise and function cases
-        let contextPromise: Promise<unknown>
-        if (typeof sdk.context === 'function') {
-          contextPromise = sdk.context()
-        } else {
-          contextPromise = sdk.context
+          context = rawContext as MiniKitContext
+        } catch (contextError) {
+          console.warn('Failed to get MiniKit context:', contextError)
+          return null
         }
 
-        const rawContext = await Promise.race([
-          contextPromise,
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Context extraction timeout')), 3000)
-          )
-        ])
-        context = rawContext as MiniKitContext
-      } catch (contextError) {
-        console.warn('Failed to get MiniKit context:', contextError)
-        return null
+        if (!context || !context.user) {
+          // Only log this warning once per session to avoid spam
+          if (!window.miniKitContextWarned) {
+            console.warn('MiniKit context is incomplete or unavailable:', { context })
+            window.miniKitContextWarned = true
+          }
+          return null
+        }
+
+        console.log('Successfully extracted MiniKit context:', { fid: context.user.fid })
+
+        // Cache the successful result
+        miniKitContextCache = context as MiniKitContext
+        miniKitContextTimestamp = Date.now()
+        miniKitContextPromise = null
+
+        return context as MiniKitContext
+      })()
+
+      // Wait for the cached promise with timeout
+      const result = await Promise.race([
+        miniKitContextPromise,
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('Overall context extraction timeout')), 10000)
+        )
+      ])
+
+      // Clear the promise after completion and cache the result
+      miniKitContextPromise = null
+      if (result) {
+        miniKitContextCache = result
+        miniKitContextTimestamp = Date.now()
       }
 
-      if (!context || !context.user) {
-        console.warn('MiniKit context is incomplete or unavailable:', { context })
-        return null
-      }
-
-      console.log('Successfully extracted MiniKit context:', { fid: context.user.fid })
-      return context as MiniKitContext
+      return result
     } catch (extractionError) {
       console.warn('Failed to extract MiniKit context:', extractionError)
       setError(extractionError instanceof Error ? extractionError : new Error('MiniKit extraction failed'))
+
+      // Clear the promise on error and reset warning flags
+      miniKitContextPromise = null
+      window.miniKitExtractionWarned = false
       return null
     }
   }, [isMiniAppEnvironment])

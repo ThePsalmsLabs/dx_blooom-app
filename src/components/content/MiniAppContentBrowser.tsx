@@ -33,6 +33,7 @@ import {
   useHasContentAccess,
   useCreatorProfile
 } from '@/hooks/contracts/core'
+// Note: Mock content integration removed - using only real contract data
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimization'
 import type { Address } from 'viem'
@@ -57,7 +58,7 @@ function MiniAppContentCard({
   onContentSelect?: (contentId: bigint) => void
   userAddress?: string
 }) {
-  // Fetch real content data from contract
+  // Fetch real content data only
   const contentQuery = useContentById(contentId)
   const accessControl = useHasContentAccess(
     userAddress as `0x${string}` | undefined,
@@ -233,9 +234,9 @@ function MiniAppContentBrowserCore({
     shouldLoadContent && isVisible && !contentIds ? itemsPerPage : 0
   )
 
-  // Create mock data structure when contentIds are provided
+  // Create data structure when contentIds are provided
   const providedContentData = useMemo(() => {
-    if (contentIds) {
+    if (contentIds && contentIds.length > 0) {
       return {
         contentIds: contentIds.slice(0, itemsPerPage),
         total: BigInt(contentIds.length)
@@ -248,14 +249,24 @@ function MiniAppContentBrowserCore({
   const effectiveContentData = contentIds ? providedContentData : contentQuery.data
   const isEffectiveLoading = contentIds ? false : contentQuery.isLoading
   const hasEffectiveError = contentIds ? false : contentQuery.isError
+  
+  // Check if we actually have content to display
+  const hasContent = effectiveContentData?.contentIds && effectiveContentData.contentIds.length > 0
+  
+  // Real content data only - no mock data fallback
 
   // Apply RPC optimization metrics tracking
   useEffect(() => {
-    if (effectiveContentData) {
+    if (effectiveContentData && hasContent) {
       // Track successful data fetch for metrics
-      console.log('📊 Content loaded successfully with optimization')
+      console.log('📊 Content loaded successfully with optimization', {
+        contentCount: effectiveContentData.contentIds.length,
+        total: effectiveContentData.total
+      })
+    } else if (effectiveContentData && !hasContent) {
+      console.log('📊 No content available - empty state detected')
     }
-  }, [effectiveContentData])
+  }, [effectiveContentData, hasContent])
 
   const handleContentClick = useCallback((contentId: bigint) => {
     if (onContentSelect) {
@@ -310,7 +321,7 @@ function MiniAppContentBrowserCore({
                   Retry
                 </Button>
               </div>
-            ) : (
+            ) : hasContent ? (
               <div className="grid grid-cols-2 gap-4">
                 {effectiveContentData?.contentIds?.map((contentId: bigint) => (
                   <MiniAppContentCard
@@ -320,6 +331,14 @@ function MiniAppContentBrowserCore({
                     userAddress={walletUI.address as Address}
                   />
                 ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Eye className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <h3 className="font-medium mb-2">No Content Available</h3>
+                <p className="text-sm text-muted-foreground">
+                  No content has been published yet. Check back soon!
+                </p>
               </div>
             )}
           </div>
@@ -365,17 +384,17 @@ function MiniAppContentBrowserCore({
             Retry
           </Button>
         </div>
-      ) : contentQuery.data?.contentIds?.length === 0 ? (
+      ) : !hasContent ? (
         <div className="text-center py-8">
           <Eye className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
           <h3 className="font-medium mb-2">No Content Available</h3>
           <p className="text-sm text-muted-foreground">
-            Check back soon for amazing content from creators
+            No content has been published yet. Be the first to create content!
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          {contentQuery.data?.contentIds?.map((contentId) => (
+          {effectiveContentData?.contentIds?.map((contentId) => (
             <MiniAppContentCard
               key={contentId.toString()}
               contentId={contentId}

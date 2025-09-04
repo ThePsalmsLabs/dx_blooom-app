@@ -369,6 +369,115 @@ export interface UnifiedPurchaseFlowResult {
   readonly refreshPrices: () => Promise<void>
 }
 
+// ===== GLOBAL CACHE AND CIRCUIT BREAKER SYSTEM =====
+
+/**
+ * Global cache for price calculations to prevent excessive RPC calls
+ * Increased TTL and added more aggressive caching strategies
+ */
+const globalPriceCache = new Map<string, { value: any; ts: number; hits: number }>()
+const globalContractCache = new Map<string, { value: any; ts: number; hits: number }>()
+
+// Additional cache for price oracle results to reduce duplicate calls
+const priceOracleCache = new Map<string, { value: any; ts: number }>()
+const PRICE_ORACLE_TTL = 300000 // 5 minutes for oracle prices
+
+/**
+ * Circuit breaker for RPC calls to prevent overwhelming rate-limited endpoints
+ */
+class CircuitBreaker {
+  private failures = 0
+  private lastFailureTime = 0
+  private state: 'closed' | 'open' | 'half-open' = 'closed'
+
+  constructor(
+    private failureThreshold = 5,
+    private recoveryTimeout = 60000, // 1 minute
+    private successThreshold = 2
+  ) {}
+
+  async execute<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.state === 'open') {
+      if (Date.now() - this.lastFailureTime > this.recoveryTimeout) {
+        this.state = 'half-open'
+      } else {
+        throw new Error('Circuit breaker is OPEN - RPC rate limited')
+      }
+    }
+
+    try {
+      const result = await operation()
+      this.onSuccess()
+      return result
+    } catch (error) {
+      this.onFailure()
+      throw error
+    }
+  }
+
+  private onSuccess() {
+    if (this.state === 'half-open') {
+      this.failures = 0
+      this.state = 'closed'
+    }
+  }
+
+  private onFailure() {
+    this.failures++
+    this.lastFailureTime = Date.now()
+
+    if (this.failures >= this.failureThreshold) {
+      this.state = 'open'
+    }
+  }
+
+  getState() {
+    return this.state
+  }
+}
+
+// Global circuit breaker instance
+const globalCircuitBreaker = new CircuitBreaker()
+
+/**
+ * Enhanced caching with global cache and circuit breaker
+ * Now with extended stale data usage and longer TTL
+ */
+async function getCachedOrFetch<T>(
+  cache: Map<string, { value: any; ts: number; hits: number }>,
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlMs = 60000 // Doubled to 60 seconds default TTL
+): Promise<T> {
+  const now = Date.now()
+  const cached = cache.get(key)
+
+  // Use cached data if within TTL
+  if (cached && (now - cached.ts) < ttlMs) {
+    cached.hits++
+    return cached.value
+  }
+
+  // If circuit breaker is open, use stale data for up to 10 minutes
+  if (globalCircuitBreaker.getState() === 'open' && cached && (now - cached.ts) < 600000) {
+    console.warn(`🔄 Using stale cached data for ${key} due to circuit breaker (${Math.floor((now - cached.ts) / 1000)}s old)`)
+    return cached.value
+  }
+
+  try {
+    const result = await globalCircuitBreaker.execute(fetcher)
+    cache.set(key, { value: result, ts: now, hits: 1 })
+    return result
+  } catch (error) {
+    // If we have any cached data at all, use it rather than failing
+    if (cached) {
+      console.warn(`⚠️ Using very stale cached data for ${key} due to error: ${error}`)
+      return cached.value
+    }
+    throw error
+  }
+}
+
 // ===== CONFIGURATION CONSTANTS =====
 
 /**
@@ -379,7 +488,7 @@ const DEFAULT_CONFIG: UnifiedPurchaseFlowConfig = {
   defaultMethod: PaymentMethod.USDC,
   defaultSlippage: 100, // 1%
   maxSlippage: 1000,    // 10%
-  priceUpdateInterval: 30000, // 30 seconds
+  priceUpdateInterval: 300000, // Increased to 5 minutes to drastically reduce RPC calls
   enablePriceAlerts: true,
   supportedTokens: [] // Will be populated dynamically
 }
@@ -510,10 +619,7 @@ export function useUnifiedContentPurchaseFlow(
   const [tokenPrices, setTokenPrices] = useState<Map<Address, TokenInfo>>(new Map())
   const [priceUpdateCounter, setPriceUpdateCounter] = useState(0)
   const priceUpdateTimerRef = useRef<NodeJS.Timeout | null>(null)
-  // Cache price oracle results and contract reads to avoid RPC rate limits
-  const priceResultCacheRef = useRef<Map<string, { value: { requiredAmount: bigint; priceInUSDC: bigint } | null; ts: number }>>(new Map())
-  const contractReadCacheRef = useRef<Map<string, { value: unknown; ts: number }>>(new Map())
-  const CACHE_TTL_MS = 30_000
+  // Global caches are now used instead of instance-specific caches
 
   // Concurrency + debounce guards
   const isRefreshingRef = useRef<boolean>(false)
@@ -602,7 +708,7 @@ export function useUnifiedContentPurchaseFlow(
   }, [selectedMethod, customTokenAddress, contractAddresses, tokenPrices])
 
   /**
-   * Enhanced Price Calculation with Multi-Token Support
+   * Enhanced Price Calculation with Global Cache and Circuit Breaker
    */
   const calculateTokenPrice = useCallback(async (
     tokenAddress: Address,
@@ -612,91 +718,106 @@ export function useUnifiedContentPurchaseFlow(
     if (!contractAddresses) return null
 
     try {
-      const cacheKey = `${tokenAddress}-${usdcAmount.toString()}-${paymentMethod}`
-      const cached = priceResultCacheRef.current.get(cacheKey)
-      if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-        return cached.value
-      }
-      // For direct USDC, return 1:1 pricing
+      const cacheKey = `${chainId}-${tokenAddress}-${usdcAmount.toString()}-${paymentMethod}`
+
+      // For direct USDC, return 1:1 pricing (no RPC call needed)
       if (tokenAddress === contractAddresses.USDC || paymentMethod === PaymentMethod.USDC) {
         const result = {
           requiredAmount: usdcAmount,
           priceInUSDC: usdcAmount
         }
-        priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
+        // Still cache this for consistency
+        globalPriceCache.set(cacheKey, { value: result, ts: Date.now(), hits: 1 })
         return result
       }
 
-      // Create public client for direct contract reads
-      const publicClient = createPublicClient({
-        chain: chainId === 8453 ? base : baseSepolia,
-        transport: getConfiguredTransport()
-      })
+      // Use global cache with circuit breaker
+      return await getCachedOrFetch(
+        globalPriceCache,
+        cacheKey,
+        async () => {
+          // Create public client for direct contract reads
+          const publicClient = createPublicClient({
+            chain: chainId === 8453 ? base : baseSepolia,
+            transport: getConfiguredTransport()
+          })
 
           // Get token configuration
-    const supportedTokens = getSupportedTokens(chainId)
-    const tokenConfig = supportedTokens[paymentMethod]
-      const poolFee = tokenConfig?.poolFee || 3000
+          const supportedTokens = getSupportedTokens(chainId)
+          const tokenConfig = supportedTokens[paymentMethod]
+          const poolFee = tokenConfig?.poolFee || 3000
 
-      // For ETH, use PriceOracle.getETHPrice
-      if (tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH) {
-        try {
-          const ethAmount = await publicClient.readContract({
-          address: contractAddresses.PRICE_ORACLE,
-          abi: PRICE_ORACLE_ABI,
-          functionName: 'getETHPrice',
-            args: [usdcAmount]
-          }) as bigint
+          // For ETH, use PriceOracle.getETHPrice with aggressive caching
+          if (tokenAddress === '0x0000000000000000000000000000000000000000' || paymentMethod === PaymentMethod.ETH) {
+            // Check oracle-specific cache first to reduce duplicate price oracle calls
+            const oracleCacheKey = `eth-price-${chainId}-${usdcAmount.toString()}`
+            const oracleCached = priceOracleCache.get(oracleCacheKey)
+            
+            let ethAmount: bigint
+            if (oracleCached && (Date.now() - oracleCached.ts) < PRICE_ORACLE_TTL) {
+              ethAmount = oracleCached.value
+            } else {
+              ethAmount = await publicClient.readContract({
+                address: contractAddresses.PRICE_ORACLE,
+                abi: PRICE_ORACLE_ABI,
+                functionName: 'getETHPrice',
+                args: [usdcAmount]
+              }) as bigint
 
-          // Minimal log to avoid noise
+              // Cache the oracle result for 5 minutes
+              priceOracleCache.set(oracleCacheKey, { value: ethAmount, ts: Date.now() })
+            }
+
+            const result = {
+              requiredAmount: ethAmount,
+              priceInUSDC: usdcAmount
+            }
+            return result
+          }
+
+          // For other tokens, use PriceOracle.getTokenAmountForUSDC with caching
+          const tokenOracleCacheKey = `token-price-${chainId}-${tokenAddress}-${usdcAmount.toString()}-${poolFee}`
+          const tokenOracleCached = priceOracleCache.get(tokenOracleCacheKey)
+          
+          let tokenAmount: bigint
+          if (tokenOracleCached && (Date.now() - tokenOracleCached.ts) < PRICE_ORACLE_TTL) {
+            tokenAmount = tokenOracleCached.value
+          } else {
+            tokenAmount = await publicClient.readContract({
+              address: contractAddresses.PRICE_ORACLE,
+              abi: PRICE_ORACLE_ABI,
+              functionName: 'getTokenAmountForUSDC',
+              args: [tokenAddress, usdcAmount, poolFee]
+            }) as bigint
+
+            // Cache the oracle result for 5 minutes
+            priceOracleCache.set(tokenOracleCacheKey, { value: tokenAmount, ts: Date.now() })
+          }
 
           const result = {
-            requiredAmount: ethAmount,
+            requiredAmount: tokenAmount,
             priceInUSDC: usdcAmount
           }
-          priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
           return result
-        } catch (error) {
-          console.error(`❌ ETH price calculation failed:`, error)
-          // Fallback: use a simple conversion (1 ETH = $3000 USDC for demo)
-          const fallbackEthAmount = (usdcAmount * BigInt(1e18)) / BigInt(3000 * 1e6)
-          debug.log(`🔄 Using fallback ETH price: ${fallbackEthAmount.toString()} wei`)
-          const result = {
-            requiredAmount: fallbackEthAmount,
-            priceInUSDC: usdcAmount
-          }
-          priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
-          return result
-        }
-      }
+        },
+        180000 // 3 minutes TTL for price data (increased to reduce RPC calls)
+      )
+    } catch (error) {
+      console.error(`❌ Price calculation failed for ${paymentMethod}:`, error)
 
-      // For other tokens, use PriceOracle.getTokenAmountForUSDC
-      try {
-        const tokenAmount = await publicClient.readContract({
-          address: contractAddresses.PRICE_ORACLE,
-          abi: PRICE_ORACLE_ABI,
-          functionName: 'getTokenAmountForUSDC',
-          args: [tokenAddress, usdcAmount, poolFee]
-        }) as bigint
-
-          // Minimal log to avoid noise
-
-        const result = {
-          requiredAmount: tokenAmount,
+      // If circuit breaker is open, use fallback pricing
+      if (globalCircuitBreaker.getState() === 'open' && paymentMethod === PaymentMethod.ETH) {
+        const fallbackEthAmount = (usdcAmount * BigInt(1e18)) / BigInt(3000 * 1e6)
+        console.warn(`🔄 Using fallback ETH price due to circuit breaker: ${fallbackEthAmount.toString()} wei`)
+        return {
+          requiredAmount: fallbackEthAmount,
           priceInUSDC: usdcAmount
         }
-        priceResultCacheRef.current.set(cacheKey, { value: result, ts: Date.now() })
-        return result
-      } catch (error) {
-        console.error(`❌ Token price calculation failed for ${tokenAddress}:`, error)
-        priceResultCacheRef.current.set(cacheKey, { value: null, ts: Date.now() })
-        return null
       }
-    } catch (error) {
-      console.error(`Price calculation failed for ${paymentMethod}:`, error)
+
       return null
     }
-  }, [contractAddresses, chainId, getConfiguredTransport, userAddress, contentQuery.data])
+  }, [contractAddresses, chainId, getConfiguredTransport])
 
   /**
    * Enhanced Token Balance and Allowance Fetching with Multi-Token Support
@@ -721,12 +842,14 @@ export function useUnifiedContentPurchaseFlow(
     const contentPrice = contentQuery.data?.payPerViewPrice || BigInt(0)
     const priceCalculation = await calculateTokenPrice(tokenAddress, contentPrice, paymentMethod)
 
-    // Use cached reads to reduce API calls
-    const cacheKey = `${tokenAddress}-${userAddress}-${paymentMethod}`
-    const cached = contractReadCacheRef.current.get(cacheKey)
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-      debug.log(`📦 Using cached token info for ${tokenAddress}`)
-      return cached.value as TokenInfo
+    // Use global cached reads to reduce API calls
+    const cacheKey = `${chainId}-${tokenAddress}-${userAddress}-${paymentMethod}`
+
+    // Try to get from global cache first
+    const globalCached = globalContractCache.get(cacheKey)
+    if (globalCached && Date.now() - globalCached.ts < 30000) { // 30 second TTL
+      debug.log(`📦 Using globally cached token info for ${tokenAddress}`)
+      return globalCached.value as TokenInfo
     }
 
     // Create public client for direct contract reads using wagmi transport (batched via Alchemy)
@@ -741,24 +864,28 @@ export function useUnifiedContentPurchaseFlow(
     const decimals = tokenConfig?.decimals || (isEth ? 18 : isUsdc ? 6 : 18)
     const isNative = tokenConfig?.isNative || isEth
 
-    // Fetch balance with cache and minimal logging
+    // Fetch balance with global cache and minimal logging
     let balance: bigint | null = null
     let formattedBalance = '0.00'
-    const balanceCacheKey = `${tokenAddress}-balance-${userAddress}`
-    const cachedBalance = contractReadCacheRef.current.get(balanceCacheKey)
-    if (cachedBalance && Date.now() - cachedBalance.ts < CACHE_TTL_MS) {
+    const balanceCacheKey = `${chainId}-${tokenAddress}-balance-${userAddress}`
+    const cachedBalance = globalContractCache.get(balanceCacheKey)
+    if (cachedBalance && Date.now() - cachedBalance.ts < 30000) {
       balance = cachedBalance.value as bigint
     } else {
       try {
-        balance = isEth
-          ? await publicClient.getBalance({ address: userAddress })
-          : await publicClient.readContract({
-              address: tokenAddress,
-              abi: ERC20_ABI,
-              functionName: 'balanceOf',
-              args: [userAddress]
-            }) as bigint
-        contractReadCacheRef.current.set(balanceCacheKey, { value: balance, ts: Date.now() })
+        balance = await getCachedOrFetch(
+          globalContractCache,
+          balanceCacheKey,
+          async () => isEth
+            ? await publicClient.getBalance({ address: userAddress })
+            : await publicClient.readContract({
+                address: tokenAddress,
+                abi: ERC20_ABI,
+                functionName: 'balanceOf',
+                args: [userAddress]
+              }) as bigint,
+          30000 // 30 second TTL
+        )
       } catch {
         balance = BigInt(0)
       }
@@ -774,18 +901,22 @@ export function useUnifiedContentPurchaseFlow(
         // Choose spender based on payment path
         const spender = isUsdc ? contractAddresses.PAY_PER_VIEW : contractAddresses.COMMERCE_INTEGRATION
         if (spender) {
-          const allowanceCacheKey = `${tokenAddress}-allowance-${userAddress}-${spender}`
-          const cachedAllowance = contractReadCacheRef.current.get(allowanceCacheKey)
-          if (cachedAllowance && Date.now() - cachedAllowance.ts < CACHE_TTL_MS) {
+          const allowanceCacheKey = `${chainId}-${tokenAddress}-allowance-${userAddress}-${spender}`
+          const cachedAllowance = globalContractCache.get(allowanceCacheKey)
+          if (cachedAllowance && Date.now() - cachedAllowance.ts < 30000) {
             allowance = cachedAllowance.value as bigint
           } else {
-            allowance = await publicClient.readContract({
-              address: tokenAddress,
-              abi: ERC20_ABI,
-              functionName: 'allowance',
-              args: [userAddress, spender]
-            }) as bigint
-            contractReadCacheRef.current.set(allowanceCacheKey, { value: allowance, ts: Date.now() })
+            allowance = await getCachedOrFetch(
+              globalContractCache,
+              allowanceCacheKey,
+              async () => await publicClient.readContract({
+                address: tokenAddress,
+                abi: ERC20_ABI,
+                functionName: 'allowance',
+                args: [userAddress, spender]
+              }) as bigint,
+              30000 // 30 second TTL
+            )
           }
         }
       } catch {
@@ -827,8 +958,8 @@ export function useUnifiedContentPurchaseFlow(
       needsApproval
     })
 
-    // Cache the assembled token info for quick reuse
-    contractReadCacheRef.current.set(cacheKey, { value: tokenInfo, ts: Date.now() })
+    // Cache the assembled token info globally for quick reuse
+    globalContractCache.set(cacheKey, { value: tokenInfo, ts: Date.now(), hits: 1 })
     return tokenInfo
   }, [contractAddresses, userAddress, contentQuery.data, calculateTokenPrice, chainId])
 
