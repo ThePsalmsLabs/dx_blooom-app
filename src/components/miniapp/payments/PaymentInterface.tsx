@@ -43,9 +43,11 @@ import {
   type MiniAppAuthResult
 } from '@/hooks/business/miniapp-auth'
 import { 
-  useX402ContentPurchaseFlow,
-  type PurchaseStrategy
+  useX402ContentPurchaseFlow
 } from '@/hooks/business/workflows'
+
+// Simple strategy type for the X402 flow
+type PurchaseStrategy = 'x402-usdc' | 'standard-flow'
 
 // Import existing infrastructure
 import { useContentById } from '@/hooks/contracts/core'
@@ -215,41 +217,22 @@ function getStrategyDisplayConfig(
   socialContext: boolean
 ): StrategyDisplayConfig {
   switch (strategy) {
-    case 'farcaster-direct':
+    case 'x402-usdc':
       return {
         strategy,
-        title: 'Direct Payment',
-        description: 'Instant purchase using your verified Farcaster wallet',
+        title: 'USDC Direct Payment',
+        description: 'Fast and secure USDC payment for instant access',
         benefits: [
-          'Single-click purchase',
-          'Social verification trust',
+          'USDC-only payment',
           'Instant access',
-          'Automatic sharing options'
+          'Mobile optimized',
+          'Low transaction fees'
         ],
-        buttonText: 'Buy Now',
+        buttonText: 'Purchase with USDC',
         buttonVariant: 'glow',
         buttonIcon: Sparkles,
-        estimatedTime: '~15 seconds',
+        estimatedTime: '~20 seconds',
         confidenceLevel: 'high',
-        showSocialFeatures: true
-      }
-
-    case 'batch-transaction':
-      return {
-        strategy,
-        title: 'One-Click Purchase',
-        description: 'Approve and purchase in a single transaction',
-        benefits: [
-          'Combined approval + purchase',
-          'Reduced transaction fees',
-          'Faster completion',
-          'Mobile optimized'
-        ],
-        buttonText: 'Approve & Purchase',
-        buttonVariant: 'glow',
-        buttonIcon: Zap,
-        estimatedTime: '~30 seconds',
-        confidenceLevel: confidence > 80 ? 'high' : 'medium',
         showSocialFeatures: socialContext
       }
 
@@ -274,7 +257,7 @@ function getStrategyDisplayConfig(
 
     default:
       return {
-        strategy: 'standard-flow',
+        strategy: 'x402-usdc',
         title: 'Purchase',
         description: 'Complete purchase to access content',
         benefits: ['Access to content'],
@@ -349,13 +332,16 @@ export function PaymentInterface({
     [authResult]
   )
   
+  // Simplified strategy for X402 flow - always use USDC direct payment
+  const currentStrategy: PurchaseStrategy = purchaseFlow.hasAccess ? 'x402-usdc' : 'x402-usdc'
+  
   const strategyDisplay = useMemo(() => 
     getStrategyDisplayConfig(
-      purchaseFlow.strategy,
-      purchaseFlow.strategyAnalysis?.confidence ?? 0,
+      currentStrategy,
+      100, // X402 flow is always high confidence
       Boolean(farcasterContext?.user)
     ), 
-    [purchaseFlow.strategy, purchaseFlow.strategyAnalysis, farcasterContext]
+    [currentStrategy, farcasterContext]
   )
   
   // ===== EVENT HANDLERS =====
@@ -373,22 +359,21 @@ export function PaymentInterface({
       setIsProcessing(true)
       setPurchaseError(null)
       
-      console.log('🚀 Initiating purchase with strategy:', purchaseFlow.strategy)
+      console.log('🚀 Initiating X402 USDC purchase for content:', contentId.toString())
       
-      await purchaseFlow.purchaseWithOptimalStrategy()
-      
-      // Track strategy selection for analytics
-      if (purchaseFlow.strategyAnalysis) {
-        purchaseFlow.trackStrategySelection(
-          purchaseFlow.strategy,
-          [...purchaseFlow.strategyAnalysis.reasoning]
-        )
+      // Use the appropriate purchase method based on approval status
+      if (purchaseFlow.needsApproval) {
+        console.log('💰 Executing approve and purchase flow')
+        purchaseFlow.approveAndPurchase()
+      } else {
+        console.log('💳 Executing direct purchase')
+        purchaseFlow.purchase()
       }
       
       // Handle successful purchase
       if (enableSocialFeatures && farcasterContext?.user) {
         setShowShareOptions(true)
-        purchaseFlow.trackSocialPurchase(contentId)
+        console.log('📢 Enabling social share options')
       }
       
       console.log('✅ Purchase completed successfully')
@@ -632,8 +617,8 @@ export function PaymentInterface({
    */
   const PurchaseButton = () => {
     const ButtonIcon = strategyDisplay.buttonIcon
-    const isLoading = purchaseFlow.flowState.step === 'purchasing' || isProcessing
-    const canPurchase = purchaseFlow.canPurchase && authResult.isAuthenticated && !isProcessing
+    const isLoading = purchaseFlow.isLoading || isProcessing
+    const canPurchase = purchaseFlow.canAfford && authResult.isAuthenticated && !isProcessing
     
     // Show connection button if not authenticated
     if (!authResult.isAuthenticated) {
@@ -703,51 +688,30 @@ export function PaymentInterface({
     )
   }
   
-  // ===== PERFORMANCE METRICS DISPLAY =====
+  // ===== BALANCE DISPLAY =====
   
   /**
-   * Performance Metrics Component
+   * Balance Display Component
    * 
-   * This component displays performance and optimization information
-   * when available, helping users understand the benefits.
+   * This component shows the user's USDC balance for transparency
    */
-  const PerformanceMetrics = () => {
-    if (variant === 'compact' || !purchaseFlow.performanceMetrics) return null
-    
-    const metrics = purchaseFlow.performanceMetrics
+  const BalanceDisplay = () => {
+    if (variant === 'compact' || !purchaseFlow.userBalance) return null
     
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="text-xs font-medium text-muted-foreground">
-          Performance Optimization
+          Your USDC Balance
         </div>
         
-        <div className="grid grid-cols-3 gap-4 text-center text-xs">
-          <div>
-            <div className="font-medium">{metrics.userStepsRequired}</div>
-            <div className="text-muted-foreground">Steps</div>
+        <div className="text-center text-sm">
+          <div className="font-medium">
+            {formatCurrency(purchaseFlow.userBalance, 6)} USDC
           </div>
-          
-          {metrics.gasSavingsPercentage > 0 && (
-            <div>
-              <div className="font-medium text-green-600">
-                {metrics.gasSavingsPercentage}%
-              </div>
-              <div className="text-muted-foreground">Gas Saved</div>
-            </div>
-          )}
-          
-          <div>
-            <div className="font-medium">{metrics.uxImprovementScore}</div>
-            <div className="text-muted-foreground">UX Score</div>
+          <div className="text-xs text-muted-foreground">
+            {purchaseFlow.canAfford ? 'Sufficient funds' : 'Insufficient funds'}
           </div>
         </div>
-        
-        {metrics.estimatedCompletionTime > 0 && (
-          <div className="text-center text-xs text-muted-foreground">
-            Estimated completion: ~{Math.round(metrics.estimatedCompletionTime / 1000)}s
-          </div>
-        )}
       </div>
     )
   }
@@ -755,7 +719,7 @@ export function PaymentInterface({
   // ===== LOADING STATES =====
   
   const LoadingStates = () => {
-    if (!isProcessing && purchaseFlow.flowState.step !== 'checking_access') return null
+    if (!isProcessing && purchaseFlow.currentStep !== 'checking_access') return null
     
     return (
       <div className="space-y-2">
@@ -768,7 +732,7 @@ export function PaymentInterface({
           </div>
         )}
         
-        {purchaseFlow.flowState.step === 'checking_access' && (
+        {purchaseFlow.currentStep === 'checking_access' && (
           <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm text-muted-foreground">
@@ -812,13 +776,13 @@ export function PaymentInterface({
   
   // Handle purchase flow errors with toast notifications
   React.useEffect(() => {
-    if (purchaseFlow.flowState.error) {
-      handleUIError(purchaseFlow.flowState.error, 'Purchase', () => {
-        // Retry purchase flow
-        purchaseFlow.retryPurchase?.()
+    if (purchaseFlow.error) {
+      handleUIError(purchaseFlow.error, 'Purchase', () => {
+        // Reset purchase flow on error
+        purchaseFlow.reset()
       })
     }
-  }, [purchaseFlow.flowState.error, purchaseFlow.retryPurchase])
+  }, [purchaseFlow.error, purchaseFlow.reset])
   
   // Handle component-level purchase errors
   React.useEffect(() => {
@@ -874,7 +838,7 @@ export function PaymentInterface({
           
           {/* Error handling now done via toast notifications - no inline UI disruption */}
           
-          {variant === 'expanded' && <PerformanceMetrics />}
+          {variant === 'expanded' && <BalanceDisplay />}
         </CardContent>
 
         <CardFooter className={cn(
@@ -883,11 +847,11 @@ export function PaymentInterface({
         )}>
           <PurchaseButton />
           
-          {!purchaseFlow.canPurchase && (
+          {!purchaseFlow.canAfford && (
             <div id="purchase-disabled-reason" className="text-xs text-muted-foreground text-center">
               {!authResult.isAuthenticated 
                 ? 'Connect your wallet to purchase this content'
-                : 'Purchase is currently unavailable'
+                : 'Insufficient USDC balance'
               }
             </div>
           )}

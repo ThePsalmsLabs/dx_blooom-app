@@ -696,7 +696,8 @@ async function checkBatchTransactionSupport(): Promise<boolean> {
         version: '1.0',
         chainId: '0x2105', // Base mainnet
         from: '0x0000000000000000000000000000000000000000',
-        calls: []
+        calls: [],
+        atomicRequired: false // EIP-5792 requires this boolean parameter
       }]
     })
     return true
