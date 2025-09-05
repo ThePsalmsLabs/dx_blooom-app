@@ -56,6 +56,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useMiniAppAuth } from '@/hooks/business/miniapp-auth'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 
 interface FarcasterWalletPanelProps {
   className?: string
@@ -70,28 +71,46 @@ export function FarcasterWalletPanel({
 }: FarcasterWalletPanelProps) {
   const walletUI = useMiniAppWalletUI()
   const miniAppAuth = useMiniAppAuth()
+  const autoWallet = useFarcasterAutoWallet()
   const [activeTab, setActiveTab] = useState<'farcaster' | 'wallet'>('farcaster')
 
   // Handle Farcaster authentication
   const handleFarcasterAuth = useCallback(async () => {
     try {
-      // Use wallet connect instead (aligned with web app patterns)
-      await walletUI.connect()
+      // Use the auto wallet connection logic
+      if (autoWallet.isConnected) {
+        console.log('✅ Wallet already connected via Farcaster auto wallet')
+        onAuthComplete?.()
+        return
+      }
+      
+      // If not connected, attempt connection using the auto wallet hook
+      console.log('🔗 Attempting wallet connection via Farcaster auto wallet')
+      await autoWallet.connect()
       onAuthComplete?.()
     } catch (error) {
-      console.error('Wallet authentication failed:', error)
+      console.error('Farcaster authentication failed:', error)
     }
-  }, [walletUI, onAuthComplete])
+  }, [autoWallet, onAuthComplete])
 
   // Handle wallet connection
   const handleWalletConnect = useCallback(async () => {
     try {
-      await walletUI.connect()
+      // Use the auto wallet connection logic
+      if (autoWallet.isConnected) {
+        console.log('✅ Wallet already connected via Farcaster auto wallet')
+        onAuthComplete?.()
+        return
+      }
+      
+      // If not connected, attempt connection using the auto wallet hook
+      console.log('🔗 Attempting wallet connection via Farcaster auto wallet')
+      await autoWallet.connect()
       onAuthComplete?.()
     } catch (error) {
       console.error('Wallet connection failed:', error)
     }
-  }, [walletUI, onAuthComplete])
+  }, [autoWallet, onAuthComplete])
 
   // Handle disconnect
   const handleDisconnect = useCallback(async () => {
@@ -108,7 +127,7 @@ export function FarcasterWalletPanel({
   }, [miniAppAuth, walletUI])
 
   // If already authenticated, show status
-  if (miniAppAuth.isAuthenticated || walletUI.isConnected) {
+  if (miniAppAuth.isAuthenticated || autoWallet.isConnected) {
     return (
       <Card className={cn('w-full max-w-md', className)}>
         <CardHeader className="pb-4">
@@ -161,7 +180,7 @@ export function FarcasterWalletPanel({
           )}
 
           {/* Wallet Connection Status */}
-          {walletUI.isConnected && (
+          {autoWallet.isConnected && (
             <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <Wallet className="h-5 w-5 text-blue-600" />
@@ -170,23 +189,23 @@ export function FarcasterWalletPanel({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-blue-800 font-mono text-sm">
-                    {walletUI.formattedAddress}
+                    {autoWallet.address ? `${autoWallet.address.slice(0, 6)}...${autoWallet.address.slice(-4)}` : 'Unknown'}
                   </span>
                   <Badge className="bg-blue-600 text-white text-xs">
                     <Wallet className="h-3 w-3 mr-1" />
-                    Connected
+                    {autoWallet.isInMiniApp ? 'Auto-Connected' : 'Connected'}
                   </Badge>
                 </div>
                 
                 <p className="text-sm text-blue-700 mt-1">
-                  Wallet connected on {walletUI.chainName}
+                  {autoWallet.isInMiniApp ? 'Farcaster mini app wallet' : 'Web wallet'} connected
                 </p>
                 
-                {!walletUI.isCorrectNetwork && (
-                  <Alert className="mt-2 border-yellow-200 bg-yellow-50">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    <AlertDescription className="text-yellow-800 text-xs">
-                      Please switch to a supported network
+                {autoWallet.error && (
+                  <Alert className="mt-2 border-red-200 bg-red-50">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800 text-xs">
+                      {autoWallet.error.message}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -279,19 +298,19 @@ export function FarcasterWalletPanel({
 
               <Button
                 onClick={handleFarcasterAuth}
-                disabled={miniAppAuth.isLoading}
+                disabled={miniAppAuth.isLoading || autoWallet.isConnecting}
                 size="lg"
                 className="w-full bg-purple-600 hover:bg-purple-700"
               >
-                {miniAppAuth.isLoading ? (
+                {miniAppAuth.isLoading || autoWallet.isConnecting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting with Farcaster...
+                    {autoWallet.isInMiniApp ? 'Connecting wallet...' : 'Connecting with Farcaster...'}
                   </>
                 ) : (
                   <>
                     <Users className="mr-2 h-4 w-4" />
-                    Sign in with Farcaster
+                    {autoWallet.isInMiniApp ? 'Connect Wallet' : 'Sign in with Farcaster'}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
@@ -333,12 +352,12 @@ export function FarcasterWalletPanel({
 
                 <Button
                   onClick={handleWalletConnect}
-                  disabled={walletUI.isConnecting}
+                  disabled={autoWallet.isConnecting}
                   variant="outline"
                   size="lg"
                   className="w-full"
                 >
-                  {walletUI.isConnecting ? (
+                  {autoWallet.isConnecting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Connecting Wallet...

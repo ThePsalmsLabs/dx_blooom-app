@@ -644,6 +644,9 @@ export function useMiniAppAuth(): MiniAppAuthResult {
    * 
    * This function handles the login process for both web and MiniApp environments,
    * ensuring proper initialization of all authentication contexts.
+   * 
+   * IMPORTANT: In Farcaster mini apps, the wallet should already be connected automatically
+   * according to the official documentation. We should check for existing connection first.
    */
   const login = useCallback(async (): Promise<void> => {
     try {
@@ -651,9 +654,21 @@ export function useMiniAppAuth(): MiniAppAuthResult {
       
       // Check if we're in a MiniApp environment
       if (environmentType === 'miniapp') {
-        // Use proper Farcaster Sign-In flow
-        debug.log('🚀 MiniApp environment detected, using Farcaster Sign-In')
-        await signInWithFarcaster()
+        debug.log('🚀 MiniApp environment detected')
+        
+        // In Farcaster mini apps, wallet should be automatically connected
+        // Check if wallet is already connected first
+        if (walletUI.isConnected) {
+          debug.log('✅ Wallet already connected in Farcaster mini app, proceeding with Quick Auth')
+          await signInWithFarcaster()
+        } else {
+          debug.log('⚠️ Wallet not automatically connected, attempting manual connection')
+          // If not connected, this might be a web context or connection issue
+          // Try to connect first, then proceed with Quick Auth
+          if (!walletUI.isConnected) {
+            throw new Error('Wallet not connected in Farcaster mini app. Please ensure you have a connected wallet.')
+          }
+        }
       } else {
         // Standard web authentication - trigger wallet connection
         debug.log('🚀 Web wallet login initiated')
