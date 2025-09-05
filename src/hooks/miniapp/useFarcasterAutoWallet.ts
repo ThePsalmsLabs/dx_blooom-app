@@ -108,6 +108,7 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
           connector.id === 'farcasterMiniApp' || 
           connector.name === 'Farcaster Mini App'
         )
+        console.log('farcasterConnector', farcasterConnector)
 
         if (farcasterConnector) {
           await connect({ connector: farcasterConnector })
