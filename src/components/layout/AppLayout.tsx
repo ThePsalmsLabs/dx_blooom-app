@@ -170,16 +170,26 @@ export function AppLayout({
   const creatorRegistration = useIsCreatorRegistered(address as `0x${string}` | undefined)
   const creatorProfile = useCreatorProfile(address as `0x${string}` | undefined)
   
-  // Debug connection state synchronization
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 AppLayout connection state:', {
-      privyConnected: walletUI.isConnected,
-      fullAddress: fullAddress,
-      formattedAddress: walletUI.formattedAddress,
-      derivedIsConnected: isConnected,
-      addressBeingPassedToContracts: address
-    })
-  }
+  // Debug connection state synchronization (FIXED INFINITE LOGGING)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const now = Date.now()
+      const lastLogKey = 'applayout-debug-last-log'
+      const lastLog = parseInt(localStorage.getItem(lastLogKey) || '0')
+      
+      // Only log once per 5 seconds to prevent spam
+      if (now - lastLog > 5000) {
+        console.log('🔍 AppLayout connection state:', {
+          privyConnected: walletUI.isConnected,
+          fullAddress: fullAddress,
+          formattedAddress: walletUI.formattedAddress,
+          derivedIsConnected: isConnected,
+          addressBeingPassedToContracts: address
+        })
+        localStorage.setItem(lastLogKey, now.toString())
+      }
+    }
+  }, [walletUI.isConnected, fullAddress, walletUI.formattedAddress, isConnected, address])
 
   // Layout state management
   const [layoutState, setLayoutState] = useState<LayoutState>({

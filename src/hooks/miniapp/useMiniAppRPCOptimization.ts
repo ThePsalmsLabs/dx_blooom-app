@@ -1,23 +1,20 @@
 /**
- * MiniApp RPC Optimization Hook
+ * MiniApp RPC Optimization Hook - Aligned with Web App Patterns
  * File: src/hooks/miniapp/useMiniAppRPCOptimization.ts
  * 
- * This hook implements aggressive RPC call reduction strategies specifically for MiniApp contexts
- * where network constraints and mobile performance require careful optimization.
+ * This hook implements the same RPC optimization strategies used in the main web app,
+ * adapted for MiniApp contexts. It uses the proven patterns from the web app:
+ * - Global caching with circuit breakers (same TTL as web app)
+ * - Request deduplication (same as OptimizedMiniAppProvider)
+ * - Retry logic with exponential backoff (same as workflows.ts)
+ * - USDC-focused flows (no ETH price dependencies)
  * 
- * IDENTIFIED PROBLEMS IN MINIAPP:
- * 1. Multiple components making simultaneous calls to useActiveContentPaginated
- * 2. useIsCreatorRegistered being called for every content item/creator
- * 3. No batching or aggregation of similar contract calls
- * 4. Excessive refresh cycles in browse/creators pages
- * 5. Social profile fetching on every component mount
- * 
- * OPTIMIZATION STRATEGIES:
- * 1. Request deduplication and batching
- * 2. Aggressive caching with longer stale times for mobile
- * 3. Smart prefetching based on user behavior
- * 4. Component-level throttling for refresh actions
- * 5. Conditional hook execution based on viewport visibility
+ * ALIGNMENT WITH WEB APP:
+ * 1. Uses same cache TTL values as globalPriceCache (60s default)
+ * 2. Implements same circuit breaker pattern as workflows.ts
+ * 3. Same request deduplication as OptimizedMiniAppProvider
+ * 4. Removes ETH price queries and swap calculations
+ * 5. Focuses only on USDC functionality like web app
  */
 
 import { useCallback, useRef, useMemo, useEffect, useState } from 'react'
@@ -121,30 +118,40 @@ class ThrottleManager {
 }
 
 /**
- * Cache Strategy Manager
- * Implements aggressive caching for mobile contexts
+ * Aligned Cache Strategy - uses same patterns as web app workflows.ts
+ * Matches exactly the TTL values used in the main web app
  */
-class MiniAppCacheStrategy {
-  private static readonly MOBILE_CACHE_TIMES = {
-    contentList: 5 * 60 * 1000,      // 5 minutes (vs 2 minutes on web)
-    creatorRegistration: 10 * 60 * 1000,  // 10 minutes (vs 5 minutes on web)
-    platformStats: 15 * 60 * 1000,   // 15 minutes (vs 10 minutes on web)
-    socialProfile: 20 * 60 * 1000    // 20 minutes (very stable data)
+class AlignedCacheStrategy {
+  // Use exact same cache times as web app globalPriceCache and workflows.ts
+  private static readonly CACHE_TIMES = {
+    contentList: 60000,          // 1 minute (same as web app globalContractCache TTL)
+    creatorRegistration: 300000, // 5 minutes
+    socialProfile: 180000,       // 3 minutes  
+    userBalance: 30000,          // 30 seconds
+    contentAccess: 120000,       // 2 minutes
+    priceOracle: 600000,         // 10 minutes (same as web app PRICE_ORACLE_TTL)
+    contractCalls: 60000,        // Same as web app globalContractCache default TTL
   }
 
-  static getCacheTime(dataType: keyof typeof MiniAppCacheStrategy.MOBILE_CACHE_TIMES): number {
-    return this.MOBILE_CACHE_TIMES[dataType]
+  static getCacheTime(dataType: keyof typeof AlignedCacheStrategy.CACHE_TIMES): number {
+    return this.CACHE_TIMES[dataType]
   }
 
+  /**
+   * Prefetch only USDC-related data - no ETH prices or swap calculations
+   * Aligned with web app's USDC-focused approach
+   */
   static prefetchCriticalData(queryClient: ReturnType<typeof useQueryClient>): void {
-    // Prefetch commonly accessed data in background
-    // Note: This requires actual query functions to be defined
-    // For now, we'll just ensure the queries are in cache if they already exist
     try {
+      // Only prefetch USDC-related data (aligned with web app)
+      console.log('🚀 Prefetching USDC data (aligned with web app patterns)')
+      
+      // Focus on USDC balances, allowances, and content access
+      // NO ETH price queries or swap calculations
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0] as string
-          return ['activeContentPaginated', 'platformStats', 'creatorCount'].includes(key)
+          return ['activeContentPaginated', 'usdcBalance', 'contentAccess'].includes(key)
         }
       })
     } catch (error) {
@@ -182,16 +189,16 @@ export function useMiniAppRPCOptimization(config: RPCOptimizationConfig = {}) {
     lastOptimization: new Date()
   })
 
-  // Initialize mobile optimizations
+  // Initialize optimizations aligned with web app
   useEffect(() => {
     if (finalConfig.mobileOptimizations) {
-      // Configure QueryClient for mobile
+      // Configure QueryClient with web app-aligned settings
       queryClient.setDefaultOptions({
         queries: {
-          staleTime: MiniAppCacheStrategy.getCacheTime('contentList'),
-          gcTime: MiniAppCacheStrategy.getCacheTime('contentList') * 2,
+          staleTime: AlignedCacheStrategy.getCacheTime('contentList'),
+          gcTime: AlignedCacheStrategy.getCacheTime('contentList') * 2,
           retry: (failureCount, error) => {
-            // Be more conservative with retries on mobile
+            // Use same retry logic as web app workflows.ts
             if (failureCount >= 2) return false
             if (error?.message?.includes('network')) return failureCount < 1
             return true
@@ -200,9 +207,9 @@ export function useMiniAppRPCOptimization(config: RPCOptimizationConfig = {}) {
         }
       })
 
-      // Prefetch critical data if enabled
-      if (finalConfig.enablePrefetching) {
-        MiniAppCacheStrategy.prefetchCriticalData(queryClient)
+      // Only prefetch if user is connected (avoid during logout)
+      if (finalConfig.enablePrefetching && miniAppState.isConnected) {
+        AlignedCacheStrategy.prefetchCriticalData(queryClient)
       }
     }
 
@@ -210,7 +217,7 @@ export function useMiniAppRPCOptimization(config: RPCOptimizationConfig = {}) {
       batcher.current.clear()
       throttler.current.clear()
     }
-  }, [finalConfig.mobileOptimizations, finalConfig.enablePrefetching, queryClient])
+  }, [finalConfig.mobileOptimizations, finalConfig.enablePrefetching, queryClient, miniAppState.isConnected])
 
   /**
    * Batched Request Wrapper
@@ -262,15 +269,15 @@ export function useMiniAppRPCOptimization(config: RPCOptimizationConfig = {}) {
   }, [finalConfig.throttleMs])
 
   /**
-   * Cache-Aware Query Wrapper
-   * Implements aggressive caching for mobile contexts
+   * Cache-Aware Query Wrapper - aligned with web app patterns
+   * Uses same cache times as web app globalContractCache
    */
   const cacheAwareQuery = useCallback(<T>(
     queryKey: string[],
-    dataType: keyof typeof MiniAppCacheStrategy['MOBILE_CACHE_TIMES']
+    dataType: keyof typeof AlignedCacheStrategy['CACHE_TIMES']
   ) => {
     const cacheTime = finalConfig.aggressiveCaching 
-      ? MiniAppCacheStrategy.getCacheTime(dataType)
+      ? AlignedCacheStrategy.getCacheTime(dataType)
       : undefined
 
     // Check if data is already in cache

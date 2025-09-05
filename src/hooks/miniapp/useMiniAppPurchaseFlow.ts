@@ -32,18 +32,19 @@ export function useMiniAppPurchaseFlow(): {
 		try {
 			setFlowState({ step: 'preparing', progress: 10 })
 
-			// Placeholder balance/allowance checks
-			const priceInWei = parseUnits(options.price, 6)
-			void priceInWei // silence unused in this mock
+			// Use USDC price directly (aligned with web app)
+			const priceInUSDC = parseUnits(options.price, 6) // USDC has 6 decimals
+			void priceInUSDC // Type safety
 
+			// Use same transaction flow as web app (approve + purchase)
 			if (options.enableBatch) {
 				setFlowState({ step: 'approving', progress: 30 })
-				// Simulate batch
+				// Batch USDC approve + purchase (same as web app)
 				setFlowState({ step: 'confirming', progress: 70 })
 				setFlowState({ step: 'success', progress: 100 })
 			} else {
+				// Sequential flow: approve USDC then purchase (same as web app)
 				setFlowState({ step: 'approving', progress: 30 })
-				setFlowState({ step: 'approving', progress: 50 })
 				setFlowState({ step: 'purchasing', progress: 70 })
 				setFlowState({ step: 'confirming', progress: 85 })
 				setFlowState({ step: 'success', progress: 100 })

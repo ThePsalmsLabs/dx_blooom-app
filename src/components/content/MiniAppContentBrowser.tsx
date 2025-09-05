@@ -217,14 +217,13 @@ function MiniAppContentBrowserCore({
     return () => observer.disconnect()
   }, [])
 
-  // Optimized content loading strategy
+  // Optimized content loading strategy (aligned with web app)
   useEffect(() => {
     if (walletUI.isConnected) {
       setShouldLoadContent(true)
     } else {
-      // Delay content loading for non-connected users to prioritize wallet connection
-      const timer = setTimeout(() => setShouldLoadContent(true), 3000) // Increased delay
-      return () => clearTimeout(timer)
+      // Immediate loading for better UX (same as web app)
+      setShouldLoadContent(true)
     }
   }, [walletUI.isConnected])
 
@@ -255,14 +254,22 @@ function MiniAppContentBrowserCore({
   
   // Real content data only - no mock data fallback
 
-  // Apply RPC optimization metrics tracking
+  // Apply RPC optimization metrics tracking (FIXED INFINITE LOGGING)
   useEffect(() => {
     if (effectiveContentData && hasContent) {
-      // Track successful data fetch for metrics
-      console.log('📊 Content loaded successfully with optimization', {
-        contentCount: effectiveContentData.contentIds.length,
-        total: effectiveContentData.total
-      })
+      // Track successful data fetch for metrics (throttled)
+      const now = Date.now()
+      const lastLogKey = 'content-browser-last-log'
+      const lastLog = parseInt(localStorage.getItem(lastLogKey) || '0')
+      
+      // Only log once per 10 seconds to prevent spam
+      if (now - lastLog > 10000) {
+        console.log('📊 Content loaded successfully with optimization', {
+          contentCount: effectiveContentData.contentIds.length,
+          total: effectiveContentData.total
+        })
+        localStorage.setItem(lastLogKey, now.toString())
+      }
     } else if (effectiveContentData && !hasContent) {
       console.log('📊 No content available - empty state detected')
     }
@@ -286,11 +293,102 @@ function MiniAppContentBrowserCore({
     return (
       <div className="space-y-4">
         <div className="text-center py-8">
-          <Wallet className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-          <h3 className="font-medium mb-2">Connect Your Wallet</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Connect your wallet to discover and purchase content
+          <div className="mx-auto mb-4 p-4 bg-muted/50 rounded-full w-fit">
+            <Wallet className="h-12 w-12 text-muted-foreground" />
+          </div>
+          <h3 className="font-medium mb-2 text-lg">Wallet Not Connected</h3>
+          <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+            Connect your wallet to discover exclusive content, purchase premium media, and access your personalized feed
           </p>
+
+          {/* Connection Benefits */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 max-w-2xl mx-auto">
+            <div className="p-3 bg-primary/5 rounded-lg border border-primary/10">
+              <Eye className="h-5 w-5 mx-auto mb-2 text-primary" />
+              <p className="text-xs font-medium">Browse Content</p>
+              <p className="text-xs text-muted-foreground">Discover premium media</p>
+            </div>
+            <div className="p-3 bg-primary/5 rounded-lg border border-primary/10">
+              <Unlock className="h-5 w-5 mx-auto mb-2 text-primary" />
+              <p className="text-xs font-medium">Instant Access</p>
+              <p className="text-xs text-muted-foreground">Purchase with USDC</p>
+            </div>
+            <div className="p-3 bg-primary/5 rounded-lg border border-primary/10">
+              <RefreshCw className="h-5 w-5 mx-auto mb-2 text-primary" />
+              <p className="text-xs font-medium">Sync Status</p>
+              <p className="text-xs text-muted-foreground">Across all devices</p>
+            </div>
+          </div>
+
+          {/* Connect Button */}
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={walletUI.connect}
+              disabled={walletUI.isConnecting}
+              size="lg"
+              className="px-8"
+            >
+              {walletUI.isConnecting ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Connect Wallet
+                </>
+              )}
+            </Button>
+
+            {/* Alternative: Switch to Different Wallet */}
+            {!walletUI.isConnecting && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={walletUI.connect}
+                className="px-6"
+                title="Connect a different wallet"
+              >
+                Switch Wallet
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-6 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Secure connection powered by Privy • Base Network
+            </p>
+
+            {/* Connection Tips */}
+            <div className="bg-muted/30 rounded-lg p-3 text-left max-w-md mx-auto">
+              <h4 className="text-xs font-medium mb-2">💡 Connection Tips:</h4>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Use MetaMask, Coinbase Wallet, or WalletConnect</li>
+                <li>• Switch to Base Sepolia testnet for testing</li>
+                <li>• Approve the connection in your wallet</li>
+                <li>• Your wallet address stays private</li>
+                <li>• Use "Switch Wallet" to connect a different wallet</li>
+                <li>• Disconnect anytime to change wallets</li>
+              </ul>
+            </div>
+
+            {/* Network Info */}
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="h-1.5 w-1.5 bg-blue-500 rounded-full" />
+                <span>Base Network</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-1.5 w-1.5 bg-purple-500 rounded-full" />
+                <span>USDC Payments</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-1.5 w-1.5 bg-green-500 rounded-full" />
+                <span>Instant Access</span>
+              </div>
+            </div>
+          </div>
         </div>
         
         {shouldLoadContent && (
@@ -350,6 +448,39 @@ function MiniAppContentBrowserCore({
   // Show content for connected users
   return (
     <div id="miniapp-content-browser" className={cn("space-y-4", className)}>
+      {/* Welcome Message for New Users */}
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+            <Wallet className="h-4 w-4 text-green-600" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-medium text-green-800">Welcome! 🎉</h3>
+            <p className="text-xs text-green-700">
+              You're connected and ready to explore premium content. Browse, purchase, and enjoy exclusive media with instant USDC payments.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="text-green-700 hover:text-green-800" title="Switch Wallet">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-green-700 hover:text-green-800"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to disconnect your wallet?')) {
+                  walletUI.disconnect();
+                }
+              }}
+              title="Disconnect Wallet"
+            >
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Play className="h-5 w-5 text-primary" />
@@ -360,8 +491,8 @@ function MiniAppContentBrowserCore({
             </Badge>
           )}
         </h2>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           onClick={handleRefresh}
           disabled={contentQuery.isLoading}

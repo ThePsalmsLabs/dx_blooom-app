@@ -43,7 +43,8 @@ import {
   Users,
   Wallet,
   Settings,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 
 // Import your actual UI components
@@ -389,6 +390,7 @@ function AdaptiveNavigationCore({
   const currentContext = useNavigationContext()
   const { role: currentUserRole, isLoading: roleLoading, error: roleError } = useUserRole()
   const { trackNavigation } = useNavigationAnalytics(enableAnalytics)
+  const walletUI = useWalletConnectionUI()
   
   // Performance optimization: Stable reference tracking
   const lastNavigationTime = useRef<number>(0)
@@ -670,14 +672,14 @@ function AdaptiveNavigationCore({
     return (
       <div className="flex items-center justify-between w-full">
         {/* Miniapp navigation bar - horizontal layout */}
-        <nav 
-          className="flex items-center space-x-4 flex-1" 
-          role="navigation" 
+        <nav
+          className="flex items-center space-x-4 flex-1"
+          role="navigation"
           aria-label="Main navigation"
         >
           {filteredSections
             .flatMap(section => section.items)
-            .slice(0, 4) // Limit to 4 main items for mobile space
+            .slice(0, 3) // Reduced to 3 items to make space for wallet status
             .map((item) => (
               <button
                 key={item.id}
@@ -695,9 +697,57 @@ function AdaptiveNavigationCore({
               </button>
             ))}
         </nav>
-        
-        {/* Mobile menu for additional items */}
-        {mobileNavigation}
+
+        {/* Wallet Status and Mobile Menu */}
+        <div className="flex items-center space-x-2">
+          {/* Wallet Connection Status */}
+          <div className="hidden sm:flex items-center space-x-2 px-3 py-2">
+            <div className={cn(
+              "h-2 w-2 rounded-full",
+              walletUI.isConnected ? "bg-green-500" : "bg-red-500"
+            )} />
+            <span className="text-xs font-medium">
+              {walletUI.isConnected ? 'Connected' : 'Not Connected'}
+            </span>
+            {walletUI.isConnected && walletUI.formattedAddress && (
+              <span className="text-xs font-mono text-muted-foreground hidden md:inline">
+                {walletUI.formattedAddress}
+              </span>
+            )}
+          </div>
+
+          {/* Wallet Action Buttons */}
+          {!walletUI.isConnected ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={walletUI.connect}
+              disabled={walletUI.isConnecting}
+            >
+              {walletUI.isConnecting ? (
+                <>
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                'Connect'
+              )}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={walletUI.disconnect}
+            >
+              Disconnect
+            </Button>
+          )}
+
+          {/* Mobile menu for additional items */}
+          {mobileNavigation}
+        </div>
       </div>
     )
   }

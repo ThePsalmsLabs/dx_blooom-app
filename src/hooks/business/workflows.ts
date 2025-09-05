@@ -380,28 +380,71 @@ const globalContractCache = new Map<string, { value: any; ts: number; hits: numb
 
 // Additional cache for price oracle results to reduce duplicate calls
 const priceOracleCache = new Map<string, { value: any; ts: number }>()
-const PRICE_ORACLE_TTL = 300000 // 5 minutes for oracle prices
+const PRICE_ORACLE_TTL = 600000 // 10 minutes for oracle prices (increased to reduce calls)
+const HISTORICAL_PRICE_TTL = 86400000 // 24 hours for historical fallback prices
 
 /**
- * Circuit breaker for RPC calls to prevent overwhelming rate-limited endpoints
+ * Retry utility with exponential backoff for RPC calls
+ */
+async function retryWithExponentialBackoff<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 1000,
+  maxDelay = 10000
+): Promise<T> {
+  let lastError: Error
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error as Error
+
+      // Don't retry on circuit breaker errors or non-rate-limit errors
+      if (lastError.message?.includes('Circuit breaker') ||
+          !lastError.message?.includes('rate limit') &&
+          !lastError.message?.includes('HTTP request failed')) {
+        throw lastError
+      }
+
+      if (attempt === maxRetries) {
+        throw lastError
+      }
+
+      // Exponential backoff with jitter
+      const delay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 1000, maxDelay)
+      console.warn(`🔄 RPC call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${Math.round(delay)}ms:`, lastError.message)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+
+  throw lastError!
+}
+
+/**
+ * Enhanced Circuit breaker for RPC calls with better recovery logic
  */
 class CircuitBreaker {
-  private failures = 0
+  private consecutiveFailures = 0
   private lastFailureTime = 0
+  private successCount = 0
   private state: 'closed' | 'open' | 'half-open' = 'closed'
 
   constructor(
-    private failureThreshold = 5,
-    private recoveryTimeout = 60000, // 1 minute
-    private successThreshold = 2
+    private failureThreshold = 3, // Reduced from 5 for faster response
+    private recoveryTimeout = 30000, // Reduced to 30 seconds for faster recovery
+    private successThreshold = 2,
+    private name = 'default'
   ) {}
 
   async execute<T>(operation: () => Promise<T>): Promise<T> {
     if (this.state === 'open') {
       if (Date.now() - this.lastFailureTime > this.recoveryTimeout) {
         this.state = 'half-open'
+        this.successCount = 0
+        console.warn(`🔄 Circuit breaker ${this.name} entering half-open state`)
       } else {
-        throw new Error('Circuit breaker is OPEN - RPC rate limited')
+        throw new Error(`Circuit breaker ${this.name} is OPEN - RPC rate limited`)
       }
     }
 
@@ -410,34 +453,59 @@ class CircuitBreaker {
       this.onSuccess()
       return result
     } catch (error) {
-      this.onFailure()
+      this.onFailure(error)
       throw error
     }
   }
 
   private onSuccess() {
+    this.consecutiveFailures = 0
+
     if (this.state === 'half-open') {
-      this.failures = 0
-      this.state = 'closed'
+      this.successCount++
+      if (this.successCount >= this.successThreshold) {
+        this.state = 'closed'
+        console.log(`✅ Circuit breaker ${this.name} fully recovered`)
+      }
     }
   }
 
-  private onFailure() {
-    this.failures++
-    this.lastFailureTime = Date.now()
+  private onFailure(error: any) {
+    // Only count rate limit errors as circuit breaker failures
+    const isRateLimitError = error?.message?.includes('rate limit') ||
+                            error?.message?.includes('HTTP request failed') ||
+                            error?.message?.includes('429')
 
-    if (this.failures >= this.failureThreshold) {
-      this.state = 'open'
+    if (isRateLimitError) {
+      this.consecutiveFailures++
+      this.lastFailureTime = Date.now()
+
+      if (this.consecutiveFailures >= this.failureThreshold) {
+        this.state = 'open'
+        console.warn(`🚫 Circuit breaker ${this.name} opened after ${this.consecutiveFailures} consecutive failures`)
+      }
+    } else {
+      // Reset consecutive failures for non-rate-limit errors
+      this.consecutiveFailures = 0
     }
   }
 
   getState() {
     return this.state
   }
+
+  getStats() {
+    return {
+      state: this.state,
+      consecutiveFailures: this.consecutiveFailures,
+      successCount: this.successCount,
+      lastFailureTime: this.lastFailureTime
+    }
+  }
 }
 
-// Global circuit breaker instance
-const globalCircuitBreaker = new CircuitBreaker()
+// Global circuit breaker instance for price oracle operations
+const globalCircuitBreaker = new CircuitBreaker(3, 30000, 2, 'price-oracle')
 
 /**
  * Enhanced caching with global cache and circuit breaker
@@ -471,9 +539,16 @@ async function getCachedOrFetch<T>(
   } catch (error) {
     // If we have any cached data at all, use it rather than failing
     if (cached) {
-      console.warn(`⚠️ Using very stale cached data for ${key} due to error: ${error}`)
+      const age = Math.floor((now - cached.ts) / 1000)
+      console.warn(`⚠️ Using stale cached data for ${key} (${age}s old) due to error: ${error instanceof Error ? error.message : String(error)}`)
       return cached.value
     }
+
+    // For critical operations, provide more helpful error messages
+    if (key.includes('price') || key.includes('oracle')) {
+      console.error(`🚨 Critical pricing data unavailable for ${key}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
     throw error
   }
 }
@@ -757,15 +832,22 @@ export function useUnifiedContentPurchaseFlow(
             if (oracleCached && (Date.now() - oracleCached.ts) < PRICE_ORACLE_TTL) {
               ethAmount = oracleCached.value
             } else {
-              ethAmount = await publicClient.readContract({
-                address: contractAddresses.PRICE_ORACLE,
-                abi: PRICE_ORACLE_ABI,
-                functionName: 'getETHPrice',
-                args: [usdcAmount]
-              }) as bigint
+              ethAmount = await retryWithExponentialBackoff(async () =>
+                publicClient.readContract({
+                  address: contractAddresses.PRICE_ORACLE,
+                  abi: PRICE_ORACLE_ABI,
+                  functionName: 'getETHPrice',
+                  args: [usdcAmount]
+                }) as Promise<bigint>
+              )
 
-              // Cache the oracle result for 5 minutes
-              priceOracleCache.set(oracleCacheKey, { value: ethAmount, ts: Date.now() })
+              const now = Date.now()
+              // Cache the oracle result for 10 minutes (increased)
+              priceOracleCache.set(oracleCacheKey, { value: ethAmount, ts: now })
+
+              // Also update historical cache for better fallback pricing
+              const historicalCacheKey = `historical-eth-price-${chainId}`
+              priceOracleCache.set(historicalCacheKey, { value: ethAmount, ts: now })
             }
 
             const result = {
@@ -783,14 +865,16 @@ export function useUnifiedContentPurchaseFlow(
           if (tokenOracleCached && (Date.now() - tokenOracleCached.ts) < PRICE_ORACLE_TTL) {
             tokenAmount = tokenOracleCached.value
           } else {
-            tokenAmount = await publicClient.readContract({
-              address: contractAddresses.PRICE_ORACLE,
-              abi: PRICE_ORACLE_ABI,
-              functionName: 'getTokenAmountForUSDC',
-              args: [tokenAddress, usdcAmount, poolFee]
-            }) as bigint
+            tokenAmount = await retryWithExponentialBackoff(async () =>
+              publicClient.readContract({
+                address: contractAddresses.PRICE_ORACLE,
+                abi: PRICE_ORACLE_ABI,
+                functionName: 'getTokenAmountForUSDC',
+                args: [tokenAddress, usdcAmount, poolFee]
+              }) as Promise<bigint>
+            )
 
-            // Cache the oracle result for 5 minutes
+            // Cache the oracle result for 10 minutes (increased)
             priceOracleCache.set(tokenOracleCacheKey, { value: tokenAmount, ts: Date.now() })
           }
 
@@ -800,15 +884,33 @@ export function useUnifiedContentPurchaseFlow(
           }
           return result
         },
-        180000 // 3 minutes TTL for price data (increased to reduce RPC calls)
+        600000 // 10 minutes TTL for price data (increased to reduce RPC calls)
       )
     } catch (error) {
       console.error(`❌ Price calculation failed for ${paymentMethod}:`, error)
 
-      // If circuit breaker is open, use fallback pricing
-      if (globalCircuitBreaker.getState() === 'open' && paymentMethod === PaymentMethod.ETH) {
-        const fallbackEthAmount = (usdcAmount * BigInt(1e18)) / BigInt(3000 * 1e6)
-        console.warn(`🔄 Using fallback ETH price due to circuit breaker: ${fallbackEthAmount.toString()} wei`)
+      // Enhanced fallback pricing with better logic
+      if (globalCircuitBreaker.getState() === 'open' || (error instanceof Error && error.message?.includes('rate limit')) || (error instanceof Error && error.message?.includes('HTTP request failed'))) {
+        // Use cached historical price if available (up to 24 hours old for fallbacks)
+        const historicalCacheKey = `historical-eth-price-${chainId}`
+        const historicalCached = priceOracleCache.get(historicalCacheKey)
+
+        if (historicalCached && (Date.now() - historicalCached.ts) < HISTORICAL_PRICE_TTL) {
+          console.warn(`🔄 Using historical ETH price due to circuit breaker: ${historicalCached.value.toString()} wei (${Math.floor((Date.now() - historicalCached.ts) / 1000 / 3600)}h old)`)
+          return {
+            requiredAmount: historicalCached.value,
+            priceInUSDC: usdcAmount
+          }
+        }
+
+        // Fallback to reasonable market price (ETH around $3500 currently)
+        // This calculation: usdcAmount * (10^18 ETH decimals) / (3500 * 10^6 USDC decimals)
+        const fallbackEthAmount = (usdcAmount * BigInt(1e18)) / BigInt(3500 * 1e6)
+        console.warn(`🔄 Using market-based fallback ETH price due to circuit breaker: ${fallbackEthAmount.toString()} wei (est. $3500 ETH)`)
+
+        // Cache this fallback for future use as historical data
+        priceOracleCache.set(historicalCacheKey, { value: fallbackEthAmount, ts: Date.now() })
+
         return {
           requiredAmount: fallbackEthAmount,
           priceInUSDC: usdcAmount
@@ -1002,7 +1104,8 @@ export function useUnifiedContentPurchaseFlow(
             const tokenInfo = await fetchTokenInfo(customTokenAddress, method)
             updatedPrices.set(customTokenAddress, tokenInfo)
           } catch (error) {
-            console.error(`Failed to fetch custom token info:`, error)
+            console.error(`Failed to fetch custom token info for ${customTokenAddress}:`, error instanceof Error ? error.message : String(error))
+            // Continue with other tokens instead of failing the entire refresh
           }
         }
         continue
@@ -1024,12 +1127,13 @@ export function useUnifiedContentPurchaseFlow(
           address: tokenInfo.address
         })
       } catch (error) {
-        console.error(`❌ Failed to fetch ${tokenConfig.symbol} info:`, error)
+        console.error(`❌ Failed to fetch ${tokenConfig.symbol} info:`, error instanceof Error ? error.message : String(error))
         console.error('Error details:', {
           method,
           address: tokenConfig.address,
-          error: error instanceof Error ? error.message : String(error)
+          circuitBreakerState: globalCircuitBreaker.getState()
         })
+        // Continue processing other tokens instead of failing the entire refresh
         // Keep existing data if fetch fails
         const existing = tokenPrices.get(tokenConfig.address)
         if (existing) {

@@ -44,7 +44,11 @@ import { usePlatformAnalytics } from '@/hooks/contracts/analytics/usePlatformAna
 import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import Component 3 for purchase integration
-import { UnifiedPurchaseFlow } from '@/components/purchase/UnifiedPurchaseFlow'
+import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
+
+// Import wallet hooks for user address
+import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import your existing UI components and utilities
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -248,7 +252,11 @@ export function MiniAppBrowseIntegration({
   
   // Your advanced analytics system
   const { platformStats: analyticsData, isLoading: analyticsLoading } = usePlatformAnalytics()
-  
+
+  // Wallet connection for user address
+  const walletUI = useMiniAppWalletUI()
+  const walletConnection = useWalletConnectionUI()
+
   // Performance tracking for optimization (mutable version)
   const performanceRef = useRef({
     contentLoadTime: 0,
@@ -750,19 +758,30 @@ export function MiniAppBrowseIntegration({
         )}
       </div>
       
-      {/* Purchase Modal Integration - Component 3 Integration */}
+      {/* Simple USDC Purchase Modal - No ETH calculations */}
       {integrationState.showPurchaseModal && integrationState.selectedContentId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-background rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <UnifiedPurchaseFlow
-              contentId={integrationState.selectedContentId}
-              context="miniapp"
-              enableSocialFeatures={miniAppConfig.enableSocialFeatures}
-              mode="standard"
-              onPurchaseSuccess={handlePurchaseComplete}
-              onSocialShare={(contentId: bigint, platform: string) => handleSocialShare(contentId, platform)}
-              className="p-6"
-            />
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Purchase Content</h3>
+              <MiniAppPurchaseButton
+                contentId={integrationState.selectedContentId}
+                title="Content"
+                userAddress={(walletConnection.address || walletUI.address) as `0x${string}` | undefined}
+                creatorInfo={{
+                  address: '0x' as `0x${string}`,
+                  name: 'Creator'
+                }}
+                onPurchaseSuccess={() => {
+                  handlePurchaseComplete(integrationState.selectedContentId!)
+                  setIntegrationState(prev => ({ 
+                    ...prev, 
+                    showPurchaseModal: false,
+                    selectedContentId: null 
+                  }))
+                }}
+              />
+            </div>
             
             <div className="p-4 border-t">
               <Button 

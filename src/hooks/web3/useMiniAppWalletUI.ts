@@ -17,6 +17,7 @@ import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { formatAddress } from '@/lib/utils'
 import { useMiniAppWalletConnect } from './useMiniAppWalletConnect'
 import type { EnhancedWalletConnectionUI } from '@/hooks/ui/integration'
+import type { Connector } from 'wagmi'
 import {
   storeWalletState,
   sendWalletStateToParent,
@@ -32,182 +33,33 @@ import {
  * running in MiniApp context.
  */
 export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
-  // Get the MiniApp-specific wallet state
-  const miniAppWallet = useMiniAppWalletConnect()
+  // Use unified wallet connection UI directly (aligned with web app)
+  // This removes the mock implementation and uses the same patterns as the main web app
 
-  // Use unified wallet connection UI
+  // Use unified wallet connection UI directly - this aligns with web app patterns
   const walletUI = useWalletConnectionUI()
-  const address = walletUI.address as `0x${string}` | undefined
-  const { disconnect: wagmiDisconnect } = useDisconnect()
   const chainId = useChainId()
   
-  // Local state for UI feedback
-  const [showWalletModal, setShowWalletModal] = useState(false)
-  
-  // Network validation
-  const { chainName, isCorrectNetwork } = useMemo(() => {
-    const supportedChains = [8453, 84532] // Base Mainnet and Base Sepolia
-    const isCorrect = supportedChains.includes(chainId)
-    
-    let name: string
-    switch (chainId) {
-      case 8453:
-        name = 'Base Mainnet'
-        break
-      case 84532:
-        name = 'Base Sepolia'
-        break
-      default:
-        name = 'Unsupported Network'
-    }
-    
-    return { chainName: name, isCorrectNetwork: isCorrect }
-  }, [chainId])
-  
-  // Format address for display
-  const formattedAddress = useMemo(() => {
-    return address ? formatAddress(address) : null
-  }, [address])
-  
-  // Connection handler - uses MiniApp wallet connect
-  const handleConnect = useCallback(async () => {
-    console.log('🔗 MiniApp wallet connect triggered')
-    try {
-      await miniAppWallet.connect()
-    } catch (error) {
-      console.error('❌ MiniApp wallet connect failed:', error)
-    }
-  }, [miniAppWallet])
-  
-  // Disconnect handler - uses MiniApp wallet disconnect
-  const handleDisconnect = useCallback(async () => {
-    console.log('🔌 MiniApp wallet disconnect triggered')
-    try {
-      await miniAppWallet.disconnect()
-    } catch (error) {
-      console.error('❌ MiniApp wallet disconnect failed:', error)
-    }
-  }, [miniAppWallet])
-  
-  // Network switching handler
-  const handleSwitchNetwork = useCallback(async () => {
-    console.log('🔄 MiniApp network switch triggered')
-    try {
-      // Switch to Base Mainnet by default
-      await miniAppWallet.switchNetwork(8453)
-    } catch (error) {
-      console.error('❌ MiniApp network switch failed:', error)
-    }
-  }, [miniAppWallet])
-  
-  // Clear error handler
-  const clearError = useCallback(() => {
-    miniAppWallet.clearError()
-  }, [miniAppWallet])
-  
-  // Connector selection handler
-  const handleConnectorSelect = useCallback((connector: any) => {
-    console.log('🔗 MiniApp connector selected:', connector)
-    miniAppWallet.connect(connector)
-  }, [miniAppWallet])
-  
-  // MiniApp communication - send wallet state to parent window (throttled)
+  // Simplified miniapp communication for wallet state
   useEffect(() => {
-    if (isMiniAppContext() && miniAppWallet.isConnected && walletUI.address) {
+    if (isMiniAppContext() && walletUI.isConnected && walletUI.address) {
       const walletState = {
-        isConnected: miniAppWallet.isConnected,
+        isConnected: walletUI.isConnected,
         address: walletUI.address,
         chainId: chainId
       }
 
-      // Store in localStorage for persistence
-      storeWalletState(walletState)
-
-      // Send to parent window for immediate communication
-      sendWalletStateToParent(walletState)
-
-      // Only log in development and throttle to once per 5 seconds
-      if (process.env.NODE_ENV === 'development') {
-        const now = Date.now()
-        const lastLogKey = 'miniapp-wallet-state-last-log'
-        const lastLog = parseInt(localStorage.getItem(lastLogKey) || '0')
-        if (now - lastLog > 5000) { // 5 seconds throttle
-          console.log('📤 Sent wallet state to parent:', walletState)
-          localStorage.setItem(lastLogKey, now.toString())
-        }
+      try {
+        // Store in localStorage for persistence (aligned with web app)
+        storeWalletState(walletState)
+        // Send to parent window for communication
+        sendWalletStateToParent(walletState)
+      } catch (error) {
+        console.error('❌ Failed to communicate wallet state:', error)
       }
     }
-  }, [miniAppWallet.isConnected, walletUI.address, chainId])
-
-  // Debug logging to track state synchronization (heavily throttled)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const now = Date.now()
-      const lastDebugLogKey = 'miniapp-wallet-debug-last-log'
-      const lastDebugLog = parseInt(localStorage.getItem(lastDebugLogKey) || '0')
-      
-      // Only log once per 10 seconds to prevent spam
-      if (now - lastDebugLog > 10000) {
-        console.log('🔍 MiniApp Wallet UI State:', {
-          miniAppConnected: miniAppWallet.isConnected,
-          unifiedConnected: walletUI.isConnected,
-          miniAppConnecting: miniAppWallet.isConnecting,
-          unifiedConnecting: walletUI.isConnecting,
-          address: walletUI.address ? `${walletUI.address.slice(0, 6)}...${walletUI.address.slice(-4)}` : null,
-          miniAppError: miniAppWallet.error?.message,
-          miniAppStatus: miniAppWallet.status,
-          isMiniAppContext: isMiniAppContext()
-        })
-        localStorage.setItem(lastDebugLogKey, now.toString())
-      }
-    }
-  }, [
-    miniAppWallet.isConnected,
-    miniAppWallet.isConnecting,
-    miniAppWallet.error,
-    miniAppWallet.status,
-    walletUI.isConnected,
-    walletUI.isConnecting,
-    walletUI.address
-  ])
+  }, [walletUI.isConnected, walletUI.address, chainId])
   
-  // Return the unified interface that AppLayout expects
-  return {
-    // Connection status - use unified wallet state for MiniApp compatibility
-    isConnected: walletUI.isConnected,
-    isConnecting: walletUI.isConnecting,
-    
-    // Address information - provide both full and formatted addresses
-    address, // Full address for contract calls
-    formattedAddress, // Formatted address for UI display
-    chainName,
-    isCorrectNetwork,
-    
-    // Action functions - use MiniApp wallet methods
-    connect: handleConnect,
-    disconnect: handleDisconnect,
-    switchNetwork: handleSwitchNetwork,
-    
-    // Error handling - use MiniApp error state
-    error: miniAppWallet.error?.message || null,
-    clearError,
-    showNetworkWarning: walletUI.isConnected && !isCorrectNetwork,
-    
-    // Smart Account features (disabled for MiniApp for now)
-    accountType: miniAppWallet.isConnected ? 'eoa' as const : 'disconnected' as const,
-    hasSmartAccount: false,
-    canUseGaslessTransactions: false,
-    smartAccountAddress: null,
-    isSmartAccountDeployed: false,
-    canUpgradeToSmartAccount: false,
-    upgradeToSmartAccount: async () => {},
-    isUpgrading: false,
-    showSmartAccountBenefits: false,
-    
-    // Custom modal state
-    showWalletModal,
-    setShowWalletModal,
-    connectors: miniAppWallet.availableConnectors,
-    handleConnectorSelect
-  }
+  // Return the same interface as web app (no mock implementations)
+  return walletUI
 }

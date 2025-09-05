@@ -43,9 +43,9 @@ import {
   type MiniAppAuthResult
 } from '@/hooks/business/miniapp-auth'
 import { 
-  useUnifiedMiniAppPurchaseFlow,
+  useX402ContentPurchaseFlow,
   type PurchaseStrategy
-} from '@/hooks/business/miniapp-commerce'
+} from '@/hooks/business/workflows'
 
 // Import existing infrastructure
 import { useContentById } from '@/hooks/contracts/core'
@@ -330,7 +330,7 @@ export function PaymentInterface({
 }: PaymentInterfaceProps) {
   // Hooks integration
   const authResult = useMiniAppAuth()
-  const purchaseFlow = useUnifiedMiniAppPurchaseFlow(contentId, userAddress)
+  const purchaseFlow = useX402ContentPurchaseFlow(contentId, userAddress)
   const farcasterContext = useFarcasterContext()
   
   // Content data for display

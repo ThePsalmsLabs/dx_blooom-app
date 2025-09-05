@@ -18,9 +18,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 // Import enhanced MiniApp hooks from Phase 2
-import { 
-  useUnifiedMiniAppPurchaseFlow
-} from '@/hooks/business/miniapp-commerce'
+import {
+  useX402ContentPurchaseFlow
+} from '@/hooks/business/workflows'
 import { useMiniAppSocial } from '@/hooks/business/miniapp-social'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
 import { useMiniAppPaymentOrchestrator } from '@/hooks/miniapp/useMiniAppPaymentOrchestrator'
@@ -171,8 +171,8 @@ export function MiniAppPurchaseButton({
 }: MiniAppPurchaseButtonProps) {
   // ===== CORE INTEGRATION WITH ENHANCED HOOKS =====
   
-  // Enhanced purchase flow with MiniApp batch transaction support
-  const purchaseFlow = useUnifiedMiniAppPurchaseFlow(contentId, userAddress)
+  // Simple USDC-only purchase flow (no ETH calculations)
+  const purchaseFlow = useX402ContentPurchaseFlow(contentId, userAddress)
 
   // Use the orchestrated payment system for proper error handling and monitoring
   const paymentOrchestrator = useMiniAppPaymentOrchestrator({
@@ -184,29 +184,39 @@ export function MiniAppPurchaseButton({
   // Social sharing and engagement tracking capabilities
   const socialFlow = useMiniAppSocial()
 
-  // Ensure purchaseFlow has the expected structure with defaults
+  // Adapt X402 flow to component interface (USDC-only, no ETH calculations)
   const safePurchaseFlow = useMemo(() => {
-    // Only recreate when specific properties change, not the whole object
-    const flowState = purchaseFlow?.flowState || { step: 'idle', progress: 0 }
-    const canPurchase = purchaseFlow?.canPurchase ?? false
-    const canUseBatchTransaction = purchaseFlow?.canUseBatchTransaction ?? false
+    // Map X402 flow properties to expected interface
+    const canPurchase = purchaseFlow?.currentStep === 'can_purchase' || 
+                       purchaseFlow?.currentStep === 'need_approval'
     const content = purchaseFlow?.content || null
-    const isLoading = purchaseFlow?.isLoading ?? false
+    const isLoading = purchaseFlow?.currentStep === 'checking_access' || purchaseFlow?.isLoading
+    
+    // Simple flow state mapping
+    const step = purchaseFlow?.currentStep === 'need_approval' ? 'approving' : 'idle'
+    const flowState = { step, progress: 0, error: purchaseFlow?.error }
     
     return {
-      ...purchaseFlow,
       flowState,
       canPurchase,
-      canUseBatchTransaction,
+      canUseBatchTransaction: false, // Disable for simplicity
       content,
-      isLoading
+      isLoading,
+      hasAccess: purchaseFlow?.hasAccess,
+      // X402 specific properties
+      needsApproval: purchaseFlow?.needsApproval ?? false,
+      canAfford: purchaseFlow?.canAfford ?? false,
+      executeApproval: purchaseFlow?.approveAndPurchase,
+      executePurchase: purchaseFlow?.purchase
     }
   }, [
-    purchaseFlow?.flowState?.step,
-    purchaseFlow?.canPurchase,
-    purchaseFlow?.canUseBatchTransaction,
+    purchaseFlow?.currentStep,
     purchaseFlow?.content,
-    purchaseFlow?.isLoading
+    purchaseFlow?.needsApproval,
+    purchaseFlow?.canAfford,
+    purchaseFlow?.isLoading,
+    purchaseFlow?.error,
+    purchaseFlow?.hasAccess
   ])
 
   // Ensure socialFlow has the expected structure with defaults
@@ -275,32 +285,30 @@ export function MiniAppPurchaseButton({
         return dec ? `${int}.${dec}` : int
       }
 
-      // Track purchase start
-      trackMiniAppEvent.purchaseStarted(contentId.toString(), formatUsdc(safePurchaseFlow.content?.requiredAmount || 0))
+      // Track purchase start (USDC price)
+      const usdcPrice = safePurchaseFlow.content?.payPerViewPrice || BigInt(0)
+      trackMiniAppEvent.purchaseStarted(contentId.toString(), formatUsdc(usdcPrice))
 
       console.group('🚀 MiniApp Purchase Button: Initiating Purchase')
       console.log('Content ID:', contentId.toString())
       console.log('Batch Transaction Available:', safePurchaseFlow.canUseBatchTransaction)
-      console.log('Estimated Gas Savings:', safePurchaseFlow.performanceMetrics?.gasSavingsPercentage || 0)
+      console.log('Purchase ready:', !!safePurchaseFlow.executeApproval || !!safePurchaseFlow.executePurchase)
       console.groupEnd()
 
-      // Execute through the orchestrated payment system for proper error handling
-      if (paymentOrchestrator.canUseBatchTransactions && safePurchaseFlow.content?.requiredAmount) {
-        await paymentOrchestrator.executePayment({
-          contentId,
-          creator: safePurchaseFlow.content.creator as `0x${string}`,
-          ethAmount: safePurchaseFlow.content.requiredAmount,
-          maxSlippage: BigInt(200), // 2% slippage
-          deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour deadline
-        })
-      } else {
-        // Fallback to existing flow if orchestrator not available
-        await safePurchaseFlow.purchaseWithBatchTransaction?.()
+      // Simple USDC purchase flow (no ETH calculations)
+      if (safePurchaseFlow.needsApproval && safePurchaseFlow.executeApproval) {
+        console.log('🔓 Executing USDC approval...')
+        await safePurchaseFlow.executeApproval()
+      }
+      
+      if (safePurchaseFlow.executePurchase) {
+        console.log('💳 Executing USDC purchase...')
+        await safePurchaseFlow.executePurchase()
       }
 
       // Track the purchase for social analytics
       if (safeSocialFlow.socialUser?.fid) {
-        safeSocialFlow.trackPurchase?.(contentId, safePurchaseFlow.content?.requiredAmount || 0)
+        safeSocialFlow.trackPurchase?.(contentId, usdcPrice)
       }
 
       // Update component state for success
@@ -316,8 +324,8 @@ export function MiniAppPurchaseButton({
       onAccessGranted?.(contentId)
 
       // Track purchase completion
-      const txHash = safePurchaseFlow.unifiedState?.batchTransactionHash || 'unknown'
-      trackMiniAppEvent.purchaseCompleted(contentId.toString(), formatUsdc(safePurchaseFlow.content?.requiredAmount || 0), txHash)
+      const txHash = 'unknown' // X402 flow doesn't expose transaction hash
+      trackMiniAppEvent.purchaseCompleted(contentId.toString(), formatUsdc(usdcPrice), txHash)
 
       console.log('✅ Purchase completed successfully')
 
@@ -455,7 +463,7 @@ export function MiniAppPurchaseButton({
     }
 
     // Handle purchased content - show sharing option
-    if (safePurchaseFlow.content?.hasAccess) {
+    if (safePurchaseFlow.hasAccess) {
       return {
         variant: (safeSocialFlow.canShare ? 'outline' : 'secondary'),
         onClick: safeSocialFlow.canShare ? handleShareAction : () => {},
@@ -547,7 +555,7 @@ export function MiniAppPurchaseButton({
       contextItems.push(
         <div key="batch-info" className="flex items-center gap-2 text-xs text-blue-600">
           <Zap className="h-3 w-3" />
-                          <span>Single-click purchase (saves ~{safePurchaseFlow.performanceMetrics?.gasSavingsPercentage || 0}% gas)</span>
+                          <span>Single-click purchase (USDC optimized)</span>
         </div>
       )
     }

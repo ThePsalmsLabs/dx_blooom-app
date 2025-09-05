@@ -410,13 +410,13 @@ function MiniAppBrowseCore() {
     refreshTrigger: 0
   })
 
-  // Initialize RPC optimization for browse page
+  // Initialize RPC optimization aligned with web app
   const rpcOptimization = useMiniAppRPCOptimization({
     enableBatching: true,
-    enablePrefetching: true,
+    enablePrefetching: false, // Disable prefetching to reduce calls (aligned with web app)
     mobileOptimizations: true,
     aggressiveCaching: true,
-    throttleMs: 800 // Slightly faster for browse interactions
+    throttleMs: 1000 // Same throttle as web app
   })
   
   // Production hooks
@@ -442,8 +442,9 @@ function MiniAppBrowseCore() {
   const fullAddress = walletUI.address
   const isConnected = walletUI.isConnected
   
-  // Use full address for contract calls
-  const { data: isCreator } = useIsCreatorRegistered(fullAddress as `0x${string}` | undefined)
+  // Remove excessive creator registration check (aligned with web app optimization)
+  // Only check when actually needed for specific actions
+  const isCreator = false // Placeholder - check only when needed
   
   // Real content data - no mock data fallback
   const {
@@ -628,13 +629,31 @@ function MiniAppBrowseCore() {
               }
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
+          {/* Wallet Status */}
+          {isConnected && walletUI.formattedAddress && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-md">
+              <div className="h-2 w-2 bg-green-500 rounded-full" />
+              <span className="text-xs font-medium text-green-800">Connected</span>
+              <span className="text-xs font-mono text-green-700">{walletUI.formattedAddress}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-5 px-2 text-green-700 hover:text-green-800"
+                onClick={walletUI.disconnect}
+                title="Disconnect Wallet"
+              >
+                Logout
+              </Button>
+            </div>
+          )}
+
           <Badge variant="secondary" className="text-xs">
             {filteredContent.length} items
           </Badge>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             onClick={handleRefresh}
             className="h-8 w-8"

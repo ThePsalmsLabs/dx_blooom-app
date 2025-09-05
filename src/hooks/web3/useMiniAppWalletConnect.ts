@@ -386,38 +386,67 @@ export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
     }
   }, [])
 
-  // MiniApp communication - listen for wallet state from web version
+  // Use ref to track if we've checked initial state
+  const hasCheckedInitialStateRef = useRef(false)
+
+  // MiniApp communication - listen for wallet state from web version (FIXED INFINITE LOOP)
   useEffect(() => {
     if (!isMiniAppContext()) return
 
     const cleanup = listenForWalletState((state) => {
-      console.log('📨 MiniApp received wallet state from web:', state)
+      // Throttle this log too
+      const now = Date.now()
+      const lastLogKey = 'miniapp-received-state-log'
+      const lastLog = parseInt(localStorage.getItem(lastLogKey) || '0')
+      
+      if (now - lastLog > 5000) {
+        console.log('📨 MiniApp received wallet state from web:', state)
+        localStorage.setItem(lastLogKey, now.toString())
+      }
 
       // If web version is connected and we have the same address, update our state
       if (state.isConnected && state.address && !isConnected) {
         console.log('🔄 MiniApp syncing wallet state from web version')
 
         // Try to reconnect with the same address if possible
-        // This is a simplified approach - in production you'd want more sophisticated sync
         if (connectors.length > 0) {
-          // Trigger a reconnect to sync state
           reconnect()
         }
       }
     })
 
-    // Also check localStorage on mount for any stored state
-    const storedState = getWalletState()
-    if (storedState?.isConnected && storedState.address && !isConnected) {
-      console.log('📦 MiniApp found stored wallet state:', storedState)
-      // Similar sync logic as above
-      if (connectors.length > 0) {
-        reconnect()
+    // DISABLED localStorage check to completely stop infinite loop
+    // Check localStorage ONLY ONCE on mount to prevent infinite loop
+    if (!hasCheckedInitialStateRef.current) {
+      hasCheckedInitialStateRef.current = true
+      
+      try {
+        // TEMPORARILY DISABLED: This was causing infinite loops
+        // const storedState = getWalletState()
+        // if (storedState?.isConnected && storedState.address && !isConnected) {
+        //   console.log('📦 MiniApp found stored wallet state (DISABLED TO PREVENT LOOP):', storedState)
+        //   if (connectors.length > 0) {
+        //     setTimeout(() => {
+        //       reconnect()
+        //     }, 100)
+        //   }
+        // }
+        console.log('🚫 Wallet state check temporarily disabled to prevent infinite loop')
+      } catch (error) {
+        console.warn('Failed to check stored wallet state:', error)
       }
     }
 
     return cleanup
-  }, [isConnected, connectors.length, reconnect])
+  }, []) // EMPTY DEPENDENCY ARRAY to prevent infinite loop
+
+  // Separate effect to handle connection state changes without infinite loop
+  useEffect(() => {
+    // Only log connection state changes, don't trigger actions
+    if (isMiniAppContext() && isConnected && address) {
+      console.log('✅ MiniApp wallet connected:', { address: address.slice(0, 6) + '...' + address.slice(-4), chainId })
+    }
+  }, [isConnected, address, chainId])
 
   // =============================================================================
   // CONNECTION ACTIONS
