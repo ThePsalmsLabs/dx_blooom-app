@@ -86,11 +86,13 @@ export const metadata: Metadata = {
   // Favicon configuration
   icons: {
     icon: [
-      { url: '/images/miniapp-og-square.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
       { url: '/images/miniapp-icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
     apple: [
-      { url: '/images/miniapp-og-square.png', sizes: '180x180', type: 'image/png' }
+      { url: '/favicon/favicon-32x32.png', sizes: '180x180', type: 'image/png' }
     ]
   }
 }
@@ -122,9 +124,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
           rel="stylesheet"
         />
-        <link rel="icon" href="/images/miniapp-og-square.png?v=1" type="image/png" sizes="32x32" />
-        <link rel="icon" href="/images/miniapp-icon-192.png?v=1" type="image/png" sizes="192x192" />
-        <link rel="apple-touch-icon" href="/images/miniapp-og-square.png?v=1" />
+        <link rel="icon" href="/favicon/favicon-16x16.png?v=1" type="image/png" sizes="16x16" />
+        <link rel="icon" href="/favicon/favicon-32x32.png?v=1" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/favicon/favicon-48x48.png?v=1" type="image/png" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/favicon/favicon-32x32.png?v=1" sizes="180x180" />
 
         {/* Farcaster Mini App Embed Meta Tags */}
         <meta property="fc:miniapp" content="v1" />

@@ -59,6 +59,7 @@ import {
   AlertDescription,
   Skeleton
 } from '@/components/ui/index'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
 
 // Import your actual hooks and providers
@@ -679,7 +680,7 @@ function AdaptiveNavigationCore({
         >
           {filteredSections
             .flatMap(section => section.items)
-            .slice(0, 3) // Reduced to 3 items to make space for wallet status
+            .slice(0, 3) // Reduced to 3 items to make space for theme toggle and wallet status
             .map((item) => (
               <button
                 key={item.id}
@@ -698,8 +699,11 @@ function AdaptiveNavigationCore({
             ))}
         </nav>
 
-        {/* Wallet Status and Mobile Menu */}
+        {/* Theme Toggle, Wallet Status and Mobile Menu */}
         <div className="flex items-center space-x-2">
+          {/* Theme Toggle */}
+          <ThemeToggle variant="compact" size="sm" className="h-8 w-8" />
+
           {/* Wallet Connection Status */}
           <div className="hidden sm:flex items-center space-x-2 px-3 py-2">
             <div className={cn(
