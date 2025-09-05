@@ -32,12 +32,13 @@
 
 import { createConfig, http, webSocket, fallback, createStorage, cookieStorage } from 'wagmi'
 import { base, baseSepolia } from 'wagmi/chains'
-import { 
-  coinbaseWallet, 
-  metaMask, 
+import {
+  coinbaseWallet,
+  metaMask,
   walletConnect,
   injected
 } from 'wagmi/connectors'
+import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector'
 
 // Import Component 1 types for complete integration
 import type {
@@ -266,9 +267,22 @@ async function createEnhancedConnectors(
 ): Promise<Array<ReturnType<typeof metaMask> | ReturnType<typeof coinbaseWallet> | ReturnType<typeof walletConnect> | any>> {
   
   const connectors: any[] = []
-  
+
+  // Farcaster MiniApp Connector - Primary for MiniApp contexts (as recommended by docs)
+  // This connector provides seamless wallet integration without manual connection dialogs
+  if (environmentDetection?.environment === 'farcaster') {
+    connectors.push(miniAppConnector())
+  } else if (ENVIRONMENT_CONFIG.MINIAPP_ENABLED) {
+    // Fallback MiniApp connector for non-Farcaster MiniApp contexts
+    try {
+      connectors.push(miniAppConnector())
+    } catch (error) {
+      console.warn('MiniApp connector not available in this context:', error)
+    }
+  }
+
   // Your existing connectors preserved and enhanced
-  
+
   // MetaMask Connector - Enhanced with MiniApp detection
   connectors.push(
     metaMask({
@@ -886,7 +900,8 @@ export async function checkEnhancedConfigHealth(): Promise<{
     metaMask: typeof window !== 'undefined' && Boolean(window.ethereum?.isMetaMask),
     coinbaseWallet: typeof window !== 'undefined' && Boolean(window.ethereum?.isCoinbaseWallet),
     walletConnect: Boolean(ENVIRONMENT_CONFIG.WALLETCONNECT_PROJECT_ID),
-    farcasterMiniApp: ENVIRONMENT_CONFIG.MINIAPP_ENABLED
+    farcasterMiniApp: ENVIRONMENT_CONFIG.MINIAPP_ENABLED,
+    miniAppConnector: ENVIRONMENT_CONFIG.MINIAPP_ENABLED
   }
   
   // Get MiniApp capabilities if available

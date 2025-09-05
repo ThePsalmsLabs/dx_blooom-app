@@ -83,11 +83,14 @@ async function verifyRequest(raw: string, headers: Headers, body: FrameRequest):
   const secret = process.env.FARCASTER_WEBHOOK_SECRET || process.env.NEXT_PUBLIC_FARCASTER_WEBHOOK_SECRET
   const sigHeader = headers.get('x-warpcast-signature') || headers.get('x-farcaster-signature') || ''
 
+  // Primary: HMAC verification with webhook secret (most secure)
   if (secret) {
     const ok = verifyHmacSha256(raw, sigHeader, secret)
-    return ok ? { ok: true } : { ok: false, reason: 'signature_mismatch' }
+    if (ok) return { ok: true }
+    return { ok: false, reason: 'signature_mismatch' }
   }
 
+  // Secondary: Neynar validation (if available)
   const neynarKey = process.env.NEYNAR_API_KEY
   const messageBytes = body.trustedData?.messageBytes
   if (neynarKey && messageBytes) {
@@ -110,7 +113,10 @@ async function verifyRequest(raw: string, headers: Headers, body: FrameRequest):
     }
   }
 
-  return { ok: true }
+  // Fallback: Accept requests without verification (for development/testing)
+  // WARNING: This reduces security but allows the app to function without webhook secret
+  console.warn('⚠️ No webhook verification method available - accepting request without signature verification')
+  return { ok: true, reason: 'no_verification_available' }
 }
 
 function verifyHmacSha256(raw: string, providedSig: string, secret: string): boolean {
