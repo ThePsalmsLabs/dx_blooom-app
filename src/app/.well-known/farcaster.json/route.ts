@@ -125,7 +125,7 @@ function buildFarcasterManifest(): FarcasterManifest {
       ogTitle: "Bloom - Create, Share and Earn",
       ogDescription: "Discover premium content from top creators. Purchase with instant USDC payments on Base.",
       ogImageUrl: `${normalizedBaseUrl}/images/miniapp-og-image.png`,
-      castShareUrl: `${normalizedBaseUrl}/mini/share`,
+      castShareUrl: `${normalizedBaseUrl}/mini/share?type=platform&ref=miniapp`,
       noindex: process.env.NODE_ENV === 'development',
       requiredChains: ["eip155:8453"], // Base mainnet
       requiredCapabilities: [
