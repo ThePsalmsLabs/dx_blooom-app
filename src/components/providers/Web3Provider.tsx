@@ -105,7 +105,7 @@ const privyConfig = {
   },
   
   // Login methods - these are the authentication options your users will see
-  loginMethods: ['wallet', 'email', 'sms', 'google'] as ('wallet' | 'email' | 'sms' | 'google')[],
+  loginMethods: ['wallet', 'email', 'sms', 'google', 'farcaster'] as ('wallet' | 'email' | 'sms' | 'google' | 'farcaster')[],
   
   // Appearance customization
   appearance: {

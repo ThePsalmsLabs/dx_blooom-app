@@ -31,6 +31,7 @@ import React, {
 import { useRouter, usePathname } from 'next/navigation'
 import { useChainId } from 'wagmi'
 import { usePrivy } from '@privy-io/react-auth'
+import { useLoginToMiniApp } from '@privy-io/react-auth/farcaster'
 import { type Address } from 'viem'
 
 // ================================================
@@ -491,6 +492,7 @@ export function UnifiedMiniAppProvider({
   const _pathname = usePathname()
   const _chainId = useChainId()
   const { user, login, logout, ready: _ready, authenticated } = usePrivy()
+  const { initLoginToMiniApp, loginToMiniApp } = useLoginToMiniApp()
 
   // Capability detection
   const capabilities = useCapabilityDetection()
@@ -607,6 +609,46 @@ export function UnifiedMiniAppProvider({
       initializeSDK()
     }
   }, [appContext, initializeSDK])
+
+  // ================================================
+  // FARCASTER AUTO-LOGIN FLOW
+  // ================================================
+
+  // Auto-login flow for seamless Farcaster user experience
+  useEffect(() => {
+    const handleFarcasterAutoLogin = async () => {
+      if (appContext !== 'miniapp' || authenticated || !_ready) {
+        return
+      }
+
+      try {
+        console.log('🔐 Attempting Farcaster auto-login...')
+
+        // Initialize a new login attempt to get a nonce for the Farcaster wallet to sign
+        const { nonce } = await initLoginToMiniApp()
+        console.log('📝 Generated nonce for Farcaster login:', nonce)
+
+        // Import MiniApp SDK and request signature from Farcaster
+        const { sdk } = await import('@farcaster/miniapp-sdk')
+        const result = await sdk.actions.signIn({ nonce })
+
+        console.log('✍️ Obtained signature from Farcaster')
+
+        // Send the received signature from Farcaster to Privy for authentication
+        await loginToMiniApp({
+          message: result.message,
+          signature: result.signature,
+        })
+
+        console.log('✅ Farcaster auto-login successful')
+      } catch (error) {
+        console.warn('⚠️ Farcaster auto-login failed, user will need to login manually:', error)
+        // Don't throw - allow manual login fallback
+      }
+    }
+
+    handleFarcasterAutoLogin()
+  }, [appContext, authenticated, _ready, initLoginToMiniApp, loginToMiniApp])
 
   // ================================================
   // ACTION IMPLEMENTATIONS
