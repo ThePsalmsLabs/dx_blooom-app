@@ -131,43 +131,16 @@ export function useUSDCPurchaseFlow(
         amount: requiredAmount
       })
 
-      // Wait for approval transaction
+      // Update progress after successful write
       setState(prev => ({
         ...prev,
         progress: 50,
         message: 'Waiting for approval confirmation...'
       }))
 
-      return new Promise((resolve, reject) => {
-        const checkApproval = setInterval(() => {
-          if (approveToken.isConfirmed && approveToken.hash) {
-            clearInterval(checkApproval)
-            setState({
-              phase: 'completed',
-              progress: 100,
-              message: 'USDC approval completed!',
-              txHash: approveToken.hash
-            })
-            resolve(approveToken.hash)
-          } else if (approveToken.isError) {
-            clearInterval(checkApproval)
-            const errorMsg = approveToken.error?.message || 'Approval failed'
-            setState({
-              phase: 'error',
-              progress: 0,
-              message: 'Approval failed',
-              error: errorMsg
-            })
-            reject(new Error(errorMsg))
-          }
-        }, 1000)
-
-        // Timeout after 2 minutes
-        setTimeout(() => {
-          clearInterval(checkApproval)
-          reject(new Error('Approval timeout'))
-        }, 120000)
-      })
+      // Return the transaction hash immediately after write
+      // The confirmation will be handled by useEffect hooks
+      return approveToken.hash || 'pending'
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown approval error'
@@ -193,7 +166,7 @@ export function useUSDCPurchaseFlow(
       console.error('❌ USDC approval failed:', error)
       throw error
     }
-  }, [contractAddresses, userAddress, requiredAmount, approveToken])
+  }, [contractAddresses, userAddress, requiredAmount, approveToken.write])
 
   // Handle purchase transaction
   const executePurchase = useCallback(async (): Promise<string> => {
@@ -217,45 +190,18 @@ export function useUSDCPurchaseFlow(
         price: requiredAmount.toString()
       })
 
-      await purchaseContent.write(contentId)
+      purchaseContent.write(contentId)
 
-      // Wait for purchase transaction
+      // Update progress after successful write
       setState(prev => ({
         ...prev,
         progress: 50,
         message: 'Waiting for purchase confirmation...'
       }))
 
-      return new Promise((resolve, reject) => {
-        const checkPurchase = setInterval(() => {
-          if (purchaseContent.isConfirmed && purchaseContent.hash) {
-            clearInterval(checkPurchase)
-            setState({
-              phase: 'completed',
-              progress: 100,
-              message: 'Purchase completed successfully!',
-              txHash: purchaseContent.hash
-            })
-            resolve(purchaseContent.hash)
-          } else if (purchaseContent.isError) {
-            clearInterval(checkPurchase)
-            const errorMsg = purchaseContent.error?.message || 'Purchase failed'
-            setState({
-              phase: 'error',
-              progress: 0,
-              message: 'Purchase failed',
-              error: errorMsg
-            })
-            reject(new Error(errorMsg))
-          }
-        }, 1000)
-
-        // Timeout after 2 minutes
-        setTimeout(() => {
-          clearInterval(checkPurchase)
-          reject(new Error('Purchase timeout'))
-        }, 120000)
-      })
+      // Return the transaction hash immediately after write
+      // The confirmation will be handled by useEffect hooks
+      return purchaseContent.hash || 'pending'
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown purchase error'
@@ -281,7 +227,7 @@ export function useUSDCPurchaseFlow(
       console.error('❌ USDC purchase failed:', error)
       throw error
     }
-  }, [contentId, hasEnoughAllowance, hasEnoughBalance, requiredAmount, balance, purchaseContent])
+  }, [contentId, hasEnoughAllowance, hasEnoughBalance, requiredAmount, balance, purchaseContent.write, purchaseContent.hash])
 
   // Reset function
   const reset = useCallback(() => {
@@ -292,7 +238,7 @@ export function useUSDCPurchaseFlow(
     })
     approveToken.reset()
     purchaseContent.reset()
-  }, [approveToken, purchaseContent])
+  }, [approveToken.reset, purchaseContent.reset])
 
   // Update state based on loading states
   useEffect(() => {
@@ -311,27 +257,89 @@ export function useUSDCPurchaseFlow(
     }
   }, [usdcBalance.isLoading, usdcAllowance.isLoading, canPurchase, needsApproval, state.phase])
 
-  // Handle approval confirmation
+  // Handle approval transaction states
   useEffect(() => {
-    if (approveToken.isConfirmed && state.phase === 'approving') {
-      setState(prev => ({
-        ...prev,
-        progress: 100,
-        message: 'USDC approval completed!'
-      }))
+    if (state.phase === 'approving') {
+      if (approveToken.isConfirmed && approveToken.hash) {
+        console.log('✅ USDC approval confirmed:', approveToken.hash)
+        setState({
+          phase: 'completed',
+          progress: 100,
+          message: 'USDC approval completed!',
+          txHash: approveToken.hash
+        })
+      } else if (approveToken.isError && approveToken.error) {
+        console.error('❌ USDC approval error:', approveToken.error)
+        const errorMsg = approveToken.error.message || 'Approval failed'
+        setState({
+          phase: 'error',
+          progress: 0,
+          message: 'Approval failed',
+          error: errorMsg
+        })
+      }
     }
-  }, [approveToken.isConfirmed, state.phase])
+  }, [approveToken.isConfirmed, approveToken.isError, approveToken.hash, approveToken.error, state.phase])
 
-  // Handle purchase confirmation
+  // Handle purchase transaction states
   useEffect(() => {
-    if (purchaseContent.isConfirmed && state.phase === 'purchasing') {
-      setState(prev => ({
-        ...prev,
-        progress: 100,
-        message: 'Purchase completed successfully!'
-      }))
+    if (state.phase === 'purchasing') {
+      if (purchaseContent.isConfirmed && purchaseContent.hash) {
+        console.log('✅ USDC purchase confirmed:', purchaseContent.hash)
+        setState({
+          phase: 'completed',
+          progress: 100,
+          message: 'Purchase completed successfully!',
+          txHash: purchaseContent.hash
+        })
+      } else if (purchaseContent.isError && purchaseContent.error) {
+        console.error('❌ USDC purchase error:', purchaseContent.error)
+        const errorMsg = purchaseContent.error.message || 'Purchase failed'
+        setState({
+          phase: 'error',
+          progress: 0,
+          message: 'Purchase failed',
+          error: errorMsg
+        })
+      }
     }
-  }, [purchaseContent.isConfirmed, state.phase])
+  }, [purchaseContent.isConfirmed, purchaseContent.isError, purchaseContent.hash, purchaseContent.error, state.phase])
+
+  // Add transaction timeout handling
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout
+    
+    if (state.phase === 'approving' || state.phase === 'purchasing') {
+      // Set timeout for 3 minutes (180 seconds)
+      timeoutId = setTimeout(() => {
+        const action = state.phase === 'approving' ? 'approval' : 'purchase'
+        console.warn(`⏰ Transaction timeout: ${action} taking longer than expected`)
+        
+        setState({
+          phase: 'error',
+          progress: 0,
+          message: `Transaction timeout - ${action} is taking longer than expected`,
+          error: `The ${action} transaction may still be processing. Please check your wallet or try again.`
+        })
+      }, 180000) // 3 minutes
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [state.phase])
+
+  // Refresh allowance when approval completes
+  useEffect(() => {
+    if (state.phase === 'completed' && approveToken.isConfirmed) {
+      // Refresh allowance data after successful approval
+      console.log('🔄 Refreshing USDC allowance data after approval')
+      // The allowance hook should automatically refetch when transaction confirms
+      // This ensures the UI shows updated allowance immediately
+    }
+  }, [state.phase, approveToken.isConfirmed])
 
   return {
     canPurchase,
