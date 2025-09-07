@@ -58,23 +58,37 @@ export function VerificationApplicationCard({ creatorAddress }: { creatorAddress
     setIsSubmitting(true)
 
     try {
+      // Detect if we're in a miniapp context
+      const isMiniApp = typeof window !== 'undefined' &&
+        (window.location.pathname.startsWith('/mini') ||
+         window.location.hostname.includes('miniapp') ||
+         window.parent !== window)
+
+      // Use appropriate API route based on context
+      const apiEndpoint = isMiniApp
+        ? '/api/mini/verification/apply'
+        : '/api/verification/apply'
+
       // Submit verification application
-      const response = await fetch('/api/verification/apply', {
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           creatorAddress,
-          ...applicationData
+          ...applicationData,
+          source: isMiniApp ? 'miniapp' : 'web'
         })
       })
 
       if (response.ok) {
         setHasApplied(true)
       } else {
-        throw new Error('Application submission failed')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Application submission failed')
       }
     } catch (error) {
       console.error('Verification application error:', error)
+      throw error
     } finally {
       setIsSubmitting(false)
     }
