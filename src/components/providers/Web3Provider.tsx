@@ -139,22 +139,19 @@ const privyConfig = {
 }
 
 /**
- * CRITICAL FIX: Privy Wagmi Provider Component
- * This component properly integrates Privy's wagmi configuration
- * Now uses Privy's WagmiProvider and createConfig for proper synchronization
+ * FIXED: Privy Wagmi Provider Component
+ * Uses your existing premium RPC configuration for Base mainnet
  */
 function PrivyWagmiProvider({ children }: { children: ReactNode }) {
-  // Create wagmi config using Privy's createConfig for proper synchronization
+  // Create wagmi config with your existing premium RPC setup
   const wagmiConfig = useMemo(() => {
-    // Dynamic import to get the enhanced transport configuration
-    const { base, baseSepolia } = require('viem/chains')
     const { http, fallback } = require('wagmi')
 
-    // Create the same multi-tier RPC configuration but with Privy's createConfig
+    // Use your existing premium RPC providers for Base mainnet
     const premiumProviders = []
     const alternativeProviders = []
 
-    // Premium providers (same as enhanced config but using http from wagmi)
+    // Premium providers (Alchemy, Infura)
     if (process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
       premiumProviders.push(
         http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
@@ -172,6 +169,7 @@ function PrivyWagmiProvider({ children }: { children: ReactNode }) {
 
     const transports = {
       [base.id]: fallback(premiumProviders.length > 0 ? premiumProviders : alternativeProviders),
+      // Include testnet for testing only
       [baseSepolia.id]: http('https://sepolia.base.org')
     }
 
@@ -199,13 +197,14 @@ function PrivyWagmiProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Enhanced Web3 Provider Implementation - CORRECTED VERSION
- * This component properly uses Privy's authentication state and integrates with wagmi
+ * Enhanced Web3 Provider Implementation - FIXED VERSION
+ * Uses Privy's authentication state exclusively for consistent wallet state
  */
 function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
   const { user, ready, authenticated } = usePrivy()
-  const walletUI = useWalletConnectionUI()
   const chainId = useChainId()
+  
+  // Remove walletUI usage - use Privy exclusively
   
   // Smart Account state (preserved from your current implementation)
   const [smartAccount, setSmartAccount] = useState<BiconomySmartAccountV2 | null>(null)
@@ -219,32 +218,31 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
       authenticated,
       hasUser: Boolean(user),
       userWallet: user?.wallet?.address,
-      unifiedConnected: walletUI.isConnected,
-      unifiedAddress: walletUI.address,
       chainId
     })
-  }, [ready, authenticated, user, walletUI.isConnected, walletUI.address, chainId])
+  }, [ready, authenticated, user, chainId])
 
   /**
-   * Determine account type based on connection status and smart account
+   * Determine account type based on Privy connection status
    */
   const accountType: AccountType = useMemo(() => {
-    if (!walletUI.isConnected || !walletUI.address) return 'disconnected'
+    if (!authenticated || !user?.wallet?.address) return 'disconnected'
     if (smartAccount && smartAccountAddress) return 'smart_account'
     return 'eoa'
-  }, [walletUI.isConnected, walletUI.address, smartAccount, smartAccountAddress])
+  }, [authenticated, user?.wallet?.address, smartAccount, smartAccountAddress])
 
   /**
-   * Create Smart Account - preserved functionality from your current setup
+   * Create Smart Account - use Privy wallet address
    */
   const createSmartAccountAsync = useCallback(async (): Promise<BiconomySmartAccountV2 | null> => {
-    if (!walletUI.address || !envConfig.hasAdvancedFeatures) {
+    const walletAddress = user?.wallet?.address
+    if (!walletAddress || !envConfig.hasAdvancedFeatures) {
       debug.warn('❌ Cannot create smart account: missing address or advanced features not configured')
       return null
     }
 
     try {
-      debug.wallet('🚀 Creating smart account for address:', walletUI.address)
+      debug.wallet('🚀 Creating smart account for address:', walletAddress)
       
       // For now, return null since we need a proper signer implementation
       // This will be implemented when we have the full wallet integration
@@ -255,7 +253,7 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
       console.error('❌ Failed to create smart account:', error)
       return null
     }
-  }, [walletUI.address, chainId])
+  }, [user?.wallet?.address, chainId])
 
   /**
    * Refresh Smart Account Status
@@ -273,16 +271,17 @@ function EnhancedWeb3ProviderInner({ children }: { children: ReactNode }) {
 
   // Auto-create smart account when user connects (if you want this behavior)
   useEffect(() => {
-    if (walletUI.isConnected && walletUI.address && !smartAccount && envConfig.hasAdvancedFeatures) {
+    const walletAddress = user?.wallet?.address
+    if (authenticated && walletAddress && !smartAccount && envConfig.hasAdvancedFeatures) {
       debug.wallet('🔄 Auto-creating smart account for connected user')
       createSmartAccountAsync()
     }
-  }, [walletUI.isConnected, walletUI.address, smartAccount, createSmartAccountAsync])
+  }, [authenticated, user?.wallet?.address, smartAccount, createSmartAccountAsync])
 
   const contextValue: EnhancedWeb3ContextType = {
-    // Core state
-    address: walletUI.address as `0x${string}` | null,
-    isConnected: walletUI.isConnected,
+    // Core state - use Privy's wallet state exclusively
+    address: user?.wallet?.address as `0x${string}` | null,
+    isConnected: authenticated && Boolean(user?.wallet?.address),
     isConnecting: !ready, // Privy's ready state indicates loading
     chainId,
     

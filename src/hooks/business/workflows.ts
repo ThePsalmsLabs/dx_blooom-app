@@ -3449,9 +3449,13 @@ export function useContentPublishingFlow(
         network: 'Base Mainnet'
       })
 
-      // Pre-flight checks
+      // Pre-flight checks - improved wallet connection validation
       if (!registerContent.write) {
-        throw new Error('Contract write function not available. Please check your wallet connection.')
+        if (!isWalletReady) {
+          throw new Error('Wallet not connected. Please connect your wallet and try again.')
+        } else {
+          throw new Error('Contract write function not available. There may be an issue with your wallet connection or the network.')
+        }
       }
 
       registerContent.write({
@@ -3469,20 +3473,35 @@ export function useContentPublishingFlow(
       console.error('❌ Error calling registerContent:', error)
 
       let errorMessage = 'Failed to submit content registration'
-      let errorDetails = {}
+      let userFriendlyMessage = ''
 
       if (error instanceof Error) {
         errorMessage = error.message
-        errorDetails = {
-          name: error.name,
-          stack: error.stack,
-          cause: error.cause
+        
+        // Provide specific error messages for common issues
+        if (error.message.includes('ConnectorNotConnectedError') ||
+            error.message.includes('Connector not connected')) {
+          userFriendlyMessage = 'Wallet connection lost. Please reconnect your wallet and try again.'
+        } else if (error.message.includes('User rejected') ||
+                   error.message.includes('user rejected') ||
+                   error.message.includes('User denied')) {
+          userFriendlyMessage = 'Transaction was cancelled. Please try again when ready.'
+        } else if (error.message.includes('insufficient funds') ||
+                   error.message.includes('Insufficient balance')) {
+          userFriendlyMessage = 'Insufficient funds to complete this transaction. Please add funds to your wallet.'
+        } else if (error.message.includes('Network request failed') ||
+                   error.message.includes('network')) {
+          userFriendlyMessage = 'Network error. Please check your connection and try again.'
+        } else if (error.message.includes('Contract write function not available')) {
+          userFriendlyMessage = 'Wallet connection issue. Please disconnect and reconnect your wallet.'
+        } else {
+          userFriendlyMessage = `${errorMessage}. Please try again or contact support if the issue persists.`
         }
       }
 
       debug.log('❌ Transaction error details:', {
         error: errorMessage,
-        details: errorDetails,
+        userFriendlyMessage,
         chainId,
         userAddress: userAddress ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` : null,
         contractAddress: contractAddresses.CONTENT_REGISTRY
@@ -3490,7 +3509,7 @@ export function useContentPublishingFlow(
 
       setWorkflowState({
         currentStep: 'error',
-        error: new Error(`${errorMessage}. Please try again or contact support if the issue persists.`),
+        error: new Error(userFriendlyMessage),
         publishedContentId: null
       })
     }
