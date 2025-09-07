@@ -409,7 +409,7 @@ function KeyMetricsGrid({
   const metrics = [
     {
       title: 'Revenue',
-      value: formatCurrency(BigInt(profile.totalEarnings), 2, 'USDC'),
+      value: formatCurrency(BigInt(profile.totalEarnings), 6, 'USDC'),
       change: '+12.5%',
       trend: 'up' as const,
       icon: DollarSign,

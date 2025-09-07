@@ -103,21 +103,34 @@ const privyConfig = {
     createOnLogin: 'users-without-wallets' as const,
     noPromptOnSignature: false,
   },
-  
+
   // Login methods - these are the authentication options your users will see
   loginMethods: ['wallet', 'email', 'sms', 'google', 'farcaster'] as ('wallet' | 'email' | 'sms' | 'google' | 'farcaster')[],
-  
+
+  // Wallet configuration - ensure all wallet types are supported
+  walletList: [
+    'metamask',
+    'phantom',
+    'coinbase_wallet',
+    'walletconnect',
+    'rainbow',
+    'trust_wallet',
+    'argent',
+    'imtoken',
+    'zerion'
+  ] as const,
+
   // Appearance customization
   appearance: {
     theme: 'light' as const,
     accentColor: '#676FFF' as `#${string}`,
     logo: undefined, // Add your logo URL here if you have one
   },
-  
+
   // Default chain configuration - FIXED: Use mainnet by default
   defaultChain: base, // Changed from baseSepolia to base (mainnet)
   supportedChains: [base, baseSepolia],
-  
+
   // Additional configuration for better UX
   legal: {
     termsAndConditionsUrl: undefined, // Add your T&C URL

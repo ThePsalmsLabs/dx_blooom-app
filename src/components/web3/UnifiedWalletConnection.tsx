@@ -57,41 +57,69 @@ function detectAvailableWallets(): Array<{
 }> {
   const wallets = []
 
-  // MetaMask
-  const hasMetaMask = typeof window !== 'undefined' &&
-    window.ethereum?.isMetaMask === true
+  // Check for injected ethereum provider (covers MetaMask, Phantom, Brave, etc.)
+  const hasInjected = typeof window !== 'undefined' && !!window.ethereum
 
-  wallets.push({
-    id: 'metamask',
-    name: 'MetaMask',
-    icon: '🦊',
-    isAvailable: hasMetaMask,
-    isRecommended: hasMetaMask
-  })
+  // MetaMask (explicit check)
+  const hasMetaMask = hasInjected && window.ethereum?.isMetaMask === true
+  if (hasMetaMask) {
+    wallets.push({
+      id: 'metamask',
+      name: 'MetaMask',
+      icon: '🦊',
+      isAvailable: true,
+      isRecommended: true // MetaMask is most popular
+    })
+  }
 
-  // WalletConnect
-  const hasWalletConnect = typeof window !== 'undefined' &&
-    window.ethereum?.isWalletConnect === true
+  // Phantom (detected via injected provider without other flags)
+  const hasPhantom = hasInjected &&
+    !window.ethereum?.isMetaMask &&
+    !window.ethereum?.isWalletConnect &&
+    !window.ethereum?.isCoinbaseWallet &&
+    window.ethereum?.isPhantom !== false // Some versions set this
 
+  if (hasPhantom) {
+    wallets.push({
+      id: 'phantom',
+      name: 'Phantom',
+      icon: '👻',
+      isAvailable: true,
+      isRecommended: true // Popular Solana/Ethereum wallet
+    })
+  }
+
+  // Coinbase Wallet
+  const hasCoinbase = hasInjected && window.ethereum?.isCoinbaseWallet === true
+  if (hasCoinbase) {
+    wallets.push({
+      id: 'coinbase',
+      name: 'Coinbase Wallet',
+      icon: '📱',
+      isAvailable: true,
+      isRecommended: false
+    })
+  }
+
+  // WalletConnect (can work with any wallet)
   wallets.push({
     id: 'walletconnect',
     name: 'WalletConnect',
     icon: '🔗',
-    isAvailable: hasWalletConnect || true, // WalletConnect can be injected
-    isRecommended: !hasMetaMask
+    isAvailable: true, // Always available as fallback
+    isRecommended: !hasMetaMask && !hasPhantom // Fallback option
   })
 
-  // Coinbase Wallet
-  const hasCoinbase = typeof window !== 'undefined' &&
-    window.ethereum?.isCoinbaseWallet === true
-
-  wallets.push({
-    id: 'coinbase',
-    name: 'Coinbase Wallet',
-    icon: '📱',
-    isAvailable: hasCoinbase,
-    isRecommended: false
-  })
+  // If no specific wallets detected but ethereum is available, show generic option
+  if (hasInjected && wallets.length === 1 && wallets[0].id === 'walletconnect') {
+    wallets.unshift({
+      id: 'injected',
+      name: 'Browser Wallet',
+      icon: '🌐',
+      isAvailable: true,
+      isRecommended: true
+    })
+  }
 
   return wallets
 }

@@ -419,7 +419,7 @@ function CreatorStatsCard({
 
           <div className="space-y-1">
             <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(BigInt(profile.totalEarnings), 2, 'USDC')}
+              {formatCurrency(BigInt(profile.totalEarnings), 6, 'USDC')}
             </div>
             <div className="text-xs text-muted-foreground">Earned</div>
           </div>

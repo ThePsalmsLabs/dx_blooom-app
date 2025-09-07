@@ -334,8 +334,37 @@ import type {
   }
   
   /**
+   * Wallet Type Detection
+   *
+   * Detects the specific type of wallet being used for better UX and error handling.
+   */
+  function detectWalletType(): 'metamask' | 'phantom' | 'coinbase' | 'walletconnect' | 'brave' | 'unknown' {
+    if (typeof window === 'undefined' || !window.ethereum) return 'unknown'
+
+    const ethereum = window.ethereum
+
+    // Check for specific wallet flags
+    if (ethereum.isMetaMask) return 'metamask'
+    if (ethereum.isPhantom) return 'phantom'
+    if (ethereum.isCoinbaseWallet) return 'coinbase'
+    if (ethereum.isWalletConnect) return 'walletconnect'
+    if (ethereum.isBraveWallet) return 'brave'
+
+    // Fallback detection based on provider name or other indicators
+    const providerName = (ethereum as any).providerName || (ethereum as any).name || ''
+    if (providerName.toLowerCase().includes('phantom')) return 'phantom'
+    if (providerName.toLowerCase().includes('metamask')) return 'metamask'
+    if (providerName.toLowerCase().includes('coinbase')) return 'coinbase'
+
+    // Check for Phantom-specific properties
+    if ((ethereum as any)._phantom) return 'phantom'
+
+    return 'unknown'
+  }
+
+  /**
    * Wallet Capability Assessment
-   * 
+   *
    * Determines what wallet and transaction capabilities are available in the current context.
    */
   async function assessWalletCapabilities(
@@ -373,13 +402,17 @@ import type {
       BigInt('1000000000000000000000') : // 1000 USD equivalent
       null
     
+    // Detect wallet type for better UX
+    const walletType = detectWalletType()
+
     return {
       canConnect,
       canSignTransactions: canConnect,
       canBatchTransactions,
       supportedChains,
       maxTransactionValue,
-      requiredConfirmations: 1
+      requiredConfirmations: 1,
+      walletType
     }
   }
   
@@ -685,19 +718,76 @@ import type {
    */
   async function checkMethodSupport(method: string): Promise<boolean> {
     if (typeof window === 'undefined' || !window.ethereum) return false
-    
+
     try {
-      // Use a timeout to prevent blocking calls
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Method check timeout')), 1000)
+      // Check if wallet is connected and authorized before testing methods
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' })
+
+      // If no accounts are connected, don't try advanced methods that require authorization
+      if (!accounts || accounts.length === 0) {
+        // For wallet_sendCalls, we need authorization, so return false if not connected
+        if (method === 'wallet_sendCalls') {
+          return false
+        }
+        // For other methods, try a basic check
+        try {
+          await window.ethereum.request({ method: 'eth_blockNumber' })
+          return true
+        } catch {
+          return false
+        }
+      }
+
+      // Wallet is connected, now we can safely test the method
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Method check timeout')), 2000)
       )
-      
-      const methodCheckPromise = window.ethereum.request({ method, params: [] })
-      
+
+      let methodCheckPromise: Promise<any>
+
+      // Use appropriate test parameters based on the method
+      switch (method) {
+        case 'wallet_sendCalls':
+          // Use a safe test call that won't actually execute transactions
+          methodCheckPromise = window.ethereum.request({
+            method,
+            params: [{
+              version: '1.0',
+              chainId: '0x1', // Use mainnet for testing
+              from: accounts[0], // Use connected account
+              calls: [], // Empty calls array for testing support
+              atomicRequired: false
+            }]
+          })
+          break
+        case 'wallet_getCallsStatus':
+          // Test with a dummy ID
+          methodCheckPromise = window.ethereum.request({
+            method,
+            params: ['0x0000000000000000000000000000000000000000000000000000000000000000']
+          })
+          break
+        default:
+          // For other methods, use empty params
+          methodCheckPromise = window.ethereum.request({ method, params: [] })
+      }
+
       await Promise.race([methodCheckPromise, timeoutPromise])
       return true
-    } catch (error) {
-      // Method not supported or timeout occurred
+    } catch (error: any) {
+      // Check if this is an authorization error (code 4100)
+      if (error?.code === 4100 || error?.message?.includes('not authorized')) {
+        console.warn(`Method ${method} requires authorization but wallet is not authorized`)
+        return false
+      }
+
+      // Check if method is not supported
+      if (error?.code === -32601 || error?.message?.includes('Method not found')) {
+        return false
+      }
+
+      // For other errors, assume method is not supported
+      console.warn(`Method ${method} check failed:`, error?.message || error)
       return false
     }
   }

@@ -185,6 +185,7 @@ export interface MiniAppCapabilities {
     readonly supportedChains: readonly number[]
     readonly maxTransactionValue: bigint | null
     readonly requiredConfirmations: number
+    readonly walletType?: 'metamask' | 'phantom' | 'coinbase' | 'walletconnect' | 'brave' | 'unknown'
   }
   
   /** Social sharing and interaction capabilities */

@@ -72,6 +72,7 @@ import {
 import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { formatNumber } from '@/lib/utils'
 
 // Import your existing creator components
 import { CreatorCard } from '@/components/creators/CreatorCard'
@@ -294,12 +295,24 @@ function useEnhancedCreatorsData(filters: CreatorFilters, itemsPerPage: number =
   }, [filteredCreators])
   
   // Stats calculation using real contract data
-  const stats = useMemo((): MiniAppCreatorStats => ({
-    totalCreators: allCreators.totalCount || 0,
-    verifiedCreators: categorizedCreators.verified.length,
-    newThisWeek: Math.floor((allCreators.totalCount || 0) * 0.1), // Estimate based on total
-    totalEarnings: '$2.1M+' // TODO: Calculate from real contract data
-  }), [allCreators.totalCount, categorizedCreators.verified.length])
+  const stats = useMemo((): MiniAppCreatorStats => {
+    // Calculate total earnings from all creators
+    const totalEarnings = categorizedCreators.all.reduce((sum, creator) => {
+      return sum + Number(creator.profile?.totalEarnings || BigInt(0))
+    }, 0)
+
+    // Format total earnings properly (convert from micro USDC to USDC)
+    const formattedEarnings = totalEarnings > 0
+      ? `$${formatNumber(totalEarnings / 1_000_000)}`
+      : '$0'
+
+    return {
+      totalCreators: allCreators.totalCount || 0,
+      verifiedCreators: categorizedCreators.verified.length,
+      newThisWeek: Math.floor((allCreators.totalCount || 0) * 0.1), // Estimate based on total
+      totalEarnings: formattedEarnings
+    }
+  }, [allCreators.totalCount, categorizedCreators.verified.length, categorizedCreators.all])
   
   return {
     ...allCreators,

@@ -411,7 +411,7 @@ function KeyMetricsGrid({
             <span className="text-xs font-medium text-muted-foreground">Total Earnings</span>
           </div>
           <div className="text-lg font-bold">
-            {formatCurrency(BigInt(profile.totalEarnings), 2, 'USDC')}
+            {formatCurrency(BigInt(profile.totalEarnings), 6, 'USDC')}
           </div>
           <div className="text-xs text-green-600">+12.5% this month</div>
         </CardContent>
@@ -687,7 +687,7 @@ function EarningsTab({
         <CardContent className="p-4 space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm">Total Earnings</span>
-            <span className="font-medium">{formatCurrency(BigInt(profile.totalEarnings), 2, 'USDC')}</span>
+            <span className="font-medium">{formatCurrency(BigInt(profile.totalEarnings), 6, 'USDC')}</span>
           </div>
 
           <div className="flex justify-between items-center">

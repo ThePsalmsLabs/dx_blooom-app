@@ -329,20 +329,45 @@ const BLOCKCHAIN_TESTS: readonly CompatibilityTest[] = [
         const supportsEIP5792 = typeof ethereum.request === 'function'
         
         if (!supportsEIP5792) return false
-        
-        // Test if wallet_sendCalls method is available
+
+        // Test if wallet_sendCalls method is available with proper authorization checks
         try {
-          // This will likely throw if not supported, which we catch
+          // First check if wallet is connected
+          const accounts = await ethereum.request({ method: 'eth_accounts' }) as string[]
+
+          if (!accounts || !Array.isArray(accounts) || accounts.length === 0) {
+            // Wallet not connected, can't test wallet_sendCalls
+            return false
+          }
+
+          // Test wallet_sendCalls with safe parameters
           await ethereum.request({
-            method: 'wallet_getCallsStatus',
-            params: ['0x0'] // Dummy ID to test method existence
+            method: 'wallet_sendCalls',
+            params: [{
+              version: '1.0',
+              chainId: '0x1', // Use mainnet for testing
+              from: accounts[0], // Use connected account
+              calls: [], // Empty calls array for testing
+              atomicRequired: false
+            }]
           })
           return true
         } catch (error: unknown) {
+          const errorWithCode = error as { code?: number; message?: string }
+
+          // Handle authorization errors
+          if (errorWithCode?.code === 4100 || errorWithCode?.message?.includes('not authorized')) {
+            console.warn('Wallet not authorized for batch transactions')
+            return false
+          }
+
           // Method not found is expected for unsupported wallets
-          // But the method being present indicates support
-          const errorWithCode = error as { code?: number }
-          return errorWithCode?.code !== -32601 // Method not found error
+          if (errorWithCode?.code === -32601) {
+            return false
+          }
+
+          // For other errors, assume not supported
+          return false
         }
       } catch {
         return false

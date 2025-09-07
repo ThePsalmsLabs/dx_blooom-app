@@ -289,7 +289,10 @@ function useCapabilityDetection(): Capabilities {
  */
 async function detectWalletCapabilities() {
   const canConnect = typeof window !== 'undefined' && window.ethereum !== undefined
-  const canBatchTransactions = canConnect && await checkBatchTransactionSupport()
+
+  // Defer batch transaction check to avoid authorization prompts during initial load
+  // We'll check this lazily when actually needed
+  const canBatchTransactions = false // Default to false, check later if needed
 
   return {
     canConnect,
@@ -335,26 +338,70 @@ async function detectPlatformCapabilities() {
 }
 
 /**
- * Check Batch Transaction Support
+ * Check Batch Transaction Support (Lazy)
+ * Only call this when batch transactions are actually needed to avoid authorization prompts
  */
 async function checkBatchTransactionSupport(): Promise<boolean> {
   if (typeof window === 'undefined' || !window.ethereum) return false
 
   try {
-    await window.ethereum.request({
+    // Step 1: Check if wallet is connected first
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' })
+    if (!accounts || accounts.length === 0) {
+      console.log('Wallet not connected - skipping batch transaction support check')
+      return false
+    }
+
+    // Step 2: Try to test wallet_sendCalls support with minimal parameters
+    // Use a timeout to prevent hanging on authorization prompts
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Method check timeout')), 3000)
+    )
+
+    const testPromise = window.ethereum.request({
       method: 'wallet_sendCalls',
       params: [{
         version: '1.0',
         chainId: '0x2105', // Base mainnet
-        from: '0x0000000000000000000000000000000000000000',
-        calls: [],
-        atomicRequired: false // EIP-5792 requires this boolean parameter
+        from: accounts[0], // Use actual connected account
+        calls: [], // Empty calls array - should not require authorization
+        atomicRequired: false
       }]
     })
+
+    await Promise.race([testPromise, timeoutPromise])
     return true
-  } catch {
+
+  } catch (error: any) {
+    // Handle specific error codes
+    if (error?.code === 4100 || error?.message?.includes('not authorized')) {
+      console.log('Wallet method not authorized - batch transactions not supported')
+      return false
+    }
+
+    if (error?.code === -32601 || error?.message?.includes('Method not found')) {
+      console.log('wallet_sendCalls method not supported by wallet')
+      return false
+    }
+
+    if (error?.message?.includes('Method check timeout')) {
+      console.log('Batch transaction support check timed out')
+      return false
+    }
+
+    // Handle other errors gracefully
+    console.log('Batch transaction support check failed:', error?.message || error)
     return false
   }
+}
+
+/**
+ * Lazy Batch Transaction Support Checker
+ * This function can be called when batch transactions are actually needed
+ * It performs the full check without causing authorization prompts during app load
+ */
+export async function checkBatchTransactionSupportLazy(): Promise<boolean> {
+  return await checkBatchTransactionSupport()
 }
 
 /**

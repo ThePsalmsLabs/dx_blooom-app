@@ -93,20 +93,44 @@ export function CreatorSubscriptionPurchase({
     }
 
     try {
+      toast({
+        title: "Processing Subscription",
+        description: "Please confirm the transaction in your wallet...",
+      })
+
       // Call your subscription hook to initiate subscription
       await subscriptionManagement.subscribe?.(creatorAddress)
-      
+
       toast({
         title: "Subscription Successful! 🎉",
         description: "You now have access to all of this creator&apos;s content for 30 days.",
       })
-      
+
       onSubscriptionSuccess?.()
     } catch (error) {
       console.error('Subscription failed:', error)
+
+      // Enhanced error handling for mini app context
+      let errorMessage = "Please try again."
+      if (error instanceof Error) {
+        if (error.message.includes('ConnectorNotConnectedError') ||
+            error.message.includes('Connector not connected') ||
+            error.message.includes('Wallet connection lost')) {
+          errorMessage = "Your wallet connection was lost. Please reconnect your wallet and try again."
+        } else if (error.message.includes('Wallet not connected')) {
+          errorMessage = "Please connect your wallet to continue with the subscription."
+        } else if (error.message.includes('User rejected')) {
+          errorMessage = "Transaction cancelled. You can try subscribing again when ready."
+        } else if (error.message.includes('insufficient funds')) {
+          errorMessage = "Insufficient funds for this transaction."
+        } else {
+          errorMessage = error.message
+        }
+      }
+
       toast({
         title: "Subscription Failed",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description: errorMessage,
         variant: "destructive"
       })
     }
