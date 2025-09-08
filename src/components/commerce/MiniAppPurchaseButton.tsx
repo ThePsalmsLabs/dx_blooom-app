@@ -207,7 +207,8 @@ export function MiniAppPurchaseButton({
       needsApproval: purchaseFlow?.needsApproval ?? false,
       canAfford: purchaseFlow?.canAfford ?? false,
       executeApproval: purchaseFlow?.approveAndPurchase,
-      executePurchase: purchaseFlow?.purchase
+      executePurchase: purchaseFlow?.purchase,
+      executeApprovalAndPurchase: purchaseFlow?.approveAndPurchase // Use the same function for now
     }
   }, [
     purchaseFlow?.currentStep,
@@ -295,15 +296,13 @@ export function MiniAppPurchaseButton({
       console.log('Purchase ready:', !!safePurchaseFlow.executeApproval || !!safePurchaseFlow.executePurchase)
       console.groupEnd()
 
-      // Simple USDC purchase flow (no ETH calculations)
-      if (safePurchaseFlow.needsApproval && safePurchaseFlow.executeApproval) {
-        console.log('🔓 Executing USDC approval...')
-        await safePurchaseFlow.executeApproval()
-      }
-      
-      if (safePurchaseFlow.executePurchase) {
+      // Use the new combined approval and purchase flow for better UX
+      if (safePurchaseFlow.needsApproval && safePurchaseFlow.executeApprovalAndPurchase) {
+        console.log('🔓💳 Executing combined USDC approval and purchase...')
+        safePurchaseFlow.executeApprovalAndPurchase()
+      } else if (safePurchaseFlow.executePurchase) {
         console.log('💳 Executing USDC purchase...')
-        await safePurchaseFlow.executePurchase()
+        safePurchaseFlow.executePurchase()
       }
 
       // Track the purchase for social analytics
@@ -448,15 +447,32 @@ export function MiniAppPurchaseButton({
       }
     }
 
-    // Handle processing states
-    if (buttonState.isProcessingAction || safePurchaseFlow.flowState.step === 'purchasing') {
+    // Handle processing states (including new approval_confirmed state)
+    const isProcessing = buttonState.isProcessingAction || 
+                        safePurchaseFlow.flowState.step === 'purchasing' ||
+                        safePurchaseFlow.flowState.step === 'approving' ||
+                        safePurchaseFlow.flowState.step === 'approval_confirmed'
+    
+    if (isProcessing) {
       const isSharing = safeSocialFlow.sharingState.isSharing
+      let processingText = 'Processing...'
+      
+      if (safePurchaseFlow.flowState.step === 'approving') {
+        processingText = 'Approving USDC...'
+      } else if (safePurchaseFlow.flowState.step === 'approval_confirmed') {
+        processingText = 'Starting Purchase...'
+      } else if (safePurchaseFlow.flowState.step === 'purchasing') {
+        processingText = 'Purchasing...'
+      } else if (isSharing) {
+        processingText = 'Sharing...'
+      }
+      
       return {
         variant: 'default',
         onClick: () => {},
         disabled: true,
         icon: Loader2,
-        text: isSharing ? 'Sharing...' : 'Processing...',
+        text: processingText,
         className: 'cursor-wait',
         iconClassName: 'animate-spin'
       }

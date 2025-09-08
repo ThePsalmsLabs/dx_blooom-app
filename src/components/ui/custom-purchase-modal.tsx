@@ -338,48 +338,76 @@ export function CustomPurchaseModal({
     }
   }, [isOpen])
 
-  // Track approval completion
+  // Track approval and purchase completion with new states
   useEffect(() => {
-    if (selectedMethod === 'usdc' && usdcPurchaseFlow.state.phase === 'completed' && usdcPurchaseFlow.state.message.includes('approval')) {
-      setApprovalCompleted(true)
+    if (selectedMethod === 'usdc') {
+      const { phase, message } = usdcPurchaseFlow.state
+      
+      if (phase === 'approval_confirmed') {
+        setApprovalCompleted(true)
+        setCurrentStep('Approval confirmed! Starting purchase...')
+        setProgress(60)
+      } else if (phase === 'purchasing') {
+        setIsProcessing(true)
+        setCurrentStep('Processing purchase...')
+        setProgress(80)
+      } else if (phase === 'completed') {
+        setIsProcessing(false)
+        setProgress(100)
+        setCurrentStep('Purchase completed!')
+        
+        if (usdcPurchaseFlow.state.txHash) {
+          enhancedToast.success('Purchase completed!')
+          onPurchaseSuccess?.('usdc', usdcPurchaseFlow.state.txHash)
+        }
+      } else if (phase === 'error') {
+        setIsProcessing(false)
+        setIsApproving(false)
+        setError(usdcPurchaseFlow.state.error || 'Transaction failed')
+      }
     }
-  }, [selectedMethod, usdcPurchaseFlow.state.phase, usdcPurchaseFlow.state.message])
+  }, [selectedMethod, usdcPurchaseFlow.state, onPurchaseSuccess])
 
-  // Handle USDC approval
-  const handleApproval = useCallback(async () => {
+  // Handle USDC approval and purchase (combined flow)
+  const handleApprovalAndPurchase = useCallback(async () => {
     if (!walletUI.address) {
       enhancedToast.error('Connect your wallet first')
       return
     }
 
     setIsApproving(true)
+    setCurrentStep('Starting approval and purchase...')
+    setProgress(10)
 
     try {
-      console.log('🔄 Starting USDC approval...')
-      const txHash = await usdcPurchaseFlow.executeApproval()
-      console.log('✅ USDC approval completed:', txHash)
-      setApprovalCompleted(true)
-      enhancedToast.success('USDC approval completed')
+      console.log('🔄 Starting combined USDC approval and purchase...')
+      const txHash = await usdcPurchaseFlow.executeApprovalAndPurchase()
+      console.log('✅ USDC approval and purchase initiated:', txHash)
+      
+      // The useEffect will handle state transitions
+      
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Approval failed'
+      const errorMessage = err instanceof Error ? err.message : 'Transaction failed'
 
       // Handle transaction cancellation
       if (errorMessage.includes('User rejected') ||
           errorMessage.includes('cancelled') ||
           errorMessage.includes('rejected')) {
         enhancedToast.error('Transaction cancelled')
+        setError('Transaction cancelled by user')
       } else {
-        enhancedToast.error('Approval failed')
+        enhancedToast.error('Transaction failed')
+        setError(errorMessage)
       }
 
-      console.error('❌ Approval failed:', errorMessage)
-    } finally {
+      console.error('❌ Transaction failed:', errorMessage)
       setIsApproving(false)
+      setIsProcessing(false)
     }
   }, [walletUI.address, usdcPurchaseFlow])
 
-  // Handle purchase execution
-  const handlePurchase = useCallback(async () => {
+  // Handle purchase execution (for already-approved USDC or direct purchase)
+  const handleDirectPurchase = useCallback(async () => {
     if (!walletUI.address) {
       enhancedToast.error('Connect your wallet first')
       return
@@ -393,9 +421,6 @@ export function CustomPurchaseModal({
         console.log('🛒 Executing USDC purchase...')
         const txHash = await usdcPurchaseFlow.executePurchase()
         console.log('✅ USDC purchase completed:', txHash)
-
-        enhancedToast.success('Purchase completed!')
-        onPurchaseSuccess?.('usdc', txHash)
 
       } else {
         // ETH → USDC Swap Flow (placeholder for now)
@@ -418,13 +443,14 @@ export function CustomPurchaseModal({
           errorMessage.includes('cancelled') ||
           errorMessage.includes('rejected')) {
         enhancedToast.error('Transaction cancelled')
+        setError('Transaction cancelled by user')
       } else {
         enhancedToast.error('Purchase failed')
+        setError(errorMessage)
       }
 
       console.error('❌ Purchase failed:', errorMessage)
       onPurchaseError?.(selectedMethod, err instanceof Error ? err : new Error(errorMessage))
-    } finally {
       setIsProcessing(false)
     }
   }, [
@@ -434,6 +460,20 @@ export function CustomPurchaseModal({
     onPurchaseSuccess,
     onPurchaseError
   ])
+
+  // Retry function for error recovery
+  const handleRetry = useCallback(() => {
+    setError('')
+    setIsProcessing(false)
+    setIsApproving(false)
+    setProgress(0)
+    setCurrentStep('')
+    
+    // Use the retry function from the enhanced hook
+    if (selectedMethod === 'usdc' && usdcPurchaseFlow.retryFromError) {
+      usdcPurchaseFlow.retryFromError()
+    }
+  }, [selectedMethod, usdcPurchaseFlow])
 
   const selectedMethodConfig = paymentMethods.find(m => m.id === selectedMethod)
   const canPurchase = selectedMethodConfig &&
@@ -473,27 +513,52 @@ export function CustomPurchaseModal({
         ))}
       </div>
 
-      {/* USDC Approval Section */}
-      {canApprove && (
+      {/* Error Display with Retry */}
+      {error && (
+        <div className="mb-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span className="flex-1 mr-2">{error}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRetry}
+                className="text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* USDC Combined Approval & Purchase Section */}
+      {canApprove && !error && (
         <div className="mb-4">
           <Button
-            onClick={handleApproval}
+            onClick={handleApprovalAndPurchase}
             disabled={isApproving || !walletUI.isConnected}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+            className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white shadow-lg"
             size="lg"
           >
             {isApproving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Approving USDC...
+                {currentStep || 'Processing...'}
               </>
             ) : (
               <>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Approve USDC
+                <Zap className="w-4 h-4 mr-2" />
+                Approve & Purchase
               </>
             )}
           </Button>
+          
+          <p className="text-xs text-center text-muted-foreground mt-2">
+            This will approve USDC spending and automatically complete your purchase
+          </p>
         </div>
       )}
 
@@ -523,7 +588,7 @@ export function CustomPurchaseModal({
         </Button>
 
         <Button
-          onClick={handlePurchase}
+          onClick={handleDirectPurchase}
           disabled={!canPurchase || isProcessing || isApproving || !walletUI.isConnected}
           className="flex-1"
         >
