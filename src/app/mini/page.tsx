@@ -58,7 +58,7 @@ import { cn } from '@/lib/utils'
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useIsCreatorRegistered, useActiveContentPaginated } from '@/hooks/contracts/core'
 import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
-import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 
 // Import your existing sophisticated components
 import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
@@ -307,10 +307,15 @@ function MiniAppHomeCore() {
     isAvailable: hasSocialContext
   } = socialState
   
-  // Get wallet connection status using MiniApp-specific hook
-  const walletUI = useMiniAppWalletUI()
-  const fullAddress = walletUI.address
-  const isConnected = walletUI.isConnected
+  // Get wallet connection status using Farcaster auto-wallet hook for proper mini app behavior
+  const { 
+    isConnected, 
+    address: fullAddress, 
+    isConnecting, 
+    connect: connectWallet, 
+    isInMiniApp,
+    error: walletError 
+  } = useFarcasterAutoWallet()
   
   // Only check creator registration if wallet is connected - use full address
   const { data: isCreator, isLoading: _creatorLoading } = useIsCreatorRegistered(
@@ -367,7 +372,9 @@ function MiniAppHomeCore() {
         has_social_context: hasSocialContext,
         is_connected: isConnected,
         is_creator: isCreator || false,
-        user_fid: userProfile?.fid || null
+        user_fid: userProfile?.fid || null,
+        is_in_miniapp: isInMiniApp,
+        auto_connect_attempted: true
       })
     }
   }, [isMiniApp, hasSocialContext, isConnected, isCreator, userProfile, trackInteraction])

@@ -65,12 +65,40 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
 
     const autoConnect = async () => {
       try {
+        // Wait for SDK to be ready to avoid initialization conflicts
+        const checkSDKReady = async () => {
+          let attempts = 0
+          const maxAttempts = 10
+          
+          while (attempts < maxAttempts) {
+            try {
+              const { sdk } = await import('@farcaster/miniapp-sdk')
+              // Check if SDK is available and initialized
+              if (sdk && typeof sdk === 'object') {
+                console.log('✅ Farcaster SDK is available, proceeding with auto-connect')
+                return true
+              }
+            } catch (e) {
+              console.warn('SDK not ready yet, waiting...', e)
+            }
+            
+            attempts++
+            await new Promise(resolve => setTimeout(resolve, 200))
+          }
+          
+          console.warn('⚠️ SDK ready check timed out, proceeding anyway')
+          return false
+        }
+
+        await checkSDKReady()
+
         // In Farcaster mini app, the wallet should be automatically connected
         // We just need to check if it's connected and log the status
         if (isConnected && address) {
           console.log('✅ Farcaster mini app: Wallet automatically connected', {
             address: `${address.slice(0, 6)}...${address.slice(-4)}`,
-            isConnected
+            isConnected,
+            source: 'auto_detection'
           })
         } else {
           console.log('⚠️ Farcaster mini app: Wallet not automatically connected, attempting manual connection')
@@ -81,20 +109,24 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
             connector.name === 'Farcaster Mini App'
           )
 
+          console.log('🔍 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })))
+          console.log('🎯 Farcaster connector found:', !!farcasterConnector)
+
           if (farcasterConnector) {
+            console.log('🚀 Attempting Farcaster connector connection...')
             await connect({ connector: farcasterConnector })
           } else {
-            console.warn('Farcaster mini app connector not found')
+            console.warn('❌ Farcaster mini app connector not found in available connectors')
           }
         }
       } catch (err) {
-        console.error('Auto-connect failed:', err)
+        console.error('❌ Auto-connect failed:', err)
         setError(err as Error)
       }
     }
 
-    // Small delay to ensure SDK is ready
-    const timeoutId = setTimeout(autoConnect, 100)
+    // Wait a bit longer to ensure providers are fully initialized
+    const timeoutId = setTimeout(autoConnect, 500)
     return () => clearTimeout(timeoutId)
   }, [isInMiniApp, isConnected, address, connectors, connect])
 

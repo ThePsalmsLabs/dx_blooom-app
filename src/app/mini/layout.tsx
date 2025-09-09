@@ -95,12 +95,13 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   
   // Import your existing hooks for seamless integration
   import { useIsCreatorRegistered } from '@/hooks/contracts/core'
-  import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+  import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
   import { useMiniAppAuth } from '@/hooks/business/miniapp-auth'
   import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
   import { ShareButton } from '@/components/ui/share-button'
   import { CompactAuthStatus } from '@/components/miniapp/auth/EnhancedAuthStatus'
   import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
+  import { FarcasterMetaTags } from '@/components/miniapp/FarcasterMetaTags'
 
   // ================================================
   // TYPE DEFINITIONS FOR BROWSER APIS
@@ -685,14 +686,20 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   function MiniAppLayoutContent({ children }: { children: ReactNode }) {
 
 	
-	// Use MiniApp-specific wallet UI hook for proper state synchronization
-	const walletUI = useMiniAppWalletUI()
+	// Use Farcaster auto wallet hook for proper automatic connection in mini app
+	const { 
+		isConnected: walletConnected, 
+		address: fullAddress, 
+		isConnecting: walletConnecting, 
+		connect: connectWallet, 
+		isInMiniApp: autoDetectedMiniApp 
+	} = useFarcasterAutoWallet()
 	
 	// Use MiniApp authentication hook for enhanced Farcaster integration
 	const miniAppAuth = useMiniAppAuth()
 
-	// Get the FULL address from walletUI, not the formatted one
-	const fullAddress = walletUI.address
+	// Format address for display
+	const formattedAddress = fullAddress ? `${fullAddress.slice(0, 6)}...${fullAddress.slice(-4)}` : null
 
 	// Removed excessive creator check - only check when needed for specific actions
 	
@@ -734,7 +741,8 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		console.log('📱 MiniApp context ready', {
 		  isMiniApp: miniAppUtils.isMiniApp,
 		  isConnected: miniAppState.isConnected,
-		  hasWallet: !!walletUI.address
+		  hasWallet: !!fullAddress,
+		  autoDetectedMiniApp: autoDetectedMiniApp
 		})
 		
 		// Reset error states - layout is working
@@ -744,7 +752,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		console.warn('Layout setup warning:', error)
 		// Don't increment error count for minor issues
 	  }
-	}, [miniAppUtils.isMiniApp, miniAppState.isConnected, walletUI.address])
+	}, [miniAppUtils.isMiniApp, miniAppState.isConnected, fullAddress, autoDetectedMiniApp])
 
 	// Performance monitoring
 	const handlePerformanceUpdate = useCallback((metrics: PerformanceMetrics) => {
@@ -859,6 +867,15 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	
 	return (
 	  <div className={layoutClassName}>
+		{/* Farcaster Meta Tags for proper mini app detection and wallet auto-connection */}
+		<FarcasterMetaTags
+		  title="Bloom - Premium Content Platform"
+		  description="Discover premium content from top creators. Purchase with instant USDC payments on Base."
+		  image="https://dxbloom.com/images/miniapp-og-image.png"
+		  buttonText="Open Mini App"
+		  target="https://dxbloom.com/mini"
+		/>
+		
 		{/* Farcaster Embed for Mini App Pages */}
 		<FarcasterEmbed
 		  title="Bloom - Premium Content"
@@ -894,7 +911,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 			headerContent={
 			  <div className="flex items-center space-x-3">
 				{/* User Profile Section */}
-				{(socialProfile?.userProfile || walletUI.isConnected) && (
+				{(socialProfile?.userProfile || walletConnected) && (
 				  <div className="flex items-center space-x-2">
 					{/* Social Profile Avatar */}
 					{socialProfile?.userProfile && (
@@ -902,7 +919,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 						<AvatarFallback className="text-xs">
 						  {socialProfile.userProfile.displayName?.charAt(0) ||
 						   socialProfile.userProfile.username?.charAt(0) ||
-						   walletUI.formattedAddress?.charAt(0) ||
+						   formattedAddress?.charAt(0) ||
 						   '?'}
 						</AvatarFallback>
 					  </Avatar>
@@ -920,32 +937,27 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 						  @{socialProfile.userProfile.username}
 						</span>
 					  )}
-					  {!socialProfile?.userProfile && walletUI.isConnected && walletUI.formattedAddress && (
+					  {!socialProfile?.userProfile && walletConnected && formattedAddress && (
 						<span className="text-xs font-mono text-muted-foreground leading-tight">
-						  {walletUI.formattedAddress}
+						  {formattedAddress}
 						</span>
 					  )}
 					</div>
 
 					{/* Connection Status Badge */}
-					{walletUI.isConnected && (
+					{walletConnected && (
 					  <Badge variant="secondary" className="text-xs px-2 py-0">
 						<div className="h-1.5 w-1.5 bg-green-500 rounded-full mr-1" />
-						Connected
+						{autoDetectedMiniApp ? 'Auto-Connected' : 'Connected'}
 					  </Badge>
 					)}
 
-					{/* Disconnect Button for Connected Users */}
-					{walletUI.isConnected && (
-					  <Button
-						size="sm"
-						variant="ghost"
-						className="text-xs h-6 px-2 text-muted-foreground hover:text-foreground"
-						onClick={walletUI.disconnect}
-						title="Disconnect Wallet"
-					  >
-						Logout
-					  </Button>
+					{/* Auto-Connect Info for MiniApp */}
+					{autoDetectedMiniApp && walletConnected && (
+					  <Badge variant="outline" className="text-xs px-2 py-0">
+						<div className="h-1.5 w-1.5 bg-blue-500 rounded-full mr-1" />
+						Farcaster
+					  </Badge>
 					)}
 				  </div>
 				)}
@@ -970,21 +982,23 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 				  )}
 
 				{/* Quick Connect Button for Disconnected Users */}
-				{!walletUI.isConnected && (
+				{!walletConnected && (
 				  <Button
 					size="sm"
 					variant="outline"
 					className="text-xs h-7 px-3"
-					onClick={walletUI.connect}
-					disabled={walletUI.isConnecting}
+					onClick={connectWallet}
+					disabled={walletConnecting}
 				  >
-					{walletUI.isConnecting ? (
+					{walletConnecting ? (
 					  <>
 						<Loader2 className="mr-1 h-3 w-3 animate-spin" />
 						Connecting...
 					  </>
+					) : autoDetectedMiniApp ? (
+					  'Connect Farcaster Wallet'
 					) : (
-					  'Connect'
+					  'Connect Wallet'
 					)}
 				  </Button>
 				)}
