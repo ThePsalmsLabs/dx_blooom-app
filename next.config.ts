@@ -7,6 +7,17 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
+  // Farcaster manifest redirect configuration
+  async redirects() {
+    return [
+      {
+        source: '/.well-known/farcaster.json',
+        destination: 'https://api.farcaster.xyz/miniapps/hosted-manifest/01992cd5-6b94-80a9-5d07-ca3fd6063a62',
+        permanent: false, // 307 temporary redirect
+      },
+    ];
+  },
+
   // Build performance optimizations
   // swcMinify: true, // Removed - deprecated in Next.js 15
   
