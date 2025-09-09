@@ -104,8 +104,9 @@ const privyConfig = {
     noPromptOnSignature: false,
   },
 
-  // Login methods - these are the authentication options your users will see
-  loginMethods: ['wallet', 'email', 'sms', 'google', 'farcaster'] as ('wallet' | 'email' | 'sms' | 'google' | 'farcaster')[],
+  // Login methods - FIXED: Remove conflicting social logins to prevent auth conflicts
+  // Temporarily disable 'google' and 'farcaster' as they conflict with custom implementation
+  loginMethods: ['wallet', 'email', 'sms'] as ('wallet' | 'email' | 'sms')[],
 
   // Wallet configuration - ensure all wallet types are supported
   walletList: [
@@ -135,6 +136,15 @@ const privyConfig = {
   legal: {
     termsAndConditionsUrl: undefined, // Add your T&C URL
     privacyPolicyUrl: undefined, // Add your privacy policy URL
+  },
+
+  // CRITICAL: Add domain configuration for production
+  clientId: process.env.NEXT_PUBLIC_PRIVY_APP_ID || '',
+  
+  // Ensure correct redirect handling for production
+  loginConfig: {
+    landingHeader: 'Welcome to Bloom',
+    landingSubheader: 'Connect your wallet to get started',
   }
 }
 
