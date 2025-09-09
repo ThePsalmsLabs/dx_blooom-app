@@ -158,11 +158,13 @@ export function EnhancedAuthStatus({
   const handleConnect = async () => {
     try {
       if (miniAppAuth.environmentType === 'miniapp') {
-        // Try wallet connect in miniapp (aligned with web app)
-        await walletUI.connect()
+        // In MiniApp context, prioritize Farcaster auto-connect to prevent conflicts
+        console.log('🔄 MiniApp detected: Using Farcaster auto-connect to prevent Privy race condition')
+        // Don't call walletUI.connect() in MiniApp - let Farcaster handle it
+        return
       } else {
-        // Fallback to wallet connect
-        await walletUI.connect()
+        // Only use Privy in web context
+        walletUI.connect()
       }
     } catch (error) {
       console.error('Authentication failed:', error)
@@ -172,10 +174,10 @@ export function EnhancedAuthStatus({
   const handleDisconnect = async () => {
     try {
       if (miniAppAuth.isAuthenticated) {
-        await miniAppAuth.logout()
+        miniAppAuth.logout()
       }
       if (walletUI.isConnected) {
-        await walletUI.disconnect()
+        walletUI.disconnect()
       }
     } catch (error) {
       console.error('Disconnect failed:', error)

@@ -306,7 +306,7 @@ const OptimizedMiniAppProvider = memo<{
   const _router = useRouter()
   const _pathname = usePathname()
   const _chainId = useChainId()
-  const { user, login, logout, ready: _ready, authenticated } = usePrivy()
+  const { user, logout, ready: _ready, authenticated } = usePrivy()
 
   // Memoized computations
   const appContext = useMemoizedEnvironment()
@@ -408,20 +408,29 @@ const OptimizedMiniAppProvider = memo<{
   // ================================================
 
   const connectWallet = useCallback(async (): Promise<void> => {
-    if (!login) {
-      throw new Error('Wallet connection not available')
-    }
-
     try {
       setLoadingState('loading')
-      await login()
+      
+      // In MiniApp context, don't call Privy login - let Farcaster handle authentication
+      console.log('🔄 OptimizedMiniApp connectWallet called - letting Farcaster auto-connect handle it')
+      
+      // Check if we're already connected via Farcaster
+      if (authenticated) {
+        console.log('✅ Already authenticated via Privy/Farcaster')
+        setLoadingState('success')
+        return
+      }
+      
+      // For MiniApp context, we should wait for Farcaster auto-connect
+      // Don't call login() as it conflicts with Farcaster connector
+      console.log('⏳ Waiting for Farcaster auto-connect...')
       setLoadingState('success')
     } catch (error) {
       setError(error as Error)
       setLoadingState('error')
       throw error
     }
-  }, [login])
+  }, [authenticated])
 
   const disconnectWallet = useCallback(async (): Promise<void> => {
     if (!logout) return

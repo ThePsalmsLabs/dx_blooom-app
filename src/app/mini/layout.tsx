@@ -987,7 +987,11 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 					size="sm"
 					variant="outline"
 					className="text-xs h-7 px-3"
-					onClick={connectWallet}
+					onClick={() => {
+						console.log('🔄 Connect clicked in MiniApp - using Farcaster auto-connect only')
+						// In MiniApp context, only use Farcaster connector to prevent Privy race condition
+						connectWallet()
+					}}
 					disabled={walletConnecting}
 				  >
 					{walletConnecting ? (

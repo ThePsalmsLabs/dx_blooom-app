@@ -538,7 +538,7 @@ export function UnifiedMiniAppProvider({
   const _router = useRouter()
   const _pathname = usePathname()
   const _chainId = useChainId()
-  const { user, login, logout, ready: _ready, authenticated } = usePrivy()
+  const { user, logout, ready: _ready, authenticated } = usePrivy()
   const { initLoginToMiniApp, loginToMiniApp } = useLoginToMiniApp()
 
   // Capability detection
@@ -702,20 +702,29 @@ export function UnifiedMiniAppProvider({
   // ================================================
 
   const connectWallet = useCallback(async (): Promise<void> => {
-    if (!login) {
-      throw new Error('Wallet connection not available')
-    }
-
     try {
       dispatch({ type: 'SET_LOADING', payload: 'loading' })
-      await login()
+      
+      // In MiniApp context, don't call Privy login - let Farcaster handle authentication
+      console.log('🔄 MiniApp connectWallet called - letting Farcaster auto-connect handle it')
+      
+      // Check if we're already connected via Farcaster
+      if (authenticated) {
+        console.log('✅ Already authenticated via Privy/Farcaster')
+        dispatch({ type: 'SET_LOADING', payload: 'success' })
+        return
+      }
+      
+      // For MiniApp context, we should wait for Farcaster auto-connect
+      // Don't call login() as it conflicts with Farcaster connector
+      console.log('⏳ Waiting for Farcaster auto-connect...')
       dispatch({ type: 'SET_LOADING', payload: 'success' })
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error as Error })
       dispatch({ type: 'SET_LOADING', payload: 'error' })
       throw error
     }
-  }, [login])
+  }, [authenticated])
 
   const disconnectWallet = useCallback(async (): Promise<void> => {
     if (!logout) return
