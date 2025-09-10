@@ -61,7 +61,7 @@ import { useAllCreators } from '@/hooks/contracts/useAllCreators.optimized'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 
 // Import your existing sophisticated components
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
 import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
 import { NavigationDebug } from '@/components/debug/NavigationDebug'
@@ -543,38 +543,21 @@ function MiniAppHomeCore() {
   // ================================================
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Fixed Navigation Header */}
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-2">
-          <AdaptiveNavigation 
-            showMobile={true}
-            enableAnalytics={true}
-            onNavigate={(item) => {
-              trackInteraction('navigation_used', {
-                item_id: item.id,
-                item_label: item.label,
-                source: 'home_header'
-              })
-            }}
-          />
-        </div>
-      </div>
-      
+    <MiniAppLayout>
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 space-y-6">
+      <div className="container mx-auto px-4 py-4 space-y-6">
         <WelcomeHeader />
         <QuickActionsGrid />
         <FeaturedContent />
         <SocialCommerceFooter />
-      </main>
+      </div>
       
       {/* Performance Monitor (Development Only) */}
       <PerformanceMonitor />
       
       {/* Navigation Debug (Development Only) */}
       {process.env.NODE_ENV === 'development' && <NavigationDebug />}
-    </div>
+    </MiniAppLayout>
   )
 }
 

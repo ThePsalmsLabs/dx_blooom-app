@@ -3,14 +3,21 @@
  * File: src/hooks/miniapp/useFarcasterAutoWallet.ts
  * 
  * This hook implements the correct Farcaster mini app wallet connection pattern
- * as described in the official documentation. It handles the automatic wallet
- * connection that should occur when users enter a Farcaster mini app.
+ * as described in the official documentation. It handles both automatic and 
+ * manual wallet connection that should occur when users interact with a Farcaster mini app.
  * 
  * KEY FEATURES:
- * - Automatically detects if wallet is already connected (as per Farcaster docs)
- * - Uses Quick Auth for seamless authentication
- * - Provides proper fallback for web contexts
+ * - Automatically attempts wallet connection on mini app load
+ * - Provides manual connection using Farcaster connector
+ * - Prevents Privy login modal from appearing in mini app context
+ * - Uses proper Farcaster connector for seamless authentication
+ * - Provides fallback for web contexts
  * - Follows the official Farcaster mini app patterns
+ * 
+ * FIXES:
+ * - connectWallet now actually connects using Farcaster connector instead of returning early
+ * - Auto-connect attempts connection with Farcaster connector when available
+ * - Prevents fallback to Privy authentication in mini app context
  */
 
 import { useCallback, useEffect, useState } from 'react'
@@ -102,32 +109,39 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
             source: 'farcaster_auto_connect'
           })
         } else {
-          // Don't try manual connection - this causes "Login with Farcaster not allowed" 
-          // According to Farcaster docs, auto-connect should happen automatically
-          console.log('⏳ Farcaster mini app: Waiting for automatic connection...')
+          // Try to auto-connect using Farcaster connector
+          console.log('⏳ Farcaster mini app: Attempting auto-connect...')
           console.log('🔍 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })))
           
-          // Just log that we're waiting - don't force connection
           const farcasterConnector = connectors.find(connector => 
             connector.id === 'farcasterMiniApp' || 
-            connector.name === 'Farcaster Mini App'
+            connector.name === 'Farcaster Mini App' ||
+            connector.id === 'farcaster'
           )
-          console.log('🎯 Farcaster connector available:', !!farcasterConnector)
-          console.log('🔍 All connector IDs:', connectors.map(c => c.id))
-          console.log('🔍 All connector names:', connectors.map(c => c.name))
           
-          // Critical insight: If isInMiniApp is true but isConnected is false,
-          // it could mean:
-          // 1. User has no wallet connected in Farcaster
-          // 2. Farcaster connector isn't working properly  
-          // 3. There's a provider configuration issue
-          console.log('📊 Connection status:', {
-            isInMiniApp,
-            isConnected,
-            address,
-            connectorsCount: connectors.length,
-            farcasterConnectorFound: !!farcasterConnector
-          })
+          console.log('🎯 Farcaster connector available:', !!farcasterConnector)
+          
+          if (farcasterConnector) {
+            try {
+              console.log('🔗 Attempting auto-connect with Farcaster connector:', farcasterConnector.name)
+              await connect({ connector: farcasterConnector })
+              console.log('✅ Auto-connect successful')
+            } catch (autoConnectError) {
+              console.warn('⚠️ Auto-connect failed, user will need to connect manually:', autoConnectError)
+              // Don't set error state for auto-connect failures - let user try manual connection
+            }
+          } else {
+            console.warn('⚠️ No Farcaster connector found for auto-connect')
+            console.log('📊 Connection status:', {
+              isInMiniApp,
+              isConnected,
+              address,
+              connectorsCount: connectors.length,
+              farcasterConnectorFound: !!farcasterConnector,
+              allConnectorIds: connectors.map(c => c.id),
+              allConnectorNames: connectors.map(c => c.name)
+            })
+          }
         }
       } catch (err) {
         console.error('❌ Auto-connect failed:', err)
@@ -145,34 +159,65 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
       setError(null)
 
       if (isInMiniApp) {
-        // In Farcaster mini app, don't force manual connection
-        // According to Farcaster docs, wallet should auto-connect
-        console.log('🚫 Manual connect called in Farcaster - but auto-connect should handle this')
+        console.log('🔗 Manual connect called in Farcaster mini app')
         console.log('📱 Current connection state:', { isConnected, address })
         
-        // If not connected after auto-connect failed, this usually means:
-        // 1. User doesn't have a wallet in Farcaster
-        // 2. Domain configuration issue  
-        // 3. Network issue
         if (!isConnected) {
-          console.warn('⚠️ Auto-connect failed - this may indicate a configuration issue')
+          // Find the Farcaster connector
+          const farcasterConnector = connectors.find(connector => 
+            connector.id === 'farcasterMiniApp' || 
+            connector.name === 'Farcaster Mini App' ||
+            connector.id === 'farcaster'
+          )
+          
+          console.log('🔍 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })))
+          console.log('🎯 Found Farcaster connector:', !!farcasterConnector)
+          
+          if (farcasterConnector) {
+            console.log('✅ Connecting using Farcaster connector:', farcasterConnector.name)
+            await connect({ connector: farcasterConnector })
+          } else {
+            console.error('❌ No Farcaster connector found in mini app')
+            console.error('Available connectors:', connectors.map(c => `${c.id} (${c.name})`))
+            
+            // Check if we have any wagmi-based connectors as backup
+            const wagmiConnector = connectors.find(connector => 
+              connector.id !== 'injected' && connector.id !== 'metaMask'
+            )
+            
+            if (wagmiConnector && connectors.length > 0) {
+              console.log('🔄 Falling back to available connector:', wagmiConnector.name)
+              await connect({ connector: wagmiConnector })
+            } else {
+              throw new Error('No compatible wallet connectors available for Farcaster mini app. Please ensure you are accessing this from within the Farcaster mobile app with a connected wallet.')
+            }
+          }
+        } else {
+          console.log('✅ Wallet already connected in Farcaster mini app')
         }
-        
-        // Don't attempt manual connection as it conflicts with Farcaster's system
-        return
       } else {
         // In web context, use normal connection flow
+        console.log('🌐 Connecting in web context')
         if (connectors.length > 0) {
-          connect({ connector: connectors[0] })
+          // Prefer Farcaster connector if available, otherwise use first connector
+          const preferredConnector = connectors.find(connector => 
+            connector.id === 'farcasterMiniApp' || 
+            connector.name === 'Farcaster Mini App' ||
+            connector.id === 'farcaster'
+          ) || connectors[0]
+          
+          console.log('🔗 Using connector:', preferredConnector.name)
+          await connect({ connector: preferredConnector })
         } else {
           throw new Error('No wallet connectors available')
         }
       }
     } catch (err) {
-      console.error('Manual wallet connection failed:', err)
+      console.error('❌ Wallet connection failed:', err)
       setError(err as Error)
+      throw err // Re-throw to allow UI to handle the error
     }
-  }, [isInMiniApp, connectors, connect])
+  }, [isInMiniApp, isConnected, address, connectors, connect])
 
   return {
     isConnected,

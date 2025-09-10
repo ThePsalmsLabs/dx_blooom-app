@@ -65,6 +65,7 @@ import { cn } from '@/lib/utils'
 // Import your actual hooks and providers
 import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 
 // ================================================
 // PRODUCTION TYPE DEFINITIONS
@@ -392,6 +393,7 @@ function AdaptiveNavigationCore({
   const { role: currentUserRole, isLoading: roleLoading, error: roleError } = useUserRole()
   const { trackNavigation } = useNavigationAnalytics(enableAnalytics)
   const walletUI = useWalletConnectionUI()
+  const farcasterWallet = useFarcasterAutoWallet()
   
   // Performance optimization: Stable reference tracking
   const lastNavigationTime = useRef<number>(0)
