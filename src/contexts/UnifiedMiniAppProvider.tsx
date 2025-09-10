@@ -737,7 +737,7 @@ export function UnifiedMiniAppProvider({
       }
     } catch (error) {
       console.error('Connection error:', error)
-      if (error.message && error.message.includes('Origin not allowed')) {
+      if (error instanceof Error && error.message && error.message.includes('Origin not allowed')) {
         console.error('🚨 Privy domain configuration error - check Privy dashboard settings')
       }
       dispatch({ type: 'SET_ERROR', payload: error as Error })
