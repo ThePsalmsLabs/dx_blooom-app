@@ -369,7 +369,7 @@ export function AppLayout({
           )}
 
           {/* Main Content Area */}
-          <main className="flex-1 overflow-auto pt-14 sm:pt-16">
+          <main className="flex-1 overflow-auto pt-2">
             {/* Network Warning Banner */}
             {!isNetworkSupported && <NetworkWarningBanner />}
 

@@ -674,7 +674,7 @@ function AdaptiveNavigationCore({
       <div className="flex items-center justify-between w-full">
         {/* Miniapp navigation bar - horizontal layout */}
         <nav
-          className="flex items-center space-x-4 flex-1"
+          className="flex items-center space-x-3 max-w-md border-r-4 border-indigo-500 shadow-[4px_0_12px_rgba(99,102,241,0.6)] pr-4"
           role="navigation"
           aria-label="Main navigation"
         >
@@ -749,8 +749,8 @@ function AdaptiveNavigationCore({
             </Button>
           )}
 
-          {/* Mobile menu for additional items */}
-          {mobileNavigation}
+          {/* Mobile menu for additional items - only show if there are items not displayed */}
+          {filteredSections.flatMap(section => section.items).length > 3 && mobileNavigation}
         </div>
       </div>
     )

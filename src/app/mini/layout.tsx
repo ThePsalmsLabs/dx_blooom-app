@@ -99,8 +99,6 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   import { useMiniAppAuth } from '@/hooks/business/miniapp-auth'
   import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
   import { ShareButton } from '@/components/ui/share-button'
-  import { CompactAuthStatus } from '@/components/miniapp/auth/EnhancedAuthStatus'
-  import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
   import { FarcasterMetaTags } from '@/components/miniapp/FarcasterMetaTags'
 
   // ================================================
@@ -867,7 +865,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	
 	return (
 	  <div className={layoutClassName}>
-		{/* Farcaster Meta Tags for proper mini app detection and wallet auto-connection */}
+		{/* Farcaster Meta Tags - hidden, no visual impact */}
 		<FarcasterMetaTags
 		  title="Bloom - Premium Content Platform"
 		  description="Discover premium content from top creators. Purchase with instant USDC payments on Base."
@@ -876,28 +874,10 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		  target="https://dxbloom.com/mini"
 		/>
 		
-		{/* Farcaster Embed for Mini App Pages */}
-		<FarcasterEmbed
-		  title="Bloom - Premium Content"
-		  description="Discover premium content from top creators. Purchase with instant USDC payments on Base."
-		  image="https://dxbloom.com/images/miniapp-og-image.png"
-		  buttonText="Open Mini App"
-		  buttonTarget="https://dxbloom.com/mini"
-		/>
-
-		{/* Social Context Indicator */}
-		{miniAppUtils.isMiniApp && (
+		{/* Social Context Indicator - only show if needed and has content */}
+		{miniAppUtils.isMiniApp && socialProfile?.userProfile && (
 		  <SocialContextIndicator />
 		)}
-
-		{/* Enhanced Authentication Status Indicator */}
-		<div className="fixed top-4 right-4 z-50">
-		  <Card className="bg-background/95 backdrop-blur border">
-			<CardContent className="p-3">
-			  <CompactAuthStatus />
-			</CardContent>
-		  </Card>
-		</div>
 
 		{/* Performance Monitor (development only) */}
 		<PerformanceMonitor onPerformanceUpdate={handlePerformanceUpdate} />

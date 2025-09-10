@@ -546,7 +546,7 @@ function MiniAppHomeCore() {
     <div className="min-h-screen bg-background">
       {/* Fixed Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto px-4 py-2">
           <AdaptiveNavigation 
             showMobile={true}
             enableAnalytics={true}
@@ -562,7 +562,7 @@ function MiniAppHomeCore() {
       </div>
       
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 space-y-8">
+      <main className="container mx-auto px-4 py-4 space-y-6">
         <WelcomeHeader />
         <QuickActionsGrid />
         <FeaturedContent />
