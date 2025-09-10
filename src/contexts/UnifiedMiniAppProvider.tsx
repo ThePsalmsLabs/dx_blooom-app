@@ -664,7 +664,21 @@ export function UnifiedMiniAppProvider({
   // Auto-login flow for seamless Farcaster user experience
   useEffect(() => {
     const handleFarcasterAutoLogin = async () => {
-      if (appContext !== 'miniapp' || authenticated || !_ready) {
+      // Check if we're actually inside Farcaster client vs just on /mini route
+      const isInFarcasterClient = typeof window !== 'undefined' && 
+                                 (window.parent !== window || // iframe context
+                                  navigator.userAgent.includes('Farcaster') ||
+                                  window.location.search.includes('farcaster=true'))
+      
+      if (!isInFarcasterClient || authenticated || !_ready) {
+        console.log('🚫 Skipping Farcaster auto-login:', {
+          isInFarcasterClient,
+          authenticated,
+          ready: _ready,
+          reason: !isInFarcasterClient ? 'Not in Farcaster client' : 
+                  authenticated ? 'Already authenticated' : 
+                  !_ready ? 'Privy not ready' : 'Unknown'
+        })
         return
       }
 
@@ -695,7 +709,7 @@ export function UnifiedMiniAppProvider({
     }
 
     handleFarcasterAutoLogin()
-  }, [appContext, authenticated, _ready, initLoginToMiniApp, loginToMiniApp])
+  }, [authenticated, _ready, initLoginToMiniApp, loginToMiniApp])
 
   // ================================================
   // ACTION IMPLEMENTATIONS
@@ -732,7 +746,7 @@ export function UnifiedMiniAppProvider({
           throw new Error('Privy not available')
         }
         // Re-enable Privy login for web/testing contexts
-        await login()
+        login()
         dispatch({ type: 'SET_LOADING', payload: 'success' })
       }
     } catch (error) {
