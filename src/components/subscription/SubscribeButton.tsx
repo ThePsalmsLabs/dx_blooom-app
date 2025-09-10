@@ -1,6 +1,6 @@
 import React, { useCallback, ReactElement } from 'react'
 import { type Address } from 'viem'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
 // Import your new approval flow component
@@ -121,6 +121,10 @@ export function SubscribeButton({
 
   const walletUI = useWalletConnectionUI()
   const router = useRouter()
+  const pathname = usePathname()
+  
+  // Check if we're in mini app context
+  const isInMiniApp = pathname.startsWith('/mini')
 
     // ===== EVENT HANDLERS =====
 
@@ -133,9 +137,10 @@ export function SubscribeButton({
   const handleButtonClick = useCallback(() => {
     if (disabled) return
 
-    // Navigate to creator page with subscription section
-    router.push(`/creator/${creatorAddress}#subscribe`)
-  }, [disabled, router, creatorAddress])
+    // Navigate to creator page with subscription section - context-aware
+    const creatorPath = isInMiniApp ? `/mini/creator/${creatorAddress}#subscribe` : `/creator/${creatorAddress}#subscribe`
+    router.push(creatorPath)
+  }, [disabled, router, creatorAddress, isInMiniApp])
 
   /**
    * Handle Subscription Success

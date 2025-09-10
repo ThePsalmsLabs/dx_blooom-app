@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from 'react'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Eye,
   Lock,
@@ -60,7 +60,11 @@ export function ContentPreviewCard({
   userAddress
 }: ContentPreviewCardProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+  
+  // Check if we're in mini app context
+  const isInMiniApp = pathname.startsWith('/mini')
 
   // Get content data and access control information
   const contentQuery = useContentById(contentId)
@@ -70,10 +74,11 @@ export function ContentPreviewCard({
   )
   const creatorProfile = useCreatorProfile(contentQuery.data?.creator)
 
-  // Handle view content navigation
+  // Handle view content navigation - stay in same context
   const handleViewContent = useCallback(() => {
-    router.push(`/content/${contentId}`)
-  }, [router, contentId])
+    const contentPath = isInMiniApp ? `/mini/content/${contentId}` : `/content/${contentId}`
+    router.push(contentPath)
+  }, [router, contentId, isInMiniApp])
 
   // Truncate description to 100 characters and check if it needs "read more"
   const getTruncatedDescription = useCallback((description: string) => {

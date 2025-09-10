@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { 
   Users, 
   FileText, 
@@ -32,11 +32,16 @@ export function CreatorCard({
   onClick
 }: CreatorCardProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const creatorProfile = useCreatorProfile(creatorAddress)
+  
+  // Check if we're in mini app context
+  const isInMiniApp = pathname.startsWith('/mini')
 
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/creator/${creatorAddress}`)
+    const creatorPath = isInMiniApp ? `/mini/creator/${creatorAddress}` : `/creator/${creatorAddress}`
+    router.push(creatorPath)
   }
 
   if (creatorProfile.isLoading) {
@@ -106,7 +111,8 @@ export function CreatorCard({
               variant="outline"
               onClick={(e) => {
                 e.stopPropagation()
-                router.push(`/creator/${creatorAddress}`)
+                const creatorPath = isInMiniApp ? `/mini/creator/${creatorAddress}` : `/creator/${creatorAddress}`
+                router.push(creatorPath)
               }}
               size="sm"
               className="text-[10px] h-6 px-2 flex-1 min-w-0 hover:bg-primary hover:text-primary-foreground transition-colors"

@@ -151,8 +151,8 @@ function OptimizedBrowseCore() {
   const handleContentSelect = useCallback((contentId: bigint) => {
     console.log('🎯 Content selected:', contentId)
     
-    // Navigate to content page
-    router.push(`/content/${contentId}`)
+    // Navigate to mini content page to stay in mini app context
+    router.push(`/mini/content/${contentId}`)
   }, [router])
 
   // Handle real data toggle
