@@ -306,7 +306,7 @@ const OptimizedMiniAppProvider = memo<{
   const _router = useRouter()
   const _pathname = usePathname()
   const _chainId = useChainId()
-  const { user, logout, ready: _ready, authenticated } = usePrivy()
+  const { user, login, logout, ready: _ready, authenticated } = usePrivy()
 
   // Memoized computations
   const appContext = useMemoizedEnvironment()
@@ -411,26 +411,46 @@ const OptimizedMiniAppProvider = memo<{
     try {
       setLoadingState('loading')
       
-      // In MiniApp context, don't call Privy login - let Farcaster handle authentication
-      console.log('🔄 OptimizedMiniApp connectWallet called - letting Farcaster auto-connect handle it')
+      // Check if we're actually inside Farcaster client vs just on /mini route
+      const isInFarcasterClient = typeof window !== 'undefined' && 
+                                 (window.parent !== window || // iframe context
+                                  navigator.userAgent.includes('Farcaster') ||
+                                  window.location.search.includes('farcaster=true'))
       
-      // Check if we're already connected via Farcaster
-      if (authenticated) {
-        console.log('✅ Already authenticated via Privy/Farcaster')
+      if (isInFarcasterClient) {
+        // Only disable Privy when ACTUALLY in Farcaster client to prevent conflicts
+        console.log('🔄 Real Farcaster client detected - letting Farcaster auto-connect handle it')
+        
+        // Check if we're already connected via Farcaster
+        if (authenticated) {
+          console.log('✅ Already authenticated via Farcaster')
+          setLoadingState('success')
+          return
+        }
+        
+        // Wait for Farcaster auto-connect
+        console.log('⏳ Waiting for Farcaster auto-connect...')
         setLoadingState('success')
-        return
+      } else {
+        // Use Privy for web context or when testing /mini route outside Farcaster
+        console.log('🔄 Web context or /mini testing: Using Privy authentication')
+        if (!login) {
+          throw new Error('Privy not available')
+        }
+        // Re-enable Privy login for web/testing contexts
+        login()
+        setLoadingState('success')
       }
-      
-      // For MiniApp context, we should wait for Farcaster auto-connect
-      // Don't call login() as it conflicts with Farcaster connector
-      console.log('⏳ Waiting for Farcaster auto-connect...')
-      setLoadingState('success')
     } catch (error) {
+      console.error('Connection error:', error)
+      if (error instanceof Error && error.message && error.message.includes('Origin not allowed')) {
+        console.error('🚨 Privy domain configuration error - check Privy dashboard settings')
+      }
       setError(error as Error)
       setLoadingState('error')
       throw error
     }
-  }, [authenticated])
+  }, [authenticated, login])
 
   const disconnectWallet = useCallback(async (): Promise<void> => {
     if (!logout) return

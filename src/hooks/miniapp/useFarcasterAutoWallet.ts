@@ -93,31 +93,26 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
         await checkSDKReady()
 
         // In Farcaster mini app, the wallet should be automatically connected
-        // We just need to check if it's connected and log the status
+        // According to docs: "when a user enters a mini app, if they already have a connected wallet, 
+        // the connector will automatically connect to it (e.g., isConnected will be true)"
         if (isConnected && address) {
           console.log('✅ Farcaster mini app: Wallet automatically connected', {
             address: `${address.slice(0, 6)}...${address.slice(-4)}`,
             isConnected,
-            source: 'auto_detection'
+            source: 'farcaster_auto_connect'
           })
         } else {
-          console.log('⚠️ Farcaster mini app: Wallet not automatically connected, attempting manual connection')
+          // Don't try manual connection - this causes "Login with Farcaster not allowed" 
+          // According to Farcaster docs, auto-connect should happen automatically
+          console.log('⏳ Farcaster mini app: Waiting for automatic connection...')
+          console.log('🔍 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })))
           
-          // Find the Farcaster mini app connector
+          // Just log that we're waiting - don't force connection
           const farcasterConnector = connectors.find(connector => 
             connector.id === 'farcasterMiniApp' || 
             connector.name === 'Farcaster Mini App'
           )
-
-          console.log('🔍 Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })))
-          console.log('🎯 Farcaster connector found:', !!farcasterConnector)
-
-          if (farcasterConnector) {
-            console.log('🚀 Attempting Farcaster connector connection...')
-            await connect({ connector: farcasterConnector })
-          } else {
-            console.warn('❌ Farcaster mini app connector not found in available connectors')
-          }
+          console.log('🎯 Farcaster connector available:', !!farcasterConnector)
         }
       } catch (err) {
         console.error('❌ Auto-connect failed:', err)
@@ -135,22 +130,25 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
       setError(null)
 
       if (isInMiniApp) {
-        // In mini app context, find the Farcaster connector
-        const farcasterConnector = connectors.find(connector => 
-          connector.id === 'farcasterMiniApp' || 
-          connector.name === 'Farcaster Mini App'
-        )
-        console.log('farcasterConnector', farcasterConnector)
-
-        if (farcasterConnector) {
-          await connect({ connector: farcasterConnector })
-        } else {
-          throw new Error('Farcaster mini app connector not available')
+        // In Farcaster mini app, don't force manual connection
+        // According to Farcaster docs, wallet should auto-connect
+        console.log('🚫 Manual connect called in Farcaster - but auto-connect should handle this')
+        console.log('📱 Current connection state:', { isConnected, address })
+        
+        // If not connected after auto-connect failed, this usually means:
+        // 1. User doesn't have a wallet in Farcaster
+        // 2. Domain configuration issue  
+        // 3. Network issue
+        if (!isConnected) {
+          console.warn('⚠️ Auto-connect failed - this may indicate a configuration issue')
         }
+        
+        // Don't attempt manual connection as it conflicts with Farcaster's system
+        return
       } else {
-        // In web context, use the first available connector
+        // In web context, use normal connection flow
         if (connectors.length > 0) {
-          await connect({ connector: connectors[0] })
+          connect({ connector: connectors[0] })
         } else {
           throw new Error('No wallet connectors available')
         }

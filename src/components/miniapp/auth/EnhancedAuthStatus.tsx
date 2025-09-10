@@ -157,17 +157,28 @@ export function EnhancedAuthStatus({
   // Handle authentication actions
   const handleConnect = async () => {
     try {
-      if (miniAppAuth.environmentType === 'miniapp') {
-        // In MiniApp context, prioritize Farcaster auto-connect to prevent conflicts
-        console.log('🔄 MiniApp detected: Using Farcaster auto-connect to prevent Privy race condition')
-        // Don't call walletUI.connect() in MiniApp - let Farcaster handle it
+      // Check if we're actually inside Farcaster client vs just on /mini route
+      const isInFarcasterClient = typeof window !== 'undefined' && 
+                                 (window.parent !== window || // iframe context
+                                  navigator.userAgent.includes('Farcaster') ||
+                                  window.location.search.includes('farcaster=true'))
+      
+      if (miniAppAuth.environmentType === 'miniapp' && isInFarcasterClient) {
+        // Only disable Privy when ACTUALLY in Farcaster client to prevent conflicts
+        console.log('🔄 Real Farcaster client detected: Using Farcaster auto-connect to prevent Privy race condition')
+        // Don't call walletUI.connect() when in actual Farcaster client - let Farcaster handle it
         return
       } else {
-        // Only use Privy in web context
+        // Use Privy for web context or when testing /mini route outside Farcaster
+        console.log('🔄 Web context or /mini testing: Using Privy authentication')
         walletUI.connect()
       }
     } catch (error) {
       console.error('Authentication failed:', error)
+      // Show user-friendly error for Privy domain issues
+      if (error instanceof Error && error.message && error.message.includes('Origin not allowed')) {
+        console.error('🚨 Privy domain configuration error - check Privy dashboard settings')
+      }
     }
   }
 
