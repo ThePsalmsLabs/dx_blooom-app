@@ -13,7 +13,7 @@
  * - Integrates with your OrchestratedContentPurchaseCard for purchase flows
  * - Leverages your UnifiedContentBrowser when appropriate
  * - Adapts your content filtering patterns for mobile social browsing
- * - Integrates with AdaptiveNavigation for seamless routing
+ * - Integrates with MiniAppLayout
  * - Optimizes for Farcaster social context and instant engagement
  * 
  * Architecture Integration:
@@ -87,7 +87,7 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing content components
 import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import your existing types
 import { ContentCategory } from '@/types/contracts'
@@ -911,26 +911,9 @@ function MiniAppBrowseCore() {
   // ================================================
   
   return (
-    <div className="min-h-screen bg-background">
-      {/* Fixed Navigation Header */}
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation 
-            showMobile={true}
-            enableAnalytics={true}
-            onNavigate={(item) => {
-              trackBrowseInteraction('navigation_used', {
-                item_id: item.id,
-                item_label: item.label,
-                source: 'browse_header'
-              })
-            }}
-          />
-        </div>
-      </div>
-      
+    <MiniAppLayout>
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-6">
         <BrowseHeader />
         <SearchAndFilters />
         <ContentTabs />
@@ -964,8 +947,8 @@ function MiniAppBrowseCore() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </MiniAppLayout>
   )
 }
 

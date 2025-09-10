@@ -93,7 +93,7 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 
 // Import your existing sophisticated components
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 // Import utilities
@@ -215,7 +215,7 @@ function MiniAppDiscoveryCore() {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -711,7 +711,7 @@ function DiscoveryErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -754,7 +754,7 @@ function DiscoveryLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 

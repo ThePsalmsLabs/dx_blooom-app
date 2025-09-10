@@ -78,7 +78,7 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 
 // Import your existing sophisticated components
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import utilities
 import { formatAddress } from '@/lib/utils'
@@ -237,7 +237,7 @@ function MiniAppCreatorOnboardingCore() {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+            <MiniAppLayout
           </div>
         </div>
 
@@ -262,7 +262,7 @@ function MiniAppCreatorOnboardingCore() {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -985,7 +985,7 @@ function OnboardingErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -1028,7 +1028,7 @@ function OnboardingLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 

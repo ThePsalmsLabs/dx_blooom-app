@@ -99,7 +99,7 @@ import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvid
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing sophisticated components
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import utilities
 import { formatAddress } from '@/lib/utils'
@@ -257,13 +257,7 @@ function MiniAppUserProfileCore() {
   // Handle wallet connection requirement
   if (!walletUI.isConnected || !userAddress) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-          <div className="container mx-auto px-4 py-3">
-            <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
-          </div>
-        </div>
-
+      <MiniAppLayout>
         <div className="container mx-auto px-4 py-8 text-center space-y-6">
           <Wallet className="h-16 w-16 text-muted-foreground mx-auto" />
           <div className="space-y-2">
@@ -276,19 +270,12 @@ function MiniAppUserProfileCore() {
             Return to Home
           </Button>
         </div>
-      </div>
+      </MiniAppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile-Optimized Navigation Header */}
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
-        </div>
-      </div>
-
+    <MiniAppLayout>
       {/* Main Content */}
       <main className="container mx-auto px-4 py-4 space-y-6">
         {/* Profile Header */}
@@ -321,7 +308,7 @@ function MiniAppUserProfileCore() {
           onNotificationUpdate={handleNotificationUpdate}
         />
       </main>
-    </div>
+    </MiniAppLayout>
   )
 }
 
@@ -1089,13 +1076,7 @@ function ProfileErrorFallback({
   resetErrorBoundary: () => void
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
-        </div>
-      </div>
-
+    <MiniAppLayout>
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-md mx-auto">
           <CardHeader>
@@ -1123,7 +1104,7 @@ function ProfileErrorFallback({
           </CardContent>
         </Card>
       </div>
-    </div>
+    </MiniAppLayout>
   )
 }
 
@@ -1132,13 +1113,7 @@ function ProfileErrorFallback({
  */
 function ProfileLoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
-        </div>
-      </div>
-
+    <MiniAppLayout>
       <main className="container mx-auto px-4 py-4 space-y-6">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -1166,7 +1141,7 @@ function ProfileLoadingSkeleton() {
           </CardContent>
         </Card>
       </main>
-    </div>
+    </MiniAppLayout>
   )
 }
 

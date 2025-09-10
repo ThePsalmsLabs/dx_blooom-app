@@ -26,9 +26,9 @@ export function UnifiedMiniLayout({ children }: UnifiedMiniLayoutProps) {
       enableOptimizations={true}
       fallbackToWeb={true}
     >
-      <FullMiniAppLayout>
+      <FullMiniAppLayout
         {children}
-      </FullMiniAppLayout>
+      </FullMiniAppLayout
     </UnifiedMiniAppProvider>
   )
 }
@@ -45,7 +45,7 @@ export function MinimalMiniLayout({ children }: UnifiedMiniLayoutProps) {
     >
       <UnifiedMiniAppLayout showHeader={false} showSocialIndicator={false}>
         {children}
-      </UnifiedMiniAppLayout>
+      </UnifiedMiniAppLayout
     </UnifiedMiniAppProvider>
   )
 }

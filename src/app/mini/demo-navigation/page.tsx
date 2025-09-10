@@ -23,7 +23,7 @@ import {
 
 export default function DemoNavigationPage() {
   return (
-    <MiniAppLayout>
+    <MiniAppLayout
       <div className="container mx-auto px-4 py-8 space-y-8">
         {/* Hero Section */}
         <div className="text-center space-y-4">
@@ -215,6 +215,6 @@ export default function DemoNavigationPage() {
           </CardContent>
         </Card>
       </div>
-    </MiniAppLayout>
+    </MiniAppLayout
   )
 }

@@ -86,7 +86,7 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import your existing sophisticated components
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { CreatorSubscriptionPurchase } from '@/components/subscription'
 import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
@@ -197,7 +197,7 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+            <MiniAppLayout
           </div>
         </div>
 
@@ -218,7 +218,7 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -796,7 +796,7 @@ function CreatorProfileErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -839,7 +839,7 @@ function CreatorProfileLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 

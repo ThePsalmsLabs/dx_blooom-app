@@ -83,7 +83,7 @@ import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 
 // Import your existing sophisticated components
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { CreatorDashboard } from '@/components/creator/CreatorDashBoard'
 
 // Import utilities
@@ -177,7 +177,7 @@ function MiniAppCreatorDashboardCore() {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+            <MiniAppLayout
           </div>
         </div>
 
@@ -203,7 +203,7 @@ function MiniAppCreatorDashboardCore() {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+            <MiniAppLayout
           </div>
         </div>
 
@@ -228,7 +228,7 @@ function MiniAppCreatorDashboardCore() {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -774,7 +774,7 @@ function CreatorDashboardErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -817,7 +817,7 @@ function CreatorDashboardLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 

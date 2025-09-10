@@ -90,7 +90,7 @@ import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvid
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing sophisticated components
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import utilities
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils'
@@ -279,7 +279,7 @@ function MiniAppUserPortfolioCore() {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+            <MiniAppLayout
           </div>
         </div>
 
@@ -304,7 +304,7 @@ function MiniAppUserPortfolioCore() {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -911,7 +911,7 @@ function PortfolioErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 
@@ -954,7 +954,7 @@ function PortfolioLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation showMobile={true} enableAnalytics={true} />
+          <MiniAppLayout
         </div>
       </div>
 

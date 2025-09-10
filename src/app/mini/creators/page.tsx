@@ -11,7 +11,7 @@
  * - Builds on your existing useAllCreators.optimized hook and components
  * - Adapts your CreatorCard component for mobile social commerce
  * - Uses your proven filtering and pagination patterns
- * - Integrates with AdaptiveNavigation for seamless routing
+ * - Integrates with MiniAppLayout
  * - Optimizes for Farcaster social context and instant engagement
  * - Includes comprehensive analytics, error handling, and performance optimization
  * 
@@ -77,7 +77,7 @@ import { formatNumber } from '@/lib/utils'
 // Import your existing creator components
 import { CreatorCard } from '@/components/creators/CreatorCard'
 import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
-import { AdaptiveNavigation } from '@/components/layout/AdaptiveNavigation'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import your existing types
 import type { CreatorFilters } from '@/components/creators/CreatorsFilter'
@@ -890,7 +890,7 @@ function MiniAppCreatorsCore() {
   // ================================================
   
   return (
-    <div className="min-h-screen bg-background">
+    <MiniAppLayout>
       {/* Farcaster Embed for Creators Page */}
       <FarcasterEmbed
         title="Top Creators on Bloom"
@@ -900,25 +900,8 @@ function MiniAppCreatorsCore() {
         buttonTarget="https://dxbloom.com/mini/creators"
       />
 
-      {/* Fixed Navigation Header */}
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
-          <AdaptiveNavigation 
-            showMobile={true}
-            enableAnalytics={true}
-            onNavigate={(item) => {
-              trackCreatorInteraction('navigation_used', {
-                item_id: item.id,
-                item_label: item.label,
-                source: 'creators_header'
-              })
-            }}
-          />
-        </div>
-      </div>
-      
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-6">
         <CreatorsHeader />
         <SearchAndFilters />
         <CategoryTabs />
@@ -952,8 +935,8 @@ function MiniAppCreatorsCore() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </MiniAppLayout>
   )
 }
 
