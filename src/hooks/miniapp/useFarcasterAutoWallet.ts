@@ -113,6 +113,21 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
             connector.name === 'Farcaster Mini App'
           )
           console.log('🎯 Farcaster connector available:', !!farcasterConnector)
+          console.log('🔍 All connector IDs:', connectors.map(c => c.id))
+          console.log('🔍 All connector names:', connectors.map(c => c.name))
+          
+          // Critical insight: If isInMiniApp is true but isConnected is false,
+          // it could mean:
+          // 1. User has no wallet connected in Farcaster
+          // 2. Farcaster connector isn't working properly  
+          // 3. There's a provider configuration issue
+          console.log('📊 Connection status:', {
+            isInMiniApp,
+            isConnected,
+            address,
+            connectorsCount: connectors.length,
+            farcasterConnectorFound: !!farcasterConnector
+          })
         }
       } catch (err) {
         console.error('❌ Auto-connect failed:', err)

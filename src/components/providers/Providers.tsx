@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { UnifiedAppProvider } from '@/providers/UnifiedAppProvider'
 import { MiniKitProvider } from '@/components/providers/MiniKitProvider'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
@@ -22,13 +23,47 @@ export function Providers({ children }: ProvidersProps) {
     initializeErrorRecovery()
   }, [])
 
+  const pathname = usePathname()
+  const isMiniAppRoute = pathname?.startsWith('/mini')
+
   return (
     <OnchainKitProvider>
       <Web3Provider>
         <ThemeProvider>
           <AuthProvider>
             <MiniKitProvider>
-              <UnifiedMiniAppProvider>
+              {!isMiniAppRoute ? (
+                <UnifiedMiniAppProvider>
+                  <BackendHealthProvider>
+                    <UnifiedAppProvider>
+                      {children}
+                      {/* Enhanced Toaster with beautiful glassmorphism styling */}
+                      <Toaster
+                        position="top-right"
+                        duration={10000}
+                        expand
+                        richColors
+                        closeButton
+                        toastOptions={{
+                          style: {
+                            background: 'rgba(255, 255, 255, 0.15)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.25)',
+                            color: 'hsl(var(--foreground))',
+                            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                            borderRadius: '16px',
+                            padding: '16px',
+                            minWidth: '320px',
+                            maxWidth: '400px',
+                          },
+                          className: 'glassmorphism-toast',
+                        }}
+                      />
+                    </UnifiedAppProvider>
+                  </BackendHealthProvider>
+                </UnifiedMiniAppProvider>
+              ) : (
                 <BackendHealthProvider>
                   <UnifiedAppProvider>
                     {children}
@@ -57,7 +92,7 @@ export function Providers({ children }: ProvidersProps) {
                     />
                   </UnifiedAppProvider>
                 </BackendHealthProvider>
-              </UnifiedMiniAppProvider>
+              )}
             </MiniKitProvider>
           </AuthProvider>
         </ThemeProvider>
