@@ -163,7 +163,7 @@ function MiniAppContentCard({
 
 function MiniAppContentSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4">
       {Array.from({ length: 6 }).map((_, i) => (
         <Card key={i} className="overflow-hidden">
           <div className="aspect-video bg-muted animate-pulse" />
@@ -420,7 +420,7 @@ function MiniAppContentBrowserCore({
                 </Button>
               </div>
             ) : hasContent ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 {effectiveContentData?.contentIds?.map((contentId: bigint) => (
                   <MiniAppContentCard
                     key={contentId.toString()}
@@ -524,7 +524,7 @@ function MiniAppContentBrowserCore({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
           {effectiveContentData?.contentIds?.map((contentId) => (
             <MiniAppContentCard
               key={contentId.toString()}

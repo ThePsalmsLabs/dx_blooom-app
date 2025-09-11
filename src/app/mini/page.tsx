@@ -62,6 +62,7 @@ import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
 import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
+import ContentCarousel from '@/components/miniapp/ContentCarousel'
 import { NavigationDebug } from '@/components/debug/NavigationDebug'
 
 // ================================================
@@ -494,10 +495,12 @@ function MiniAppHomeCore() {
 
     return (
       <div className="space-y-4">
-        <MiniAppContentBrowser
-          contentIds={featuredContentData.contentIds}
-          itemsPerPage={6}
+        <ContentCarousel
+          contentIds={featuredContentData.contentIds.slice(0, 8)}
+          title="Featured Content"
+          subtitle="Discover trending premium content from top creators"
           onContentSelect={(contentId: bigint) => handleContentSelect(contentId.toString())}
+          showScrollIndicators={true}
           className="w-full"
         />
       </div>

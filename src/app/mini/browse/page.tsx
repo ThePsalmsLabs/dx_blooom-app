@@ -383,9 +383,9 @@ function MiniAppBrowseLoadingSkeleton() {
         </div>
         
         {/* Content Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full" />
+            <Skeleton key={i} className="h-32 w-full" />
           ))}
         </div>
       </div>
@@ -833,9 +833,9 @@ function MiniAppBrowseCore() {
   const ContentSection = React.memo(() => {
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full" />
+            <Skeleton key={i} className="h-32 w-full" />
           ))}
         </div>
       )
