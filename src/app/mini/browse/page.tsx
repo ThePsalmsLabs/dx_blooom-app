@@ -82,7 +82,8 @@ import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimiza
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useContentByCategory } from '@/hooks/contracts/content/useContentDiscovery'
-import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
+import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 
 // Import your existing content components
 import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
@@ -436,10 +437,11 @@ function MiniAppBrowseCore() {
     isAvailable: hasSocialContext
   } = socialState
   
-  // Get wallet connection status using MiniApp-specific hook
-  const walletUI = useMiniAppWalletUI()
-  const fullAddress = walletUI.address
-  const isConnected = walletUI.isConnected
+  // Get wallet connection status using direct Farcaster hook
+  const walletUI = useFarcasterAutoWallet()
+  const fullAddress = getSafeAddress(walletUI.address)
+  const isConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
+  const formattedAddress = formatWalletAddress(walletUI.address)
   
   // Remove excessive creator registration check (aligned with web app optimization)
   // Only check when actually needed for specific actions
@@ -631,20 +633,11 @@ function MiniAppBrowseCore() {
 
         <div className="flex items-center gap-2">
           {/* Wallet Status */}
-          {isConnected && walletUI.formattedAddress && (
+          {isConnected && formattedAddress && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-md">
               <div className="h-2 w-2 bg-green-500 rounded-full" />
               <span className="text-xs font-medium text-green-800">Connected</span>
-              <span className="text-xs font-mono text-green-700">{walletUI.formattedAddress}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-xs h-5 px-2 text-green-700 hover:text-green-800"
-                onClick={walletUI.disconnect}
-                title="Disconnect Wallet"
-              >
-                Logout
-              </Button>
+              <span className="text-xs font-mono text-green-700">{formattedAddress}</span>
             </div>
           )}
 

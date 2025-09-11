@@ -26,7 +26,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useWalletConnectionUI } from '@/hooks/ui/integration'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
+import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   Users,
@@ -411,7 +412,11 @@ function MiniAppCreatorsCore() {
   // Production state management
   const router = useRouter()
   const searchParams = useSearchParams()
-  const walletUI = useWalletConnectionUI()
+  // Get wallet connection status using direct Farcaster hook
+  const walletUI = useFarcasterAutoWallet()
+  const fullAddress = getSafeAddress(walletUI.address)
+  const isConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
+  const formattedAddress = formatWalletAddress(walletUI.address)
   const [creatorsState, setCreatorsState] = useState<MiniAppCreatorsState>({
     activeTab: (searchParams?.get('tab') as MiniAppCreatorsState['activeTab']) || 'all',
     viewMode: 'grid',
@@ -440,7 +445,7 @@ function MiniAppCreatorsCore() {
     userProfile,
     isAvailable: hasSocialContext
   } = socialState
-  const { data: isCreator } = useIsCreatorRegistered(walletUI.address as `0x${string}` | undefined)
+  const { data: isCreator } = useIsCreatorRegistered(fullAddress)
   
   // Enhanced creators data with your existing patterns
   const filters: CreatorFilters = useMemo(() => ({
@@ -575,13 +580,13 @@ function MiniAppCreatorsCore() {
       trackCreatorInteraction('page_viewed', {
         tab: creatorsState.activeTab,
         has_social_context: hasSocialContext,
-        is_connected: walletUI.isConnected,
+        is_connected: isConnected,
         is_creator: isCreator || false,
         user_fid: userProfile?.fid || null,
         total_creators: stats.totalCreators
       })
     }
-  }, [loadingState, isMiniApp, creatorsState.activeTab, hasSocialContext, walletUI.isConnected, isCreator, userProfile, stats.totalCreators, trackCreatorInteraction])
+  }, [loadingState, isMiniApp, creatorsState.activeTab, hasSocialContext, isConnected, isCreator, userProfile, stats.totalCreators, trackCreatorInteraction])
   
   // ================================================
   // PRODUCTION RENDER COMPONENTS

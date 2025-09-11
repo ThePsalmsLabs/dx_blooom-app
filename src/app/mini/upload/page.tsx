@@ -77,7 +77,8 @@ import {
 import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks
-import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
+import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 
@@ -134,11 +135,10 @@ function MiniAppContentUploadCore() {
 
   // Mini app context and hooks
   const miniAppUtils = useMiniAppUtils()
-  const walletUI = useMiniAppWalletUI()
+  const walletUI = useFarcasterAutoWallet()
 
-  const userAddress = walletUI.address && typeof walletUI.address === 'string'
-    ? walletUI.address as `0x${string}`
-    : undefined
+  const userAddress = getSafeAddress(walletUI.address)
+  const isConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
 
   // Creator verification
   const creatorProfile = useCreatorProfile(userAddress)
@@ -231,7 +231,7 @@ function MiniAppContentUploadCore() {
   }, [router])
 
   // Handle wallet connection requirement
-  if (!walletUI.isConnected || !userAddress) {
+  if (!isConnected || !userAddress) {
     return (
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">

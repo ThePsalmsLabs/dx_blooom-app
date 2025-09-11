@@ -96,7 +96,8 @@ import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
-import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
+import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 
 // Import your existing sophisticated components
 import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
@@ -190,11 +191,23 @@ function MiniAppUserProfileCore() {
   // Mini app context and hooks
   const miniAppUtils = useMiniAppUtils()
   const socialState = useSocialState()
-  const walletUI = useMiniAppWalletUI()
+  const walletUI = useFarcasterAutoWallet()
 
-  const userAddress = walletUI.address && typeof walletUI.address === 'string'
-    ? walletUI.address as `0x${string}`
-    : undefined
+  const userAddress = getSafeAddress(walletUI.address)
+  const formattedAddress = formatWalletAddress(walletUI.address)
+  const isFullyConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
+
+  // Debug wallet state - temporary for debugging
+  useEffect(() => {
+    console.log('🔍 Profile page wallet state:', {
+      isConnected: walletUI.isConnected,
+      address: walletUI.address,
+      userAddress: userAddress,
+      formattedAddress: formattedAddress,
+      isFullyConnected: isFullyConnected,
+      addressType: typeof walletUI.address
+    })
+  }, [walletUI.isConnected, walletUI.address, userAddress, formattedAddress, isFullyConnected])
 
   /**
    * Tab Change Handler
@@ -254,8 +267,8 @@ function MiniAppUserProfileCore() {
     }
   }, [userAddress])
 
-  // Handle wallet connection requirement
-  if (!walletUI.isConnected || !userAddress) {
+  // Handle wallet connection requirement - use utility function
+  if (!isFullyConnected) {
     return (
         <div className="container mx-auto px-4 py-8 text-center space-y-6">
           <Wallet className="h-16 w-16 text-muted-foreground mx-auto" />
@@ -279,7 +292,7 @@ function MiniAppUserProfileCore() {
         {/* Profile Header */}
         <ProfileHeader
           onGoBack={handleGoBack}
-          userAddress={userAddress}
+          userAddress={userAddress || '0x0'}
           profileData={profileData}
           isEditing={isEditing}
           onEditToggle={() => setIsEditing(!isEditing)}
@@ -299,7 +312,7 @@ function MiniAppUserProfileCore() {
           profileData={profileData}
           privacySettings={privacySettings}
           notificationSettings={notificationSettings}
-          userAddress={userAddress}
+          userAddress={userAddress || '0x0'}
           isEditing={isEditing}
           onProfileUpdate={handleProfileUpdate}
           onPrivacyUpdate={handlePrivacyUpdate}
