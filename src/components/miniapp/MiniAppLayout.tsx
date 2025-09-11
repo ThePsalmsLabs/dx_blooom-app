@@ -127,7 +127,7 @@ export function MiniAppLayout({ children, className }: MiniAppLayoutProps) {
         </Suspense>
         
         {/* Main Content */}
-        <main className="pt-20 pb-32 min-h-screen">
+        <main className="pt-14 pb-32 min-h-screen">
           <Suspense fallback={<MiniAppLayoutSkeleton />}>
             {children}
           </Suspense>

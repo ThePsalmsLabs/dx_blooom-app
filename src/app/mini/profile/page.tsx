@@ -58,7 +58,8 @@ import {
   Key,
   BellRing,
   Volume2,
-  VolumeX
+  VolumeX,
+  Crown
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -97,6 +98,7 @@ import { cn } from '@/lib/utils'
 // Import your existing business logic hooks
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
+import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 
 // Import your existing sophisticated components
@@ -196,6 +198,9 @@ function MiniAppUserProfileCore() {
   const userAddress = getSafeAddress(walletUI.address)
   const formattedAddress = formatWalletAddress(walletUI.address)
   const isFullyConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
+  
+  // Get creator registration status
+  const creatorRegistration = useIsCreatorRegistered(userAddress)
 
   // Enhanced debug wallet state - temporary for debugging
   useEffect(() => {
@@ -319,6 +324,65 @@ function MiniAppUserProfileCore() {
             </Button>
           </div>
         </div>
+    )
+  }
+
+  // Handle creator registration status - redirect to appropriate page
+  if (isFullyConnected && userAddress && !creatorRegistration.isLoading) {
+    // If user is a registered creator, redirect to dashboard
+    if (creatorRegistration.data === true) {
+      router.push('/mini/dashboard')
+      return (
+        <div className="container mx-auto px-4 py-8 text-center space-y-6">
+          <Crown className="h-16 w-16 text-primary mx-auto" />
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold">Redirecting to Dashboard</h1>
+            <p className="text-muted-foreground">
+              Taking you to your creator dashboard...
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        </div>
+      )
+    }
+    
+    // If user is NOT a registered creator, redirect to onboarding
+    if (creatorRegistration.data === false) {
+      router.push('/mini/onboard')
+      return (
+        <div className="container mx-auto px-4 py-8 text-center space-y-6">
+          <User className="h-16 w-16 text-muted-foreground mx-auto" />
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold">Become a Creator</h1>
+            <p className="text-muted-foreground">
+              Complete your creator registration to access all features
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        </div>
+      )
+    }
+  }
+
+  // Show loading state while checking creator status
+  if (creatorRegistration.isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center space-y-6">
+        <User className="h-16 w-16 text-muted-foreground mx-auto" />
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold">Loading Profile</h1>
+          <p className="text-muted-foreground">
+            Checking your account status...
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </div>
     )
   }
 

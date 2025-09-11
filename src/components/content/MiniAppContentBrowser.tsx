@@ -448,38 +448,6 @@ function MiniAppContentBrowserCore({
   // Show content for connected users
   return (
     <div id="miniapp-content-browser" className={cn("space-y-4", className)}>
-      {/* Welcome Message for New Users */}
-      <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-            <Wallet className="h-4 w-4 text-green-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-medium text-green-800">Welcome! 🎉</h3>
-            <p className="text-xs text-green-700">
-              You're connected and ready to explore premium content. Browse, purchase, and enjoy exclusive media with instant USDC payments.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="text-green-700 hover:text-green-800" title="Switch Wallet">
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-green-700 hover:text-green-800"
-              onClick={() => {
-                if (window.confirm('Are you sure you want to disconnect your wallet?')) {
-                  walletUI.disconnect();
-                }
-              }}
-              title="Disconnect Wallet"
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </div>
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold flex items-center gap-2">

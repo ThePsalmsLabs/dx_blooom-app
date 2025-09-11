@@ -228,12 +228,27 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
   const handleConnect = useCallback(async () => {
     try {
       triggerHaptic('medium')
-      await connectWallet()
+      if (isConnected) {
+        // If connected, disconnect the wallet
+        if (window.confirm('Disconnect your wallet?')) {
+          // For Farcaster auto wallet, we need to manually disconnect
+          if (typeof window !== 'undefined' && (window as any).parent) {
+            // In MiniApp context, reload to clear state
+            window.location.reload()
+          } else {
+            // In regular context, try to disconnect
+            window.location.reload()
+          }
+        }
+      } else {
+        // If not connected, connect the wallet
+        await connectWallet()
+      }
     } catch (error) {
-      console.error('Connection failed:', error)
+      console.error('Wallet action failed:', error)
       triggerHaptic('heavy')
     }
-  }, [connectWallet])
+  }, [connectWallet, isConnected])
   
   const handleThemeToggle = useCallback(() => {
     setIsThemeTogglePressed(true)
@@ -260,13 +275,18 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
         disabled={isConnecting}
         className={cn(
           "relative h-11 px-4 rounded-full overflow-hidden",
-          "bg-gradient-to-r from-blue-600/90 to-purple-600/90",
           "backdrop-blur-xl border border-white/20",
-          "shadow-lg shadow-blue-500/25",
-          "transition-all duration-300",
-          "hover:shadow-xl hover:shadow-blue-500/40",
-          "active:scale-95",
-          isConnected && "from-green-500/90 to-emerald-500/90 shadow-green-500/25"
+          "shadow-lg transition-all duration-300",
+          "hover:shadow-xl active:scale-95",
+          isConnected ? [
+            "bg-gradient-to-r from-green-500/90 to-emerald-500/90",
+            "shadow-green-500/25 hover:shadow-green-500/40",
+            "hover:from-red-500/90 hover:to-red-600/90",
+            "hover:shadow-red-500/40"
+          ] : [
+            "bg-gradient-to-r from-blue-600/90 to-purple-600/90",
+            "shadow-blue-500/25 hover:shadow-blue-500/40"
+          ]
         )}
       >
         {/* Animated background gradient */}
@@ -291,7 +311,7 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
           </motion.div>
           
           <span className="font-medium text-sm">
-            {isInMiniApp ? 'Connect' : connectionStatus.text}
+            {isConnected ? 'Connected' : connectionStatus.text}
           </span>
           
           {isConnected && formattedAddress && (

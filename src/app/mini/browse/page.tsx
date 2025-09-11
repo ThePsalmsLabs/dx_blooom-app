@@ -786,25 +786,30 @@ function MiniAppBrowseCore() {
   SearchAndFilters.displayName = 'SearchAndFilters'
   
   const ContentTabs = React.memo(() => (
-    <div className="w-full">
+    <div className="w-full px-1">
       <Tabs value={browseState.activeTab} onValueChange={(value) => handleTabChange(value as MiniAppBrowseState['activeTab'])} className="w-full">
-        <div className="w-full overflow-hidden">
-          <TabsList className="flex flex-row gap-1 w-full overflow-x-auto scrollbar-hide p-1 bg-muted/50 rounded-lg min-h-[40px]">
-        {CONTENT_TABS.map((tab) => (
-          <TabsTrigger 
-            key={tab.id} 
-            value={tab.id}
-            className="flex items-center gap-1 text-xs px-3 py-2 min-w-0 flex-shrink-0 whitespace-nowrap rounded-md transition-all duration-200 hover:bg-background/80"
-          >
-            <tab.icon className="h-3 w-3 flex-shrink-0" />
-            <span className="hidden xs:inline text-xs font-medium truncate">{tab.label}</span>
-            {tab.badge && (
-              <Badge variant="secondary" className="text-xs ml-1 hidden sm:inline-flex px-1 py-0">
-                {tab.badge}
-              </Badge>
-            )}
-          </TabsTrigger>
-        ))}
+        <div className="w-full">
+          <TabsList className="grid grid-cols-4 w-full bg-card border border-border/50 rounded-xl shadow-sm p-1.5 min-h-[48px]">
+            {CONTENT_TABS.map((tab) => (
+              <TabsTrigger 
+                key={tab.id} 
+                value={tab.id}
+                className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-lg transition-all duration-300 hover:scale-[0.98] hover:bg-muted/60 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 min-h-[40px]"
+              >
+                <tab.icon className="h-4 w-4 flex-shrink-0" />
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+                  {tab.badge && (
+                    <Badge 
+                      variant={browseState.activeTab === tab.id ? "secondary" : "outline"} 
+                      className="text-[8px] h-3 px-1 leading-none hidden sm:inline-flex"
+                    >
+                      {tab.badge}
+                    </Badge>
+                  )}
+                </div>
+              </TabsTrigger>
+            ))}
           </TabsList>
         </div>
         
