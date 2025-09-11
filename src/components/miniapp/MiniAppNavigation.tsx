@@ -395,7 +395,6 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
               isActive ? "text-white" : "text-gray-400",
               "group-hover:text-white"
             )}
-            style={{ color: isActive ? item.color : undefined }}
           />
         </motion.div>
         
