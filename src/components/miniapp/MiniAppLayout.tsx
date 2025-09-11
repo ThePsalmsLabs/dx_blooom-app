@@ -14,7 +14,6 @@
 
 import React, { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { ThemeProvider } from 'next-themes'
 import MiniAppNavigation from './MiniAppNavigation'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle, RefreshCw } from 'lucide-react'

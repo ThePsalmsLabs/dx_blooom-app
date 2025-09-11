@@ -88,6 +88,7 @@ import React, {
   useSocialState
 } from '@/contexts/UnifiedMiniAppProvider'
 import { OptimizedMiniAppProvider } from '@/components/providers/OptimizedMiniAppProvider'
+import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
   import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
 import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
@@ -1193,19 +1194,21 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		  </div>
 		)}
 		<FastRPCProvider>
-		  <OptimizedMiniAppProvider
-			enableAnalytics={enableAnalytics}
-			enableOptimizations={true}
-			fallbackToWeb={fallbackToWeb}
-		  >
-			<Suspense fallback={<LoadingComponent progress={90} />}>
-			  <div className={cn('enhanced-miniapp-layout', className)}>
-				<MiniAppLayoutContent>
-				  {children}
-				</MiniAppLayoutContent>
-			  </div>
-			</Suspense>
-		  </OptimizedMiniAppProvider>
+		  <ThemeProvider defaultTheme="system" enableTransitions={true}>
+			<OptimizedMiniAppProvider
+			  enableAnalytics={enableAnalytics}
+			  enableOptimizations={true}
+			  fallbackToWeb={fallbackToWeb}
+			>
+			  <Suspense fallback={<LoadingComponent progress={90} />}>
+				<div className={cn('enhanced-miniapp-layout', className)}>
+				  <MiniAppLayoutContent>
+					{children}
+				  </MiniAppLayoutContent>
+				</div>
+			  </Suspense>
+			</OptimizedMiniAppProvider>
+		  </ThemeProvider>
 		</FastRPCProvider>
 	  </ErrorBoundary>
 	)

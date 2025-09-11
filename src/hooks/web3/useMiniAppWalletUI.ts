@@ -12,12 +12,10 @@
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react'
-import { useChainId, useDisconnect } from 'wagmi'
-import { useWalletConnectionUI } from '@/hooks/ui/integration'
+import { useChainId, useDisconnect, useSwitchChain } from 'wagmi'
 import { formatAddress } from '@/lib/utils'
-import { useMiniAppWalletConnect } from './useMiniAppWalletConnect'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import type { EnhancedWalletConnectionUI } from '@/hooks/ui/integration'
-import type { Connector } from 'wagmi'
 import {
   storeWalletState,
   sendWalletStateToParent,
@@ -28,38 +26,112 @@ import {
  * MiniApp Wallet UI Hook
  * 
  * This hook provides the same interface as useWalletConnectionUI but uses
- * the MiniApp-specific wallet connection logic underneath. This ensures
- * that the AppLayout components receive the correct wallet state when
- * running in MiniApp context.
+ * Farcaster wallet connection logic specifically for MiniApp contexts.
+ * This ensures proper integration with Farcaster mini app wallet system.
  */
 export function useMiniAppWalletUI(): EnhancedWalletConnectionUI {
-  // Use unified wallet connection UI directly (aligned with web app)
-  // This removes the mock implementation and uses the same patterns as the main web app
-
-  // Use unified wallet connection UI directly - this aligns with web app patterns
-  const walletUI = useWalletConnectionUI()
+  const farcasterWallet = useFarcasterAutoWallet()
   const chainId = useChainId()
-  
-  // Simplified miniapp communication for wallet state
+  const { disconnect } = useDisconnect()
+  const { switchChain } = useSwitchChain()
+  const [error, setError] = useState<string | null>(null)
+  const [showWalletModal, setShowWalletModal] = useState(false)
+
+  const formattedAddress = useMemo(() => {
+    return farcasterWallet.address ? formatAddress(farcasterWallet.address as `0x${string}`) : null
+  }, [farcasterWallet.address])
+
+  const isCorrectNetwork = useMemo(() => {
+    return [8453, 84532].includes(chainId)
+  }, [chainId])
+
+  const chainName = useMemo(() => {
+    switch (chainId) {
+      case 8453: return 'Base Mainnet'
+      case 84532: return 'Base Sepolia'
+      default: return 'Unsupported Network'
+    }
+  }, [chainId])
+
+  const handleConnect = useCallback(() => {
+    farcasterWallet.connect().catch(err => {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet'
+      setError(errorMessage)
+    })
+  }, [farcasterWallet.connect])
+
+  const handleDisconnect = useCallback(() => {
+    disconnect()
+    setError(null)
+  }, [disconnect])
+
+  const handleSwitchNetwork = useCallback(() => {
+    if (switchChain) {
+      switchChain({ chainId: 8453 })
+    }
+  }, [switchChain])
+
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
+  // Communicate wallet state to parent window
   useEffect(() => {
-    if (isMiniAppContext() && walletUI.isConnected && walletUI.address) {
+    if (isMiniAppContext() && farcasterWallet.isConnected && farcasterWallet.address) {
       const walletState = {
-        isConnected: walletUI.isConnected,
-        address: walletUI.address,
+        isConnected: farcasterWallet.isConnected,
+        address: farcasterWallet.address,
         chainId: chainId
       }
 
       try {
-        // Store in localStorage for persistence (aligned with web app)
         storeWalletState(walletState)
-        // Send to parent window for communication
         sendWalletStateToParent(walletState)
       } catch (error) {
         console.error('❌ Failed to communicate wallet state:', error)
       }
     }
-  }, [walletUI.isConnected, walletUI.address, chainId])
-  
-  // Return the same interface as web app (no mock implementations)
-  return walletUI
+  }, [farcasterWallet.isConnected, farcasterWallet.address, chainId])
+
+  return useMemo((): EnhancedWalletConnectionUI => ({
+    isConnected: farcasterWallet.isConnected,
+    isConnecting: farcasterWallet.isConnecting,
+    address: farcasterWallet.address || null,
+    formattedAddress,
+    chainName,
+    isCorrectNetwork,
+    accountType: farcasterWallet.isConnected ? 'eoa' : 'disconnected',
+    hasSmartAccount: false,
+    canUseGaslessTransactions: false,
+    smartAccountAddress: null,
+    isSmartAccountDeployed: false,
+    canUpgradeToSmartAccount: false,
+    upgradeToSmartAccount: async () => {},
+    isUpgrading: false,
+    connect: handleConnect,
+    disconnect: handleDisconnect,
+    switchNetwork: handleSwitchNetwork,
+    error: error || farcasterWallet.error?.message || null,
+    clearError,
+    showNetworkWarning: !isCorrectNetwork && farcasterWallet.isConnected,
+    showSmartAccountBenefits: false,
+    showWalletModal,
+    setShowWalletModal,
+    connectors: [],
+    handleConnectorSelect: () => {}
+  }), [
+    farcasterWallet.isConnected,
+    farcasterWallet.isConnecting,
+    farcasterWallet.address,
+    farcasterWallet.error,
+    formattedAddress,
+    chainName,
+    isCorrectNetwork,
+    handleConnect,
+    handleDisconnect,
+    handleSwitchNetwork,
+    error,
+    clearError,
+    showWalletModal
+  ])
 }

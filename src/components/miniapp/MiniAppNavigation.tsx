@@ -59,7 +59,7 @@ import { cn } from '@/lib/utils'
 // Import hooks
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@/components/providers/ThemeProvider'
 
 // ================================================
 // ULTRA MODERN TYPE DEFINITIONS
