@@ -292,8 +292,28 @@ function MiniAppUserProfileCore() {
     }
   }, [userAddress])
 
-  // Handle wallet connection requirement - enhanced check with manual fallback
-  const shouldShowWalletPrompt = !isFullyConnected && !(walletUI.isConnected && walletUI.address)
+  // Handle wallet connection requirement - consistent with other pages
+  const shouldShowWalletPrompt = !isFullyConnected
+  
+  // Check for transitional state where wallet is connected but address is still loading
+  const isTransitionalState = walletUI.isConnected && !walletUI.address && !walletUI.isConnecting
+  
+  if (isTransitionalState) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center space-y-6">
+        <Loader2 className="h-16 w-16 text-primary mx-auto animate-spin" />
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold">Loading Wallet Info</h1>
+          <p className="text-muted-foreground">
+            Getting your wallet details...
+          </p>
+          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+            Debug: Connected={walletUI.isConnected ? 'Yes' : 'No'}, Address={walletUI.address ? 'Yes' : 'No'}
+          </div>
+        </div>
+      </div>
+    )
+  }
   
   if (shouldShowWalletPrompt) {
     return (
@@ -328,6 +348,7 @@ function MiniAppUserProfileCore() {
   }
 
   // Handle creator registration status - redirect to appropriate page
+  // Wait for both connection AND address to be available before proceeding
   if (isFullyConnected && userAddress && !creatorRegistration.isLoading) {
     // If user is a registered creator, redirect to dashboard
     if (creatorRegistration.data === true) {
@@ -378,6 +399,9 @@ function MiniAppUserProfileCore() {
           <p className="text-muted-foreground">
             Checking your account status...
           </p>
+          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+            Connected={walletUI.isConnected ? 'Yes' : 'No'}, Address={walletUI.address ? 'Yes' : 'No'}
+          </div>
         </div>
         <div className="flex justify-center">
           <Loader2 className="h-6 w-6 animate-spin" />
