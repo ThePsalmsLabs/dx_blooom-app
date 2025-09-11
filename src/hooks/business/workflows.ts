@@ -1726,9 +1726,12 @@ export function useX402ContentPurchaseFlow(
   })
   
   const canAfford = useMemo(() => {
+    // While loading balance/content, assume user can afford to prevent false negatives
+    // The loading state will be handled at the UI level
+    if (userBalance.isLoading || contentData.isLoading) return true
     if (!userBalance.data || !contentData.data) return false
     return userBalance.data >= contentData.data.payPerViewPrice
-  }, [userBalance.data, contentData.data])
+  }, [userBalance.data, userBalance.isLoading, contentData.data, contentData.isLoading])
 
   const needsApproval = useMemo(() => {
     if (!tokenAllowance.data || !contentData.data) return false

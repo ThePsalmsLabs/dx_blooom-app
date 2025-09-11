@@ -447,6 +447,19 @@ export function MiniAppPurchaseButton({
       }
     }
 
+    // Handle loading states FIRST - prevent false negatives during RPC calls
+    if (safePurchaseFlow.isLoading) {
+      return {
+        variant: 'outline',
+        onClick: () => {},
+        disabled: true,
+        icon: Loader2,
+        text: 'Loading...',
+        className: 'cursor-wait',
+        iconClassName: 'animate-spin'
+      }
+    }
+
     // Handle processing states (including new approval_confirmed state)
     const isProcessing = buttonState.isProcessingAction || 
                         safePurchaseFlow.flowState.step === 'purchasing' ||
