@@ -12,7 +12,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Eye, Play, FileText, Star } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, Button, Badge, Skeleton } from '@/components/ui/index'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 import { useContentById, useCreatorProfile, useHasContentAccess } from '@/hooks/contracts/core'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
@@ -175,12 +175,12 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
           
           {/* Creator */}
           <div className="text-xs text-muted-foreground">
-            by {creator?.name || 'Unknown Creator'}
+            by {formatAddress(content.creator)}
           </div>
           
           {/* Price */}
           <div className="font-bold text-sm text-primary">
-            {formatCurrency(content.price, 6, 'USDC')}
+            {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
           </div>
         </div>
         
