@@ -11,7 +11,6 @@
  * - Builds on your existing useAllCreators.optimized hook and components
  * - Adapts your CreatorCard component for mobile social commerce
  * - Uses your proven filtering and pagination patterns
- * - Integrates with MiniAppLayout
  * - Optimizes for Farcaster social context and instant engagement
  * - Includes comprehensive analytics, error handling, and performance optimization
  * 

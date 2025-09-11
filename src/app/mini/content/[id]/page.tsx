@@ -247,7 +247,6 @@ function MiniAppContentDisplayCore({ params }: ContentDisplayPageProps) {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <MiniAppLayout
           </div>
         </div>
 
@@ -268,7 +267,6 @@ function MiniAppContentDisplayCore({ params }: ContentDisplayPageProps) {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 
@@ -741,7 +739,6 @@ function ContentDisplayErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 
@@ -784,7 +781,6 @@ function ContentDisplayLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 

@@ -10,7 +10,6 @@
  * Web3-aware state management while adding MiniApp-specific optimizations for social commerce.
  * 
  * Key Architectural Integration:
- * - Extends your existing AppLayout and MiniAppLayout
  * - Integrates seamlessly with Components 1-4 (types, detection, provider, wagmi config)
  * - Builds upon your sophisticated user role management and creator registration system
  * - Uses your established error handling and loading state patterns
@@ -1390,7 +1389,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	)
   }
 
-  /**
+/**
    * Export types for external use
    */
   export type {

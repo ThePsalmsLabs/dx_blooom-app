@@ -237,7 +237,6 @@ function MiniAppCreatorOnboardingCore() {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <MiniAppLayout
           </div>
         </div>
 
@@ -262,7 +261,6 @@ function MiniAppCreatorOnboardingCore() {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 
@@ -985,7 +983,6 @@ function OnboardingErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 
@@ -1028,7 +1025,6 @@ function OnboardingLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 

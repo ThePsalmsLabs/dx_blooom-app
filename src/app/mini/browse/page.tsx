@@ -13,7 +13,6 @@
  * - Integrates with your OrchestratedContentPurchaseCard for purchase flows
  * - Leverages your UnifiedContentBrowser when appropriate
  * - Adapts your content filtering patterns for mobile social browsing
- * - Integrates with MiniAppLayout
  * - Optimizes for Farcaster social context and instant engagement
  * 
  * Architecture Integration:
@@ -952,28 +951,13 @@ function MiniAppBrowseCore() {
   )
 }
 
-// ================================================
-// PRODUCTION EXPORTS
-// ================================================
-
-/**
- * MiniApp Browse Page - Production Ready
- * Wrapped with error boundary and suspense for production reliability
- */
+// Export the main component
 export default function MiniAppBrowsePage() {
   return (
     <ErrorBoundary
       FallbackComponent={MiniAppBrowseErrorFallback}
       onError={(error, errorInfo) => {
         console.error('MiniApp Browse Page error:', error, errorInfo)
-        // In production, send to your error reporting service
-        if (typeof window !== 'undefined' && (window as unknown as { analytics?: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics) {
-          (window as unknown as { analytics: { track: (event: string, properties: Record<string, unknown>) => void } }).analytics.track('miniapp_browse_error', {
-            error: error.message,
-            stack: error.stack,
-            errorInfo
-          })
-        }
       }}
     >
       <Suspense fallback={<MiniAppBrowseLoadingSkeleton />}>

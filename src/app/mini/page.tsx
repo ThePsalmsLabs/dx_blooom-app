@@ -4,7 +4,6 @@
  * 
  * This component serves as the primary entry point for users accessing your platform
  * through the MiniApp context (Farcaster, social embeds, etc.). It integrates seamlessly
- * with your MiniAppLayout
  * 
  * Production Features:
  * - Integrates with your real EnhancedMiniAppProvider and hooks
@@ -16,7 +15,6 @@
  * - Performance monitoring and real-time updates
  * 
  * Architecture Integration:
- * - Works with MiniAppLayout
  * - Uses your actual business logic hooks and contract integrations
  * - Leverages your existing UI components and design system
  * - Maintains consistency with your web app while optimizing for miniapp context

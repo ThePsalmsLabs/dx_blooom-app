@@ -197,7 +197,6 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
           <div className="container mx-auto px-4 py-3">
-            <MiniAppLayout
           </div>
         </div>
 
@@ -218,7 +217,6 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
       {/* Mobile-Optimized Navigation Header */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 
@@ -796,7 +794,6 @@ function CreatorProfileErrorFallback({
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 
@@ -839,7 +836,6 @@ function CreatorProfileLoadingSkeleton() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-3">
-          <MiniAppLayout
         </div>
       </div>
 

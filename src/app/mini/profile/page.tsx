@@ -257,7 +257,6 @@ function MiniAppUserProfileCore() {
   // Handle wallet connection requirement
   if (!walletUI.isConnected || !userAddress) {
     return (
-      <MiniAppLayout>
         <div className="container mx-auto px-4 py-8 text-center space-y-6">
           <Wallet className="h-16 w-16 text-muted-foreground mx-auto" />
           <div className="space-y-2">
@@ -270,7 +269,6 @@ function MiniAppUserProfileCore() {
             Return to Home
           </Button>
         </div>
-      </MiniAppLayout>
     )
   }
 
@@ -1076,7 +1074,6 @@ function ProfileErrorFallback({
   resetErrorBoundary: () => void
 }) {
   return (
-    <MiniAppLayout>
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-md mx-auto">
           <CardHeader>
@@ -1104,7 +1101,6 @@ function ProfileErrorFallback({
           </CardContent>
         </Card>
       </div>
-    </MiniAppLayout>
   )
 }
 
@@ -1113,7 +1109,6 @@ function ProfileErrorFallback({
  */
 function ProfileLoadingSkeleton() {
   return (
-    <MiniAppLayout>
       <main className="container mx-auto px-4 py-4 space-y-6">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -1141,7 +1136,6 @@ function ProfileLoadingSkeleton() {
           </CardContent>
         </Card>
       </main>
-    </MiniAppLayout>
   )
 }
 
