@@ -49,7 +49,8 @@ import {
   ArrowDown,
   Zap,
   Heart,
-  Share2
+  Share2,
+  Wallet
 } from 'lucide-react'
 
 // Import your actual UI components
@@ -83,7 +84,9 @@ import { useActiveContentPaginated } from '@/hooks/contracts/core'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useContentByCategory } from '@/hooks/contracts/content/useContentDiscovery'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
+import { useMiniAppBalance } from '@/hooks/miniapp/useMiniAppBalance'
 import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
+import InsufficientBalanceAlert from '@/components/miniapp/InsufficientBalanceAlert'
 
 // Import your existing content components
 import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
@@ -443,6 +446,9 @@ function MiniAppBrowseCore() {
   const isConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
   const formattedAddress = formatWalletAddress(walletUI.address)
   
+  // Get balance information for purchase capabilities
+  const balanceState = useMiniAppBalance()
+  
   // Remove excessive creator registration check (aligned with web app optimization)
   // Only check when actually needed for specific actions
   const isCreator = false // Placeholder - check only when needed
@@ -632,12 +638,30 @@ function MiniAppBrowseCore() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Wallet Status */}
+          {/* Wallet Status with Balance */}
           {isConnected && formattedAddress && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-md">
               <div className="h-2 w-2 bg-green-500 rounded-full" />
               <span className="text-xs font-medium text-green-800">Connected</span>
               <span className="text-xs font-mono text-green-700">{formattedAddress}</span>
+              {balanceState.totalSpendingPower > 0 && (
+                <div className="flex items-center gap-1 ml-2 pl-2 border-l border-green-300">
+                  <DollarSign className="h-3 w-3 text-green-600" />
+                  <span className="text-xs font-medium text-green-700">
+                    ${balanceState.totalSpendingPower.toFixed(0)}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Mobile Balance Display */}
+          {isConnected && balanceState.totalSpendingPower > 0 && (
+            <div className="sm:hidden flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded">
+              <DollarSign className="h-3 w-3 text-green-600" />
+              <span className="text-xs font-medium text-green-700">
+                ${balanceState.totalSpendingPower.toFixed(0)}
+              </span>
             </div>
           )}
 
@@ -910,6 +934,57 @@ function MiniAppBrowseCore() {
         <SearchAndFilters />
         <ContentTabs />
         <ContentSection />
+        
+        {/* Balance Status Alert - Show if user has low balance */}
+        {isConnected && balanceState.totalSpendingPower < 10 && balanceState.totalSpendingPower > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium text-yellow-800">Low Balance Warning</h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  You have ${balanceState.totalSpendingPower.toFixed(2)} available. Consider adding more USDC to purchase premium content.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={balanceState.refreshBalances}
+                    className="text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Refresh Balance
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* No Balance Alert - Show if user has zero balance */}
+        {isConnected && balanceState.totalSpendingPower === 0 && !balanceState.isLoading && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Wallet className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium text-red-800">Add Funds to Start Purchasing</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Your wallet appears to be empty. Add USDC or ETH to start purchasing premium content from creators.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <Button 
+                    size="sm" 
+                    onClick={balanceState.refreshBalances}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Check Again
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Social Commerce Footer */}
         <div className="mt-8 bg-gradient-to-r from-green-600/10 to-blue-600/10 rounded-lg p-4 border border-green-200/20">

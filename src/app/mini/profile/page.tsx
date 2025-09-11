@@ -197,17 +197,37 @@ function MiniAppUserProfileCore() {
   const formattedAddress = formatWalletAddress(walletUI.address)
   const isFullyConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
 
-  // Debug wallet state - temporary for debugging
+  // Enhanced debug wallet state - temporary for debugging
   useEffect(() => {
-    console.log('🔍 Profile page wallet state:', {
-      isConnected: walletUI.isConnected,
-      address: walletUI.address,
-      userAddress: userAddress,
-      formattedAddress: formattedAddress,
-      isFullyConnected: isFullyConnected,
-      addressType: typeof walletUI.address
+    console.log('🔍 Profile page wallet state DETAILED:', {
+      'walletUI.isConnected': walletUI.isConnected,
+      'walletUI.address': walletUI.address,
+      'userAddress': userAddress,
+      'formattedAddress': formattedAddress,
+      'isFullyConnected': isFullyConnected,
+      'addressType': typeof walletUI.address,
+      'addressLength': walletUI.address?.length,
+      'startsWithOx': walletUI.address?.startsWith('0x'),
+      'isInMiniApp': walletUI.isInMiniApp,
+      'walletError': walletUI.error?.message
     })
-  }, [walletUI.isConnected, walletUI.address, userAddress, formattedAddress, isFullyConnected])
+    
+    // Manual check
+    const manualCheck = walletUI.isConnected && 
+                       !!walletUI.address && 
+                       typeof walletUI.address === 'string' && 
+                       walletUI.address.startsWith('0x')
+    console.log('🔍 Manual connection check result:', manualCheck)
+    
+    if (!isFullyConnected) {
+      console.log('❌ Profile page blocking access - wallet not fully connected')
+      console.log('   - isConnected:', walletUI.isConnected)
+      console.log('   - hasAddress:', !!walletUI.address)
+      console.log('   - addressValid:', walletUI.address && walletUI.address.startsWith('0x'))
+    } else {
+      console.log('✅ Profile page allowing access - wallet is connected')
+    }
+  }, [walletUI.isConnected, walletUI.address, userAddress, formattedAddress, isFullyConnected, walletUI.isInMiniApp, walletUI.error])
 
   /**
    * Tab Change Handler
@@ -267,8 +287,10 @@ function MiniAppUserProfileCore() {
     }
   }, [userAddress])
 
-  // Handle wallet connection requirement - use utility function
-  if (!isFullyConnected) {
+  // Handle wallet connection requirement - enhanced check with manual fallback
+  const shouldShowWalletPrompt = !isFullyConnected && !(walletUI.isConnected && walletUI.address)
+  
+  if (shouldShowWalletPrompt) {
     return (
         <div className="container mx-auto px-4 py-8 text-center space-y-6">
           <Wallet className="h-16 w-16 text-muted-foreground mx-auto" />
@@ -277,10 +299,25 @@ function MiniAppUserProfileCore() {
             <p className="text-muted-foreground">
               Connect your wallet to manage your profile
             </p>
+            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+              Debug: Connected={walletUI.isConnected ? 'Yes' : 'No'}, Address={walletUI.address ? 'Yes' : 'No'}
+            </div>
           </div>
-          <Button onClick={() => router.push('/mini')}>
-            Return to Home
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button 
+              onClick={() => walletUI.connect().catch(console.error)}
+              disabled={walletUI.isConnecting}
+            >
+              {walletUI.isConnecting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connecting...</>
+              ) : (
+                <>Connect Farcaster Wallet</>
+              )}
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/mini')}>
+              Return to Home
+            </Button>
+          </div>
         </div>
     )
   }
