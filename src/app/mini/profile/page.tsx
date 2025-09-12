@@ -292,28 +292,9 @@ function MiniAppUserProfileCore() {
     }
   }, [userAddress])
 
-  // Handle wallet connection requirement - consistent with other pages
-  const shouldShowWalletPrompt = !isFullyConnected
-  
-  // Check for transitional state where wallet is connected but address is still loading
-  const isTransitionalState = walletUI.isConnected && !walletUI.address && !walletUI.isConnecting
-  
-  if (isTransitionalState) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center space-y-6">
-        <Loader2 className="h-16 w-16 text-primary mx-auto animate-spin" />
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Loading Wallet Info</h1>
-          <p className="text-muted-foreground">
-            Getting your wallet details...
-          </p>
-          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-            Debug: Connected={walletUI.isConnected ? 'Yes' : 'No'}, Address={walletUI.address ? 'Yes' : 'No'}
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // FIXED: Use same wallet connection logic as working dashboard page
+  // This removes the faulty transitional state check that was blocking Farcaster mobile
+  const shouldShowWalletPrompt = !isFullyConnected || !userAddress
   
   if (shouldShowWalletPrompt) {
     return (
@@ -322,11 +303,8 @@ function MiniAppUserProfileCore() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">Connect Your Wallet</h1>
             <p className="text-muted-foreground">
-              Connect your wallet to manage your profile
+              Connect your wallet to access your profile
             </p>
-            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-              Debug: Connected={walletUI.isConnected ? 'Yes' : 'No'}, Address={walletUI.address ? 'Yes' : 'No'}
-            </div>
           </div>
           <div className="flex flex-col gap-2">
             <Button 
@@ -347,17 +325,63 @@ function MiniAppUserProfileCore() {
     )
   }
 
-  // Handle creator registration status - redirect to appropriate page
-  // Wait for both connection AND address to be available before proceeding
-  if (isFullyConnected && userAddress && !creatorRegistration.isLoading) {
+  // FIXED: Add timeout for creator registration check to prevent infinite loading
+  const [creatorCheckTimeout, setCreatorCheckTimeout] = useState(false)
+  
+  useEffect(() => {
+    if (creatorRegistration.isLoading && isFullyConnected && userAddress) {
+      console.log('🔍 Starting creator registration check for:', userAddress)
+      const timeout = setTimeout(() => {
+        console.warn('⏰ Creator registration check timeout - proceeding with redirect logic anyway')
+        setCreatorCheckTimeout(true)
+      }, 8000) // 8 second timeout to match the hook's internal timeout
+      return () => clearTimeout(timeout)
+    }
+  }, [creatorRegistration.isLoading, isFullyConnected, userAddress])
+
+  // Show brief loading only while creator check is active (with timeout)
+  if (creatorRegistration.isLoading && !creatorCheckTimeout) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center space-y-6">
+        <User className="h-16 w-16 text-muted-foreground mx-auto" />
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold">Checking Account Status</h1>
+          <p className="text-muted-foreground">
+            Verifying your creator registration...
+          </p>
+        </div>
+        <div className="flex justify-center items-center space-x-3">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCreatorCheckTimeout(true)}
+          >
+            Continue Anyway
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // FIXED: Now this redirect logic can actually be reached!
+  // Handle creator registration status - redirect registered creators to dashboard
+  if (isFullyConnected && userAddress && (!creatorRegistration.isLoading || creatorCheckTimeout)) {
+    console.log('🎯 Profile page redirect logic:', {
+      isCreator: creatorRegistration.data,
+      userAddress: userAddress.slice(0, 10) + '...',
+      checkTimeout: creatorCheckTimeout
+    })
+
     // If user is a registered creator, redirect to dashboard
     if (creatorRegistration.data === true) {
+      console.log('✅ Redirecting registered creator to dashboard')
       router.push('/mini/dashboard')
       return (
         <div className="container mx-auto px-4 py-8 text-center space-y-6">
           <Crown className="h-16 w-16 text-primary mx-auto" />
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Redirecting to Dashboard</h1>
+            <h1 className="text-2xl font-bold">Welcome Back, Creator!</h1>
             <p className="text-muted-foreground">
               Taking you to your creator dashboard...
             </p>
@@ -370,7 +394,8 @@ function MiniAppUserProfileCore() {
     }
     
     // If user is NOT a registered creator, redirect to onboarding
-    if (creatorRegistration.data === false) {
+    if (creatorRegistration.data === false || creatorCheckTimeout) {
+      console.log('📝 Redirecting non-creator to onboarding')
       router.push('/mini/onboard')
       return (
         <div className="container mx-auto px-4 py-8 text-center space-y-6">
@@ -387,27 +412,6 @@ function MiniAppUserProfileCore() {
         </div>
       )
     }
-  }
-
-  // Show loading state while checking creator status
-  if (creatorRegistration.isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center space-y-6">
-        <User className="h-16 w-16 text-muted-foreground mx-auto" />
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Loading Profile</h1>
-          <p className="text-muted-foreground">
-            Checking your account status...
-          </p>
-          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-            Connected={walletUI.isConnected ? 'Yes' : 'No'}, Address={walletUI.address ? 'Yes' : 'No'}
-          </div>
-        </div>
-        <div className="flex justify-center">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
-      </div>
-    )
   }
 
   return (
