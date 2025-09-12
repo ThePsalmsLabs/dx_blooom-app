@@ -149,53 +149,68 @@ const privyConfig = {
 }
 
 /**
- * FIXED: Privy Wagmi Provider Component
- * Uses your existing premium RPC configuration for Base mainnet
+ * Enhanced Wagmi Provider Component
+ * Uses the enhanced wagmi configuration with Farcaster connector support
  */
-function PrivyWagmiProvider({ children }: { children: ReactNode }) {
-  // Create wagmi config with your existing premium RPC setup
-  const wagmiConfig = useMemo(() => {
-    const { http, fallback } = require('wagmi')
+function EnhancedWagmiProvider({ children }: { children: ReactNode }) {
+  const [wagmiConfig, setWagmiConfig] = useState<ReturnType<typeof createConfig> | null>(null)
+  const [configError, setConfigError] = useState<Error | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-    // Use your existing premium RPC providers for Base mainnet
-    const premiumProviders = []
-    const alternativeProviders = []
-
-    // Premium providers (Alchemy, Infura)
-    if (process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) {
-      premiumProviders.push(
-        http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
-      )
+  // Initialize enhanced wagmi config on mount
+  useEffect(() => {
+    const initializeConfig = async () => {
+      try {
+        setIsLoading(true)
+        setConfigError(null)
+        
+        // Import enhanced config (supports Farcaster connector)
+        const { getEnhancedWagmiConfig } = await import('@/lib/contracts/miniapp-config')
+        const config = await getEnhancedWagmiConfig()
+        
+        debug.log('✅ Enhanced wagmi config initialized with Farcaster support')
+        setWagmiConfig(config)
+      } catch (error) {
+        console.error('❌ Failed to initialize enhanced wagmi config:', error)
+        setConfigError(error as Error)
+        
+        // Fallback to basic config
+        const { http, fallback } = await import('wagmi')
+        const fallbackConfig = createConfig({
+          chains: [base, baseSepolia],
+          transports: {
+            [base.id]: fallback([
+              ...(process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ? [
+                http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
+              ] : []),
+              http('https://mainnet.base.org')
+            ]),
+            [baseSepolia.id]: http('https://sepolia.base.org')
+          },
+          ssr: typeof window === 'undefined'
+        })
+        
+        console.log('⚠️ Using fallback wagmi config')
+        setWagmiConfig(fallbackConfig)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    if (process.env.NEXT_PUBLIC_INFURA_API_KEY) {
-      premiumProviders.push(
-        http(`https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`)
-      )
-    }
-
-    // Base mainnet as fallback
-    alternativeProviders.push(http('https://mainnet.base.org'))
-
-    const transports = {
-      [base.id]: fallback(premiumProviders.length > 0 ? premiumProviders : alternativeProviders),
-      // Include testnet for testing only
-      [baseSepolia.id]: http('https://sepolia.base.org')
-    }
-
-    return createConfig({
-      chains: [base, baseSepolia],
-      transports,
-      batch: {
-        multicall: {
-          batchSize: 1024 * 200,
-          wait: 8,
-        },
-      },
-      cacheTime: 2_000,
-      ssr: typeof window === 'undefined'
-    })
+    initializeConfig()
   }, [])
+
+  // Show loading state while initializing config
+  if (isLoading || !wagmiConfig) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Initializing Web3...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -365,11 +380,11 @@ export function Web3Provider({ children }: { children: ReactNode }) {
       appId={envConfig.privyAppId}
       config={privyConfig}
     >
-      <PrivyWagmiProvider>
+      <EnhancedWagmiProvider>
           <EnhancedWeb3ProviderInner>
             {children}
           </EnhancedWeb3ProviderInner>
-      </PrivyWagmiProvider>
+      </EnhancedWagmiProvider>
     </PrivyProvider>
   )
 }
