@@ -289,17 +289,22 @@ export function useUnifiedAuth(): UnifiedAuthState {
   
   // Debug logging (development only)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 UnifiedAuth State Update:', {
-        environment,
-        isMiniApp,
-        isConnected: activeWallet.isConnected,
-        address: activeWallet.address ? `${activeWallet.address.slice(0, 6)}...${activeWallet.address.slice(-4)}` : null,
-        isConnecting: activeWallet.isConnecting,
-        hasError: authState.hasError,
-        isInitialized: authState.isInitialized,
-      })
-    }
+    console.log('🔍 UnifiedAuth State Update:', {
+      environment,
+      isMiniApp,
+      isConnected: activeWallet.isConnected,
+      address: activeWallet.address ? `${activeWallet.address.slice(0, 6)}...${activeWallet.address.slice(-4)}` : null,
+      isConnecting: activeWallet.isConnecting,
+      hasError: authState.hasError,
+      isInitialized: authState.isInitialized,
+      activeWalletContext: activeWallet.context,
+      farcasterWalletState: isMiniApp ? {
+        isConnected: farcasterWallet.isConnected,
+        address: farcasterWallet.address ? `${farcasterWallet.address.slice(0, 6)}...${farcasterWallet.address.slice(-4)}` : null,
+        isConnecting: farcasterWallet.isConnecting,
+        error: farcasterWallet.error?.message
+      } : null
+    })
   }, [
     environment,
     isMiniApp,
@@ -308,7 +313,10 @@ export function useUnifiedAuth(): UnifiedAuthState {
     activeWallet.isConnecting,
     authState.hasError,
     authState.isInitialized,
-    enhancedUser
+    enhancedUser,
+    farcasterWallet.isConnected,
+    farcasterWallet.address,
+    farcasterWallet.isConnecting
   ])
   
   // Return unified authentication state

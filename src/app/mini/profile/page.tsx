@@ -39,24 +39,25 @@ import {
 } from '@/components/ui/index'
 
 import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
-import { useUnifiedAuth } from '@/hooks/unified/useUnifiedAuth'
+import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { formatWalletAddress, getSafeAddress } from '@/lib/utils/wallet-utils'
 import { useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 export default function MiniAppProfilePage() {
   const router = useRouter()
-  const auth = useUnifiedAuth()
+  const wallet = useFarcasterAutoWallet()
   const socialState = useSocialState()
   
-  const userAddress = getSafeAddress(auth.address)
-  const formattedAddress = formatWalletAddress(auth.address)
+  const userAddress = getSafeAddress(wallet.address)
+  const formattedAddress = formatWalletAddress(wallet.address)
+  const isConnected = wallet.isConnected && !!wallet.address
   
   // Simple creator check - no complex timeouts
   const creatorRegistration = useIsCreatorRegistered(userAddress)
 
-  // Show loading state while authentication is initializing
-  if (!auth.isInitialized || auth.isLoading) {
+  // Show loading state while wallet is connecting
+  if (wallet.isConnecting) {
     return (
       <MiniAppLayout>
         <div className="container mx-auto px-4 space-y-2">
@@ -77,8 +78,8 @@ export default function MiniAppProfilePage() {
     )
   }
 
-  // Show error state if there's an authentication error
-  if (auth.hasError && auth.error) {
+  // Show error state if there's a wallet error
+  if (wallet.error) {
     return (
       <MiniAppLayout>
         <div className="container mx-auto px-4 space-y-4">
@@ -93,10 +94,10 @@ export default function MiniAppProfilePage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={auth.retry}
+                    onClick={() => wallet.connect().catch(console.error)}
                     className="w-full"
                   >
-                    <Loader2 className={`h-4 w-4 mr-2 ${auth.isConnecting ? 'animate-spin' : ''}`} />
+                    <Loader2 className={`h-4 w-4 mr-2 ${wallet.isConnecting ? 'animate-spin' : ''}`} />
                     Try Again
                   </Button>
                   <Button
@@ -117,8 +118,8 @@ export default function MiniAppProfilePage() {
     )
   }
 
-  // Show wallet connection if not authenticated
-  if (!auth.isAuthenticated || !auth.address) {
+  // Show wallet connection if not connected
+  if (!isConnected || !userAddress) {
     return (
       <MiniAppLayout>
         <div className="container mx-auto px-4 space-y-2">
@@ -136,11 +137,11 @@ export default function MiniAppProfilePage() {
 
             <div className="space-y-3">
               <Button 
-                onClick={() => auth.connect().catch(console.error)}
-                disabled={auth.isConnecting}
+                onClick={() => wallet.connect().catch(console.error)}
+                disabled={wallet.isConnecting}
                 className="w-full bg-purple-600 hover:bg-purple-700"
               >
-                {auth.isConnecting ? (
+                {wallet.isConnecting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Connecting Farcaster Wallet...
@@ -168,9 +169,9 @@ export default function MiniAppProfilePage() {
     )
   }
 
-  // Determine user status - using unified auth
+  // Determine user status
   const isCreator = creatorRegistration.data === true
-  const userProfile = auth.user || socialState?.userProfile
+  const userProfile = socialState?.userProfile
 
   return (
     <MiniAppLayout>
@@ -295,7 +296,7 @@ export default function MiniAppProfilePage() {
                 <span>Base</span>
               </div>
               
-              {auth.isMiniApp && (
+              {wallet.isInMiniApp && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Context:</span>
                   <Badge variant="outline" className="text-xs">
@@ -305,18 +306,18 @@ export default function MiniAppProfilePage() {
                 </div>
               )}
               
-              {auth.user?.fid && (
+              {userProfile?.fid && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Farcaster ID:</span>
-                  <span className="font-mono">{auth.user.fid}</span>
+                  <span className="font-mono">{userProfile.fid}</span>
                 </div>
               )}
               
-              {auth.user?.isVerified !== undefined && (
+              {userProfile?.isVerified !== undefined && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Verified:</span>
-                  <Badge variant={auth.user.isVerified ? "default" : "secondary"} className="text-xs">
-                    {auth.user.isVerified ? "✓ Verified" : "Unverified"}
+                  <Badge variant={userProfile.isVerified ? "default" : "secondary"} className="text-xs">
+                    {userProfile.isVerified ? "✓ Verified" : "Unverified"}
                   </Badge>
                 </div>
               )}
