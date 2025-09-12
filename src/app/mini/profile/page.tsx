@@ -48,29 +48,14 @@ export default function MiniAppProfilePage() {
   const isConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
   const formattedAddress = formatWalletAddress(walletUI.address)
   
-  // Simple creator check with timeout
+  // Simple creator check - no complex timeouts
   const creatorRegistration = useIsCreatorRegistered(userAddress)
-  const [checkComplete, setCheckComplete] = useState(false)
 
-  // Simple timeout to prevent infinite loading
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setCheckComplete(true)
-    }, 5000) // 5 second max wait
-
-    if (!creatorRegistration.isLoading) {
-      setCheckComplete(true)
-      clearTimeout(timeout)
-    }
-
-    return () => clearTimeout(timeout)
-  }, [creatorRegistration.isLoading])
-
-  // Show wallet connection if not connected
+  // Show wallet connection if not connected  
   if (!isConnected || !userAddress) {
     return (
       <MiniAppLayout>
-        <div className="container mx-auto px-4 space-y-6">
+        <div className="container mx-auto px-4 space-y-2">
           <div className="text-center space-y-6 pt-8">
             <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
               <Wallet className="h-8 w-8 text-muted-foreground" />
@@ -117,24 +102,7 @@ export default function MiniAppProfilePage() {
     )
   }
 
-  // Show loading only briefly
-  if (creatorRegistration.isLoading && !checkComplete) {
-    return (
-      <MiniAppLayout>
-        <div className="container mx-auto px-4 space-y-6">
-          <div className="text-center space-y-6 pt-8">
-            <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
-            <div>
-              <h1 className="text-xl font-bold mb-2">Loading Profile</h1>
-              <p className="text-muted-foreground">Getting your account details...</p>
-            </div>
-          </div>
-        </div>
-      </MiniAppLayout>
-    )
-  }
-
-  // Determine user status
+  // Determine user status - just use the data as-is, no loading screens
   const isCreator = creatorRegistration.data === true
   const userProfile = socialState?.userProfile
 
