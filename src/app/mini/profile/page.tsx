@@ -56,7 +56,7 @@ export default function MiniAppProfilePage() {
     return (
       <MiniAppLayout>
         <div className="container mx-auto px-4 space-y-2">
-          <div className="text-center space-y-6 pt-8">
+          <div className="text-center space-y-4 pt-4">
             <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
               <Wallet className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -108,9 +108,9 @@ export default function MiniAppProfilePage() {
 
   return (
     <MiniAppLayout>
-      <div className="container mx-auto px-4 space-y-6">
+      <div className="container mx-auto px-4 space-y-4">
         {/* Profile Header */}
-        <div className="text-center space-y-4 pt-4">
+        <div className="text-center space-y-3 pt-2">
           <Avatar className="h-20 w-20 mx-auto">
             <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white">
               {userProfile?.displayName?.charAt(0) || 

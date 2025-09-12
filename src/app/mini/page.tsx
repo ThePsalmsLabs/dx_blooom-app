@@ -383,17 +383,21 @@ function MiniAppHomeCore() {
   // ================================================
 
   const WelcomeHeader = React.memo(() => (
-    <div className="text-center space-y-3 mb-6">
-      <div className="flex items-center justify-center gap-2">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <Zap className="h-6 w-6 text-primary" />
+    <div className="text-center space-y-3 mb-4">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+        <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+          <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold">
-          {userProfile?.displayName ? `Welcome, ${userProfile.displayName}!` : 'Discover Amazing Content'}
+        <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-center sm:text-left line-clamp-2">
+          {userProfile?.displayName ? (
+            <span className="truncate">Welcome, {userProfile.displayName}!</span>
+          ) : (
+            'Discover Amazing Content'
+          )}
         </h1>
       </div>
       
-      <p className="text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
+      <p className="text-muted-foreground max-w-sm sm:max-w-md mx-auto text-xs sm:text-sm leading-relaxed line-clamp-3 px-2">
         {hasSocialContext 
           ? 'Support creators directly with instant USDC payments on Base network'
           : 'Explore premium content from top creators in the Web3 economy'
@@ -401,15 +405,15 @@ function MiniAppHomeCore() {
       </p>
       
       {stats && !statsLoading && (
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground px-2">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span>{stats.onlineUsers} online</span>
+            <span className="whitespace-nowrap">{stats.onlineUsers} online</span>
           </div>
-          <span>•</span>
-          <span>{stats.activeCreators} creators</span>
-          <span>•</span>
-          <span>{stats.totalContent} content items</span>
+          <span className="hidden sm:inline">•</span>
+          <span className="whitespace-nowrap">{stats.activeCreators} creators</span>
+          <span className="hidden sm:inline">•</span>
+          <span className="whitespace-nowrap">{stats.totalContent} content items</span>
         </div>
       )}
     </div>
@@ -417,10 +421,10 @@ function MiniAppHomeCore() {
   WelcomeHeader.displayName = 'WelcomeHeader'
   
   const QuickActionsGrid = React.memo(() => (
-    <div className="space-y-4 mb-8">
-      <h2 className="text-lg font-semibold flex items-center gap-2">
-        <Star className="h-5 w-5 text-yellow-500" />
-        Quick Actions
+    <div className="space-y-3 mb-6">
+      <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+        <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500 flex-shrink-0" />
+        <span className="truncate">Quick Actions</span>
       </h2>
       
       <div className="grid grid-cols-1 gap-3">

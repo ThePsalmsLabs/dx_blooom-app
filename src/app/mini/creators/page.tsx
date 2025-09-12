@@ -593,30 +593,30 @@ function MiniAppCreatorsCore() {
   // ================================================
   
   const CreatorsHeader = React.memo(() => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6 text-primary" />
-            Creators
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold flex items-center gap-2">
+            <Users className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+            <span className="truncate">Creators</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
             {hasSocialContext
               ? 'Discover amazing creators from the Farcaster community'
-              : 'Support creators directly with blockchain payments'
+              : 'Support creators with blockchain payments'
             }
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Badge variant="secondary" className="text-xs whitespace-nowrap">
             {stats.totalCreators} creators
           </Badge>
           <Button 
             variant="ghost" 
             size="sm"
             onClick={handleRefresh}
-            className="h-8 w-8"
+            className="h-8 w-8 flex-shrink-0"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -624,22 +624,22 @@ function MiniAppCreatorsCore() {
       </div>
       
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-        <div className="bg-card p-3 rounded-lg border">
-          <div className="text-lg font-bold text-primary">{stats.totalCreators}</div>
-          <div className="text-xs text-muted-foreground">All Creators</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-center">
+        <div className="bg-card p-2 sm:p-3 rounded-lg border">
+          <div className="text-sm sm:text-lg font-bold text-primary">{stats.totalCreators}</div>
+          <div className="text-xs text-muted-foreground truncate">All Creators</div>
         </div>
-        <div className="bg-card p-3 rounded-lg border">
-          <div className="text-lg font-bold text-blue-600">{stats.verifiedCreators}</div>
-          <div className="text-xs text-muted-foreground">Verified</div>
+        <div className="bg-card p-2 sm:p-3 rounded-lg border">
+          <div className="text-sm sm:text-lg font-bold text-blue-600">{stats.verifiedCreators}</div>
+          <div className="text-xs text-muted-foreground truncate">Verified</div>
         </div>
-        <div className="bg-card p-3 rounded-lg border">
-          <div className="text-lg font-bold text-green-600">{stats.newThisWeek}</div>
-          <div className="text-xs text-muted-foreground">New This Week</div>
+        <div className="bg-card p-2 sm:p-3 rounded-lg border">
+          <div className="text-sm sm:text-lg font-bold text-green-600">{stats.newThisWeek}</div>
+          <div className="text-xs text-muted-foreground truncate">New This Week</div>
         </div>
-        <div className="bg-card p-3 rounded-lg border">
-          <div className="text-lg font-bold text-purple-600">{stats.totalEarnings}</div>
-          <div className="text-xs text-muted-foreground">Total Earnings</div>
+        <div className="bg-card p-2 sm:p-3 rounded-lg border">
+          <div className="text-sm sm:text-lg font-bold text-purple-600">{stats.totalEarnings}</div>
+          <div className="text-xs text-muted-foreground truncate">Total Earnings</div>
         </div>
       </div>
     </div>

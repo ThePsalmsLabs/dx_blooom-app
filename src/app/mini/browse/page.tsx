@@ -622,22 +622,22 @@ function MiniAppBrowseCore() {
   CategorySelector.displayName = 'CategorySelector'
   
   const BrowseHeader = React.memo(() => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Eye className="h-6 w-6 text-primary" />
-            Discover Content
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold flex items-center gap-2">
+            <Eye className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+            <span className="truncate">Discover Content</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-                          {hasSocialContext
-                ? 'Explore premium content shared by your network'
-                : 'Browse and purchase exclusive content from top creators'
-              }
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
+            {hasSocialContext
+              ? 'Explore premium content shared by your network'
+              : 'Browse and purchase exclusive content from top creators'
+            }
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
           {/* Wallet Status with Balance */}
           {isConnected && formattedAddress && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-md">

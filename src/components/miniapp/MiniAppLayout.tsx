@@ -120,14 +120,14 @@ export function MiniAppLayout({ children, className }: MiniAppLayoutProps) {
         // In production, send to error reporting service
       }}
     >
-      <div className={`min-h-screen bg-background ${className || ''}`}>
+      <div className={`min-h-full bg-background ${className || ''}`}>
         {/* Navigation */}
         <Suspense fallback={<MiniAppLayoutSkeleton />}>
           <MiniAppNavigation />
         </Suspense>
         
         {/* Main Content */}
-        <main className="pt-16 pb-32 min-h-screen">
+        <main className="pb-24">
           <Suspense fallback={<MiniAppLayoutSkeleton />}>
             {children}
           </Suspense>

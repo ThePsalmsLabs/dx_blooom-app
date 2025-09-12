@@ -261,60 +261,67 @@ export function useUSDCPurchaseFlow(
     // The useEffect cleanup functions will handle timer cleanup
   }, [approveToken.reset, purchaseContent.reset])
 
-  // Enhanced error recovery function
+  // Silent automatic recovery function
   const handleRecoveryFromError = useCallback(() => {
-    console.log('🛠️ Attempting error recovery')
+    console.log('🛠️ Auto-recovering from error state')
     
-    // Clear error state and try to determine current allowance
-    setState({
-      phase: 'checking_allowance',
-      progress: 5,
-      message: 'Checking current allowance...'
-    })
-    
-    // Force refresh of balance and allowance data
-    setTimeout(() => {
-      usdcBalance.refetch()
+    // Silently check current state and recover
+    Promise.all([
+      usdcBalance.refetch(),
       usdcAllowance.refetch()
-    }, 500)
-  }, [usdcBalance.refetch, usdcAllowance.refetch])
+    ]).then(() => {
+      const currentAllowance = usdcAllowance.data || BigInt(0)
+      
+      // If approval went through, just move to idle state
+      if (currentAllowance >= requiredAmount) {
+        setState({
+          phase: 'idle',
+          progress: 0,
+          message: 'Ready to purchase'
+        })
+      } else {
+        // Otherwise, reset to allow retry
+        setState({
+          phase: 'idle',
+          progress: 0,
+          message: needsApproval ? 'USDC approval required' : 'Ready to purchase'
+        })
+      }
+    })
+  }, [usdcBalance.refetch, usdcAllowance.refetch, requiredAmount, needsApproval])
 
-  // Automatic error recovery for common issues
+  // Automatic recovery for stuck states
   useEffect(() => {
+    // Auto-recover from stuck approval state
+    if (state.phase === 'approving') {
+      const stuckTimer = setTimeout(() => {
+        console.warn('⚠️ Approval state stuck for too long, auto-recovering...')
+        handleRecoveryFromError()
+      }, 90000) // 90 seconds max for approval state
+      
+      return () => clearTimeout(stuckTimer)
+    }
+    
+    // Auto-recover from error states
     if (state.phase === 'error' && state.error) {
       const errorMessage = state.error.toLowerCase()
       
-      // Auto-retry for network-related errors after a delay
-      if (errorMessage.includes('network') || errorMessage.includes('timeout') || errorMessage.includes('connection')) {
-        console.log('⚡ Auto-recovering from network error in 5 seconds')
-        const timer = setTimeout(handleRecoveryFromError, 5000)
-        return () => clearTimeout(timer)
-      }
-      
-      // Auto-refresh allowance if approval might have succeeded but state got confused
-      if (errorMessage.includes('approval') && !errorMessage.includes('rejected')) {
-        console.log('🔍 Auto-checking allowance after approval error')
-        const timer = setTimeout(() => {
-          usdcAllowance.refetch()
-        }, 2000)
-        return () => clearTimeout(timer)
-      }
-      
-      // Auto-reset to idle state after 30 seconds for stuck error states
-      // This helps prevent the UI from being stuck in error state indefinitely
-      if (errorMessage.includes('transaction failed') || errorMessage.includes('please try again')) {
-        console.log('🔄 Auto-resetting error state to idle in 30 seconds')
-        const timer = setTimeout(() => {
-          setState({
-            phase: 'idle',
-            progress: 0,
-            message: canPurchase ? 'Ready to purchase' : needsApproval ? 'USDC approval required' : 'Check balance'
-          })
-        }, 30000)
-        return () => clearTimeout(timer)
-      }
+      // Auto-retry quickly for all errors
+      console.log('⚡ Auto-recovering from error in 3 seconds')
+      const timer = setTimeout(handleRecoveryFromError, 3000)
+      return () => clearTimeout(timer)
     }
-  }, [state.phase, state.error, handleRecoveryFromError, usdcAllowance.refetch, canPurchase, needsApproval])
+    
+    // Auto-recover from stuck purchasing state
+    if (state.phase === 'purchasing') {
+      const stuckTimer = setTimeout(() => {
+        console.warn('⚠️ Purchase state stuck for too long, auto-recovering...')
+        handleRecoveryFromError()
+      }, 90000) // 90 seconds max for purchase state
+      
+      return () => clearTimeout(stuckTimer)
+    }
+  }, [state.phase, state.error, handleRecoveryFromError])
 
   // Update state based on loading states
   useEffect(() => {
@@ -333,10 +340,39 @@ export function useUSDCPurchaseFlow(
     }
   }, [usdcBalance.isLoading, usdcAllowance.isLoading, canPurchase, needsApproval, state.phase])
 
-  // Handle approval transaction states
+  // Handle approval transaction states with timeout protection
   useEffect(() => {
     if (state.phase === 'approving') {
+      // Set a timeout for stuck approval transactions
+      const approvalTimeout = setTimeout(() => {
+        console.warn('⏰ Approval transaction timeout - checking current allowance')
+        
+        // Force refresh allowance to see if approval actually went through
+        usdcAllowance.refetch().then(() => {
+          const currentAllowance = usdcAllowance.data || BigInt(0)
+          
+          if (currentAllowance >= requiredAmount) {
+            console.log('✅ Approval actually succeeded - allowance is sufficient')
+            setState({
+              phase: 'approval_confirmed',
+              progress: 60,
+              message: 'Approval confirmed! Starting purchase...',
+              approvalTxHash: approveToken.hash
+            })
+          } else {
+            console.warn('❌ Approval timeout - transaction may be stuck')
+            setState({
+              phase: 'error',
+              progress: 0,
+              message: 'Approval taking too long',
+              error: 'Transaction is taking longer than expected. Please check your wallet or try again.'
+            })
+          }
+        })
+      }, 60000) // 60 second timeout for approvals
+
       if (approveToken.isConfirmed && approveToken.hash) {
+        clearTimeout(approvalTimeout)
         console.log('✅ USDC approval confirmed:', approveToken.hash)
         setState({
           phase: 'approval_confirmed',
@@ -345,6 +381,7 @@ export function useUSDCPurchaseFlow(
           approvalTxHash: approveToken.hash
         })
       } else if (approveToken.isError && approveToken.error) {
+        clearTimeout(approvalTimeout)
         console.error('❌ USDC approval error:', approveToken.error)
         const errorMsg = approveToken.error.message || 'Approval failed'
         
@@ -372,8 +409,10 @@ export function useUSDCPurchaseFlow(
           })
         }
       }
+
+      return () => clearTimeout(approvalTimeout)
     }
-  }, [approveToken.isConfirmed, approveToken.isError, approveToken.hash, approveToken.error, state.phase])
+  }, [approveToken.isConfirmed, approveToken.isError, approveToken.hash, approveToken.error, state.phase, usdcAllowance, requiredAmount])
 
   // Automatic purchase execution after approval confirmation with allowance waiting
   useEffect(() => {
@@ -381,35 +420,65 @@ export function useUSDCPurchaseFlow(
       console.log('🔄 Auto-executing purchase after approval confirmation')
       
       let retryCount = 0
-      const maxRetries = 5
+      const maxRetries = 3 // Reduced retries for faster recovery
       let pollCount = 0
-      const maxPolls = 20 // Maximum 40 seconds of polling
+      const maxPolls = 30 // Increased to 60 seconds of polling
       
       const waitForAllowanceUpdate = () => {
         return new Promise<void>((resolve, reject) => {
-          const checkAllowance = () => {
-            // Force refresh allowance data
-            usdcAllowance.refetch()
-            
-            pollCount++
-            console.log(`🔍 Checking allowance update (poll ${pollCount}/${maxPolls}): current=${usdcAllowance.data?.toString()}, required=${requiredAmount.toString()}`)
-            
-            // Check if allowance is sufficient
-            if (usdcAllowance.data && usdcAllowance.data >= requiredAmount) {
-              console.log('✅ Allowance confirmed on-chain, proceeding with purchase')
-              resolve()
-              return
-            }
-            
-            // Continue polling if we haven't exceeded max attempts
-            if (pollCount < maxPolls) {
-              setTimeout(checkAllowance, 2000) // Poll every 2 seconds
-            } else {
-              reject(new Error(`Allowance update timeout after ${maxPolls * 2} seconds`))
+          const checkAllowance = async () => {
+            try {
+              // Force refresh allowance data with error handling
+              usdcAllowance.refetch()
+              
+              // Small delay to let refetch complete
+              await new Promise(resolve => setTimeout(resolve, 100))
+              
+              pollCount++
+              const currentAllowance = usdcAllowance.data || BigInt(0)
+              console.log(`🔍 Checking allowance update (poll ${pollCount}/${maxPolls}): current=${currentAllowance.toString()}, required=${requiredAmount.toString()}`)
+              
+              // Check if allowance is sufficient
+              if (currentAllowance >= requiredAmount) {
+                console.log('✅ Allowance confirmed on-chain, proceeding with purchase')
+                resolve()
+                return
+              }
+              
+              // Continue polling if we haven't exceeded max attempts
+              if (pollCount < maxPolls) {
+                setTimeout(checkAllowance, 2000) // Poll every 2 seconds
+              } else {
+                // Before giving up, check one more time with a longer delay
+                console.warn('⚠️ Final allowance check before timeout...')
+                setTimeout(async () => {
+                  try {
+                    usdcAllowance.refetch()
+                    await new Promise(resolve => setTimeout(resolve, 200))
+                    const finalAllowance = usdcAllowance.data || BigInt(0)
+                    if (finalAllowance >= requiredAmount) {
+                      console.log('✅ Final check succeeded - allowance is sufficient')
+                      resolve()
+                    } else {
+                      reject(new Error(`Allowance update timeout after ${(maxPolls + 1) * 2} seconds. Current: ${finalAllowance.toString()}, Required: ${requiredAmount.toString()}`))
+                    }
+                  } catch (error) {
+                    reject(new Error(`Final allowance check failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+                  }
+                }, 5000) // Final check after 5 seconds
+              }
+            } catch (error) {
+              console.error(`❌ Error during allowance check (poll ${pollCount}):`, error)
+              // Continue polling even if a single check fails
+              if (pollCount < maxPolls) {
+                setTimeout(checkAllowance, 3000) // Slightly longer delay after error
+              } else {
+                reject(new Error(`Allowance polling failed: ${error instanceof Error ? error.message : 'Unknown error'}`))
+              }
             }
           }
           
-          // Start checking immediately, then every 2 seconds
+          // Start checking immediately
           checkAllowance()
         })
       }
