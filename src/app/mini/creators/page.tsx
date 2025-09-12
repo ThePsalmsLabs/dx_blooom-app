@@ -905,7 +905,7 @@ function MiniAppCreatorsCore() {
       />
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-1 space-y-6">
+      <div className="container mx-auto px-4 space-y-6">
         <CreatorsHeader />
         <SearchAndFilters />
         <CategoryTabs />

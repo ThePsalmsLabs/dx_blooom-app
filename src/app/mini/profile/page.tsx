@@ -1,68 +1,26 @@
 /**
- * MiniApp User Profile Page - Account Management & Settings
+ * MiniApp Profile Page - Simple & Effective
  * File: src/app/mini/profile/page.tsx
  *
- * This page provides comprehensive user profile management and account settings
- * in the mini app, enabling users to customize their experience, manage privacy,
- * and control their account preferences with mobile-optimized interfaces.
- *
- * Mini App Design Philosophy:
- * - Streamlined profile management with mobile-first forms
- * - Clear privacy controls and data management options
- * - Account security settings with easy wallet management
- * - Personalization options for content preferences
- * - Intuitive settings organization with collapsible sections
- *
- * Key Features:
- * - Profile information editing and avatar management
- * - Privacy settings and data control options
- * - Notification preferences and communication settings
- * - Wallet connection management and security options
- * - Content preferences and personalization
- * - Account deletion and data export options
+ * A clean, simple profile page that works properly in Farcaster mobile.
+ * No complex logic, no infinite loading states, just straightforward functionality.
  */
 
 'use client'
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ErrorBoundary } from 'react-error-boundary'
 import {
-  ArrowLeft,
   User,
+  Crown,
   Settings,
-  Bell,
-  Shield,
+  LogOut,
+  ArrowRight,
   Wallet,
-  Palette,
-  Download,
-  Trash2,
-  Edit,
-  Save,
-  Camera,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  Globe,
-  Moon,
-  Sun,
-  Smartphone,
-  CreditCard,
-  AlertCircle,
-  CheckCircle,
   Loader2,
-  ChevronRight,
-  ChevronDown,
-  ExternalLink,
-  Key,
-  BellRing,
-  Volume2,
-  VolumeX,
-  Crown
+  Home
 } from 'lucide-react'
 
-// Import your existing UI components
 import {
   Button,
   Card,
@@ -70,1228 +28,270 @@ import {
   CardHeader,
   CardTitle,
   Badge,
-  Skeleton,
-  Alert,
-  AlertDescription,
-  Input,
-  Textarea,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Switch,
-  Separator,
   Avatar,
-  AvatarFallback,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
+  AvatarFallback
 } from '@/components/ui/index'
-import { cn } from '@/lib/utils'
 
-// Import your existing business logic hooks
-import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
+import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
+import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
-// Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
-
-// Import utilities
-import { formatAddress } from '@/lib/utils'
-
-/**
- * Profile Tab Types
- */
-type ProfileTab = 'profile' | 'privacy' | 'notifications' | 'wallet' | 'preferences'
-
-/**
- * Profile Data Interface
- */
-interface ProfileData {
-  displayName: string
-  bio: string
-  email: string
-  website: string
-  location: string
-  avatar: File | null
-}
-
-/**
- * Privacy Settings Interface
- */
-interface PrivacySettings {
-  profileVisibility: 'public' | 'private'
-  showEmail: boolean
-  showPurchaseHistory: boolean
-  allowAnalytics: boolean
-  allowMarketing: boolean
-}
-
-/**
- * Notification Settings Interface
- */
-interface NotificationSettings {
-  emailNotifications: boolean
-  pushNotifications: boolean
-  purchaseAlerts: boolean
-  contentUpdates: boolean
-  creatorMessages: boolean
-  marketingEmails: boolean
-}
-
-/**
- * MiniApp User Profile Core Component
- *
- * This component orchestrates the complete user profile management experience
- * with mobile-first design and comprehensive account settings.
- */
-function MiniAppUserProfileCore() {
+export default function MiniAppProfilePage() {
   const router = useRouter()
-
-  // Core state management
-  const [activeTab, setActiveTab] = useState<ProfileTab>('profile')
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-
-  // Profile data state
-  const [profileData, setProfileData] = useState<ProfileData>({
-    displayName: '',
-    bio: '',
-    email: '',
-    website: '',
-    location: '',
-    avatar: null
-  })
-
-  // Privacy settings state
-  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>({
-    profileVisibility: 'public',
-    showEmail: false,
-    showPurchaseHistory: false,
-    allowAnalytics: true,
-    allowMarketing: false
-  })
-
-  // Notification settings state
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    emailNotifications: true,
-    pushNotifications: true,
-    purchaseAlerts: true,
-    contentUpdates: false,
-    creatorMessages: true,
-    marketingEmails: false
-  })
-
-  // Mini app context and hooks
-  const miniAppUtils = useMiniAppUtils()
-  const socialState = useSocialState()
   const walletUI = useFarcasterAutoWallet()
-
+  const socialState = useSocialState()
+  const miniAppUtils = useMiniAppUtils()
+  
   const userAddress = getSafeAddress(walletUI.address)
+  const isConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
   const formattedAddress = formatWalletAddress(walletUI.address)
-  const isFullyConnected = isWalletFullyConnected(walletUI.isConnected, walletUI.address)
   
-  // Get creator registration status
+  // Simple creator check with timeout
   const creatorRegistration = useIsCreatorRegistered(userAddress)
+  const [checkComplete, setCheckComplete] = useState(false)
 
-  // Enhanced debug wallet state - temporary for debugging
+  // Simple timeout to prevent infinite loading
   useEffect(() => {
-    console.log('🔍 Profile page wallet state DETAILED:', {
-      'walletUI.isConnected': walletUI.isConnected,
-      'walletUI.address': walletUI.address,
-      'userAddress': userAddress,
-      'formattedAddress': formattedAddress,
-      'isFullyConnected': isFullyConnected,
-      'addressType': typeof walletUI.address,
-      'addressLength': walletUI.address?.length,
-      'startsWithOx': walletUI.address?.startsWith('0x'),
-      'isInMiniApp': walletUI.isInMiniApp,
-      'walletError': walletUI.error?.message
-    })
-    
-    // Manual check
-    const manualCheck = walletUI.isConnected && 
-                       !!walletUI.address && 
-                       typeof walletUI.address === 'string' && 
-                       walletUI.address.startsWith('0x')
-    console.log('🔍 Manual connection check result:', manualCheck)
-    
-    if (!isFullyConnected) {
-      console.log('❌ Profile page blocking access - wallet not fully connected')
-      console.log('   - isConnected:', walletUI.isConnected)
-      console.log('   - hasAddress:', !!walletUI.address)
-      console.log('   - addressValid:', walletUI.address && walletUI.address.startsWith('0x'))
-    } else {
-      console.log('✅ Profile page allowing access - wallet is connected')
+    const timeout = setTimeout(() => {
+      setCheckComplete(true)
+    }, 5000) // 5 second max wait
+
+    if (!creatorRegistration.isLoading) {
+      setCheckComplete(true)
+      clearTimeout(timeout)
     }
-  }, [walletUI.isConnected, walletUI.address, userAddress, formattedAddress, isFullyConnected, walletUI.isInMiniApp, walletUI.error])
 
-  /**
-   * Tab Change Handler
-   */
-  const handleTabChange = useCallback((tab: ProfileTab) => {
-    setActiveTab(tab)
-  }, [])
+    return () => clearTimeout(timeout)
+  }, [creatorRegistration.isLoading])
 
-  /**
-   * Profile Update Handlers
-   */
-  const handleProfileUpdate = useCallback((field: keyof ProfileData, value: string | File | null) => {
-    setProfileData(prev => ({ ...prev, [field]: value }))
-  }, [])
-
-  const handlePrivacyUpdate = useCallback((field: keyof PrivacySettings, value: string | boolean) => {
-    setPrivacySettings(prev => ({ ...prev, [field]: value }))
-  }, [])
-
-  const handleNotificationUpdate = useCallback((field: keyof NotificationSettings, value: boolean) => {
-    setNotificationSettings(prev => ({ ...prev, [field]: value }))
-  }, [])
-
-  /**
-   * Save Profile Handler
-   */
-  const handleSaveProfile = useCallback(async () => {
-    setIsSaving(true)
-    try {
-      // Mock save operation
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      setIsEditing(false)
-      // In real implementation, this would save to backend
-    } finally {
-      setIsSaving(false)
-    }
-  }, [])
-
-  /**
-   * Navigation Handler
-   */
-  const handleGoBack = useCallback(() => {
-    router.back()
-  }, [router])
-
-  // Initialize profile data (in real app this would come from API)
-  useEffect(() => {
-    if (userAddress) {
-      setProfileData(prev => ({
-        ...prev,
-        displayName: `User ${userAddress.slice(-4)}`,
-        bio: 'Web3 content enthusiast exploring the decentralized future.',
-        email: '',
-        website: '',
-        location: ''
-      }))
-    }
-  }, [userAddress])
-
-  // FIXED: Use same wallet connection logic as working dashboard page
-  // This removes the faulty transitional state check that was blocking Farcaster mobile
-  const shouldShowWalletPrompt = !isFullyConnected || !userAddress
-  
-  if (shouldShowWalletPrompt) {
+  // Show wallet connection if not connected
+  if (!isConnected || !userAddress) {
     return (
-        <div className="container mx-auto px-4 py-8 text-center space-y-6">
-          <Wallet className="h-16 w-16 text-muted-foreground mx-auto" />
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Connect Your Wallet</h1>
-            <p className="text-muted-foreground">
-              Connect your wallet to access your profile
-            </p>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button 
-              onClick={() => walletUI.connect().catch(console.error)}
-              disabled={walletUI.isConnecting}
-            >
-              {walletUI.isConnecting ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connecting...</>
-              ) : (
-                <>Connect Farcaster Wallet</>
-              )}
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/mini')}>
-              Return to Home
-            </Button>
+      <MiniAppLayout>
+        <div className="container mx-auto px-4 space-y-6">
+          <div className="text-center space-y-6 pt-8">
+            <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+              <Wallet className="h-8 w-8 text-muted-foreground" />
+            </div>
+            
+            <div>
+              <h1 className="text-2xl font-bold mb-2">Connect Your Wallet</h1>
+              <p className="text-muted-foreground">
+                Connect your wallet to access your profile and manage your account
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={() => walletUI.connect().catch(console.error)}
+                disabled={walletUI.isConnecting}
+                className="w-full"
+              >
+                {walletUI.isConnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Connect Wallet
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/mini')}
+                className="w-full"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </div>
           </div>
         </div>
+      </MiniAppLayout>
     )
   }
 
-  // FIXED: Add timeout for creator registration check to prevent infinite loading
-  const [creatorCheckTimeout, setCreatorCheckTimeout] = useState(false)
-  
-  useEffect(() => {
-    if (creatorRegistration.isLoading && isFullyConnected && userAddress) {
-      console.log('🔍 Starting creator registration check for:', userAddress)
-      const timeout = setTimeout(() => {
-        console.warn('⏰ Creator registration check timeout - proceeding with redirect logic anyway')
-        setCreatorCheckTimeout(true)
-      }, 8000) // 8 second timeout to match the hook's internal timeout
-      return () => clearTimeout(timeout)
-    }
-  }, [creatorRegistration.isLoading, isFullyConnected, userAddress])
-
-  // Show brief loading only while creator check is active (with timeout)
-  if (creatorRegistration.isLoading && !creatorCheckTimeout) {
+  // Show loading only briefly
+  if (creatorRegistration.isLoading && !checkComplete) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center space-y-6">
-        <User className="h-16 w-16 text-muted-foreground mx-auto" />
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold">Checking Account Status</h1>
-          <p className="text-muted-foreground">
-            Verifying your creator registration...
-          </p>
+      <MiniAppLayout>
+        <div className="container mx-auto px-4 space-y-6">
+          <div className="text-center space-y-6 pt-8">
+            <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+            <div>
+              <h1 className="text-xl font-bold mb-2">Loading Profile</h1>
+              <p className="text-muted-foreground">Getting your account details...</p>
+            </div>
+          </div>
         </div>
-        <div className="flex justify-center items-center space-x-3">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setCreatorCheckTimeout(true)}
-          >
-            Continue Anyway
-          </Button>
-        </div>
-      </div>
+      </MiniAppLayout>
     )
   }
 
-  // FIXED: Now this redirect logic can actually be reached!
-  // Handle creator registration status - redirect registered creators to dashboard
-  if (isFullyConnected && userAddress && (!creatorRegistration.isLoading || creatorCheckTimeout)) {
-    console.log('🎯 Profile page redirect logic:', {
-      isCreator: creatorRegistration.data,
-      userAddress: userAddress.slice(0, 10) + '...',
-      checkTimeout: creatorCheckTimeout
-    })
-
-    // If user is a registered creator, redirect to dashboard
-    if (creatorRegistration.data === true) {
-      console.log('✅ Redirecting registered creator to dashboard')
-      router.push('/mini/dashboard')
-      return (
-        <div className="container mx-auto px-4 py-8 text-center space-y-6">
-          <Crown className="h-16 w-16 text-primary mx-auto" />
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Welcome Back, Creator!</h1>
-            <p className="text-muted-foreground">
-              Taking you to your creator dashboard...
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        </div>
-      )
-    }
-    
-    // If user is NOT a registered creator, redirect to onboarding
-    if (creatorRegistration.data === false || creatorCheckTimeout) {
-      console.log('📝 Redirecting non-creator to onboarding')
-      router.push('/mini/onboard')
-      return (
-        <div className="container mx-auto px-4 py-8 text-center space-y-6">
-          <User className="h-16 w-16 text-muted-foreground mx-auto" />
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Become a Creator</h1>
-            <p className="text-muted-foreground">
-              Complete your creator registration to access all features
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        </div>
-      )
-    }
-  }
+  // Determine user status
+  const isCreator = creatorRegistration.data === true
+  const userProfile = socialState?.userProfile
 
   return (
     <MiniAppLayout>
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 space-y-6">
+      <div className="container mx-auto px-4 space-y-6">
         {/* Profile Header */}
-        <ProfileHeader
-          onGoBack={handleGoBack}
-          userAddress={userAddress || '0x0'}
-          profileData={profileData}
-          isEditing={isEditing}
-          onEditToggle={() => setIsEditing(!isEditing)}
-          onSave={handleSaveProfile}
-          isSaving={isSaving}
-        />
+        <div className="text-center space-y-4 pt-4">
+          <Avatar className="h-20 w-20 mx-auto">
+            <AvatarFallback className="text-2xl bg-gradient-to-br from-primary to-accent text-white">
+              {userProfile?.displayName?.charAt(0) || 
+               userProfile?.username?.charAt(0) || 
+               formattedAddress?.charAt(0) || 
+               '?'}
+            </AvatarFallback>
+          </Avatar>
 
-        {/* Profile Tabs */}
-        <ProfileTabs
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-        />
+          <div>
+            <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
+              {userProfile?.displayName || `User ${userAddress?.slice(-4)}`}
+              {isCreator && <Crown className="h-5 w-5 text-yellow-500" />}
+            </h1>
+            
+            <p className="text-muted-foreground">
+              {formattedAddress}
+            </p>
+            
+            {userProfile?.username && (
+              <p className="text-sm text-primary">@{userProfile.username}</p>
+            )}
+          </div>
 
-        {/* Tab Content */}
-        <ProfileTabContent
-          activeTab={activeTab}
-          profileData={profileData}
-          privacySettings={privacySettings}
-          notificationSettings={notificationSettings}
-          userAddress={userAddress || '0x0'}
-          isEditing={isEditing}
-          onProfileUpdate={handleProfileUpdate}
-          onPrivacyUpdate={handlePrivacyUpdate}
-          onNotificationUpdate={handleNotificationUpdate}
-        />
-      </main>
-    </MiniAppLayout>
-  )
-}
-
-/**
- * Profile Header Component
- *
- * Header with user info and edit controls
- */
-function ProfileHeader({
-  onGoBack,
-  userAddress,
-  profileData,
-  isEditing,
-  onEditToggle,
-  onSave,
-  isSaving
-}: {
-  onGoBack: () => void
-  userAddress: `0x${string}`
-  profileData: ProfileData
-  isEditing: boolean
-  onEditToggle: () => void
-  onSave: () => void
-  isSaving: boolean
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Navigation */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onGoBack}
-          className="flex items-center gap-2 h-8 px-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm">Back</span>
-        </Button>
-      </div>
-
-      {/* Profile Info */}
-      <div className="flex items-center gap-4">
-        <Avatar className="h-16 w-16">
-          <AvatarFallback className="text-lg">
-            <User className="h-8 w-8" />
-          </AvatarFallback>
-        </Avatar>
-
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold truncate">
-            {profileData.displayName || `User ${userAddress.slice(-4)}`}
-          </h1>
-          <p className="text-sm text-muted-foreground truncate">
-            {formatAddress(userAddress)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Member since 2024
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <Button onClick={onSave} disabled={isSaving} size="sm">
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          {/* Status Badge */}
+          <div className="flex justify-center">
+            <Badge variant={isCreator ? "default" : "secondary"} className="px-4 py-1">
+              {isCreator ? (
+                <>
+                  <Crown className="h-3 w-3 mr-1" />
+                  Creator
+                </>
               ) : (
-                <Save className="h-4 w-4 mr-1" />
+                <>
+                  <User className="h-3 w-3 mr-1" />
+                  Member
+                </>
               )}
-              Save
-            </Button>
+            </Badge>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="space-y-3">
+          {/* Creator Actions */}
+          {isCreator ? (
+            <>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer" 
+                    onClick={() => router.push('/mini/dashboard')}>
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Crown className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">Creator Dashboard</h3>
+                      <p className="text-sm text-muted-foreground">Manage your content and earnings</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                </CardContent>
+              </Card>
+            </>
           ) : (
-            <Button onClick={onEditToggle} variant="outline" size="sm">
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
+            <>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer" 
+                    onClick={() => router.push('/mini/onboard')}>
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Crown className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">Become a Creator</h3>
+                      <p className="text-sm text-muted-foreground">Start earning from your content</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                </CardContent>
+              </Card>
+            </>
           )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
-/**
- * Profile Tabs Component
- *
- * Tabbed interface for different profile sections
- */
-function ProfileTabs({
-  activeTab,
-  onTabChange
-}: {
-  activeTab: ProfileTab
-  onTabChange: (tab: ProfileTab) => void
-}) {
-  const tabs = [
-    { id: 'profile' as ProfileTab, label: 'Profile', icon: User },
-    { id: 'privacy' as ProfileTab, label: 'Privacy', icon: Shield },
-    { id: 'notifications' as ProfileTab, label: 'Notifications', icon: Bell },
-    { id: 'wallet' as ProfileTab, label: 'Wallet', icon: Wallet },
-    { id: 'preferences' as ProfileTab, label: 'Preferences', icon: Settings }
-  ]
-
-  return (
-    <Tabs value={activeTab} onValueChange={(value) => onTabChange(value as ProfileTab)}>
-      <TabsList className="grid grid-cols-3 gap-1 mb-4">
-        <TabsTrigger value="profile" className="text-xs">
-          Profile
-        </TabsTrigger>
-        <TabsTrigger value="privacy" className="text-xs">
-          Privacy
-        </TabsTrigger>
-        <TabsTrigger value="notifications" className="text-xs">
-          Notifications
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsList className="grid grid-cols-2 gap-1 mb-4">
-        <TabsTrigger value="wallet" className="text-xs">
-          Wallet
-        </TabsTrigger>
-        <TabsTrigger value="preferences" className="text-xs">
-          Preferences
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
-  )
-}
-
-/**
- * Profile Tab Content Component
- *
- * Content for each profile tab
- */
-function ProfileTabContent({
-  activeTab,
-  profileData,
-  privacySettings,
-  notificationSettings,
-  userAddress,
-  isEditing,
-  onProfileUpdate,
-  onPrivacyUpdate,
-  onNotificationUpdate
-}: {
-  activeTab: ProfileTab
-  profileData: ProfileData
-  privacySettings: PrivacySettings
-  notificationSettings: NotificationSettings
-  userAddress: `0x${string}`
-  isEditing: boolean
-  onProfileUpdate: (field: keyof ProfileData, value: string | File | null) => void
-  onPrivacyUpdate: (field: keyof PrivacySettings, value: string | boolean) => void
-  onNotificationUpdate: (field: keyof NotificationSettings, value: boolean) => void
-}) {
-  switch (activeTab) {
-    case 'profile':
-      return (
-        <ProfileTab
-          profileData={profileData}
-          isEditing={isEditing}
-          onProfileUpdate={onProfileUpdate}
-        />
-      )
-    case 'privacy':
-      return (
-        <PrivacyTab
-          privacySettings={privacySettings}
-          onPrivacyUpdate={onPrivacyUpdate}
-        />
-      )
-    case 'notifications':
-      return (
-        <NotificationsTab
-          notificationSettings={notificationSettings}
-          onNotificationUpdate={onNotificationUpdate}
-        />
-      )
-    case 'wallet':
-      return (
-        <WalletTab userAddress={userAddress} />
-      )
-    case 'preferences':
-      return (
-        <PreferencesTab />
-      )
-    default:
-      return null
-  }
-}
-
-/**
- * Profile Tab Component
- *
- * User profile information and editing
- */
-function ProfileTab({
-  profileData,
-  isEditing,
-  onProfileUpdate
-}: {
-  profileData: ProfileData
-  isEditing: boolean
-  onProfileUpdate: (field: keyof ProfileData, value: string | File | null) => void
-}) {
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Profile Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Display Name */}
-          <div className="space-y-2">
-            <Label htmlFor="displayName">Display Name</Label>
-            {isEditing ? (
-              <Input
-                id="displayName"
-                value={profileData.displayName}
-                onChange={(e) => onProfileUpdate('displayName', e.target.value)}
-                placeholder="Your display name"
-              />
-            ) : (
-              <div className="p-3 bg-muted rounded-lg">
-                {profileData.displayName || 'Not set'}
+          {/* Settings */}
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                  <Settings className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Settings</h3>
+                  <p className="text-sm text-muted-foreground">Manage your account preferences</p>
+                </div>
               </div>
-            )}
-          </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
 
-          {/* Bio */}
-          <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
-            {isEditing ? (
-              <Textarea
-                id="bio"
-                value={profileData.bio}
-                onChange={(e) => onProfileUpdate('bio', e.target.value)}
-                placeholder="Tell us about yourself..."
-                rows={3}
-              />
-            ) : (
-              <div className="p-3 bg-muted rounded-lg">
-                {profileData.bio || 'No bio set'}
+          {/* Wallet Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Wallet className="h-4 w-4" />
+                Wallet Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Address:</span>
+                <span className="font-mono">{formattedAddress}</span>
               </div>
-            )}
-          </div>
-
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            {isEditing ? (
-              <Input
-                id="email"
-                type="email"
-                value={profileData.email}
-                onChange={(e) => onProfileUpdate('email', e.target.value)}
-                placeholder="your@email.com"
-              />
-            ) : (
-              <div className="p-3 bg-muted rounded-lg">
-                {profileData.email || 'Not set'}
+              
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Network:</span>
+                <span>Base</span>
               </div>
-            )}
-          </div>
-
-          {/* Website */}
-          <div className="space-y-2">
-            <Label htmlFor="website">Website</Label>
-            {isEditing ? (
-              <Input
-                id="website"
-                value={profileData.website}
-                onChange={(e) => onProfileUpdate('website', e.target.value)}
-                placeholder="https://yourwebsite.com"
-              />
-            ) : (
-              <div className="p-3 bg-muted rounded-lg">
-                {profileData.website || 'Not set'}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Account Statistics */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Account Statistics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-primary">15</div>
-              <div className="text-xs text-muted-foreground">Content Purchased</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600">8</div>
-              <div className="text-xs text-muted-foreground">Content Completed</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-blue-600">12</div>
-              <div className="text-xs text-muted-foreground">Day Streak</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-purple-600">4.6</div>
-              <div className="text-xs text-muted-foreground">Avg Rating</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-/**
- * Privacy Tab Component
- *
- * Privacy settings and data controls
- */
-function PrivacyTab({
-  privacySettings,
-  onPrivacyUpdate
-}: {
-  privacySettings: PrivacySettings
-  onPrivacyUpdate: (field: keyof PrivacySettings, value: string | boolean) => void
-}) {
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Privacy Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Profile Visibility */}
-          <div className="space-y-2">
-            <Label>Profile Visibility</Label>
-            <Select
-              value={privacySettings.profileVisibility}
-              onValueChange={(value) => onPrivacyUpdate('profileVisibility', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="public">Public - Anyone can see my profile</SelectItem>
-                <SelectItem value="private">Private - Only I can see my profile</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Show Email */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Show Email Address</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow others to see your email address
-              </p>
-            </div>
-            <Switch
-              checked={privacySettings.showEmail}
-              onCheckedChange={(checked) => onPrivacyUpdate('showEmail', checked)}
-            />
-          </div>
-
-          {/* Show Purchase History */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Show Purchase History</Label>
-              <p className="text-xs text-muted-foreground">
-                Display your content purchases publicly
-              </p>
-            </div>
-            <Switch
-              checked={privacySettings.showPurchaseHistory}
-              onCheckedChange={(checked) => onPrivacyUpdate('showPurchaseHistory', checked)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Data & Analytics
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Allow Analytics */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Usage Analytics</Label>
-              <p className="text-xs text-muted-foreground">
-                Help improve the platform with anonymous usage data
-              </p>
-            </div>
-            <Switch
-              checked={privacySettings.allowAnalytics}
-              onCheckedChange={(checked) => onPrivacyUpdate('allowAnalytics', checked)}
-            />
-          </div>
-
-          {/* Marketing Emails */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Marketing Communications</Label>
-              <p className="text-xs text-muted-foreground">
-                Receive updates about new features and content
-              </p>
-            </div>
-            <Switch
-              checked={privacySettings.allowMarketing}
-              onCheckedChange={(checked) => onPrivacyUpdate('allowMarketing', checked)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Data Export */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Your Data
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <Button variant="outline" className="w-full justify-start">
-              <Download className="h-4 w-4 mr-2" />
-              Export My Data
-            </Button>
-
-            <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Account
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-/**
- * Notifications Tab Component
- *
- * Notification preferences and settings
- */
-function NotificationsTab({
-  notificationSettings,
-  onNotificationUpdate
-}: {
-  notificationSettings: NotificationSettings
-  onNotificationUpdate: (field: keyof NotificationSettings, value: boolean) => void
-}) {
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Notification Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Push Notifications */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Push Notifications</Label>
-              <p className="text-xs text-muted-foreground">
-                Receive notifications on your device
-              </p>
-            </div>
-            <Switch
-              checked={notificationSettings.pushNotifications}
-              onCheckedChange={(checked) => onNotificationUpdate('pushNotifications', checked)}
-            />
-          </div>
-
-          {/* Email Notifications */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Email Notifications</Label>
-              <p className="text-xs text-muted-foreground">
-                Receive notifications via email
-              </p>
-            </div>
-            <Switch
-              checked={notificationSettings.emailNotifications}
-              onCheckedChange={(checked) => onNotificationUpdate('emailNotifications', checked)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Activity Notifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Purchase Alerts */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Purchase Alerts</Label>
-              <p className="text-xs text-muted-foreground">
-                Notifications about your purchases
-              </p>
-            </div>
-            <Switch
-              checked={notificationSettings.purchaseAlerts}
-              onCheckedChange={(checked) => onNotificationUpdate('purchaseAlerts', checked)}
-            />
-          </div>
-
-          {/* Content Updates */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Content Updates</Label>
-              <p className="text-xs text-muted-foreground">
-                Updates from creators you follow
-              </p>
-            </div>
-            <Switch
-              checked={notificationSettings.contentUpdates}
-              onCheckedChange={(checked) => onNotificationUpdate('contentUpdates', checked)}
-            />
-          </div>
-
-          {/* Creator Messages */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Creator Messages</Label>
-              <p className="text-xs text-muted-foreground">
-                Direct messages from creators
-              </p>
-            </div>
-            <Switch
-              checked={notificationSettings.creatorMessages}
-              onCheckedChange={(checked) => onNotificationUpdate('creatorMessages', checked)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-/**
- * Wallet Tab Component
- *
- * Wallet connection and security settings
- */
-function WalletTab({ userAddress }: { userAddress: `0x${string}` }) {
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Wallet className="h-4 w-4" />
-            Connected Wallet
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <div className="flex-1">
-              <div className="font-medium text-sm text-green-800">Wallet Connected</div>
-              <div className="text-xs text-green-700 font-mono">{formatAddress(userAddress)}</div>
-            </div>
-            <Button variant="outline" size="sm">
-              <Key className="h-4 w-4 mr-1" />
-              Keys
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm">Wallet Actions</h4>
-            <div className="grid grid-cols-1 gap-2">
-              <Button variant="outline" className="justify-start">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View on Block Explorer
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <Download className="h-4 w-4 mr-2" />
-                Export Private Key
-              </Button>
-              <Button variant="outline" className="justify-start text-red-600 hover:text-red-700">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Disconnect Wallet
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Security
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <Lock className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1">
-                <div className="font-medium text-sm">Two-Factor Authentication</div>
-                <div className="text-xs text-muted-foreground">Add an extra layer of security</div>
-              </div>
-              <Button variant="outline" size="sm">
-                Enable
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <Key className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1">
-                <div className="font-medium text-sm">Backup Recovery Phrase</div>
-                <div className="text-xs text-muted-foreground">Secure your wallet access</div>
-              </div>
-              <Button variant="outline" size="sm">
-                Backup
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-/**
- * Preferences Tab Component
- *
- * User preferences and app settings
- */
-function PreferencesTab() {
-  const [theme, setTheme] = useState('system')
-  const [language, setLanguage] = useState('en')
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            Appearance
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Theme */}
-          <div className="space-y-2">
-            <Label>Theme</Label>
-            <Select value={theme} onValueChange={setTheme}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="light">
-                  <div className="flex items-center gap-2">
-                    <Sun className="h-4 w-4" />
-                    Light
-                  </div>
-                </SelectItem>
-                <SelectItem value="dark">
-                  <div className="flex items-center gap-2">
-                    <Moon className="h-4 w-4" />
-                    Dark
-                  </div>
-                </SelectItem>
-                <SelectItem value="system">
-                  <div className="flex items-center gap-2">
-                    <Smartphone className="h-4 w-4" />
-                    System
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Language */}
-          <div className="space-y-2">
-            <Label>Language</Label>
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="es">Español</SelectItem>
-                <SelectItem value="fr">Français</SelectItem>
-                <SelectItem value="de">Deutsch</SelectItem>
-                <SelectItem value="ja">日本語</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Content Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Default Content View</Label>
-            <Select defaultValue="grid">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="grid">Grid View</SelectItem>
-                <SelectItem value="list">List View</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Content Categories</Label>
-            <p className="text-xs text-muted-foreground">
-              Choose your preferred content categories for better recommendations
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {['Technology', 'Design', 'Business', 'Education'].map((category) => (
-                <Badge key={category} variant="secondary" className="cursor-pointer">
-                  {category}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">About</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p><strong>Version:</strong> 1.0.0</p>
-            <p><strong>Last Updated:</strong> December 2024</p>
-            <p><strong>Platform:</strong> Web3 Content Hub</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-/**
- * Error Fallback Component
- */
-function ProfileErrorFallback({
-  error,
-  resetErrorBoundary
-}: {
-  error: Error
-  resetErrorBoundary: () => void
-}) {
-  return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Profile Error
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              We encountered an error loading your profile. Please try again.
-            </p>
-            <div className="flex gap-2">
-              <Button onClick={resetErrorBoundary} className="flex-1">
-                Try Again
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => window.location.href = '/mini'}
-                className="flex-1"
-              >
-                Go Home
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-  )
-}
-
-/**
- * Loading Skeleton Component
- */
-function ProfileLoadingSkeleton() {
-  return (
-      <main className="container mx-auto px-4 py-4 space-y-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-8 w-20" />
-          </div>
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-16 w-16 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </div>
-          </div>
+              
+              {miniAppUtils.isMiniApp && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Context:</span>
+                  <Badge variant="outline" className="text-xs">Farcaster Mini App</Badge>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        <Skeleton className="h-10 w-full" />
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-  )
-}
-
-/**
- * MiniApp User Profile Page - Production Ready
- *
- * Wrapped with error boundary and suspense for production reliability
- */
-export default function MiniAppUserProfilePage() {
-  return (
-    <ErrorBoundary FallbackComponent={ProfileErrorFallback}>
-      <Suspense fallback={<ProfileLoadingSkeleton />}>
-        <MiniAppUserProfileCore />
-      </Suspense>
-    </ErrorBoundary>
+        {/* Footer Actions */}
+        <div className="space-y-3 pb-8">
+          <Button 
+            variant="outline" 
+            onClick={() => router.push('/mini')}
+            className="w-full"
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Back to Home
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            onClick={() => router.push('/mini')}
+            className="w-full"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Exit Profile
+          </Button>
+        </div>
+      </div>
+    </MiniAppLayout>
   )
 }
