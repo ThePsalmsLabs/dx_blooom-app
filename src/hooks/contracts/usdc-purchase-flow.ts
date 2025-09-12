@@ -348,7 +348,8 @@ export function useUSDCPurchaseFlow(
         console.warn('⏰ Approval transaction timeout - checking current allowance')
         
         // Force refresh allowance to see if approval actually went through
-        usdcAllowance.refetch().then(() => {
+        const checkAllowance = async () => {
+          await usdcAllowance.refetch()
           const currentAllowance = usdcAllowance.data || BigInt(0)
           
           if (currentAllowance >= requiredAmount) {
@@ -368,7 +369,8 @@ export function useUSDCPurchaseFlow(
               error: 'Transaction is taking longer than expected. Please check your wallet or try again.'
             })
           }
-        })
+        }
+        checkAllowance()
       }, 60000) // 60 second timeout for approvals
 
       if (approveToken.isConfirmed && approveToken.hash) {
