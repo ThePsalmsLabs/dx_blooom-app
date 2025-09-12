@@ -508,14 +508,14 @@ function AppHeader({
             <div className="flex items-center gap-2 hover-lift transition-all duration-300">
               <div className="relative">
                 <Image
-                  src="/images/miniapp-og-square.png"
-                  alt="Bloom - Creator Economy"
+                  src="/images/BLOOM.svg"
+                  alt="Bloom - Premium Content Platform"
                   width={40}
                   height={40}
-                  className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg object-cover shadow-lg"
+                  className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg object-contain"
                   draggable="false"
                 />
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-lg opacity-20 blur-sm"></div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg opacity-15 blur-sm"></div>
               </div>
               <span className="font-bold text-base sm:text-lg hidden sm:inline bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Bloom

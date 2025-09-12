@@ -470,30 +470,53 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
         )}
       >
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Social Profile */}
-          <AnimatePresence>
-            {userProfile && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2"
-              >
-                <Avatar className="h-8 w-8 border-2 border-white/20">
-                  <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white text-xs">
-                    {userProfile.displayName?.charAt(0) || userProfile.username?.charAt(0) || '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="hidden sm:block">
-                  <div className="text-sm font-medium">
-                    {userProfile.displayName || `@${userProfile.username}`}
+          {/* Logo and Social Profile */}
+          <div className="flex items-center gap-3">
+            {/* Bloom Logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-2"
+            >
+              <div className="relative">
+                <img
+                  src="/images/BLOOM.svg"
+                  alt="Bloom"
+                  className="h-8 w-8 rounded-lg object-contain"
+                  draggable="false"
+                />
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg opacity-20 blur-sm"></div>
+              </div>
+              <span className="font-bold text-sm bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Bloom
+              </span>
+            </motion.div>
+
+            {/* Social Profile */}
+            <AnimatePresence>
+              {userProfile && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-2"
+                >
+                  <Avatar className="h-7 w-7 border-2 border-white/20">
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white text-xs">
+                      {userProfile.displayName?.charAt(0) || userProfile.username?.charAt(0) || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden sm:block">
+                    <div className="text-sm font-medium">
+                      {userProfile.displayName || `@${userProfile.username}`}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Connected
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Farcaster Connected
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           
           {/* Action Buttons */}
           <div className="flex items-center gap-3">

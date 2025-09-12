@@ -83,17 +83,20 @@ export const metadata: Metadata = {
     google: 'your-google-verification-code'
   },
   
-  // Favicon configuration
+  // Favicon configuration - Updated to use BLOOM logo
   icons: {
     icon: [
+      { url: '/images/BLOOM.svg', type: 'image/svg+xml' },
       { url: '/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/favicon/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
       { url: '/favicon/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
       { url: '/images/miniapp-icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
     apple: [
+      { url: '/images/BLOOM.svg', type: 'image/svg+xml' },
       { url: '/favicon/favicon-32x32.png', sizes: '180x180', type: 'image/png' }
-    ]
+    ],
+    shortcut: '/images/BLOOM.svg'
   }
 }
 
