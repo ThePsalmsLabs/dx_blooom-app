@@ -627,8 +627,8 @@ export function UnifiedMiniAppProvider({
         setFarcasterWallet(prev => ({ ...prev, isConnecting: true, error: null }))
         console.log('🚀 App-level Farcaster wallet initialization starting...')
 
-        // Wait for wagmi to be ready
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Wait for wagmi to be ready - extended slightly for connector initialization
+        await new Promise(resolve => setTimeout(resolve, 1500))
         
         console.log('🔗 Starting Farcaster auto-connection at app level...')
         
@@ -712,8 +712,17 @@ export function UnifiedMiniAppProvider({
           }
         }
 
-        const connectors = getConnectors()
-        console.log('🔍 Available connectors at app level:', connectors.map((c: any) => ({ id: c.id, name: c.name })))
+        let connectors = getConnectors()
+        console.log('🔍 Available connectors at app level (first check):', connectors.map((c: any) => ({ id: c.id, name: c.name })))
+        
+        // If no connectors found on first check, wait a brief moment and try once more
+        // This handles the case where wagmi config is still initializing connectors
+        if (connectors.length === 0) {
+          console.log('⏳ No connectors found, waiting briefly and retrying once...')
+          await new Promise(resolve => setTimeout(resolve, 500))
+          connectors = getConnectors()
+          console.log('🔍 Available connectors at app level (second check):', connectors.map((c: any) => ({ id: c.id, name: c.name })))
+        }
         
         const farcasterConnector = connectors.find((connector: any) => 
           connector.id === 'farcasterMiniApp' || 
