@@ -217,7 +217,6 @@ function MiniAppCreatorDashboardCore() {
         {/* Dashboard Header */}
         <DashboardHeader
           creatorProfile={creatorProfile}
-          onGoBack={handleGoBack}
           onRefresh={handleDataRefresh}
           onNewContent={handleNewContent}
         />
@@ -258,12 +257,10 @@ function MiniAppCreatorDashboardCore() {
  */
 function DashboardHeader({
   creatorProfile,
-  onGoBack,
   onRefresh,
   onNewContent
 }: {
   creatorProfile: ReturnType<typeof useCreatorProfile>
-  onGoBack: () => void
   onRefresh: () => void
   onNewContent: () => void
 }) {
@@ -287,18 +284,8 @@ function DashboardHeader({
 
   return (
     <div className="space-y-4">
-      {/* Navigation and Actions */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onGoBack}
-          className="flex items-center gap-2 h-8 px-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span className="text-sm">Back</span>
-        </Button>
-
+      {/* Actions */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
