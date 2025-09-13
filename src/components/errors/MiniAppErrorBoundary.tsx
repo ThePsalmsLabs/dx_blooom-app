@@ -1168,6 +1168,13 @@ export function MiniAppErrorBoundary(props: MiniAppErrorBoundaryProps) {
 
     return {
       state: appState,
+      farcasterWallet: {
+        isConnected: false,
+        address: undefined,
+        isConnecting: false,
+        error: null,
+        isInMiniApp: legacyMiniApp.isMiniApp || false
+      },
       actions: {
         connectWallet: async () => {},
         disconnectWallet: () => {},
