@@ -16,7 +16,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import { useConnect } from 'wagmi'
+import { useConnect, useAccount, useDisconnect } from 'wagmi'
 import { useUnifiedMiniApp } from '@/contexts/UnifiedMiniAppProvider'
 
 interface FarcasterAutoWalletResult {
@@ -26,12 +26,17 @@ interface FarcasterAutoWalletResult {
   readonly isInMiniApp: boolean
   readonly error: Error | null
   readonly connect: () => Promise<void>
+  readonly disconnect: () => void
 }
 
 export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
-  // Get centralized Farcaster wallet state - PURE, NO FALLBACKS
-  const { farcasterWallet } = useUnifiedMiniApp()
+  // Get actual wagmi connection state for real-time updates
+  const { address: wagmiAddress, isConnected: wagmiConnected, isConnecting: wagmiConnecting } = useAccount()
   const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
+  
+  // Get centralized Farcaster wallet state from app-level provider
+  const { farcasterWallet } = useUnifiedMiniApp()
 
   const connectWallet = useCallback(async () => {
     try {
@@ -61,12 +66,27 @@ export function useFarcasterAutoWallet(): FarcasterAutoWalletResult {
     }
   }, [farcasterWallet.isInMiniApp, connectors, connect])
 
+  const disconnectWallet = useCallback(() => {
+    try {
+      console.log('🔗 Farcaster wallet disconnect requested')
+      disconnect()
+    } catch (err) {
+      console.error('❌ Farcaster wallet disconnect failed:', err)
+    }
+  }, [disconnect])
+
+  // Use wagmi state as the source of truth for connection status
+  // This ensures real-time updates when wallet connects/disconnects
+  const actuallyConnected = wagmiConnected && Boolean(wagmiAddress)
+  const actuallyConnecting = wagmiConnecting || farcasterWallet.isConnecting
+
   return {
-    isConnected: farcasterWallet.isConnected,
-    address: farcasterWallet.address,
-    isConnecting: farcasterWallet.isConnecting,
+    isConnected: actuallyConnected,
+    address: wagmiAddress || farcasterWallet.address,
+    isConnecting: actuallyConnecting,
     isInMiniApp: farcasterWallet.isInMiniApp,
     error: farcasterWallet.error,
-    connect: connectWallet
+    connect: connectWallet,
+    disconnect: disconnectWallet
   }
 }

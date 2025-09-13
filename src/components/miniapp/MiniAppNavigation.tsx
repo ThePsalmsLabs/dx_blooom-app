@@ -165,6 +165,7 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
     address,
     isConnecting,
     connect: connectWallet,
+    disconnect: disconnectWallet,
     error: walletError,
     isInMiniApp
   } = useFarcasterAutoWallet()
@@ -229,16 +230,10 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
     try {
       triggerHaptic('medium')
       if (isConnected) {
-        // If connected, disconnect the wallet
+        // If connected, disconnect the wallet properly
         if (window.confirm('Disconnect your wallet?')) {
-          // For Farcaster auto wallet, we need to manually disconnect
-          if (typeof window !== 'undefined' && (window as any).parent) {
-            // In MiniApp context, reload to clear state
-            window.location.reload()
-          } else {
-            // In regular context, try to disconnect
-            window.location.reload()
-          }
+          console.log('🔄 Disconnecting Farcaster wallet...')
+          disconnectWallet()
         }
       } else {
         // If not connected, connect the wallet
@@ -248,7 +243,7 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
       console.error('Wallet action failed:', error)
       triggerHaptic('heavy')
     }
-  }, [connectWallet, isConnected])
+  }, [connectWallet, disconnectWallet, isConnected])
   
   const handleThemeToggle = useCallback(() => {
     setIsThemeTogglePressed(true)

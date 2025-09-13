@@ -627,53 +627,123 @@ export function UnifiedMiniAppProvider({
         setFarcasterWallet(prev => ({ ...prev, isConnecting: true, error: null }))
         console.log('🚀 App-level Farcaster wallet initialization starting...')
 
-        // Import wagmi hooks dynamically
-        const { useAccount, useConnect } = await import('wagmi')
-        
         // Wait for wagmi to be ready
         await new Promise(resolve => setTimeout(resolve, 1000))
         
-        // Check if already connected
-        const account = (globalThis as any).__wagmi_account
-        if (account?.isConnected && account?.address) {
-          console.log('✅ Farcaster wallet already connected:', account.address)
-          if (mounted) {
-            setFarcasterWallet({
-              isConnected: true,
-              address: account.address,
-              isConnecting: false,
-              error: null,
-              isInMiniApp: true
-            })
+        console.log('🔗 Starting Farcaster auto-connection at app level...')
+        
+        // Auto-connect logic similar to the working hook implementation
+        const checkSDKReady = async () => {
+          let attempts = 0
+          const maxAttempts = 10
+          
+          while (attempts < maxAttempts) {
+            try {
+              const { sdk } = await import('@farcaster/miniapp-sdk')
+              if (sdk && typeof sdk === 'object') {
+                console.log('✅ Farcaster SDK is available, proceeding with auto-connect')
+                return true
+              }
+            } catch (e) {
+              console.warn('SDK not ready yet, waiting...', e)
+            }
+            
+            attempts++
+            await new Promise(resolve => setTimeout(resolve, 200))
           }
+          
+          console.warn('⚠️ SDK ready check timed out, proceeding anyway')
+          return false
+        }
+
+        await checkSDKReady()
+
+        // Import wagmi hooks (not used directly in provider but ensures they're loaded)
+        await import('wagmi')
+        
+        // Check if wallet is already connected
+        const checkConnection = () => {
+          try {
+            // Access current wagmi state
+            const currentState = (globalThis as any).__wagmi_account
+            if (currentState?.isConnected && currentState?.address) {
+              console.log('✅ Farcaster wallet already connected at app level:', currentState.address)
+              if (mounted) {
+                setFarcasterWallet({
+                  isConnected: true,
+                  address: currentState.address,
+                  isConnecting: false,
+                  error: null,
+                  isInMiniApp: true
+                })
+              }
+              return true
+            }
+            return false
+          } catch (error) {
+            console.warn('Failed to check connection state:', error)
+            return false
+          }
+        }
+
+        // If already connected, we're done
+        if (checkConnection()) {
           return
         }
 
-        // Attempt auto-connection with Farcaster connector
-        console.log('🔗 Attempting Farcaster auto-connection...')
+        // Otherwise attempt auto-connection
+        console.log('⏳ Wallet not connected, attempting auto-connect...')
         
-        // Access wagmi connectors from global state or config
-        const wagmiStore = (globalThis as any).__wagmi_store
-        const connectors = wagmiStore?.connectors || []
+        // Get wagmi connectors from the store
+        const getConnectors = () => {
+          try {
+            const wagmiStore = (globalThis as any).__wagmi_store
+            const wagmiConfig = (globalThis as any).__wagmi_config
+            
+            if (wagmiConfig?.connectors) {
+              return Array.from(wagmiConfig.connectors.values())
+            } else if (wagmiStore?.connectors) {
+              return wagmiStore.connectors
+            }
+            return []
+          } catch (error) {
+            console.warn('Failed to get connectors:', error)
+            return []
+          }
+        }
+
+        const connectors = getConnectors()
+        console.log('🔍 Available connectors at app level:', connectors.map((c: any) => ({ id: c.id, name: c.name })))
         
         const farcasterConnector = connectors.find((connector: any) => 
           connector.id === 'farcasterMiniApp' || 
           connector.name === 'Farcaster Mini App' ||
           connector.id === 'farcaster'
         )
-
+        
         if (farcasterConnector && mounted) {
           try {
-            console.log('🎯 Found Farcaster connector, attempting connection...')
-            // Connection logic will be handled by wagmi hooks at component level
-            // This initializes the state for components to use
-            setFarcasterWallet(prev => ({ 
-              ...prev, 
-              isConnecting: false,
-              isInMiniApp: true 
-            }))
+            console.log('🎯 Found Farcaster connector at app level, attempting auto-connection...')
+            
+            // Use the connector's connect method directly
+            await farcasterConnector.connect()
+            
+            // Check if connection was successful
+            const connectionResult = checkConnection()
+            if (connectionResult) {
+              console.log('✅ App-level Farcaster auto-connection successful')
+            } else {
+              console.warn('⚠️ Auto-connection completed but no connection detected')
+              if (mounted) {
+                setFarcasterWallet(prev => ({ 
+                  ...prev, 
+                  isConnecting: false,
+                  isInMiniApp: true 
+                }))
+              }
+            }
           } catch (connectError) {
-            console.warn('⚠️ Farcaster connector connection failed:', connectError)
+            console.warn('⚠️ App-level Farcaster auto-connection failed:', connectError)
             if (mounted) {
               setFarcasterWallet(prev => ({ 
                 ...prev, 
@@ -684,7 +754,14 @@ export function UnifiedMiniAppProvider({
             }
           }
         } else {
-          console.warn('⚠️ No Farcaster connector found')
+          console.warn('⚠️ No Farcaster connector found at app level')
+          console.log('📊 Connection status:', {
+            connectorsCount: connectors.length,
+            farcasterConnectorFound: !!farcasterConnector,
+            allConnectorIds: connectors.map((c: any) => c.id),
+            allConnectorNames: connectors.map((c: any) => c.name)
+          })
+          
           if (mounted) {
             setFarcasterWallet(prev => ({ 
               ...prev, 
@@ -715,6 +792,49 @@ export function UnifiedMiniAppProvider({
       clearTimeout(timeoutId)
     }
   }, [appContext])
+
+  // Sync Farcaster wallet state with actual wagmi account state
+  useEffect(() => {
+    if (appContext !== 'miniapp') return
+
+    let mounted = true
+    
+    const syncWagmiState = () => {
+      try {
+        // Get current wagmi account state from global store
+        const globalAccount = (globalThis as any).__wagmi_account
+        
+        if (globalAccount && mounted) {
+          const isConnected = Boolean(globalAccount.isConnected && globalAccount.address)
+          const address = globalAccount.address
+          
+          // Only update if state has actually changed to avoid infinite loops
+          if (farcasterWallet.isConnected !== isConnected || farcasterWallet.address !== address) {
+            console.log('🔄 Syncing Farcaster wallet state with wagmi:', { isConnected, address })
+            setFarcasterWallet(prev => ({
+              ...prev,
+              isConnected,
+              address,
+              isConnecting: prev.isConnecting && !isConnected // Clear connecting if now connected
+            }))
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to sync wagmi state:', error)
+      }
+    }
+    
+    // Sync immediately
+    syncWagmiState()
+    
+    // Set up periodic sync to catch wagmi state changes
+    const syncInterval = setInterval(syncWagmiState, 1000)
+    
+    return () => {
+      mounted = false
+      clearInterval(syncInterval)
+    }
+  }, [appContext, farcasterWallet.isConnected, farcasterWallet.address])
 
   // Update legacy wallet connection state for backwards compatibility
   useEffect(() => {
