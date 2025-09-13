@@ -233,13 +233,8 @@ function MiniAppContentUploadCore() {
   // Handle wallet connection requirement
   if (!isConnected || !userAddress) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-          <div className="container mx-auto px-4 py-3">
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-8 text-center space-y-6">
+      <MiniAppLayout>
+        <div className="text-center space-y-6 py-8">
           <div className="space-y-4">
             <UploadIcon className="h-16 w-16 text-muted-foreground mx-auto" />
             <h1 className="text-2xl font-bold">Connect Your Wallet</h1>
@@ -251,20 +246,15 @@ function MiniAppContentUploadCore() {
             Return to Home
           </Button>
         </div>
-      </div>
+      </MiniAppLayout>
     )
   }
 
   // Handle creator verification
   if (creatorProfile.data && !creatorProfile.data.isRegistered && !creatorProfile.isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-          <div className="container mx-auto px-4 py-3">
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-8 text-center space-y-6">
+      <MiniAppLayout>
+        <div className="text-center space-y-6 py-8">
           <Crown className="h-16 w-16 text-muted-foreground mx-auto" />
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">Become a Creator</h1>
@@ -276,20 +266,13 @@ function MiniAppContentUploadCore() {
             Get Started
           </Button>
         </div>
-      </div>
+      </MiniAppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile-Optimized Navigation Header */}
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 space-y-6">
+    <MiniAppLayout>
+      <div className="space-y-6">
         {/* Upload Header */}
         <UploadHeader
           onGoBack={handleGoBack}
@@ -320,8 +303,8 @@ function MiniAppContentUploadCore() {
 
         {/* Upload Tips */}
         <UploadTips />
-      </main>
-    </div>
+      </div>
+    </MiniAppLayout>
   )
 }
 

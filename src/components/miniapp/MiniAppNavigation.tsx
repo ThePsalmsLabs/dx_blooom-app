@@ -190,8 +190,8 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
     
     // Special handling for profile-related pages
     // Since /mini/profile redirects to /mini/dashboard for creators and /mini/onboard for non-creators
-    // we should show "Profile" as active when user is on dashboard or onboard pages
-    if (!currentItem && (pathname === '/mini/dashboard' || pathname === '/mini/onboard')) {
+    // we should show "Profile" as active when user is on dashboard, onboard, or upload pages
+    if (!currentItem && (pathname === '/mini/dashboard' || pathname === '/mini/onboard' || pathname === '/mini/upload')) {
       currentItem = NAVIGATION_ITEMS.find(item => item.id === 'profile')
     }
     
