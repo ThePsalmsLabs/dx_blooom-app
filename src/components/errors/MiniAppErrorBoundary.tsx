@@ -20,7 +20,7 @@
 import React, { Component, ErrorInfo, ReactNode, useState, useMemo, useEffect, useCallback } from 'react'
 
 
-import type { UnifiedMiniAppContextValue, UnifiedAppState } from '@/contexts/UnifiedMiniAppProvider'
+import type { UnifiedMiniAppContextValue } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import UI components
 import {
@@ -47,7 +47,7 @@ import {
 } from 'lucide-react'
 
 // Import hooks and types
-import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
+import { useUnifiedMiniApp } from '@/contexts/UnifiedMiniAppProvider'
 import type { CompatibilityTestSuiteResult } from '@/utils/miniapp/compatibility'
 import { useCompatibilityTesting } from '@/utils/miniapp/compatibility'
 
@@ -1117,91 +1117,24 @@ function MiniAppErrorFallback({
  * Provides access to context and compatibility information
  */
 export function MiniAppErrorBoundary(props: MiniAppErrorBoundaryProps) {
-  // Access context from Components 1 and 2 for intelligent error handling
-  const miniAppUtils = useMiniAppUtils()
-  const socialState = useSocialState()
-  const legacyMiniApp = { ...miniAppUtils, ...socialState }
+  // Use ONLY the real unified context - no fallbacks or fake contexts
+  const realContext = useUnifiedMiniApp()
   const { runQuickTests } = useCompatibilityTesting()
   
   // State for compatibility information
   const [compatibilityInfo, setCompatibilityInfo] = useState<CompatibilityTestSuiteResult | undefined>()
   
-  // Create enhanced context from legacy context for compatibility
-  const enhancedContext: UnifiedMiniAppContextValue | undefined = useMemo(() => {
-    if (!legacyMiniApp) return undefined
-
-    // Create a minimal UnifiedAppState that matches the interface
-    const appState: UnifiedAppState = {
-      context: 'web',
-      isConnected: false,
-      userAddress: null,
-      capabilities: {
-        wallet: { canConnect: false, canBatchTransactions: false, supportedChains: [] },
-        social: { canShare: false, canCompose: false, canAccessSocialGraph: false },
-        platform: { canDeepLink: false, canAccessClipboard: false, canAccessCamera: false }
-      },
-      socialContext: {
-        isAvailable: false,
-        userProfile: null,
-        canShare: false,
-        canCompose: false,
-        trustScore: 0
-      },
-      transactionState: {
-        status: 'idle',
-        transactionHash: null,
-        formattedStatus: 'Ready',
-        canRetry: false,
-        progress: {
-          submitted: false,
-          confirming: false,
-          confirmed: false,
-          progressText: 'Ready'
-        },
-        retry: () => {},
-        reset: () => {},
-        viewTransaction: () => {}
-      },
-      loadingState: 'idle',
-      error: null
-    }
-
-    return {
-      state: appState,
-      farcasterWallet: {
-        isConnected: false,
-        address: undefined,
-        isConnecting: false,
-        error: null,
-        isInMiniApp: legacyMiniApp.isMiniApp || false
-      },
-      actions: {
-        connectWallet: async () => {},
-        disconnectWallet: () => {},
-        shareContent: async () => {},
-        executeTransaction: async () => {},
-        resetError: () => {}
-      },
-      utils: {
-        isMiniApp: legacyMiniApp.isMiniApp || false,
-        isMobile: false,
-        canPerformAction: () => false,
-        formatAddress: (addr: string) => addr
-      }
-    }
-  }, [legacyMiniApp])
-  
   // Run compatibility tests when context changes
   useEffect(() => {
-    if (legacyMiniApp.isMiniApp) {
+    if (realContext.utils.isMiniApp) {
       runQuickTests().then(setCompatibilityInfo).catch(console.warn)
     }
-  }, [legacyMiniApp.isMiniApp, runQuickTests])
+  }, [realContext.utils.isMiniApp, runQuickTests])
   
   return (
     <MiniAppErrorBoundaryClass
       {...props}
-      miniAppContext={enhancedContext}
+      miniAppContext={realContext}
       compatibilityInfo={compatibilityInfo}
     />
   )
@@ -1216,8 +1149,7 @@ export function MiniAppErrorBoundary(props: MiniAppErrorBoundaryProps) {
  * Allows components to report errors manually when needed
  */
 export function useErrorReporting() {
-  const miniAppUtils = useMiniAppUtils()
-  const miniAppContext = miniAppUtils
+  const miniAppContext = useUnifiedMiniApp()
   
   const reportError = useCallback((
     error: Error,
@@ -1242,12 +1174,12 @@ export function useErrorReporting() {
  * Provides common error recovery functions
  */
 export function useErrorRecovery() {
-  const miniAppUtils = useMiniAppUtils()
-  const legacyMiniApp = miniAppUtils
+  const unifiedContext = useUnifiedMiniApp()
+  const legacyMiniApp = unifiedContext
   
   const recoverFromNetworkError = useCallback(async () => {
     // Attempt to refresh network connections
-    if (legacyMiniApp.isMiniApp) {
+    if (legacyMiniApp.utils.isMiniApp) {
       // For legacy compatibility, we just refresh the page
       window.location.reload()
     }
@@ -1255,7 +1187,7 @@ export function useErrorRecovery() {
   
   const recoverFromSDKError = useCallback(async () => {
     // Attempt to reinitialize SDK
-    if (legacyMiniApp.isMiniApp) {
+    if (legacyMiniApp.utils.isMiniApp) {
       // For legacy compatibility, we refresh the page to reinitialize
       window.location.reload()
     }
