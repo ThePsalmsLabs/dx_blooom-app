@@ -174,13 +174,8 @@ function MiniAppCreatorDashboardCore() {
   // Handle wallet connection requirement
   if (!isConnected || !userAddress) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-          <div className="container mx-auto px-4 py-3">
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-8 text-center space-y-6">
+      <MiniAppLayout>
+        <div className="text-center space-y-6 py-8">
           <Wallet className="h-16 w-16 text-muted-foreground mx-auto" />
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">Connect Your Wallet</h1>
@@ -192,20 +187,15 @@ function MiniAppCreatorDashboardCore() {
             Return to Home
           </Button>
         </div>
-      </div>
+      </MiniAppLayout>
     )
   }
 
   // Handle creator verification
   if (dashboardUI.isRegistered === false && !dashboardUI.isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-          <div className="container mx-auto px-4 py-3">
-          </div>
-        </div>
-
-        <div className="container mx-auto px-4 py-8 text-center space-y-6">
+      <MiniAppLayout>
+        <div className="text-center space-y-6 py-8">
           <Crown className="h-16 w-16 text-muted-foreground mx-auto" />
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">Become a Creator</h1>
@@ -217,20 +207,13 @@ function MiniAppCreatorDashboardCore() {
             Get Started
           </Button>
         </div>
-      </div>
+      </MiniAppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile-Optimized Navigation Header */}
-      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
-        <div className="container mx-auto px-4 py-3">
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 space-y-6">
+    <MiniAppLayout>
+      <div className="space-y-6">
         {/* Dashboard Header */}
         <DashboardHeader
           creatorProfile={creatorProfile}
@@ -263,8 +246,8 @@ function MiniAppCreatorDashboardCore() {
           onViewAnalytics={handleViewAnalytics}
           onManageContent={handleManageContent}
         />
-      </main>
-    </div>
+      </div>
+    </MiniAppLayout>
   )
 }
 
