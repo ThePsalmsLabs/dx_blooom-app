@@ -184,9 +184,17 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
   
   // Update active item based on current path
   useEffect(() => {
-    const currentItem = NAVIGATION_ITEMS.find(item => 
+    let currentItem = NAVIGATION_ITEMS.find(item => 
       item.href === pathname || (item.href !== '/mini' && pathname.startsWith(item.href))
     )
+    
+    // Special handling for profile-related pages
+    // Since /mini/profile redirects to /mini/dashboard for creators and /mini/onboard for non-creators
+    // we should show "Profile" as active when user is on dashboard or onboard pages
+    if (!currentItem && (pathname === '/mini/dashboard' || pathname === '/mini/onboard')) {
+      currentItem = NAVIGATION_ITEMS.find(item => item.id === 'profile')
+    }
+    
     setActiveItemId(currentItem?.id || 'home')
   }, [pathname])
   
