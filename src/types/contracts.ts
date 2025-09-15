@@ -31,13 +31,10 @@ import { type Address, type Hash } from 'viem'
  */
 export enum ContentCategory {
   ARTICLE = 0,        // Written content, blog posts, news articles
-  VIDEO = 1,          // Video content, tutorials, entertainment
-  AUDIO = 2,          // Podcasts, music, audio books
-  IMAGE = 3,          // Photography, artwork, infographics
-  DOCUMENT = 4,       // PDFs, research papers, technical docs
-  COURSE = 5,         // Educational content, structured learning
-  SOFTWARE = 6,       // Code, applications, digital tools
-  DATA = 7            // Datasets, research data, analytics
+  VIDEO = 1,          // Video content, tutorials, entertainment  
+  COURSE = 2,         // Educational content, structured learning
+  MUSIC = 3,          // Music, audio content, sound files
+  PODCAST = 4         // Podcasts, audio shows, spoken content
 }
 
 /**
@@ -47,13 +44,10 @@ export enum ContentCategory {
 export function categoryToString(category: ContentCategory): string {
   const categoryNames = {
     [ContentCategory.ARTICLE]: 'Article',
-    [ContentCategory.VIDEO]: 'Video', 
-    [ContentCategory.AUDIO]: 'Audio',
-    [ContentCategory.IMAGE]: 'Image',
-    [ContentCategory.DOCUMENT]: 'Document',
+    [ContentCategory.VIDEO]: 'Video',
     [ContentCategory.COURSE]: 'Course',
-    [ContentCategory.SOFTWARE]: 'Software',
-    [ContentCategory.DATA]: 'Data'
+    [ContentCategory.MUSIC]: 'Music',
+    [ContentCategory.PODCAST]: 'Podcast'
   }
   return categoryNames[category] || 'Unknown'
 }
@@ -401,5 +395,5 @@ export function isContent(obj: unknown): obj is Content {
  * Type guard to check if a category value is valid
  */
 export function isValidContentCategory(category: number): category is ContentCategory {
-  return category >= 0 && category <= 7 && Number.isInteger(category)
+  return category >= 0 && category <= 4 && Number.isInteger(category)
 }

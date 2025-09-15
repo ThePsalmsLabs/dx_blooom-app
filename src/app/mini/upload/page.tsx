@@ -688,10 +688,9 @@ function ContentDetailsStep({
   const categories = [
     { value: '0', label: 'Article' },      // ContentCategory.ARTICLE = 0
     { value: '1', label: 'Video' },        // ContentCategory.VIDEO = 1
-    { value: '2', label: 'Audio' },        // ContentCategory.AUDIO = 2
-    { value: '3', label: 'Image' },        // ContentCategory.IMAGE = 3
-    { value: '4', label: 'Document' },     // ContentCategory.DOCUMENT = 4
-    { value: '5', label: 'Course' }        // ContentCategory.COURSE = 5
+    { value: '2', label: 'Course' },       // ContentCategory.COURSE = 2
+    { value: '3', label: 'Music' },        // ContentCategory.MUSIC = 3
+    { value: '4', label: 'Podcast' }       // ContentCategory.PODCAST = 4
   ]
 
   return (

@@ -582,8 +582,8 @@ export function useRegisterContent(): ContractWriteWithConfirmationResult {
       throw new Error('Content description must be 1000 characters or less')
     }
     
-    if (params.payPerViewPrice <= BigInt(0)) {
-      throw new Error('Content price must be greater than zero')
+    if (params.payPerViewPrice < BigInt(0)) {
+      throw new Error('Content price cannot be negative')
     }
     
     if (params.payPerViewPrice > BigInt(100000000)) { // 100 USDC

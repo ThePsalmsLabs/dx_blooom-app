@@ -979,7 +979,7 @@ export function useContentPublishingUI(userAddress: Address | undefined): Conten
   const validateContent = useCallback((data: ContentPublishingData): boolean => {
     return data.title.length > 0 && 
            data.ipfsHash.length > 0 && 
-           data.payPerViewPrice > BigInt(0);
+           data.payPerViewPrice >= BigInt(0);
   }, []);
 
   // Creator requirements formatting
