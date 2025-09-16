@@ -724,7 +724,7 @@ function ContentDetailsStep({
           <div className="space-y-2">
             <Label>Category</Label>
             <Select
-              value={category ? category.toString() : ''}
+              value={category !== '' ? category.toString() : ''}
               onValueChange={(value) => onCategoryChange(value ? parseInt(value) as ContentCategory : '')}
             >
               <SelectTrigger>
