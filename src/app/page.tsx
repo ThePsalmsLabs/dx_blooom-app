@@ -448,9 +448,9 @@ export default function HomePage() {
     { key: 'featured' as const, label: 'Featured', icon: Star },
     { key: ContentCategory.ARTICLE, label: 'Articles', icon: FileText },
     { key: ContentCategory.VIDEO, label: 'Videos', icon: Play },
-    { key: ContentCategory.AUDIO, label: 'Audio', icon: Headphones },
+    { key: ContentCategory.MUSIC, label: 'Music', icon: Headphones },
     { key: ContentCategory.COURSE, label: 'Courses', icon: BookOpen },
-    { key: ContentCategory.SOFTWARE, label: 'Software', icon: Code }
+    { key: ContentCategory.PODCAST, label: 'Podcasts', icon: Code }
   ], [])
 
   // Navigation handlers

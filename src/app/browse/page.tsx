@@ -82,7 +82,7 @@ import { isValidContentCategory } from '@/types/contracts'
 // Import business logic hooks
 // import { useActiveContentPaginated } from '@/hooks/contracts/core' // replaced with discovery hook
 import { useContentDiscovery } from '@/hooks/contracts/content/useContentDiscovery'
-import type { ContentSortBy as DiscoverySortBy, ContentCategory as DiscoveryCategory } from '@/hooks/contracts/content/useContentDiscovery'
+import type { ContentSortBy as DiscoverySortBy } from '@/hooks/contracts/content/useContentDiscovery'
 
 /**
  * Content Filter Interface
@@ -228,7 +228,7 @@ function BrowsePageClient() {
 
   // Real discovery query with category + tag filters
   const discovery = useContentDiscovery({
-    categories: filters.category === 'all' ? [] : [filters.category as unknown as DiscoveryCategory],
+    categories: filters.category === 'all' ? [] : [filters.category as unknown as ContentCategory],
     tags: filters.tags,
     discoveryParams: {
       page: currentPage + 1,
@@ -315,11 +315,9 @@ function BrowsePageClient() {
       all: ['popular', 'new', 'free', 'premium', 'short', 'long'],
       '0': ['writing', 'guide', 'tech', 'opinion', 'article', 'blog'],
       '1': ['tutorial', 'review', 'shorts', 'stream', 'video', 'education'],
-      '2': ['podcast', 'music', 'interview', 'audio', 'sound'],
-      '3': ['art', 'photo', 'design', 'image', 'photography', 'graphic'],
-      '4': ['doc', 'pdf', 'document', 'research', 'paper', 'report'],
-      '5': ['course', 'lesson', 'tutorial', 'education'],
-      '6': ['misc']
+      '2': ['course', 'lesson', 'tutorial', 'education', 'learning'],
+      '3': ['music', 'song', 'audio', 'sound', 'track', 'album'],
+      '4': ['podcast', 'interview', 'audio', 'talk', 'discussion']
     }
     const key = selectedCategory === 'all' ? 'all' : String(selectedCategory)
     const tags = suggestions[key] || suggestions.all

@@ -159,8 +159,8 @@ function MiniAppDiscoveryCategoriesCore() {
       trending: true
     },
     {
-      id: ContentCategory.AUDIO.toString(),
-      name: 'Audio',
+      id: ContentCategory.PODCAST.toString(),
+      name: 'Podcasts',
       description: 'Podcasts and audio content',
       icon: Music,
       color: 'bg-purple-500',
@@ -169,22 +169,12 @@ function MiniAppDiscoveryCategoriesCore() {
       trending: true
     },
     {
-      id: ContentCategory.IMAGE.toString(),
-      name: 'Images',
-      description: 'Photography and visual art',
-      icon: Image,
+      id: ContentCategory.MUSIC.toString(),
+      name: 'Music',
+      description: 'Music and audio content',
+      icon: Music,
       color: 'bg-green-500',
       itemCount: 43,
-      featured: false,
-      trending: false
-    },
-    {
-      id: ContentCategory.DOCUMENT.toString(),
-      name: 'Documents',
-      description: 'Reports and research papers',
-      icon: FileText,
-      color: 'bg-orange-500',
-      itemCount: 78,
       featured: false,
       trending: false
     },
@@ -196,26 +186,6 @@ function MiniAppDiscoveryCategoriesCore() {
       color: 'bg-indigo-500',
       itemCount: 34,
       featured: true,
-      trending: false
-    },
-    {
-      id: ContentCategory.SOFTWARE.toString(),
-      name: 'Software',
-      description: 'Code, applications, and digital tools',
-      icon: Code,
-      color: 'bg-slate-500',
-      itemCount: 95,
-      featured: true,
-      trending: true
-    },
-    {
-      id: ContentCategory.DATA.toString(),
-      name: 'Data',
-      description: 'Datasets and research data',
-      icon: FileText,
-      color: 'bg-teal-500',
-      itemCount: 23,
-      featured: false,
       trending: false
     }
   ], [])

@@ -22,23 +22,9 @@ import { getContractAddresses } from '@/lib/contracts/config'
 import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abis'
 import { useQueryClient } from '@tanstack/react-query'
 import { subgraphQueryService, useSubgraphQuery } from '@/services/subgraph/SubgraphQueryService'
+import { ContentCategory } from '@/types/contracts'
 
 // ===== ENHANCED TYPE DEFINITIONS =====
-
-/**
- * Content Category Enum - Synchronized with Smart Contract
- * This matches your ContentCategory enum exactly, ensuring type safety
- * across your entire application stack.
- */
-export enum ContentCategory {
-  Article = 0,
-  Video = 1,
-  Audio = 2,
-  Image = 3,
-  Document = 4,
-  Course = 5,
-  Other = 6
-}
 
 /**
  * Enhanced Sort Options with Performance Considerations
@@ -723,13 +709,11 @@ function createEmptyDiscoveryResult(params: ContentDiscoveryParams): ContentDisc
  */
 export function getCategoryDisplayName(category: ContentCategory): string {
   const categoryNames: Record<ContentCategory, string> = {
-    [ContentCategory.Article]: 'Articles',
-    [ContentCategory.Video]: 'Videos',
-    [ContentCategory.Audio]: 'Audio',
-    [ContentCategory.Image]: 'Images',
-    [ContentCategory.Document]: 'Documents',
-    [ContentCategory.Course]: 'Courses',
-    [ContentCategory.Other]: 'Other'
+    [ContentCategory.ARTICLE]: 'Articles',
+    [ContentCategory.VIDEO]: 'Videos',
+    [ContentCategory.COURSE]: 'Courses',
+    [ContentCategory.MUSIC]: 'Music',
+    [ContentCategory.PODCAST]: 'Podcasts'
   }
   
   return categoryNames[category] || 'Unknown'

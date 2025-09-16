@@ -17,7 +17,7 @@ import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButt
 import { useContentById, useCreatorProfile, useHasContentAccess } from '@/hooks/contracts/core'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { getSafeAddress } from '@/lib/utils/wallet-utils'
-import { categoryToString, type ContentCategory } from '@/types/contracts'
+import { categoryToString, ContentCategory } from '@/types/contracts'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -107,13 +107,11 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
   
   const getCategoryIcon = (category: ContentCategory) => {
     switch (category) {
-      case 0: return Play // VIDEO
-      case 1: return FileText // AUDIO  
-      case 2: return FileText // ARTICLE
-      case 3: return Eye // IMAGE
-      case 4: return FileText // DOCUMENT
-      case 5: return Star // COURSE
-      case 6: return Eye // DATA
+      case ContentCategory.ARTICLE: return FileText // ARTICLE
+      case ContentCategory.VIDEO: return Play // VIDEO
+      case ContentCategory.COURSE: return Star // COURSE  
+      case ContentCategory.MUSIC: return Eye // MUSIC
+      case ContentCategory.PODCAST: return FileText // PODCAST
       default: return FileText
     }
   }

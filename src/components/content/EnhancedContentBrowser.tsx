@@ -9,7 +9,6 @@ import { ContentCategory } from '@/types/contracts'
 import { 
   useContentDiscovery, 
   ContentDiscoveryParams,
-  ContentCategory as DiscoveryContentCategory,
   ContentSortBy
 } from '@/hooks/contracts/content/useContentDiscovery'
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
@@ -305,8 +304,8 @@ export function ContentBrowser({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<DiscoveryContentCategory | undefined>(
-    initialCategory !== undefined ? (initialCategory as unknown as DiscoveryContentCategory) : undefined
+  const [selectedCategory, setSelectedCategory] = useState<ContentCategory | undefined>(
+    initialCategory !== undefined ? (initialCategory as unknown as ContentCategory) : undefined
   )
   const [sortBy, setSortBy] = useState<ContentSortBy>('latest')
 
@@ -353,7 +352,7 @@ export function ContentBrowser({
     if (category === 'all') {
       setSelectedCategory(undefined)
     } else {
-      setSelectedCategory(Number(category) as DiscoveryContentCategory)
+      setSelectedCategory(Number(category) as ContentCategory)
     }
   }, [])
 
@@ -489,13 +488,11 @@ export function ContentBrowser({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value={DiscoveryContentCategory.Article.toString()}>Articles</SelectItem>
-                        <SelectItem value={DiscoveryContentCategory.Video.toString()}>Videos</SelectItem>
-                        <SelectItem value={DiscoveryContentCategory.Audio.toString()}>Audio</SelectItem>
-                        <SelectItem value={DiscoveryContentCategory.Image.toString()}>Images</SelectItem>
-                        <SelectItem value={DiscoveryContentCategory.Document.toString()}>Documents</SelectItem>
-                        <SelectItem value={DiscoveryContentCategory.Course.toString()}>Courses</SelectItem>
-                        <SelectItem value={DiscoveryContentCategory.Other.toString()}>Other</SelectItem>
+                        <SelectItem value={ContentCategory.ARTICLE.toString()}>Articles</SelectItem>
+                        <SelectItem value={ContentCategory.VIDEO.toString()}>Videos</SelectItem>
+                        <SelectItem value={ContentCategory.COURSE.toString()}>Courses</SelectItem>
+                        <SelectItem value={ContentCategory.MUSIC.toString()}>Music</SelectItem>
+                        <SelectItem value={ContentCategory.PODCAST.toString()}>Podcasts</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

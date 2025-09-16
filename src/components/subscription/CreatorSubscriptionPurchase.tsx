@@ -21,7 +21,7 @@ import {
 
 // Import your existing hooks
 import { useCreatorProfile, useTokenBalance } from '@/hooks/contracts/core'
-import { useSubscriptionManagement } from '@/hooks/contracts/subscription/useSubscriptionManagement'
+import { useSubscriptionPurchaseWithApproval } from '@/hooks/contracts/subscription/useSubscriptionWithApproval'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { useChainId } from 'wagmi'
 
@@ -48,7 +48,6 @@ export function CreatorSubscriptionPurchase({
 }: CreatorSubscriptionPurchaseProps) {
   const walletUI = useWalletConnectionUI()
   const userAddress = walletUI.address as `0x${string}` | undefined
-  const isConnected = walletUI.isConnected
   const { toast } = useToast()
   const chainId = useChainId()
   
@@ -57,14 +56,14 @@ export function CreatorSubscriptionPurchase({
   
   // Fetch creator data
   const creatorProfile = useCreatorProfile(creatorAddress)
-  const subscriptionManagement = useSubscriptionManagement(userAddress)
+  const subscriptionFlow = useSubscriptionPurchaseWithApproval(creatorAddress, userAddress)
   const usdcBalance = useTokenBalance(contractAddresses?.USDC, userAddress)
   
-  // Check if user is already subscribed
-  const existingSubscription = useMemo(() => {
-    if (!userAddress) return null
-    return subscriptionManagement.getUserSubscriptionDetails?.(userAddress, creatorAddress)
-  }, [userAddress, creatorAddress, subscriptionManagement])
+  // Check if user is already subscribed - using new flow
+  const isAlreadySubscribed = useMemo(() => {
+    // For now, we'll use a simple check - can be enhanced later
+    return false // TODO: Add proper subscription status check
+  }, []) // No dependencies since we always return false
 
   // Calculate subscription affordability
   const canAfford = useMemo(() => {
@@ -72,7 +71,7 @@ export function CreatorSubscriptionPurchase({
     return usdcBalance.data >= creatorProfile.data.subscriptionPrice
   }, [creatorProfile.data?.subscriptionPrice, usdcBalance.data])
 
-  // Subscription purchase handler
+  // Enhanced subscription handler with approval flow
   const handleSubscribe = useCallback(async () => {
     if (!userAddress || !creatorProfile.data) {
       toast({
@@ -93,13 +92,22 @@ export function CreatorSubscriptionPurchase({
     }
 
     try {
+      // Handle approval flow if needed
+      if (subscriptionFlow.requirements.needsApproval) {
+        toast({
+          title: "Approving USDC Spending",
+          description: "Please approve USDC spending in your wallet...",
+        })
+        await subscriptionFlow.startApproval()
+      }
+
+      // Execute subscription
       toast({
         title: "Processing Subscription",
-        description: "Please confirm the transaction in your wallet...",
+        description: "Please confirm the subscription transaction in your wallet...",
       })
 
-      // Call your subscription hook to initiate subscription
-      await subscriptionManagement.subscribe?.(creatorAddress)
+      await subscriptionFlow.executeSubscription()
 
       toast({
         title: "Subscription Successful! 🎉",
@@ -108,7 +116,10 @@ export function CreatorSubscriptionPurchase({
 
       onSubscriptionSuccess?.()
     } catch (error) {
-      console.error('Subscription failed:', error)
+      // Log error in development only
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Subscription failed:', error)
+      }
 
       // Enhanced error handling for mini app context
       let errorMessage = "Please try again."
@@ -121,8 +132,10 @@ export function CreatorSubscriptionPurchase({
           errorMessage = "Please connect your wallet to continue with the subscription."
         } else if (error.message.includes('User rejected')) {
           errorMessage = "Transaction cancelled. You can try subscribing again when ready."
-        } else if (error.message.includes('insufficient funds')) {
-          errorMessage = "Insufficient funds for this transaction."
+        } else if (error.message.includes('insufficient funds') || error.message.includes('insufficient payment')) {
+          errorMessage = "Insufficient USDC balance. Please ensure you have enough USDC and try again."
+        } else if (error.message.includes('allowance')) {
+          errorMessage = "USDC approval failed. Please try again."
         } else {
           errorMessage = error.message
         }
@@ -134,7 +147,7 @@ export function CreatorSubscriptionPurchase({
         variant: "destructive"
       })
     }
-  }, [userAddress, creatorProfile.data, canAfford, subscriptionManagement, creatorAddress, toast, onSubscriptionSuccess])
+  }, [userAddress, creatorProfile.data, canAfford, subscriptionFlow, toast, onSubscriptionSuccess])
 
   // Loading states
   if (creatorProfile.isLoading) {
@@ -161,7 +174,7 @@ export function CreatorSubscriptionPurchase({
   }
 
   const creator = creatorProfile.data
-  const isSubscribed = existingSubscription?.isActive
+  const isSubscribed = isAlreadySubscribed
 
   // Already subscribed state
   if (isSubscribed) {
@@ -169,15 +182,11 @@ export function CreatorSubscriptionPurchase({
       <Card className={className}>
         <CardContent className="p-4 sm:p-6 text-center">
           <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 mx-auto mb-3 sm:mb-4" />
-          <h3 className="text-base sm:text-lg font-semibold mb-2">You're Subscribed!</h3>
+          <h3 className="text-base sm:text-lg font-semibold mb-2">You&apos;re Subscribed!</h3>
           <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4">
-            You have access to all of this creator's content.
+            You have access to all of this creator&apos;s content.
           </p>
-          <div className="text-xs sm:text-sm text-muted-foreground">
-            Expires: {existingSubscription?.expiryTime ? 
-              new Date(Number(existingSubscription.expiryTime) * 1000).toLocaleDateString() : 
-              'Unknown'}
-          </div>
+
         </CardContent>
       </Card>
     )
@@ -195,14 +204,22 @@ export function CreatorSubscriptionPurchase({
             {creator.subscriberCount} subscribers
           </div>
         </div>
-        <Button 
+        <Button
           onClick={handleSubscribe}
-          disabled={!walletUI.isConnected || !canAfford || subscriptionManagement.isLoading}
+          disabled={!walletUI.isConnected || !subscriptionFlow.requirements.hasEnoughBalance || subscriptionFlow.isApproving || subscriptionFlow.isSubscribing}
           size="sm"
           className="w-full sm:w-auto"
         >
-          {subscriptionManagement.isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+          {subscriptionFlow.isApproving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Approving
+            </>
+          ) : subscriptionFlow.isSubscribing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Subscribing
+            </>
           ) : (
             'Subscribe'
           )}
@@ -216,7 +233,7 @@ export function CreatorSubscriptionPurchase({
     return (
       <div className={className}>
         {/* Balance Check */}
-        {!canAfford && walletUI.isConnected && (
+        {!subscriptionFlow.requirements.hasEnoughBalance && walletUI.isConnected && (
           <Alert className="border-yellow-200 bg-yellow-50 mb-4">
             <AlertCircle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-800 text-sm">
@@ -225,21 +242,41 @@ export function CreatorSubscriptionPurchase({
           </Alert>
         )}
 
+        {/* Approval Required Alert */}
+        {subscriptionFlow.requirements.needsApproval && subscriptionFlow.requirements.hasEnoughBalance && walletUI.isConnected && (
+          <Alert className="border-blue-200 bg-blue-50 mb-4">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800 text-sm">
+              First-time subscription requires USDC spending approval. You&apos;ll need to approve two transactions: approval + subscription.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Subscribe Button */}
         <Button
           onClick={handleSubscribe}
-          disabled={!walletUI.isConnected || !canAfford || subscriptionManagement.isLoading}
+          disabled={!walletUI.isConnected || !subscriptionFlow.requirements.hasEnoughBalance || subscriptionFlow.isApproving || subscriptionFlow.isSubscribing}
           className="w-full"
           size="lg"
         >
           {!walletUI.isConnected ? (
             'Connect Wallet to Subscribe'
-          ) : subscriptionManagement.isLoading ? (
+          ) : subscriptionFlow.isApproving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Approving USDC Spending...
+            </>
+          ) : subscriptionFlow.isSubscribing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Processing Subscription...
             </>
-          ) : !canAfford ? (
+          ) : subscriptionFlow.requirements.needsApproval ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Approve & Subscribe for {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}/month
+            </>
+          ) : !subscriptionFlow.requirements.hasEnoughBalance ? (
             'Insufficient Balance'
           ) : (
             <>
@@ -333,20 +370,30 @@ export function CreatorSubscriptionPurchase({
         )}
 
         {/* Subscribe Button */}
-        <Button 
+        <Button
           onClick={handleSubscribe}
-          disabled={!walletUI.isConnected || !canAfford || subscriptionManagement.isLoading}
+          disabled={!walletUI.isConnected || !subscriptionFlow.requirements.hasEnoughBalance || subscriptionFlow.isApproving || subscriptionFlow.isSubscribing}
           className="w-full"
           size="default"
         >
           {!walletUI.isConnected ? (
             'Connect Wallet to Subscribe'
-          ) : subscriptionManagement.isLoading ? (
+          ) : subscriptionFlow.isApproving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Approving USDC Spending...
+            </>
+          ) : subscriptionFlow.isSubscribing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Processing Subscription...
             </>
-          ) : !canAfford ? (
+          ) : subscriptionFlow.requirements.needsApproval ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Approve & Subscribe for {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}/month
+            </>
+          ) : !subscriptionFlow.requirements.hasEnoughBalance ? (
             'Insufficient Balance'
           ) : (
             <>

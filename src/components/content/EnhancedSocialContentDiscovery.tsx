@@ -857,12 +857,9 @@ export default function EnhancedSocialContentDiscovery({
                 <SelectItem value="all">All Categories</SelectItem>
                 <SelectItem value={ContentCategory.ARTICLE.toString()}>Article</SelectItem>
                 <SelectItem value={ContentCategory.VIDEO.toString()}>Video</SelectItem>
-                <SelectItem value={ContentCategory.AUDIO.toString()}>Audio</SelectItem>
-                <SelectItem value={ContentCategory.IMAGE.toString()}>Image</SelectItem>
-                <SelectItem value={ContentCategory.DOCUMENT.toString()}>Document</SelectItem>
                 <SelectItem value={ContentCategory.COURSE.toString()}>Course</SelectItem>
-                <SelectItem value={ContentCategory.SOFTWARE.toString()}>Software</SelectItem>
-                <SelectItem value={ContentCategory.DATA.toString()}>Data</SelectItem>
+                <SelectItem value={ContentCategory.MUSIC.toString()}>Music</SelectItem>
+                <SelectItem value={ContentCategory.PODCAST.toString()}>Podcast</SelectItem>
               </SelectContent>
             </Select>
 

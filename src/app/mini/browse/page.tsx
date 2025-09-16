@@ -94,7 +94,7 @@ import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import your existing types
 import { ContentCategory } from '@/types/contracts'
-import { ContentCategory as DiscoveryContentCategory } from '@/hooks/contracts/content/useContentDiscovery'
+// ContentCategory imported from @/types/contracts above
 
 // Note: Mock data imports removed - using only real contract data
 
@@ -172,12 +172,10 @@ const getCategoryOptions = (): CategoryOption[] => {
   return [
     { id: 'all', label: 'All Content', icon: Grid3X3 },
     { id: ContentCategory.VIDEO, label: 'Videos', icon: Play },
-    { id: ContentCategory.AUDIO, label: 'Audio', icon: Headphones },
+    { id: ContentCategory.MUSIC, label: 'Music', icon: Headphones },
     { id: ContentCategory.ARTICLE, label: 'Articles', icon: FileText },
-    { id: ContentCategory.IMAGE, label: 'Images', icon: Image },
-    { id: ContentCategory.DOCUMENT, label: 'Documents', icon: BookOpen },
     { id: ContentCategory.COURSE, label: 'Courses', icon: Star },
-    { id: ContentCategory.DATA, label: 'Data', icon: Eye }
+    { id: ContentCategory.PODCAST, label: 'Podcasts', icon: Eye }
   ]
 }
 
@@ -253,7 +251,7 @@ function useRealContentData(
   
   // Use category-specific content discovery when category is selected
   const categoryContentQuery = useContentByCategory(
-    !shouldUseAllContent && filters.category !== 'all' ? (filters.category as unknown as DiscoveryContentCategory) : undefined,
+    !shouldUseAllContent && filters.category !== 'all' ? (filters.category as unknown as ContentCategory) : undefined,
     { 
       page: !shouldUseAllContent ? Math.floor(offset / limit) + 1 : 1, 
       limit: !shouldUseAllContent ? limit : 12 

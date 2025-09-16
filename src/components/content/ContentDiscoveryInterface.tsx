@@ -96,13 +96,13 @@ import { cn } from '@/lib/utils'
 // Import our sophisticated data layer hooks
 import {
   useContentDiscovery,
-  ContentCategory,
   ContentSortBy,
   ContentDiscoveryParams,
   getCategoryDisplayName,
   getSortOptions,
   getCommonPriceRanges
 } from '@/hooks/contracts/content/useContentDiscovery'
+import { ContentCategory } from '@/types/contracts'
 import { useContentById, useCreatorProfile } from '@/hooks/contracts/core'
 import { formatCurrency, formatAddress, formatRelativeTime } from '@/lib/utils'
 import { type Address } from 'viem'

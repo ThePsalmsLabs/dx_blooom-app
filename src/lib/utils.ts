@@ -32,12 +32,12 @@ import { categoryToString, ContentCategory } from '@/types/contracts'
  */
 export function getContentCategoryFromFileType(mimeType: string): ContentCategory | null {
   const fileTypeMappings: Record<string, ContentCategory> = {
-    // Images
-    'image/jpeg': ContentCategory.IMAGE,
-    'image/png': ContentCategory.IMAGE,
-    'image/gif': ContentCategory.IMAGE,
-    'image/webp': ContentCategory.IMAGE,
-    'image/svg+xml': ContentCategory.IMAGE,
+    // Images - mapped to ARTICLE for visual content/documentation
+    'image/jpeg': ContentCategory.ARTICLE,
+    'image/png': ContentCategory.ARTICLE,
+    'image/gif': ContentCategory.ARTICLE,
+    'image/webp': ContentCategory.ARTICLE,
+    'image/svg+xml': ContentCategory.ARTICLE,
 
     // Videos
     'video/mp4': ContentCategory.VIDEO,
@@ -45,30 +45,28 @@ export function getContentCategoryFromFileType(mimeType: string): ContentCategor
     'video/mov': ContentCategory.VIDEO,
     'video/avi': ContentCategory.VIDEO,
 
-    // Audio
-    'audio/mpeg': ContentCategory.AUDIO,
-    'audio/wav': ContentCategory.AUDIO,
-    'audio/ogg': ContentCategory.AUDIO,
-    'audio/mp3': ContentCategory.AUDIO,
+    // Audio - mapped to MUSIC for audio content
+    'audio/mpeg': ContentCategory.MUSIC,
+    'audio/wav': ContentCategory.MUSIC,
+    'audio/ogg': ContentCategory.MUSIC,
+    'audio/mp3': ContentCategory.MUSIC,
 
-    // Documents
-    'application/pdf': ContentCategory.DOCUMENT,
-    'text/plain': ContentCategory.DOCUMENT,
-    'text/markdown': ContentCategory.DOCUMENT,
-    'text/x-markdown': ContentCategory.DOCUMENT,
-    'text/html': ContentCategory.DOCUMENT,
-    'text/csv': ContentCategory.DATA,
-    'application/csv': ContentCategory.DATA,
-    'application/msword': ContentCategory.DOCUMENT,
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ContentCategory.DOCUMENT,
+    // Documents - mapped to ARTICLE for text content
+    'application/pdf': ContentCategory.ARTICLE,
+    'text/plain': ContentCategory.ARTICLE,
+    'text/markdown': ContentCategory.ARTICLE,
+    'text/x-markdown': ContentCategory.ARTICLE,
+    'text/html': ContentCategory.ARTICLE,
 
-    // Code/Software
-    'text/javascript': ContentCategory.SOFTWARE,
-    'text/css': ContentCategory.SOFTWARE,
-    'application/json': ContentCategory.DATA,
-    'application/octet-stream': ContentCategory.SOFTWARE, // Generic binary files
-    'application/zip': ContentCategory.SOFTWARE,
-    'application/x-rar-compressed': ContentCategory.SOFTWARE
+    // Podcasts - mapped to PODCAST for spoken content
+    'audio/m4a': ContentCategory.PODCAST,
+    'audio/aac': ContentCategory.PODCAST,
+
+    // Educational content - mapped to COURSE
+    'application/msword': ContentCategory.COURSE,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ContentCategory.COURSE,
+    'application/vnd.ms-powerpoint': ContentCategory.COURSE,
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': ContentCategory.COURSE
   }
 
   return fileTypeMappings[mimeType] || null
@@ -82,19 +80,16 @@ export function getRecommendedCategoriesForFileType(mimeType: string): ContentCa
   const primaryCategory = getContentCategoryFromFileType(mimeType)
 
   if (!primaryCategory) {
-    return [ContentCategory.DOCUMENT, ContentCategory.SOFTWARE, ContentCategory.DATA]
+    return [ContentCategory.ARTICLE, ContentCategory.COURSE, ContentCategory.VIDEO]
   }
 
   // Return primary category first, then related alternatives
   const categoryAlternatives: Record<ContentCategory, ContentCategory[]> = {
-    [ContentCategory.ARTICLE]: [ContentCategory.DOCUMENT, ContentCategory.COURSE],
-    [ContentCategory.VIDEO]: [ContentCategory.COURSE, ContentCategory.SOFTWARE],
-    [ContentCategory.AUDIO]: [ContentCategory.COURSE, ContentCategory.DOCUMENT],
-    [ContentCategory.IMAGE]: [ContentCategory.ARTICLE, ContentCategory.DOCUMENT],
-    [ContentCategory.DOCUMENT]: [ContentCategory.ARTICLE, ContentCategory.COURSE],
+    [ContentCategory.ARTICLE]: [ContentCategory.COURSE, ContentCategory.VIDEO],
+    [ContentCategory.VIDEO]: [ContentCategory.COURSE, ContentCategory.ARTICLE],
     [ContentCategory.COURSE]: [ContentCategory.ARTICLE, ContentCategory.VIDEO],
-    [ContentCategory.SOFTWARE]: [ContentCategory.COURSE, ContentCategory.DOCUMENT],
-    [ContentCategory.DATA]: [ContentCategory.SOFTWARE, ContentCategory.DOCUMENT]
+    [ContentCategory.MUSIC]: [ContentCategory.PODCAST, ContentCategory.ARTICLE],
+    [ContentCategory.PODCAST]: [ContentCategory.MUSIC, ContentCategory.ARTICLE]
   }
 
   return [primaryCategory, ...categoryAlternatives[primaryCategory]]
@@ -568,12 +563,9 @@ export function formatContentCategory(category: ContentCategory): string {
   const categoryMap = {
     [ContentCategory.ARTICLE]: 'Article',
     [ContentCategory.VIDEO]: 'Video',
-    [ContentCategory.AUDIO]: 'Audio',
-    [ContentCategory.IMAGE]: 'Image',
-    [ContentCategory.DOCUMENT]: 'Document',
     [ContentCategory.COURSE]: 'Course',
-    [ContentCategory.SOFTWARE]: 'Software',
-    [ContentCategory.DATA]: 'Data'
+    [ContentCategory.MUSIC]: 'Music',
+    [ContentCategory.PODCAST]: 'Podcast'
   }
   
   return categoryMap[category as keyof typeof categoryMap] || 'Unknown'
