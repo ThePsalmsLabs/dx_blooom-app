@@ -99,9 +99,15 @@ export function CreatorSubscriptionPurchase({
           description: "Please approve USDC spending in your wallet...",
         })
         await subscriptionFlow.startApproval()
+        
+        // Wait for approval confirmation before proceeding
+        toast({
+          title: "Approval Confirmed",
+          description: "USDC approval successful. Processing subscription...",
+        })
       }
 
-      // Execute subscription
+      // Execute subscription automatically after approval
       toast({
         title: "Processing Subscription",
         description: "Please confirm the subscription transaction in your wallet...",
@@ -274,7 +280,7 @@ export function CreatorSubscriptionPurchase({
           ) : subscriptionFlow.requirements.needsApproval ? (
             <>
               <CreditCard className="h-4 w-4 mr-2" />
-              Approve & Subscribe for {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}/month
+              Approve & Subscribe
             </>
           ) : !subscriptionFlow.requirements.hasEnoughBalance ? (
             'Insufficient Balance'
@@ -391,7 +397,7 @@ export function CreatorSubscriptionPurchase({
           ) : subscriptionFlow.requirements.needsApproval ? (
             <>
               <CreditCard className="h-4 w-4 mr-2" />
-              Approve & Subscribe for {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}/month
+              Approve & Subscribe
             </>
           ) : !subscriptionFlow.requirements.hasEnoughBalance ? (
             'Insufficient Balance'
