@@ -82,7 +82,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[0],
       title: 'Web3 Podcast: The Future of Decentralization',
       description: 'An in-depth discussion about the future of Web3 and decentralized technologies.',
-      category: ContentCategory.AUDIO,
+      category: ContentCategory.PODCAST,
       payPerViewPrice: BigInt(2 * 10**6), // 2 USDC
       creationTime: baseTime - BigInt(10800),
       isActive: true,
@@ -94,7 +94,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[3],
       title: 'Blockchain Beats: Crypto Music Collection',
       description: 'Original music inspired by blockchain technology and the crypto revolution.',
-      category: ContentCategory.AUDIO,
+      category: ContentCategory.PODCAST,
       payPerViewPrice: BigInt(1 * 10**6), // 1 USDC
       creationTime: baseTime - BigInt(14400),
       isActive: true,
@@ -132,7 +132,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[4],
       title: 'Digital Art: Crypto Landscapes',
       description: 'A stunning collection of digital art pieces inspired by cryptocurrency and blockchain themes.',
-      category: ContentCategory.IMAGE,
+      category: ContentCategory.ARTICLE,
       payPerViewPrice: BigInt(2 * 10**6), // 2 USDC
       creationTime: baseTime - BigInt(12600),
       isActive: true,
@@ -143,7 +143,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[3],
       title: 'Infographic: How DeFi Works',
       description: 'Visual explanation of how decentralized finance protocols work and interact with each other.',
-      category: ContentCategory.IMAGE,
+      category: ContentCategory.ARTICLE,
       payPerViewPrice: BigInt(1 * 10**6), // 1 USDC
       creationTime: baseTime - BigInt(16200),
       isActive: true,
@@ -156,7 +156,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[1],
       title: 'Ethereum Smart Contract Audit Report',
       description: 'Professional security audit report for a DeFi protocol with detailed findings and recommendations.',
-      category: ContentCategory.DOCUMENT,
+      category: ContentCategory.ARTICLE,
       payPerViewPrice: BigInt(15 * 10**6), // 15 USDC
       creationTime: baseTime - BigInt(7800),
       isActive: true,
@@ -167,7 +167,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[0],
       title: 'Web3 Business Model Canvas',
       description: 'A comprehensive business model template specifically designed for Web3 and blockchain startups.',
-      category: ContentCategory.DOCUMENT,
+      category: ContentCategory.ARTICLE,
       payPerViewPrice: BigInt(8 * 10**6), // 8 USDC
       creationTime: baseTime - BigInt(11400),
       isActive: true,
@@ -206,7 +206,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[3],
       title: 'Ethereum Transaction Dataset Q4 2024',
       description: 'Comprehensive dataset of Ethereum transactions with gas analysis and pattern recognition data.',
-      category: ContentCategory.DATA,
+      category: ContentCategory.ARTICLE,
       payPerViewPrice: BigInt(20 * 10**6), // 20 USDC
       creationTime: baseTime - BigInt(6000),
       isActive: true,
@@ -217,7 +217,7 @@ export const generateMockContent = (): MockContent[] => {
       creator: creators[1],
       title: 'DeFi TVL Historical Data 2020-2024',
       description: 'Four years of Total Value Locked data across major DeFi protocols with trend analysis.',
-      category: ContentCategory.DATA,
+      category: ContentCategory.ARTICLE,
       payPerViewPrice: BigInt(25 * 10**6), // 25 USDC
       creationTime: baseTime - BigInt(8400),
       isActive: true,
@@ -249,12 +249,9 @@ export const getMockContentCountByCategory = (): Record<ContentCategory | 'all',
     all: allContent.length,
     [ContentCategory.ARTICLE]: 0,
     [ContentCategory.VIDEO]: 0,
-    [ContentCategory.AUDIO]: 0,
-    [ContentCategory.IMAGE]: 0,
-    [ContentCategory.DOCUMENT]: 0,
-    [ContentCategory.COURSE]: 0,
-    [ContentCategory.SOFTWARE]: 0,
-    [ContentCategory.DATA]: 0
+    [ContentCategory.PODCAST]: 0,
+    [ContentCategory.MUSIC]: 0,
+    [ContentCategory.COURSE]: 0
   }
 
   allContent.forEach(content => {
