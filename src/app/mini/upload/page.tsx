@@ -982,49 +982,106 @@ function PublishStep({
   return (
     <div className="space-y-4">
       {/* Content Preview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Review Your Content</CardTitle>
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-background via-background to-muted/20">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+            Review Your Content
+          </CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Make sure everything looks perfect before publishing
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div>
-              <Label className="text-sm font-medium">Title</Label>
-              <p className="text-sm text-muted-foreground">{uploadState.title}</p>
+        <CardContent className="space-y-6">
+          {/* Title Section */}
+          <div className="space-y-3 p-4 rounded-xl bg-card/50 border border-border/50">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+              <Label className="text-sm font-semibold text-foreground">Title</Label>
+            </div>
+            <p className="text-base font-medium text-foreground pl-4 leading-relaxed">
+              {uploadState.title}
+            </p>
+          </div>
+
+          {/* Description Section */}
+          <div className="space-y-3 p-4 rounded-xl bg-card/50 border border-border/50">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <Label className="text-sm font-semibold text-foreground">Description</Label>
+            </div>
+            <p className="text-sm text-muted-foreground pl-4 leading-relaxed">
+              {uploadState.description}
+            </p>
+          </div>
+
+          {/* Category & Price Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3 p-4 rounded-xl bg-card/50 border border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                <Label className="text-sm font-semibold text-foreground">Category</Label>
+              </div>
+              <div className="pl-4">
+                <Badge variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 font-medium">
+                  {uploadState.category ? categoryToString(uploadState.category) : 'Not selected'}
+                </Badge>
+              </div>
             </div>
 
-            <div>
-              <Label className="text-sm font-medium">Description</Label>
-              <p className="text-sm text-muted-foreground">{uploadState.description}</p>
+            <div className="space-y-3 p-4 rounded-xl bg-card/50 border border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <Label className="text-sm font-semibold text-foreground">Price</Label>
+              </div>
+              <div className="pl-4">
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                  {formatCurrency(BigInt(Math.floor(parseFloat(uploadState.price) * 1e6)), 6, 'USDC')}
+                </p>
+              </div>
             </div>
+          </div>
 
-            <div>
-              <Label className="text-sm font-medium">Category</Label>
-              <Badge variant="secondary">
-                {uploadState.category ? categoryToString(uploadState.category) : 'Not selected'}
-              </Badge>
+          {/* Tags Section */}
+          {uploadState.tags.length > 0 && (
+            <div className="space-y-3 p-4 rounded-xl bg-card/50 border border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-pink-500"></div>
+                <Label className="text-sm font-semibold text-foreground">Tags</Label>
+              </div>
+              <div className="flex flex-wrap gap-2 pl-4">
+                {uploadState.tags.map((tag) => (
+                  <Badge 
+                    key={tag} 
+                    variant="outline" 
+                    className="text-xs bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800 hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-colors"
+                  >
+                    #{tag}
+                  </Badge>
+                ))}
+              </div>
             </div>
+          )}
 
-            <div>
-              <Label className="text-sm font-medium">Price</Label>
-              <p className="text-sm text-muted-foreground">
-                {formatCurrency(BigInt(Math.floor(parseFloat(uploadState.price) * 1e6)), 6, 'USDC')}
-              </p>
-            </div>
-
-            {uploadState.tags.length > 0 && (
-              <div>
-                <Label className="text-sm font-medium">Tags</Label>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {uploadState.tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
+          {/* File Info */}
+          {uploadState.selectedFiles.length > 0 && (
+            <div className="space-y-3 p-4 rounded-xl bg-card/50 border border-border/50">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                <Label className="text-sm font-semibold text-foreground">File</Label>
+              </div>
+              <div className="pl-4 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                  <File className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{uploadState.selectedFiles[0].name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(uploadState.selectedFiles[0].size / 1024 / 1024).toFixed(1)} MB
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1146,9 +1203,27 @@ function PublishingInterface({
       onSuccess(publishingUI.publishedContentId)
     } else if (transactionStatus === 'failed' || hasError) {
       const errorMsg = publishingUI.errorMessage || 'Publishing failed'
-      setPublishError(errorMsg)
+      
+      // Check if transaction was cancelled by user
+      const isCancelled = errorMsg.toLowerCase().includes('user rejected') || 
+                         errorMsg.toLowerCase().includes('user denied') || 
+                         errorMsg.toLowerCase().includes('cancelled') ||
+                         errorMsg.toLowerCase().includes('canceled')
+      
+      const displayMsg = isCancelled 
+        ? 'Unable to publish - transaction was cancelled by user'
+        : errorMsg
+
+      setPublishError(displayMsg)
       setIsPublishing(false)
-      onError(new Error(errorMsg))
+      onError(new Error(displayMsg))
+
+      // Auto-clear error message after 5 seconds for cancelled transactions
+      if (isCancelled) {
+        setTimeout(() => {
+          setPublishError('')
+        }, 5000)
+      }
     } else if (isProcessing || transactionStatus === 'submitting' || transactionStatus === 'confirming') {
       setIsPublishing(true)
       setPublishError('')
@@ -1166,32 +1241,44 @@ function PublishingInterface({
     <div className="space-y-4">
       {/* Publishing Status */}
       {isPublishing && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center gap-3 mb-2">
-            <Loader2 className="h-4 w-4 animate-spin text-green-600" />
-            <span className="text-sm font-medium text-green-800">Publishing your content...</span>
-          </div>
-          <div className="text-xs text-green-600">
-            Your content is being made available to your audience. This usually takes a few seconds.
+        <div className="p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm dark:bg-green-900/20 dark:border-green-800/50 transition-all duration-300">
+          <div className="flex items-start gap-3">
+            <Loader2 className="h-4 w-4 animate-spin text-green-600 dark:text-green-400 mt-1 flex-shrink-0" />
+            <div className="space-y-2">
+              <span className="text-sm font-semibold text-green-800 dark:text-green-300">Publishing your content...</span>
+              <div className="text-xs text-green-600 dark:text-green-400 leading-relaxed">
+                Your content is being made available to your audience. This usually takes a few seconds.
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Error Display */}
       {publishError && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600 font-medium">Unable to publish</p>
-          <p className="text-sm text-red-500 mt-1">{publishError}</p>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm dark:bg-red-900/20 dark:border-red-800/50 transition-all duration-300">
+          <div className="flex items-start gap-3">
+            <div className="w-2 h-2 rounded-full bg-red-500 mt-2 flex-shrink-0"></div>
+            <div className="space-y-1">
+              <p className="text-sm text-red-600 dark:text-red-400 font-semibold">Unable to publish</p>
+              <p className="text-sm text-red-500 dark:text-red-300 leading-relaxed">{publishError}</p>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Creator Registration Warning */}
       {!publishingUI.canPublish && (
-        <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-          <p className="text-sm text-orange-800 font-medium">Almost there!</p>
-          <p className="text-sm text-orange-700 mt-1">
-            Please complete your creator profile to start publishing content.
-          </p>
+        <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl shadow-sm dark:bg-orange-900/20 dark:border-orange-800/50 transition-all duration-300">
+          <div className="flex items-start gap-3">
+            <div className="w-2 h-2 rounded-full bg-orange-500 mt-2 flex-shrink-0"></div>
+            <div className="space-y-1">
+              <p className="text-sm text-orange-800 dark:text-orange-400 font-semibold">Almost there!</p>
+              <p className="text-sm text-orange-700 dark:text-orange-300 leading-relaxed">
+                Please complete your creator profile to start publishing content.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1199,7 +1286,7 @@ function PublishingInterface({
       <Button
         onClick={handlePublish}
         disabled={isPublishing || !publishingUI.canPublish}
-        className="w-full h-12 text-base font-medium bg-green-600 hover:bg-green-700"
+        className="w-full h-12 text-base font-semibold bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
         {isPublishing ? 'Publishing...' : 'Publish My Content'}
