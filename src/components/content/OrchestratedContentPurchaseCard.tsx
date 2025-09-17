@@ -1451,16 +1451,6 @@ export function OrchestratedContentPurchaseCard({
             <SystemHealthIndicator health={orchestratorState.systemHealth} />
           )}
 
-          {/* Batch Transaction Capability Indicator */}
-          {paymentDataEnabled && canUseBatchTransactions && (
-            <Alert className="border-green-200 bg-green-50">
-              <Zap className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <strong>Enhanced Experience:</strong> Your wallet supports batch transactions. 
-                Approval and purchase will be combined into a single confirmation.
-              </AlertDescription>
-            </Alert>
-          )}
 
           {/* Payment Progress - Only show during active payment */}
           {paymentState.phase === PaymentIntentPhase.PROCESSING && (
@@ -1622,7 +1612,7 @@ export function OrchestratedContentPurchaseCard({
 
           {/* SELECTING_METHOD Phase - Show method selection or direct purchase */}
           {paymentState.phase === PaymentIntentPhase.SELECTING_METHOD && walletUI.isConnected && (
-            <div className="w-full space-y-2">
+            <div className="w-full space-y-3">
               {enableMultiPayment ? (
                 <Button 
                   className="w-full" 
@@ -1632,14 +1622,30 @@ export function OrchestratedContentPurchaseCard({
                   Choose Payment Method
                 </Button>
               ) : (
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleMethodSelect(PaymentMethod.USDC)}
-                  disabled={!calculatedTokens[PaymentMethod.USDC]?.hasEnoughBalance}
-                >
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Purchase with USDC
-                </Button>
+                <>
+                  {/* USDC Purchase Button */}
+                  <Button 
+                    className="w-full" 
+                    onClick={() => handleMethodSelect(PaymentMethod.USDC)}
+                    disabled={!calculatedTokens[PaymentMethod.USDC]?.hasEnoughBalance}
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Purchase with USDC
+                  </Button>
+                  
+                  {/* ETH Purchase Button - Coming Soon */}
+                  <Button 
+                    variant="outline"
+                    className="w-full opacity-60 cursor-not-allowed" 
+                    disabled={true}
+                  >
+                    <Coins className="h-4 w-4 mr-2" />
+                    Purchase with ETH
+                    <span className="ml-auto text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                      Coming Soon
+                    </span>
+                  </Button>
+                </>
               )}
             </div>
           )}

@@ -46,7 +46,8 @@ import {
   DollarSign,
   MessageCircle,
   Bookmark,
-  TrendingUp
+  TrendingUp,
+  ShoppingCart
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -311,6 +312,7 @@ function MiniAppContentDisplayCore({ params }: ContentDisplayPageProps) {
         {showPurchaseCard && contentId && accessState.status === 'purchase_required' && (
           <PurchaseCardModal
             contentId={contentId}
+            contentData={contentQuery.data}
             userAddress={userAddress}
             onPurchaseSuccess={() => handlePurchaseSuccess(contentId)}
             onClose={() => setShowPurchaseCard(false)}
@@ -649,37 +651,111 @@ function SocialActionsBar({
  */
 function PurchaseCardModal({
   contentId,
+  contentData,
   userAddress,
   onPurchaseSuccess,
   onClose
 }: {
   contentId: bigint
+  contentData?: Content
   userAddress?: `0x${string}`
   onPurchaseSuccess: () => void
   onClose: () => void
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-      <div className="fixed bottom-0 left-0 right-0 bg-card rounded-t-2xl max-h-[80vh] overflow-y-auto">
-        <div className="p-4 space-y-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-br from-white via-blue-50 to-purple-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 rounded-t-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+        <div className="p-6 space-y-6">
+          {/* Enhanced Header */}
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Purchase Content</h3>
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                <Zap className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-gray-800 dark:text-white">Unlock Premium Content</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Instant access after purchase</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
               ×
             </Button>
           </div>
 
+          {/* Content Preview Card */}
+          {contentData && (
+            <div className="bg-white/80 dark:bg-gray-800/80 rounded-2xl p-5 border border-white/50 dark:border-gray-700/50 shadow-lg">
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                  <Eye className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xl bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-400 bg-clip-text text-transparent">
+                    "{contentData.title}"
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">
+                    {contentData.description}
+                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    Premium Content
+                  </Badge>
+                  <Badge variant="outline" className="border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-300">
+                    {formatCurrency(contentData.payPerViewPrice, 6, 'USDC')}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Social Sharing Encouragement */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Share2 className="h-4 w-4 text-white" />
+              </div>
+              <div className="space-y-1">
+                <h5 className="font-semibold text-green-800 dark:text-green-300 text-sm">
+                  💡 Share your discovery!
+                </h5>
+                <p className="text-xs text-green-700 dark:text-green-400 leading-relaxed">
+                  After unlocking this content, share it with your network to help others discover amazing creators and earn social engagement rewards!
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Purchase Component */}
           <OrchestratedContentPurchaseCard
             contentId={contentId}
             userAddress={userAddress}
             onPurchaseSuccess={onPurchaseSuccess}
-            variant="compact"
+            variant="minimal"
             showCreatorInfo={false}
-            showPurchaseDetails={true}
+            showPurchaseDetails={false}
             enableMultiPayment={false}
             showSystemHealth={false}
             enablePerformanceMetrics={false}
           />
+
+          {/* Benefits Footer */}
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="space-y-1">
+                <CheckCircle className="h-6 w-6 text-green-500 mx-auto" />
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Instant Access</p>
+              </div>
+              <div className="space-y-1">
+                <Shield className="h-6 w-6 text-blue-500 mx-auto" />
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Secure Payment</p>
+              </div>
+              <div className="space-y-1">
+                <Star className="h-6 w-6 text-yellow-500 mx-auto" />
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Premium Quality</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
