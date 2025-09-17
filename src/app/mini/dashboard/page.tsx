@@ -392,7 +392,7 @@ function KeyMetricsGrid({
             <span className="text-xs font-medium text-muted-foreground">Pending Earnings</span>
           </div>
           <div className="text-lg font-bold">
-            {formatCurrency(pending, 2, 'USDC')}
+            {formatCurrency(pending, 6, 'USDC')}
           </div>
           <Button
             size="sm"
@@ -659,14 +659,14 @@ function EarningsTab({
 
           <div className="flex justify-between items-center">
             <span className="text-sm">Pending Withdrawal</span>
-            <span className="font-medium">{formatCurrency(pending, 2, 'USDC')}</span>
+            <span className="font-medium">{formatCurrency(pending, 6, 'USDC')}</span>
           </div>
 
           <Separator />
 
           <div className="flex justify-between items-center font-medium">
             <span>Available to Withdraw</span>
-            <span>{formatCurrency(pending, 2, 'USDC')}</span>
+            <span>{formatCurrency(pending, 6, 'USDC')}</span>
           </div>
         </CardContent>
       </Card>
@@ -677,7 +677,7 @@ function EarningsTab({
           <div className="flex justify-between items-center">
             <span className="text-sm">Monthly Subscription</span>
             <span className="font-medium">
-              {formatCurrency(BigInt(profile.subscriptionPrice || 0), 2, 'USDC')}
+              {formatCurrency(BigInt(profile.subscriptionPrice || 0), 6, 'USDC')}
             </span>
           </div>
         </CardContent>

@@ -81,6 +81,7 @@ import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 import { useCreatorProfile } from '@/hooks/contracts/core'
+import { useContentPublishingUI } from '@/hooks/ui/integration'
 
 // Import your existing sophisticated components
 import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
@@ -109,6 +110,7 @@ interface UploadState {
   readonly tags: string[]
   readonly isUploading: boolean
   readonly uploadProgress: number
+  readonly hash: string
 }
 
 /**
@@ -130,7 +132,8 @@ function MiniAppContentUploadCore() {
     price: '5.00',
     tags: [],
     isUploading: false,
-    uploadProgress: 0
+    uploadProgress: 0,
+    hash: ''
   })
 
   // Mini app context and hooks
@@ -171,11 +174,66 @@ function MiniAppContentUploadCore() {
   /**
    * File Selection Handlers
    */
-  const handleFileSelect = useCallback((files: File[]) => {
+  const handleFileSelect = useCallback(async (files: File[]) => {
+    if (files.length === 0) return
+
+    const file = files[0] // For now, only handle single file upload
+    
+    // Basic file validation
+    if (file.size > 50 * 1024 * 1024) {
+      alert('File too large! Please choose a file smaller than 50MB.')
+      return
+    }
+
     setUploadState(prev => ({
       ...prev,
-      selectedFiles: [...prev.selectedFiles, ...files]
+      selectedFiles: [file],
+      isUploading: true,
+      uploadProgress: 0
     }))
+
+    try {
+      // Upload to IPFS
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/ipfs/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const result = await response.json()
+      
+      if (!result.success || !result.hash) {
+        throw new Error('Invalid upload response')
+      }
+
+      setUploadState(prev => ({
+        ...prev,
+        hash: result.hash,
+        isUploading: false,
+        uploadProgress: 100
+      }))
+
+      // Auto-advance to next step after successful upload
+      setTimeout(() => {
+        setUploadState(prev => ({ ...prev, currentStep: 'details' }))
+      }, 500)
+
+    } catch (error) {
+      console.error('Upload failed:', error)
+      alert('Oops! Something went wrong while preparing your content. Please try again.')
+      setUploadState(prev => ({
+        ...prev,
+        isUploading: false,
+        uploadProgress: 0,
+        selectedFiles: []
+      }))
+    }
   }, [])
 
   const handleFileRemove = useCallback((index: number) => {
@@ -216,6 +274,9 @@ function MiniAppContentUploadCore() {
     if ('vibrate' in navigator) {
       navigator.vibrate([100, 50, 100]) // Success haptic pattern
     }
+
+    // Show success message
+    alert('🎉 Content published successfully! You\'ll be redirected to view your content.')
 
     // Redirect to content view
     setTimeout(() => {
@@ -461,6 +522,8 @@ function UploadSteps({
       return (
         <FileSelectionStep
           selectedFiles={uploadState.selectedFiles}
+          isUploading={uploadState.isUploading}
+          uploadProgress={uploadState.uploadProgress}
           onFileSelect={onFileSelect}
           onFileRemove={onFileRemove}
           onNextStep={onNextStep}
@@ -511,11 +574,15 @@ function UploadSteps({
  */
 function FileSelectionStep({
   selectedFiles,
+  isUploading,
+  uploadProgress,
   onFileSelect,
   onFileRemove,
   onNextStep
 }: {
   selectedFiles: File[]
+  isUploading: boolean
+  uploadProgress: number
   onFileSelect: (files: File[]) => void
   onFileRemove: (index: number) => void
   onNextStep: () => void
@@ -625,6 +692,29 @@ function FileSelectionStep({
                   </Button>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upload Progress */}
+      {isUploading && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+                <span className="text-sm font-medium">Processing your content...</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <div className="text-xs text-muted-foreground text-center">
+                Almost ready! We're preparing your content for publishing.
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -779,7 +869,7 @@ function ContentDetailsStep({
         </Button>
         <Button
           onClick={onNextStep}
-          disabled={!title.trim() || !description.trim() || !category}
+          disabled={!title.trim() || !description.trim() || category === ''}
           className="flex-1"
         >
           Next: Set Pricing
@@ -829,7 +919,7 @@ function PricingStep({
                 onClick={() => onPriceChange(quickPrice)}
                 className="h-12"
               >
-                {formatCurrency(BigInt(Math.floor(parseFloat(quickPrice) * 1e6)), 2, 'USDC')}
+                {formatCurrency(BigInt(Math.floor(parseFloat(quickPrice) * 1e6)), 6, 'USDC')}
               </Button>
             ))}
           </div>
@@ -853,7 +943,7 @@ function PricingStep({
             <div className="flex justify-between items-center text-sm">
               <span>Your content price:</span>
               <span className="font-medium">
-                {formatCurrency(BigInt(Math.floor(parseFloat(price || '0') * 1e6)), 2, 'USDC')}
+                {formatCurrency(BigInt(Math.floor(parseFloat(price || '0') * 1e6)), 6, 'USDC')}
               </span>
             </div>
           </div>
@@ -918,7 +1008,7 @@ function PublishStep({
             <div>
               <Label className="text-sm font-medium">Price</Label>
               <p className="text-sm text-muted-foreground">
-                {formatCurrency(BigInt(Math.floor(parseFloat(uploadState.price) * 1e6)), 2, 'USDC')}
+                {formatCurrency(BigInt(Math.floor(parseFloat(uploadState.price) * 1e6)), 6, 'USDC')}
               </p>
             </div>
 
@@ -941,12 +1031,11 @@ function PublishStep({
       {/* Publishing Options */}
       <Card>
         <CardContent className="p-4">
-          <ContentUploadForm
+          <PublishingInterface
+            uploadState={uploadState}
             userAddress={userAddress}
             onSuccess={onUploadSuccess}
-            onCancel={onPrevStep}
-            variant="page"
-            className="w-full"
+            onError={(error) => console.error('Publishing failed:', error)}
           />
         </CardContent>
       </Card>
@@ -954,6 +1043,166 @@ function PublishStep({
       {/* Navigation */}
       <Button variant="outline" onClick={onPrevStep} className="w-full">
         Back to Edit
+      </Button>
+    </div>
+  )
+}
+
+/**
+ * Publishing Interface Component
+ *
+ * Handles the final publishing step using collected upload data
+ */
+function PublishingInterface({
+  uploadState,
+  userAddress,
+  onSuccess,
+  onError
+}: {
+  uploadState: UploadState
+  userAddress?: `0x${string}`
+  onSuccess: (contentId: bigint) => void
+  onError: (error: Error) => void
+}) {
+  const publishingUI = useContentPublishingUI(userAddress)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishError, setPublishError] = useState<string>('')
+
+  const handlePublish = useCallback(() => {
+    // Validate required data
+    if (!uploadState.selectedFiles.length || !uploadState.hash) {
+      const error = new Error('Please select a file first before publishing.')
+      onError(error)
+      setPublishError(error.message)
+      return
+    }
+
+    if (!uploadState.title.trim()) {
+      const error = new Error('Title is required')
+      onError(error)
+      setPublishError(error.message)
+      return
+    }
+
+    if (uploadState.category === '') {
+      const error = new Error('Category selection is required')
+      onError(error)
+      setPublishError(error.message)
+      return
+    }
+
+    // Reset previous states
+    setPublishError('')
+    setIsPublishing(true)
+
+    try {
+      const priceInWei = BigInt(Math.round(parseFloat(uploadState.price) * 1e6))
+
+      const publishData = {
+        title: uploadState.title.trim(),
+        description: uploadState.description.trim(),
+        ipfsHash: uploadState.hash,
+        category: uploadState.category as ContentCategory,
+        payPerViewPrice: priceInWei,
+        tags: uploadState.tags
+      }
+
+      console.log('🚀 Publishing content with miniapp data:', {
+        ...publishData,
+        userAddress: userAddress,
+        canPublish: publishingUI.canPublish,
+        fileCount: uploadState.selectedFiles.length
+      })
+
+      // Check if user can publish
+      if (!publishingUI.canPublish) {
+        const error = new Error(publishingUI.creatorRequirements.registrationText)
+        onError(error)
+        setPublishError(error.message)
+        setIsPublishing(false)
+        return
+      }
+
+      publishingUI.publishingActions.publishAction(publishData)
+    } catch (error) {
+      console.error('❌ Publish error:', error)
+      const publishError = error instanceof Error ? error : new Error('Failed to publish')
+      onError(publishError)
+      setPublishError(publishError.message)
+      setIsPublishing(false)
+    }
+  }, [uploadState, publishingUI, userAddress, onError])
+
+  // Monitor publishing progress
+  useEffect(() => {
+    const transactionStatus = publishingUI.transactionStatus.status
+    const hasError = publishingUI.errorMessage !== null
+    const isProcessing = publishingUI.publishingActions.isProcessing
+
+    if (transactionStatus === 'confirmed' && publishingUI.publishedContentId) {
+      setIsPublishing(false)
+      setPublishError('')
+      console.log('✅ Content published successfully:', publishingUI.publishedContentId)
+      onSuccess(publishingUI.publishedContentId)
+    } else if (transactionStatus === 'failed' || hasError) {
+      const errorMsg = publishingUI.errorMessage || 'Publishing failed'
+      setPublishError(errorMsg)
+      setIsPublishing(false)
+      onError(new Error(errorMsg))
+    } else if (isProcessing || transactionStatus === 'submitting' || transactionStatus === 'confirming') {
+      setIsPublishing(true)
+      setPublishError('')
+    }
+  }, [
+    publishingUI.transactionStatus.status,
+    publishingUI.errorMessage,
+    publishingUI.publishedContentId,
+    publishingUI.publishingActions.isProcessing,
+    onSuccess,
+    onError
+  ])
+
+  return (
+    <div className="space-y-4">
+      {/* Publishing Status */}
+      {isPublishing && (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+            <span className="text-sm font-medium text-green-800">Publishing your content...</span>
+          </div>
+          <div className="text-xs text-green-600">
+            Your content is being made available to your audience. This usually takes a few seconds.
+          </div>
+        </div>
+      )}
+
+      {/* Error Display */}
+      {publishError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-600 font-medium">Unable to publish</p>
+          <p className="text-sm text-red-500 mt-1">{publishError}</p>
+        </div>
+      )}
+
+      {/* Creator Registration Warning */}
+      {!publishingUI.canPublish && (
+        <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+          <p className="text-sm text-orange-800 font-medium">Almost there!</p>
+          <p className="text-sm text-orange-700 mt-1">
+            Please complete your creator profile to start publishing content.
+          </p>
+        </div>
+      )}
+
+      {/* Publish Button */}
+      <Button
+        onClick={handlePublish}
+        disabled={isPublishing || !publishingUI.canPublish}
+        className="w-full h-12 text-base font-medium bg-green-600 hover:bg-green-700"
+      >
+        {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+        {isPublishing ? 'Publishing...' : 'Publish My Content'}
       </Button>
     </div>
   )
