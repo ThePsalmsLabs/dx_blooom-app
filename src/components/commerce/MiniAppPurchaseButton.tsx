@@ -10,7 +10,8 @@ import {
   ShoppingCart, 
   Loader2, 
   AlertCircle,
-  Wallet
+  Wallet,
+  Eye
 } from 'lucide-react'
 
 // Import existing UI components following established patterns
@@ -460,24 +461,19 @@ export function MiniAppPurchaseButton({
       }
     }
 
-    // Handle processing states (including new approval_confirmed state)
+    // Handle processing states - simplified to prevent stuck states
     const isProcessing = buttonState.isProcessingAction || 
-                        safePurchaseFlow.flowState.step === 'purchasing' ||
-                        safePurchaseFlow.flowState.step === 'approving' ||
-                        safePurchaseFlow.flowState.step === 'approval_confirmed'
+                        safeSocialFlow.sharingState.isSharing ||
+                        (safePurchaseFlow.flowState.step === 'purchasing' && !safePurchaseFlow.hasAccess)
     
     if (isProcessing) {
       const isSharing = safeSocialFlow.sharingState.isSharing
       let processingText = 'Processing...'
       
-      if (safePurchaseFlow.flowState.step === 'approving') {
-        processingText = 'Approving USDC...'
-      } else if (safePurchaseFlow.flowState.step === 'approval_confirmed') {
-        processingText = 'Starting Purchase...'
-      } else if (safePurchaseFlow.flowState.step === 'purchasing') {
-        processingText = 'Purchasing...'
-      } else if (isSharing) {
+      if (isSharing) {
         processingText = 'Sharing...'
+      } else if (buttonState.isProcessingAction) {
+        processingText = 'Purchasing...'
       }
       
       return {
@@ -491,17 +487,18 @@ export function MiniAppPurchaseButton({
       }
     }
 
-    // Handle purchased content - show sharing option
+    // Handle purchased content - show view content option
     if (safePurchaseFlow.hasAccess) {
       return {
-        variant: (safeSocialFlow.canShare ? 'outline' : 'secondary'),
-        onClick: safeSocialFlow.canShare ? handleShareAction : () => {},
-        disabled: !safeSocialFlow.canShare,
-        icon: Share2,
-        text: safeSocialFlow.canShare ? 'Share' : 'Owned',
-        className: safeSocialFlow.canShare
-          ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
-          : 'bg-green-100 text-green-700 cursor-default'
+        variant: 'outline',
+        onClick: () => {
+          // Navigate to content view - this should be handled by parent component
+          onAccessGranted?.(contentId)
+        },
+        disabled: false,
+        icon: Eye,
+        text: 'View Content',
+        className: 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer'
       }
     }
 
@@ -555,6 +552,7 @@ export function MiniAppPurchaseButton({
    * This effect synchronizes component error state with the underlying
    * purchase flow errors, ensuring consistent error presentation.
    */
+  // Enhanced state synchronization with timeout handling
   useEffect(() => {
     if (safePurchaseFlow.flowState.step === 'error' && safePurchaseFlow.flowState.error) {
       setButtonState(prev => ({
@@ -564,7 +562,40 @@ export function MiniAppPurchaseButton({
         isProcessingAction: false
       }))
     }
-  }, [safePurchaseFlow.flowState])
+    
+    // Clear stuck approval states if user gained access
+    if (safePurchaseFlow.hasAccess && buttonState.isProcessingAction) {
+      setButtonState(prev => ({
+        ...prev,
+        isProcessingAction: false,
+        lastActionResult: 'success',
+        lastActionError: null
+      }))
+    }
+  }, [safePurchaseFlow.flowState, safePurchaseFlow.hasAccess, buttonState.isProcessingAction])
+
+  // Timeout mechanism to prevent stuck states
+  useEffect(() => {
+    if (buttonState.isProcessingAction && buttonState.actionStartedAt) {
+      const timeoutId = setTimeout(() => {
+        const timeSinceStart = Date.now() - buttonState.actionStartedAt!.getTime()
+        
+        // If processing for more than 30 seconds, reset state
+        if (timeSinceStart > 30000) {
+          console.warn('⏰ Purchase button stuck in processing state, resetting...')
+          setButtonState(prev => ({
+            ...prev,
+            isProcessingAction: false,
+            lastActionResult: null,
+            lastActionError: null,
+            actionStartedAt: null
+          }))
+        }
+      }, 30000)
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [buttonState.isProcessingAction, buttonState.actionStartedAt])
 
   // ===== ENHANCED CONTEXT DISPLAY =====
   

@@ -154,6 +154,12 @@ function MiniAppContentCard({
               address: content.creator,
               name: formatAddress(content.creator)
             }}
+            onAccessGranted={(contentId) => {
+              // Navigate to content view when user clicks "View Content"
+              if (onContentSelect) {
+                onContentSelect(contentId)
+              }
+            }}
           />
         </div>
       </CardContent>
