@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +23,7 @@ import {
 import { useCreatorProfile, useTokenBalance } from '@/hooks/contracts/core'
 import { useSubscriptionPurchaseWithApproval } from '@/hooks/contracts/subscription/useSubscriptionWithApproval'
 import { useSubscriptionStatus } from '@/hooks/contracts/subscription/useSubscriptionStatus'
+import { useTransactionTimer } from '@/hooks/ui/useTransactionCountdown'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { useChainId } from 'wagmi'
 
@@ -64,19 +65,100 @@ export function CreatorSubscriptionPurchase({
   const subscriptionStatus = useSubscriptionStatus(creatorAddress, userAddress)
   const isAlreadySubscribed = subscriptionStatus.isSubscribed
 
+  // Remove debug logging to reduce RPC calls
+
+  // Transaction countdown timers
+  const approvalTimer = useTransactionTimer()
+  const subscriptionTimer = useTransactionTimer()
+
+  // Track countdown states separately - don't fight against subscriptionFlow
+  const [approvalCountdownActive, setApprovalCountdownActive] = useState(false)
+  const [subscriptionCountdownActive, setSubscriptionCountdownActive] = useState(false)
+
+  // Reset timers when user disconnects or is already subscribed
+  useEffect(() => {
+    if (!walletUI.isConnected || isAlreadySubscribed) {
+      setApprovalCountdownActive(false)
+      setSubscriptionCountdownActive(false)
+      approvalTimer.reset()
+      subscriptionTimer.reset()
+    }
+  }, [walletUI.isConnected, isAlreadySubscribed, approvalTimer, subscriptionTimer])
+
+  // Monitor approval transaction flow
+  useEffect(() => {
+    if (subscriptionFlow.isApproving && !approvalTimer.isActive) {
+      // Start countdown when approval begins
+      console.log('🚀 Starting approval countdown')
+      setApprovalCountdownActive(true)
+      approvalTimer.start(25)
+    } else if (!subscriptionFlow.isApproving && approvalTimer.isActive) {
+      // Stop countdown when approval completes or fails
+      console.log('⚡ Stopping approval countdown')
+      setApprovalCountdownActive(false)
+      approvalTimer.complete()
+    }
+  }, [subscriptionFlow.isApproving, approvalTimer])
+
+  // Monitor subscription transaction flow
+  useEffect(() => {
+    if (subscriptionFlow.isSubscribing && !subscriptionTimer.isActive) {
+      // Start countdown when subscription begins
+      console.log('🚀 Starting subscription countdown')
+      setSubscriptionCountdownActive(true)
+      subscriptionTimer.start(20)
+    } else if (!subscriptionFlow.isSubscribing && subscriptionTimer.isActive) {
+      // Stop countdown when subscription completes or fails
+      console.log('⚡ Stopping subscription countdown')
+      setSubscriptionCountdownActive(false)
+      subscriptionTimer.complete()
+    }
+  }, [subscriptionFlow.isSubscribing, subscriptionTimer])
+
+  // Handle approval success feedback
+  useEffect(() => {
+    // When approval completes successfully (needsApproval becomes false)
+    if (!subscriptionFlow.requirements.needsApproval && approvalCountdownActive) {
+      console.log('✅ Approval completed successfully')
+      setApprovalCountdownActive(false)
+      approvalTimer.reset()
+      toast({
+        title: "✅ Approved!",
+        description: "Click Subscribe to complete",
+        duration: 3000
+      })
+    }
+  }, [subscriptionFlow.requirements.needsApproval, approvalCountdownActive, approvalTimer, toast])
+
+  // Handle subscription success feedback
+  useEffect(() => {
+    if (subscriptionFlow.isSuccess && subscriptionCountdownActive) {
+      console.log('🎉 Subscription completed successfully')
+      setSubscriptionCountdownActive(false)
+      subscriptionTimer.reset()
+      toast({
+        title: "🎉 Subscription Successful!",
+        description: "Welcome! You now have full access",
+        duration: 3000
+      })
+      onSubscriptionSuccess?.()
+    }
+  }, [subscriptionFlow.isSuccess, subscriptionCountdownActive, subscriptionTimer, toast, onSubscriptionSuccess])
+
   // Calculate subscription affordability
   const canAfford = useMemo(() => {
     if (!creatorProfile.data?.subscriptionPrice || !usdcBalance.data) return false
     return usdcBalance.data >= creatorProfile.data.subscriptionPrice
   }, [creatorProfile.data?.subscriptionPrice, usdcBalance.data])
 
-  // Enhanced subscription handler with intelligent progress feedback
+  // Simplified handler - let subscriptionFlow manage its own states
   const handleSubscribe = useCallback(async () => {
     if (!userAddress || !creatorProfile.data) {
       toast({
         title: "🔗 Connect Wallet Required",
         description: "Please connect your wallet to subscribe to this creator.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       })
       return
     }
@@ -85,116 +167,60 @@ export function CreatorSubscriptionPurchase({
       toast({
         title: "💰 Insufficient Balance",
         description: `You need ${formatCurrency(creatorProfile.data.subscriptionPrice, 6, 'USDC')} USDC to subscribe.`,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       })
       return
     }
 
-    // Note: Toast system auto-manages cleanup via duration
-
     try {
-      // Handle two-step approval + subscription flow
+      // If approval is needed, start approval process
       if (subscriptionFlow.requirements.needsApproval) {
-        // Step 1: Approval phase with progress feedback
-        toast({
-          title: "🔐 Step 1 of 2: Approve USDC Spending",
-          description: "⏱️ Please confirm in your wallet... (usually takes 15-30 seconds)",
-          duration: 5000, // Auto-dismiss after 5 seconds - user knows what to do
-        })
-
+        console.log('🔐 Starting approval process')
         await subscriptionFlow.startApproval()
-        
-        // Show approval success (previous toast will auto-dismiss)
-        
-        // Brief success confirmation
-        toast({
-          title: "✅ Approval Confirmed!",
-          description: "USDC spending approved. Ready for subscription...",
-          duration: 2000, // Short confirmation
-        })
-
-        // Wait 1 second for user to see success
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // useEffect will handle countdown and success feedback
+        return
       }
 
-      // Step 2: Subscription phase
-      toast({
-        title: subscriptionFlow.requirements.needsApproval ? "🎯 Step 2 of 2: Complete Subscription" : "🎯 Confirm Subscription",
-        description: "⏱️ Please confirm in your wallet... (usually takes 10-20 seconds)",
-        duration: 3000, // Auto-dismiss after 3 seconds as requested
-      })
-
-      await subscriptionFlow.executeSubscription()
-
-      // Success toast will replace the subscription progress toast
-
-      // Celebration toast with auto-dismiss
-      toast({
-        title: "🎉 Subscription Successful!",
-        description: "🔓 You now have full access to this creator's content for 30 days!",
-        duration: 4000, // 4 seconds to celebrate
-      })
-
-      onSubscriptionSuccess?.()
+      // If no approval needed or approval already done, start subscription
+      if (subscriptionFlow.canSubscribe) {
+        console.log('🎯 Starting subscription process')
+        await subscriptionFlow.executeSubscription()
+        // useEffect will handle countdown and success feedback
+      }
     } catch (error) {
-      // Error handling - previous toasts will auto-dismiss
-
-      // Enhanced error handling with actionable messages
-      let errorMessage = "Please try again."
-      let errorTitle = "❌ Subscription Failed"
-      const shouldShowToast = true
+      // Reset countdown states on error
+      setApprovalCountdownActive(false)
+      setSubscriptionCountdownActive(false)
+      approvalTimer.reset()
+      subscriptionTimer.reset()
 
       if (error instanceof Error) {
+        // Handle user cancellation gracefully
         if (error.message.includes('User rejected') || 
             error.message.includes('cancelled') || 
             error.message.includes('canceled') ||
             error.message.includes('user denied') ||
-            error.message.includes('User denied') ||
-            error.message.includes('Transaction was cancelled by user')) {
-          errorTitle = "🚫 Transaction Cancelled"
-          errorMessage = "No worries! You can try subscribing again whenever you're ready."
+            error.message.includes('User denied')) {
           
-          // Prevent the mysterious "social context" toast by consuming the error properly
-          console.log('✅ User cancelled transaction - handled gracefully, no platform error needed')
-          
-          // For user cancellations, show a gentle toast and return early to prevent error bubbling
           toast({
-            title: errorTitle,
-            description: errorMessage,
-            duration: 3000, // Short duration for cancellations
+            title: "🚫 Transaction Cancelled",
+            description: "You can try again whenever you're ready",
+            duration: 3000
           })
-          return // Important: return early to prevent error from bubbling to platform handler
-          
-        } else if (error.message.includes('insufficient funds') || error.message.includes('insufficient payment')) {
-          errorTitle = "💰 Insufficient Funds"
-          errorMessage = "Please add more USDC to your wallet and try again."
-        } else if (error.message.includes('ConnectorNotConnectedError') || 
-                   error.message.includes('Connector not connected') ||
-                   error.message.includes('Wallet connection lost')) {
-          errorTitle = "🔗 Wallet Disconnected"
-          errorMessage = "Your wallet was disconnected. Please reconnect and try again."
-        } else if (error.message.includes('allowance') || error.message.includes('approval')) {
-          errorTitle = "🔐 Approval Issue"
-          errorMessage = "USDC approval failed. Please try the process again."
-        } else if (error.message.includes('timeout')) {
-          errorTitle = "⏰ Transaction Timeout"
-          errorMessage = "Transaction took too long. Please check your connection and try again."
-        } else {
-          errorMessage = error.message.length > 100 ? "Please try again or contact support if the issue persists." : error.message
+          return
         }
-      }
 
-      // Show toast for non-cancellation errors
-      if (shouldShowToast) {
+        // Show error message
         toast({
-          title: errorTitle,
-          description: errorMessage,
+          title: "❌ Transaction Failed",
+          description: error.message.length > 100 ? "Please try again" : error.message,
           variant: "destructive",
-          duration: 6000, // Longer duration for errors so users can read them
+          duration: 3000
         })
       }
     }
-  }, [userAddress, creatorProfile.data, canAfford, subscriptionFlow, toast, onSubscriptionSuccess])
+  }, [userAddress, creatorProfile.data, canAfford, subscriptionFlow, toast, approvalTimer, subscriptionTimer])
 
   // Loading states
   if (creatorProfile.isLoading) {
@@ -354,24 +380,49 @@ export function CreatorSubscriptionPurchase({
         </div>
         <Button
           onClick={handleSubscribe}
-          disabled={!walletUI.isConnected || !subscriptionFlow.requirements.hasEnoughBalance || subscriptionFlow.isApproving || subscriptionFlow.isSubscribing}
+          disabled={
+            !walletUI.isConnected || 
+            !canAfford || 
+            subscriptionFlow.isApproving || 
+            subscriptionFlow.isSubscribing ||
+            subscriptionFlow.isConfirming
+          }
           size="sm"
           className="w-full sm:w-auto"
         >
-          {subscriptionFlow.isApproving ? (
+          {!walletUI.isConnected ? (
+            'Connect Wallet'
+          ) : !canAfford ? (
+            'Insufficient Balance'
+          ) : subscriptionFlow.isApproving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Step 1/2: Approving...
+              Approving... ({approvalTimer.displayTime})
             </>
           ) : subscriptionFlow.isSubscribing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Step 2/2: Subscribing...
+              Subscribing... ({subscriptionTimer.displayTime})
+            </>
+          ) : subscriptionFlow.isConfirming ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Confirming...
             </>
           ) : subscriptionFlow.requirements.needsApproval ? (
             <>
               <CreditCard className="h-4 w-4 mr-2" />
-              Approve & Subscribe
+              Approve USDC
+            </>
+          ) : subscriptionFlow.canSubscribe ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Subscribe
+            </>
+          ) : subscriptionFlow.hasError ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Try Again
             </>
           ) : (
             <>
@@ -411,29 +462,50 @@ export function CreatorSubscriptionPurchase({
         {/* Subscribe Button */}
         <Button
           onClick={handleSubscribe}
-          disabled={!walletUI.isConnected || !subscriptionFlow.requirements.hasEnoughBalance || subscriptionFlow.isApproving || subscriptionFlow.isSubscribing}
+          disabled={
+            !walletUI.isConnected || 
+            !canAfford || 
+            subscriptionFlow.isApproving || 
+            subscriptionFlow.isSubscribing ||
+            subscriptionFlow.isConfirming
+          }
           className="w-full"
           size="lg"
         >
           {!walletUI.isConnected ? (
             'Connect Wallet to Subscribe'
+          ) : !canAfford ? (
+            'Insufficient Balance'
           ) : subscriptionFlow.isApproving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Step 1/2: Approving USDC... (~30s)
+              Approving... ({approvalTimer.displayTime})
             </>
           ) : subscriptionFlow.isSubscribing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Step 2/2: Subscribing... (~20s)
+              Subscribing... ({subscriptionTimer.displayTime})
+            </>
+          ) : subscriptionFlow.isConfirming ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Confirming...
             </>
           ) : subscriptionFlow.requirements.needsApproval ? (
             <>
               <CreditCard className="h-4 w-4 mr-2" />
-              Approve & Subscribe
+              Approve USDC
             </>
-          ) : !subscriptionFlow.requirements.hasEnoughBalance ? (
-            'Insufficient Balance'
+          ) : subscriptionFlow.canSubscribe ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Subscribe for {formatCurrency(creator.subscriptionPrice, 6, 'USDC')}/month
+            </>
+          ) : subscriptionFlow.hasError ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Try Again
+            </>
           ) : (
             <>
               <CreditCard className="h-4 w-4 mr-2" />
@@ -528,29 +600,50 @@ export function CreatorSubscriptionPurchase({
         {/* Subscribe Button */}
         <Button
           onClick={handleSubscribe}
-          disabled={!walletUI.isConnected || !subscriptionFlow.requirements.hasEnoughBalance || subscriptionFlow.isApproving || subscriptionFlow.isSubscribing}
+          disabled={
+            !walletUI.isConnected || 
+            !canAfford || 
+            subscriptionFlow.isApproving || 
+            subscriptionFlow.isSubscribing ||
+            subscriptionFlow.isConfirming
+          }
           className="w-full"
           size="default"
         >
           {!walletUI.isConnected ? (
             'Connect Wallet to Subscribe'
+          ) : !canAfford ? (
+            'Insufficient Balance'
           ) : subscriptionFlow.isApproving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Approving USDC Spending...
+              Approving... ({approvalTimer.displayTime})
             </>
           ) : subscriptionFlow.isSubscribing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processing Subscription...
+              Subscribing... ({subscriptionTimer.displayTime})
+            </>
+          ) : subscriptionFlow.isConfirming ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Confirming...
             </>
           ) : subscriptionFlow.requirements.needsApproval ? (
             <>
               <CreditCard className="h-4 w-4 mr-2" />
-              Approve & Subscribe
+              Approve USDC
             </>
-          ) : !subscriptionFlow.requirements.hasEnoughBalance ? (
-            'Insufficient Balance'
+          ) : subscriptionFlow.canSubscribe ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Subscribe
+            </>
+          ) : subscriptionFlow.hasError ? (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Try Again
+            </>
           ) : (
             <>
               <CreditCard className="h-4 w-4 mr-2" />

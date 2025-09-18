@@ -226,20 +226,22 @@ const createBaseSepoliaTransport = () => {
     testnetProviders.push(
       http(`https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`, {
         batch: { batchSize: 1000, wait: 16 },
-        retryCount: 2,
+        retryCount: 1,
+        timeout: 8000,
       })
     )
   }
   
-  // Public testnet RPC
+  // FIXED: Use working Sepolia RPC URLs only
   testnetProviders.push(
     http('https://sepolia.base.org', {
-      batch: { batchSize: 500, wait: 32 },
-      retryCount: 2,
+      batch: { batchSize: 100, wait: 50 },
+      retryCount: 1,
+      timeout: 8000,
     })
   )
   
-  return fallback(testnetProviders)
+  return testnetProviders.length > 1 ? fallback(testnetProviders) : testnetProviders[0]
 }
 
 // =============================================================================
@@ -301,11 +303,14 @@ const createWalletConnectors = () => [
  * - Proper wallet connector setup
  * - Development vs production optimizations
  */
+// Use the same pattern as the rest of the codebase
+const network = process.env.NETWORK as 'base' | 'base-sepolia' | undefined
+
 export const enhancedWagmiConfig = createConfig({
-  chains: [base, baseSepolia],
+  chains: network === 'base-sepolia' ? [baseSepolia] : [base], // FIXED: Only use current chain
   connectors: createWalletConnectors(),
   
-  // Transport configuration with our multi-tier fallback system
+  // Transport configuration - only for the active chain  
   transports: {
     [base.id]: createBaseMainnetTransport(),
     [baseSepolia.id]: createBaseSepoliaTransport(),
