@@ -4,14 +4,26 @@
 import { Address } from 'viem'
 import { base, baseSepolia } from 'viem/chains'
 import { NetworkContractAddresses } from '@/types/contracts'
-import { 
+// Import V2 ABIs
+import {
+  COMMERCE_PROTOCOL_CORE_ABI,
+  COMMERCE_PROTOCOL_PERMIT_ABI,
+  BASE_COMMERCE_INTEGRATION_ABI,
+  ADMIN_MANAGER_ABI,
+  ACCESS_MANAGER_ABI,
+  VIEW_MANAGER_ABI,
+  SIGNATURE_MANAGER_ABI,
+  REFUND_MANAGER_ABI,
+  PERMIT_PAYMENT_MANAGER_ABI,
+  REWARDS_TREASURY_ABI,
+  LOYALTY_MANAGER_ABI,
+  REWARDS_INTEGRATION_ABI,
   CREATOR_REGISTRY_ABI,
   CONTENT_REGISTRY_ABI,
   PAY_PER_VIEW_ABI,
   SUBSCRIPTION_MANAGER_ABI,
-  COMMERCE_PROTOCOL_INTEGRATION_ABI,
   PRICE_ORACLE_ABI
-} from './abis'
+} from './abis/v2ABIs'
 
 import { PROTOCOL_REWARDS_ABI, ZORA_CREATOR_1155_IMPL_ABI, ZORA_CREATOR_1155_FACTORY_ABI, ZORA_FIXED_PRICE_SALE_STRATEGY_ABI } from './abis/zora'
 import { ZORA_ADDRESSES } from './addresses/zora'
@@ -127,6 +139,37 @@ export function getContractConfig(chainId: number, contractName: keyof NetworkCo
   
   // Return the appropriate ABI for each contract
   switch (contractName) {
+    // V2 Core System
+    case 'COMMERCE_PROTOCOL_CORE':
+      return { address, abi: COMMERCE_PROTOCOL_CORE_ABI } as const
+    case 'COMMERCE_PROTOCOL_PERMIT':
+      return { address, abi: COMMERCE_PROTOCOL_PERMIT_ABI } as const
+    case 'BASE_COMMERCE_INTEGRATION':
+      return { address, abi: BASE_COMMERCE_INTEGRATION_ABI } as const
+    
+    // V2 Manager Contracts
+    case 'ADMIN_MANAGER':
+      return { address, abi: ADMIN_MANAGER_ABI } as const
+    case 'ACCESS_MANAGER':
+      return { address, abi: ACCESS_MANAGER_ABI } as const
+    case 'VIEW_MANAGER':
+      return { address, abi: VIEW_MANAGER_ABI } as const
+    case 'SIGNATURE_MANAGER':
+      return { address, abi: SIGNATURE_MANAGER_ABI } as const
+    case 'REFUND_MANAGER':
+      return { address, abi: REFUND_MANAGER_ABI } as const
+    case 'PERMIT_PAYMENT_MANAGER':
+      return { address, abi: PERMIT_PAYMENT_MANAGER_ABI } as const
+    
+    // V2 Rewards System
+    case 'REWARDS_TREASURY':
+      return { address, abi: REWARDS_TREASURY_ABI } as const
+    case 'LOYALTY_MANAGER':
+      return { address, abi: LOYALTY_MANAGER_ABI } as const
+    case 'REWARDS_INTEGRATION':
+      return { address, abi: REWARDS_INTEGRATION_ABI } as const
+    
+    // Registry Contracts (V2)
     case 'CREATOR_REGISTRY':
       return { address, abi: CREATOR_REGISTRY_ABI } as const
     case 'CONTENT_REGISTRY':
@@ -135,10 +178,9 @@ export function getContractConfig(chainId: number, contractName: keyof NetworkCo
       return { address, abi: PAY_PER_VIEW_ABI } as const
     case 'SUBSCRIPTION_MANAGER':
       return { address, abi: SUBSCRIPTION_MANAGER_ABI } as const
-    case 'COMMERCE_INTEGRATION':
-      return { address, abi: COMMERCE_PROTOCOL_INTEGRATION_ABI } as const
     case 'PRICE_ORACLE':
       return { address, abi: PRICE_ORACLE_ABI } as const
+    
     default:
       // For external contracts like USDC and Commerce Protocol, we don't have full ABIs
       return { address, abi: [] } as const
