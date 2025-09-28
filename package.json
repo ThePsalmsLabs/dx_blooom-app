@@ -12,11 +12,23 @@
     "validate-rpc": "tsx scripts/validate-rpc-config.ts",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "clean:all": "rm -rf .next && rm -rf node_modules/.cache && rm -rf node_modules && npm install",
+    
+    "dev:v1": "cp .env.local .env && npm run dev",
+    "dev:v2": "cp .env.v2 .env && npm run dev",
+    "build:v1": "cp .env.local .env && npm run build",
+    "build:v2": "cp .env.v2 .env && npm run build",
+    "start:v1": "cp .env.local .env && npm run start",
+    "start:v2": "cp .env.v2 .env && npm run start",
+    
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:v1": "cp .env.local .env && jest --testPathPattern=v1",
+    "test:v2": "cp .env.v2 .env && jest --testPathPattern=v2",
     "test:zora": "jest --testPathPattern=zora",
-    "test:ui": "jest --testPathPattern=components"
+    "test:ui": "jest --testPathPattern=components",
+    "test:contracts": "jest --testPathPattern=contracts",
+    "test:integration": "jest --testPathPattern=integration"
   },
   "dependencies": {
     "@airstack/frames": "^1.2.0",

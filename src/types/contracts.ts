@@ -237,14 +237,37 @@ export interface AccessControlResult {
  * Used by contract configuration and deployment management.
  */
 export interface NetworkContractAddresses {
+  // V2 Core Payment System
+  readonly COMMERCE_PROTOCOL_CORE: Address
+  readonly COMMERCE_PROTOCOL_PERMIT: Address
+  readonly BASE_COMMERCE_INTEGRATION: Address
+  
+  // V2 Manager Contracts
+  readonly ADMIN_MANAGER: Address
+  readonly ACCESS_MANAGER: Address
+  readonly VIEW_MANAGER: Address
+  readonly SIGNATURE_MANAGER: Address
+  readonly REFUND_MANAGER: Address
+  readonly PERMIT_PAYMENT_MANAGER: Address
+  
+  // V2 Rewards System
+  readonly REWARDS_TREASURY: Address
+  readonly LOYALTY_MANAGER: Address
+  readonly REWARDS_INTEGRATION: Address
+  
+  // Registry Contracts (Updated V2)
   readonly CREATOR_REGISTRY: Address
   readonly CONTENT_REGISTRY: Address
   readonly PAY_PER_VIEW: Address
   readonly SUBSCRIPTION_MANAGER: Address
-  readonly COMMERCE_INTEGRATION: Address
   readonly PRICE_ORACLE: Address
+  
+  // External Protocol Addresses
   readonly COMMERCE_PROTOCOL: Address   // External Base Commerce Protocol
   readonly USDC: Address               // External USDC token contract
+  
+  // Legacy V1 Support (for migration period)
+  readonly COMMERCE_INTEGRATION: Address
 }
 
 /**

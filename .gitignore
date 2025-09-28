@@ -58,6 +58,7 @@ next-env.d.ts
 
 # local smart contracts (do not commit)
 /contracts/
+/contractsV2/
 
 
 
@@ -162,3 +163,4 @@ next-env.d.ts
 
 # local smart contracts (do not commit)
 /contracts/
+/contractsV2/
