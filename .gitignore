@@ -60,6 +60,10 @@ next-env.d.ts
 /contracts/
 /contractsV2/
 
+# procedure and planning documents (development only)
+*-Procedure.txt
+*-procedure.txt
+
 
 
 # ================================================
