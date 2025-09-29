@@ -5,396 +5,396 @@
  */
 export const REFUND_MANAGER_ABI = [
   {
-    type: "constructor",
     inputs: [
-      { name: "_payPerView", type: "address", internalType: "address" },
-      { name: "_subscriptionManager", type: "address", internalType: "address" },
-      { name: "_usdcToken", type: "address", internalType: "address" }
+      { internalType: "address", name: "_payPerView", type: "address" },
+      { internalType: "address", name: "_subscriptionManager", type: "address" },
+      { internalType: "address", name: "_usdcToken", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
   {
-    type: "function",
+    inputs: [],
+    name: "AccessControlBadConfirmation",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
+    ],
+    name: "AccessControlUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "owner", type: "address" }
+    ],
+    name: "OwnableInvalidOwner",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "OwnableUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "token", type: "address" }
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "string", name: "contractName", type: "string" },
+      { indexed: false, internalType: "address", name: "oldAddress", type: "address" },
+      { indexed: false, internalType: "address", name: "newAddress", type: "address" }
+    ],
+    name: "ContractAddressUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "RefundProcessed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "RefundRequested",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    inputs: [],
     name: "DEFAULT_ADMIN_ROLE",
-    inputs: [],
     outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
+      { internalType: "bytes32", name: "", type: "bytes32" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "PAYMENT_MONITOR_ROLE",
-    inputs: [],
     outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
+      { internalType: "bytes32", name: "", type: "bytes32" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
     name: "getPendingRefund",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" }
-    ],
     outputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "getRefundMetrics",
     inputs: [],
+    name: "getRefundMetrics",
     outputs: [
-      { name: "totalRefunds", type: "uint256", internalType: "uint256" }
+      { internalType: "uint256", name: "totalRefunds", type: "uint256" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "getRefundRequest",
     inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" }
+      { internalType: "bytes16", name: "intentId", type: "bytes16" }
     ],
+    name: "getRefundRequest",
     outputs: [
       {
-        name: "",
-        type: "tuple",
-        internalType: "struct RefundManager.RefundRequest",
         components: [
-          { name: "originalIntentId", type: "bytes16", internalType: "bytes16" },
-          { name: "user", type: "address", internalType: "address" },
-          { name: "amount", type: "uint256", internalType: "uint256" },
-          { name: "reason", type: "string", internalType: "string" },
-          { name: "requestTime", type: "uint256", internalType: "uint256" },
-          { name: "processed", type: "bool", internalType: "bool" }
-        ]
+          { internalType: "bytes16", name: "originalIntentId", type: "bytes16" },
+          { internalType: "address", name: "user", type: "address" },
+          { internalType: "uint256", name: "amount", type: "uint256" },
+          { internalType: "string", name: "reason", type: "string" },
+          { internalType: "uint256", name: "requestTime", type: "uint256" },
+          { internalType: "bool", name: "processed", type: "bool" }
+        ],
+        internalType: "struct RefundManager.RefundRequest",
+        name: "",
+        type: "tuple"
       }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
     name: "getRoleAdmin",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" }
-    ],
     outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
+      { internalType: "bytes32", name: "", type: "bytes32" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "grantRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "creatorAmount", type: "uint256" },
+      { internalType: "uint256", name: "platformFee", type: "uint256" },
+      { internalType: "uint256", name: "operatorFee", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" }
+    ],
     name: "handleFailedPayment",
-    inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creatorAmount", type: "uint256", internalType: "uint256" },
-      { name: "platformFee", type: "uint256", internalType: "uint256" },
-      { name: "operatorFee", type: "uint256", internalType: "uint256" },
-      { name: "reason", type: "string", internalType: "string" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "hasRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
     outputs: [
-      { name: "", type: "bool", internalType: "bool" }
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "owner",
-    inputs: [],
     outputs: [
-      { name: "", type: "address", internalType: "address" }
+      { internalType: "address", name: "", type: "address" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "payPerView",
-    inputs: [],
     outputs: [
-      { name: "", type: "address", internalType: "contract PayPerView" }
+      { internalType: "contract PayPerView", name: "", type: "address" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
     name: "pendingRefunds",
-    inputs: [
-      { name: "", type: "address", internalType: "address" }
-    ],
     outputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" }
+    ],
     name: "processRefund",
-    inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" },
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
     name: "processRefundWithCoordination",
-    inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      { name: "creator", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes16", name: "", type: "bytes16" }
+    ],
     name: "refundRequests",
-    inputs: [
-      { name: "", type: "bytes16", internalType: "bytes16" }
-    ],
     outputs: [
-      { name: "originalIntentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "reason", type: "string", internalType: "string" },
-      { name: "requestTime", type: "uint256", internalType: "uint256" },
-      { name: "processed", type: "bool", internalType: "bool" }
+      { internalType: "bytes16", name: "originalIntentId", type: "bytes16" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" },
+      { internalType: "uint256", name: "requestTime", type: "uint256" },
+      { internalType: "bool", name: "processed", type: "bool" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "renounceOwnership",
-    inputs: [],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
     name: "renounceRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "callerConfirmation", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "creatorAmount", type: "uint256" },
+      { internalType: "uint256", name: "platformFee", type: "uint256" },
+      { internalType: "uint256", name: "operatorFee", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" }
+    ],
     name: "requestRefund",
-    inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creatorAmount", type: "uint256", internalType: "uint256" },
-      { name: "platformFee", type: "uint256", internalType: "uint256" },
-      { name: "operatorFee", type: "uint256", internalType: "uint256" },
-      { name: "reason", type: "string", internalType: "string" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "revokeRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "_payPerView", type: "address" }
+    ],
     name: "setPayPerView",
-    inputs: [
-      { name: "_payPerView", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "_subscriptionManager", type: "address" }
+    ],
     name: "setSubscriptionManager",
-    inputs: [
-      { name: "_subscriptionManager", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "subscriptionManager",
-    inputs: [],
     outputs: [
-      { name: "", type: "address", internalType: "contract SubscriptionManager" }
+      { internalType: "contract SubscriptionManager", name: "", type: "address" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
+    ],
     name: "supportsInterface",
-    inputs: [
-      { name: "interfaceId", type: "bytes4", internalType: "bytes4" }
-    ],
     outputs: [
-      { name: "", type: "bool", internalType: "bool" }
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "totalRefundsProcessed",
-    inputs: [],
     outputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
     name: "transferOwnership",
-    inputs: [
-      { name: "newOwner", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "usdcToken",
     inputs: [],
+    name: "usdcToken",
     outputs: [
-      { name: "", type: "address", internalType: "contract IERC20" }
+      { internalType: "contract IERC20", name: "", type: "address" }
     ],
-    stateMutability: "view"
-  },
-  {
-    type: "event",
-    name: "ContractAddressUpdated",
-    inputs: [
-      { name: "contractName", type: "string", indexed: false, internalType: "string" },
-      { name: "oldAddress", type: "address", indexed: false, internalType: "address" },
-      { name: "newAddress", type: "address", indexed: false, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "OwnershipTransferred",
-    inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RefundProcessed",
-    inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RefundRequested",
-    inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "reason", type: "string", indexed: false, internalType: "string" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "previousAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "newAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "error",
-    name: "AccessControlBadConfirmation",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "AccessControlUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" },
-      { name: "neededRole", type: "bytes32", internalType: "bytes32" }
-    ]
-  },
-  {
-    type: "error",
-    name: "OwnableInvalidOwner",
-    inputs: [
-      { name: "owner", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "OwnableUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "SafeERC20FailedOperation",
-    inputs: [
-      { name: "token", type: "address", internalType: "address" }
-    ]
+    stateMutability: "view",
+    type: "function"
   }
 ] as const;
