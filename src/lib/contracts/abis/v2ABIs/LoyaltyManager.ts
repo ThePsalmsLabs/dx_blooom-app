@@ -3,996 +3,473 @@
  */
 export const LOYALTY_MANAGER_ABI = [
   {
-    type: "constructor",
     inputs: [
-      {
-        name: "_rewardsTreasury",
-        type: "address",
-        internalType: "address"
-      }
+      { internalType: "address", name: "_rewardsTreasury", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
   {
-    type: "function",
-    name: "DEFAULT_ADMIN_ROLE",
     inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "DISCOUNT_MANAGER_ROLE",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "POINTS_MANAGER_ROLE",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "applyDiscount",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "originalPrice",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "usePoints",
-        type: "bool",
-        internalType: "bool"
-      },
-      {
-        name: "pointsToUse",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    outputs: [
-      {
-        name: "finalPrice",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "awardPurchasePoints",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "amountSpent",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "paymentType",
-        type: "uint8",
-        internalType: "enum ISharedTypes.PaymentType"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "awardReferralPoints",
-    inputs: [
-      {
-        name: "referrer",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "referee",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "calculateDiscount",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "originalPrice",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    outputs: [
-      {
-        name: "discountAmount",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "finalPrice",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "dailyLoginPoints",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getRoleAdmin",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getTierBenefits",
-    inputs: [
-      {
-        name: "tier",
-        type: "uint8",
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      }
-    ],
-    outputs: [
-      {
-        name: "benefits",
-        type: "tuple",
-        internalType: "struct LoyaltyManager.TierBenefits",
-        components: [
-          {
-            name: "discountBps",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "pointsMultiplier",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "cashbackBps",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "earlyAccessHours",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "freeTransactionFees",
-            type: "bool",
-            internalType: "bool"
-          },
-          {
-            name: "monthlyBonus",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "referralBonus",
-            type: "uint256",
-            internalType: "uint256"
-          }
-        ]
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getUserLoyalty",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "loyalty",
-        type: "tuple",
-        internalType: "struct LoyaltyManager.UserLoyalty",
-        components: [
-          {
-            name: "totalPoints",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "availablePoints",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "currentTier",
-            type: "uint8",
-            internalType: "enum LoyaltyManager.LoyaltyTier"
-          },
-          {
-            name: "totalSpent",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "purchaseCount",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "lastActivityTime",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "referralCount",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "isActive",
-            type: "bool",
-            internalType: "bool"
-          },
-          {
-            name: "joinTimestamp",
-            type: "uint256",
-            internalType: "uint256"
-          }
-        ]
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getUserPoints",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "totalPoints",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "availablePoints",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getUserStats",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "totalPoints",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "availablePoints",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "currentTier",
-        type: "uint8",
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      },
-      {
-        name: "totalSpent",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "purchaseCount",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "tierDiscountBps",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "freeFees",
-        type: "bool",
-        internalType: "bool"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getUserTier",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "tier",
-        type: "uint8",
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "grantEarlyAccess",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "contentId",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "grantRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "hasEarlyAccess",
-    inputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bool",
-        internalType: "bool"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "hasEarlyAccessToContent",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "contentId",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    outputs: [
-      {
-        name: "hasAccess",
-        type: "bool",
-        internalType: "bool"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bool",
-        internalType: "bool"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "pointsPerDollarSpent",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "referralBonusPoints",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "renounceRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "callerConfirmation",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "revokeRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "rewardsTreasury",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "contract RewardsTreasury"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "subscriptionBonusMultiplier",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "supportsInterface",
-    inputs: [
-      {
-        name: "interfaceId",
-        type: "bytes4",
-        internalType: "bytes4"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bool",
-        internalType: "bool"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "tierBenefits",
-    inputs: [
-      {
-        name: "",
-        type: "uint8",
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      }
-    ],
-    outputs: [
-      {
-        name: "discountBps",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "pointsMultiplier",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "cashbackBps",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "earlyAccessHours",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "freeTransactionFees",
-        type: "bool",
-        internalType: "bool"
-      },
-      {
-        name: "monthlyBonus",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "referralBonus",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "tierThresholds",
-    inputs: [
-      {
-        name: "",
-        type: "uint8",
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "userLoyalty",
-    inputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "totalPoints",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "availablePoints",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "currentTier",
-        type: "uint8",
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      },
-      {
-        name: "totalSpent",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "purchaseCount",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "lastActivityTime",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "referralCount",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "isActive",
-        type: "bool",
-        internalType: "bool"
-      },
-      {
-        name: "joinTimestamp",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "event",
-    name: "DiscountApplied",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "discountAmount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      },
-      {
-        name: "originalPrice",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "EarlyAccessGranted",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "contentId",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      },
-      {
-        name: "accessHours",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "PointsEarned",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "points",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      },
-      {
-        name: "reason",
-        type: "string",
-        indexed: false,
-        internalType: "string"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "PointsSpent",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "points",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      },
-      {
-        name: "reason",
-        type: "string",
-        indexed: false,
-        internalType: "string"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ReferralBonus",
-    inputs: [
-      {
-        name: "referrer",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "referee",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "bonusPoints",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "previousAdminRole",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "newAdminRole",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "sender",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "sender",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "TierUpgraded",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "oldTier",
-        type: "uint8",
-        indexed: false,
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      },
-      {
-        name: "newTier",
-        type: "uint8",
-        indexed: false,
-        internalType: "enum LoyaltyManager.LoyaltyTier"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "error",
     name: "AccessControlBadConfirmation",
-    inputs: []
+    type: "error"
   },
   {
-    type: "error",
-    name: "AccessControlUnauthorizedAccount",
     inputs: [
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "neededRole",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ]
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
+    ],
+    name: "AccessControlUnauthorizedAccount",
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [],
     name: "ReentrancyGuardReentrantCall",
-    inputs: []
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "discountAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "originalPrice", type: "uint256" }
+    ],
+    name: "DiscountApplied",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "accessHours", type: "uint256" }
+    ],
+    name: "EarlyAccessGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "points", type: "uint256" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "PointsEarned",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "points", type: "uint256" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "PointsSpent",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "referrer", type: "address" },
+      { indexed: true, internalType: "address", name: "referee", type: "address" },
+      { indexed: false, internalType: "uint256", name: "bonusPoints", type: "uint256" }
+    ],
+    name: "ReferralBonus",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "enum LoyaltyManager.LoyaltyTier", name: "oldTier", type: "uint8" },
+      { indexed: false, internalType: "enum LoyaltyManager.LoyaltyTier", name: "newTier", type: "uint8" }
+    ],
+    name: "TierUpgraded",
+    type: "event"
+  },
+  {
+    inputs: [],
+    name: "DEFAULT_ADMIN_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "DISCOUNT_MANAGER_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "POINTS_MANAGER_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "originalPrice", type: "uint256" },
+      { internalType: "bool", name: "usePoints", type: "bool" },
+      { internalType: "uint256", name: "pointsToUse", type: "uint256" }
+    ],
+    name: "applyDiscount",
+    outputs: [
+      { internalType: "uint256", name: "finalPrice", type: "uint256" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "amountSpent", type: "uint256" },
+      { internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" }
+    ],
+    name: "awardPurchasePoints",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "referrer", type: "address" },
+      { internalType: "address", name: "referee", type: "address" }
+    ],
+    name: "awardReferralPoints",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "originalPrice", type: "uint256" }
+    ],
+    name: "calculateDiscount",
+    outputs: [
+      { internalType: "uint256", name: "discountAmount", type: "uint256" },
+      { internalType: "uint256", name: "finalPrice", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "dailyLoginPoints",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
+    name: "getRoleAdmin",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum LoyaltyManager.LoyaltyTier", name: "tier", type: "uint8" }
+    ],
+    name: "getTierBenefits",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "discountBps", type: "uint256" },
+          { internalType: "uint256", name: "pointsMultiplier", type: "uint256" },
+          { internalType: "uint256", name: "cashbackBps", type: "uint256" },
+          { internalType: "uint256", name: "earlyAccessHours", type: "uint256" },
+          { internalType: "bool", name: "freeTransactionFees", type: "bool" },
+          { internalType: "uint256", name: "monthlyBonus", type: "uint256" },
+          { internalType: "uint256", name: "referralBonus", type: "uint256" }
+        ],
+        internalType: "struct LoyaltyManager.TierBenefits",
+        name: "benefits",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getUserLoyalty",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "totalPoints", type: "uint256" },
+          { internalType: "uint256", name: "availablePoints", type: "uint256" },
+          { internalType: "enum LoyaltyManager.LoyaltyTier", name: "currentTier", type: "uint8" },
+          { internalType: "uint256", name: "totalSpent", type: "uint256" },
+          { internalType: "uint256", name: "purchaseCount", type: "uint256" },
+          { internalType: "uint256", name: "lastActivityTime", type: "uint256" },
+          { internalType: "uint256", name: "referralCount", type: "uint256" },
+          { internalType: "bool", name: "isActive", type: "bool" },
+          { internalType: "uint256", name: "joinTimestamp", type: "uint256" }
+        ],
+        internalType: "struct LoyaltyManager.UserLoyalty",
+        name: "loyalty",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getUserPoints",
+    outputs: [
+      { internalType: "uint256", name: "totalPoints", type: "uint256" },
+      { internalType: "uint256", name: "availablePoints", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getUserStats",
+    outputs: [
+      { internalType: "uint256", name: "totalPoints", type: "uint256" },
+      { internalType: "uint256", name: "availablePoints", type: "uint256" },
+      { internalType: "enum LoyaltyManager.LoyaltyTier", name: "currentTier", type: "uint8" },
+      { internalType: "uint256", name: "totalSpent", type: "uint256" },
+      { internalType: "uint256", name: "purchaseCount", type: "uint256" },
+      { internalType: "uint256", name: "tierDiscountBps", type: "uint256" },
+      { internalType: "bool", name: "freeFees", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getUserTier",
+    outputs: [
+      { internalType: "enum LoyaltyManager.LoyaltyTier", name: "tier", type: "uint8" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "contentId", type: "uint256" }
+    ],
+    name: "grantEarlyAccess",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "grantRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "hasEarlyAccess",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "contentId", type: "uint256" }
+    ],
+    name: "hasEarlyAccessToContent",
+    outputs: [
+      { internalType: "bool", name: "hasAccess", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "hasRole",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "pointsPerDollarSpent",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "referralBonusPoints",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
+    name: "renounceRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "revokeRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "rewardsTreasury",
+    outputs: [
+      { internalType: "contract RewardsTreasury", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "subscriptionBonusMultiplier",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
+    ],
+    name: "supportsInterface",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum LoyaltyManager.LoyaltyTier", name: "", type: "uint8" }
+    ],
+    name: "tierBenefits",
+    outputs: [
+      { internalType: "uint256", name: "discountBps", type: "uint256" },
+      { internalType: "uint256", name: "pointsMultiplier", type: "uint256" },
+      { internalType: "uint256", name: "cashbackBps", type: "uint256" },
+      { internalType: "uint256", name: "earlyAccessHours", type: "uint256" },
+      { internalType: "bool", name: "freeTransactionFees", type: "bool" },
+      { internalType: "uint256", name: "monthlyBonus", type: "uint256" },
+      { internalType: "uint256", name: "referralBonus", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum LoyaltyManager.LoyaltyTier", name: "", type: "uint8" }
+    ],
+    name: "tierThresholds",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "userLoyalty",
+    outputs: [
+      { internalType: "uint256", name: "totalPoints", type: "uint256" },
+      { internalType: "uint256", name: "availablePoints", type: "uint256" },
+      { internalType: "enum LoyaltyManager.LoyaltyTier", name: "currentTier", type: "uint8" },
+      { internalType: "uint256", name: "totalSpent", type: "uint256" },
+      { internalType: "uint256", name: "purchaseCount", type: "uint256" },
+      { internalType: "uint256", name: "lastActivityTime", type: "uint256" },
+      { internalType: "uint256", name: "referralCount", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "uint256", name: "joinTimestamp", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   }
 ] as const;
