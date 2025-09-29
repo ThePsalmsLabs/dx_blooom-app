@@ -3,522 +3,854 @@
  */
 export const CREATOR_REGISTRY_ABI = [
   {
-    type: "constructor",
     inputs: [
-      { name: "_accessManager", type: "address", internalType: "address" },
-      { name: "_usdcToken", type: "address", internalType: "address" }
+      { internalType: "address", name: "_feeRecipient", type: "address" },
+      { internalType: "address", name: "_usdcToken", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
   {
-    type: "function",
+    inputs: [],
+    name: "AccessControlBadConfirmation",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
+    ],
+    name: "AccessControlUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "CreatorAlreadyRegistered",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "CreatorNotFound",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "CreatorNotRegistered",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "EnforcedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ExpectedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidFeePercentage",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidFeeRecipient",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidProfileData",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidSubscriptionPrice",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "NoEarningsToWithdraw",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "owner", type: "address" }
+    ],
+    name: "OwnableInvalidOwner",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "OwnableUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ReentrancyGuardReentrantCall",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "token", type: "address" }
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "UnauthorizedAccess",
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "string", name: "source", type: "string" }
+    ],
+    name: "CreatorEarningsUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "CreatorEarningsWithdrawn",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "subscriptionPrice", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" },
+      { indexed: false, internalType: "string", name: "profileData", type: "string" }
+    ],
+    name: "CreatorRegistered",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "bool", name: "suspended", type: "bool" }
+    ],
+    name: "CreatorSuspended",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "bool", name: "verified", type: "bool" }
+    ],
+    name: "CreatorVerified",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "oldRecipient", type: "address" },
+      { indexed: false, internalType: "address", name: "newRecipient", type: "address" }
+    ],
+    name: "FeeRecipientUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Paused",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "uint256", name: "oldFee", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "newFee", type: "uint256" }
+    ],
+    name: "PlatformFeeUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "recipient", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "PlatformFeesWithdrawn",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "string", name: "oldProfileData", type: "string" },
+      { indexed: false, internalType: "string", name: "newProfileData", type: "string" }
+    ],
+    name: "ProfileDataUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "oldPrice", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "newPrice", type: "uint256" }
+    ],
+    name: "SubscriptionPriceUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Unpaused",
+    type: "event"
+  },
+  {
+    inputs: [],
     name: "DEFAULT_ADMIN_ROLE",
-    inputs: [],
     outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
+      { internalType: "bytes32", name: "", type: "bytes32" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "CREATOR_MANAGER_ROLE",
     inputs: [],
+    name: "MAX_SUBSCRIPTION_PRICE",
     outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "PLATFORM_ADMIN_ROLE",
     inputs: [],
+    name: "MIN_SUBSCRIPTION_PRICE",
     outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "accessManager",
     inputs: [],
+    name: "MODERATOR_ROLE",
     outputs: [
-      { name: "", type: "address", internalType: "contract AccessManager" }
+      { internalType: "bytes32", name: "", type: "bytes32" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "addPlatformAdmin",
+    inputs: [],
+    name: "PLATFORM_CONTRACT_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "SUBSCRIPTION_DURATION",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
     inputs: [
-      { name: "account", type: "address", internalType: "address" }
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" }
     ],
+    name: "addBonusEarnings",
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "creators",
     inputs: [
-      { name: "", type: "address", internalType: "address" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
+    name: "allCreators",
     outputs: [
-      { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-      { name: "isActive", type: "bool", internalType: "bool" },
-      { name: "isVerified", type: "bool", internalType: "bool" },
-      { name: "isSuspended", type: "bool", internalType: "bool" },
-      { name: "registeredAt", type: "uint256", internalType: "uint256" },
-      { name: "totalEarnings", type: "uint256", internalType: "uint256" },
-      { name: "totalSubscribers", type: "uint256", internalType: "uint256" },
-      { name: "profileData", type: "string", internalType: "string" }
+      { internalType: "address", name: "", type: "address" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "getCreator",
     inputs: [
-      { name: "creator", type: "address", internalType: "address" }
+      { internalType: "uint256", name: "amount", type: "uint256" }
     ],
+    name: "calculatePlatformFee",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "creatorJoinDate",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "creatorPendingEarnings",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "creatorWithdrawnEarnings",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "creators",
+    outputs: [
+      { internalType: "bool", name: "isRegistered", type: "bool" },
+      { internalType: "uint256", name: "subscriptionPrice", type: "uint256" },
+      { internalType: "bool", name: "isVerified", type: "bool" },
+      { internalType: "uint256", name: "totalEarnings", type: "uint256" },
+      { internalType: "uint256", name: "contentCount", type: "uint256" },
+      { internalType: "uint256", name: "subscriberCount", type: "uint256" },
+      { internalType: "uint256", name: "registrationTime", type: "uint256" },
+      { internalType: "string", name: "profileData", type: "string" },
+      { internalType: "bool", name: "isSuspended", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "deactivateCreator",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "token", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "emergencyTokenRecovery",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "feeRecipient",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "index", type: "uint256" }
+    ],
+    name: "getCreatorByIndex",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getCreatorEarnings",
+    outputs: [
+      { internalType: "uint256", name: "pending", type: "uint256" },
+      { internalType: "uint256", name: "total", type: "uint256" },
+      { internalType: "uint256", name: "withdrawn", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getCreatorProfile",
     outputs: [
       {
-        name: "creatorInfo",
-        type: "tuple",
-        internalType: "struct CreatorRegistry.Creator",
         components: [
-          { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-          { name: "isActive", type: "bool", internalType: "bool" },
-          { name: "isVerified", type: "bool", internalType: "bool" },
-          { name: "isSuspended", type: "bool", internalType: "bool" },
-          { name: "registeredAt", type: "uint256", internalType: "uint256" },
-          { name: "totalEarnings", type: "uint256", internalType: "uint256" },
-          { name: "totalSubscribers", type: "uint256", internalType: "uint256" },
-          { name: "profileData", type: "string", internalType: "string" }
-        ]
+          { internalType: "bool", name: "isRegistered", type: "bool" },
+          { internalType: "uint256", name: "subscriptionPrice", type: "uint256" },
+          { internalType: "bool", name: "isVerified", type: "bool" },
+          { internalType: "uint256", name: "totalEarnings", type: "uint256" },
+          { internalType: "uint256", name: "contentCount", type: "uint256" },
+          { internalType: "uint256", name: "subscriberCount", type: "uint256" },
+          { internalType: "uint256", name: "registrationTime", type: "uint256" },
+          { internalType: "string", name: "profileData", type: "string" },
+          { internalType: "bool", name: "isSuspended", type: "bool" }
+        ],
+        internalType: "struct CreatorRegistry.Creator",
+        name: "",
+        type: "tuple"
       }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "getCreatorCount",
-    inputs: [],
-    outputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getCreators",
     inputs: [
-      { name: "startIndex", type: "uint256", internalType: "uint256" },
-      { name: "count", type: "uint256", internalType: "uint256" }
+      { internalType: "address", name: "creator", type: "address" }
     ],
+    name: "getCreatorWithActive",
     outputs: [
-      { name: "creators", type: "address[]", internalType: "address[]" }
+      {
+        components: [
+          { internalType: "bool", name: "isRegistered", type: "bool" },
+          { internalType: "uint256", name: "subscriptionPrice", type: "uint256" },
+          { internalType: "bool", name: "isVerified", type: "bool" },
+          { internalType: "uint256", name: "totalEarnings", type: "uint256" },
+          { internalType: "uint256", name: "contentCount", type: "uint256" },
+          { internalType: "uint256", name: "subscriberCount", type: "uint256" },
+          { internalType: "uint256", name: "registrationTime", type: "uint256" },
+          { internalType: "string", name: "profileData", type: "string" },
+          { internalType: "bool", name: "isSuspended", type: "bool" }
+        ],
+        internalType: "struct CreatorRegistry.Creator",
+        name: "",
+        type: "tuple"
+      },
+      { internalType: "bool", name: "active", type: "bool" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
+    name: "getPlatformStats",
+    outputs: [
+      { internalType: "uint256", name: "totalCreators", type: "uint256" },
+      { internalType: "uint256", name: "verifiedCount", type: "uint256" },
+      { internalType: "uint256", name: "totalEarnings", type: "uint256" },
+      { internalType: "uint256", name: "creatorEarnings", type: "uint256" },
+      { internalType: "uint256", name: "withdrawnAmount", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
     name: "getRoleAdmin",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" }
-    ],
     outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
+      { internalType: "bytes32", name: "", type: "bytes32" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getSubscriptionPrice",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getTotalCreators",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "index", type: "uint256" }
+    ],
+    name: "getVerifiedCreatorByIndex",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getVerifiedCreatorCount",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "contractAddress", type: "address" }
+    ],
+    name: "grantPlatformRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "grantRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "hasRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
     outputs: [
-      { name: "", type: "bool", internalType: "bool" }
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "isCreatorRegistered",
     inputs: [
-      { name: "creator", type: "address", internalType: "address" }
+      { internalType: "address", name: "creator", type: "address" }
     ],
+    name: "isActive",
     outputs: [
-      { name: "", type: "bool", internalType: "bool" }
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "isRegisteredCreator",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
     name: "owner",
-    inputs: [],
     outputs: [
-      { name: "", type: "address", internalType: "address" }
+      { internalType: "address", name: "", type: "address" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
+    name: "pause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "paused",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "platformFee",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "subscriptionPrice", type: "uint256" },
+      { internalType: "string", name: "profileData", type: "string" }
+    ],
     name: "registerCreator",
-    inputs: [
-      { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-      { name: "profileData", type: "string", internalType: "string" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "removePlatformAdmin",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
+    inputs: [],
     name: "renounceOwnership",
-    inputs: [],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
     name: "renounceRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "callerConfirmation", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "contractAddress", type: "address" }
+    ],
+    name: "revokePlatformRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "revokeRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "setCreatorSuspended",
     inputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "suspended", type: "bool", internalType: "bool" }
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "bool", name: "verified", type: "bool" }
     ],
+    name: "setCreatorVerification",
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "setCreatorVerified",
     inputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "verified", type: "bool", internalType: "bool" }
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
     ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "setFeeRecipient",
-    inputs: [
-      { name: "recipient", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "setPlatformFee",
-    inputs: [
-      { name: "feeBps", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
     name: "supportsInterface",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
     inputs: [
-      { name: "interfaceId", type: "bytes4", internalType: "bytes4" }
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "bool", name: "suspended", type: "bool" }
     ],
-    outputs: [
-      { name: "", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "view"
+    name: "suspendCreator",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "totalPlatformFees",
     inputs: [],
+    name: "totalCreatorEarnings",
     outputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
+    name: "totalPlatformEarnings",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "totalWithdrawnEarnings",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
     name: "transferOwnership",
-    inputs: [
-      { name: "newOwner", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "updateCreatorProfile",
-    inputs: [
-      { name: "profileData", type: "string", internalType: "string" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "updateSubscriptionPrice",
-    inputs: [
-      { name: "newPrice", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "usdcToken",
     inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract IERC20" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "withdrawPlatformFees",
-    inputs: [
-      { name: "recipient", type: "address", internalType: "address" }
-    ],
+    name: "unpause",
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "CreatorRegistered",
     inputs: [
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "subscriptionPrice", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "timestamp", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "profileData", type: "string", indexed: false, internalType: "string" }
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "uint256", name: "earnings", type: "uint256" },
+      { internalType: "int256", name: "contentDelta", type: "int256" },
+      { internalType: "int256", name: "subscriberDelta", type: "int256" }
     ],
-    anonymous: false
+    name: "updateCreatorStats",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "CreatorSuspended",
     inputs: [
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "suspended", type: "bool", indexed: false, internalType: "bool" }
+      { internalType: "address", name: "newRecipient", type: "address" }
     ],
-    anonymous: false
+    name: "updateFeeRecipient",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "CreatorVerified",
     inputs: [
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "verified", type: "bool", indexed: false, internalType: "bool" }
+      { internalType: "uint256", name: "newFee", type: "uint256" }
     ],
-    anonymous: false
+    name: "updatePlatformFee",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "FeeRecipientUpdated",
     inputs: [
-      { name: "oldRecipient", type: "address", indexed: false, internalType: "address" },
-      { name: "newRecipient", type: "address", indexed: false, internalType: "address" }
+      { internalType: "string", name: "newProfileData", type: "string" }
     ],
-    anonymous: false
+    name: "updateProfileData",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "OwnershipTransferred",
     inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" }
+      { internalType: "uint256", name: "newPrice", type: "uint256" }
     ],
-    anonymous: false
+    name: "updateSubscriptionPrice",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "PlatformFeeUpdated",
-    inputs: [
-      { name: "oldFee", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "newFee", type: "uint256", indexed: false, internalType: "uint256" }
+    inputs: [],
+    name: "usdcToken",
+    outputs: [
+      { internalType: "contract IERC20", name: "", type: "address" }
     ],
-    anonymous: false
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "event",
-    name: "PlatformFeesWithdrawn",
     inputs: [
-      { name: "recipient", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "timestamp", type: "uint256", indexed: false, internalType: "uint256" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ProfileDataUpdated",
-    inputs: [
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "oldProfileData", type: "string", indexed: false, internalType: "string" },
-      { name: "newProfileData", type: "string", indexed: false, internalType: "string" }
+    name: "verifiedCreators",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
     ],
-    anonymous: false
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "previousAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "newAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" }
-    ],
-    anonymous: false
+    inputs: [],
+    name: "withdrawCreatorEarnings",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "SubscriptionPriceUpdated",
-    inputs: [
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "oldPrice", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "newPrice", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "error",
-    name: "AccessControlBadConfirmation",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "AccessControlUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" },
-      { name: "neededRole", type: "bytes32", internalType: "bytes32" }
-    ]
-  },
-  {
-    type: "error",
-    name: "CreatorAlreadyRegistered",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "CreatorNotFound",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "CreatorNotRegistered",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InvalidFeePercentage",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InvalidFeeRecipient",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InvalidProfileData",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InvalidSubscriptionPrice",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "NoEarningsToWithdraw",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "OwnableInvalidOwner",
-    inputs: [
-      { name: "owner", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "OwnableUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "ReentrancyGuardReentrantCall",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "SafeERC20FailedOperation",
-    inputs: [
-      { name: "token", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "UnauthorizedAccess",
-    inputs: []
+    inputs: [],
+    name: "withdrawPlatformFees",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   }
 ] as const;

@@ -3,334 +3,336 @@
  */
 export const BASE_COMMERCE_INTEGRATION_ABI = [
   {
-    type: "constructor",
     inputs: [
-      { name: "_usdcToken", type: "address", internalType: "address" },
-      { name: "_operatorFeeDestination", type: "address", internalType: "address" }
+      { internalType: "address", name: "_usdcToken", type: "address" },
+      { internalType: "address", name: "_operatorFeeDestination", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
   {
-    type: "function",
-    name: "authCaptureEscrow",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract IAuthCaptureEscrow" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "capturePayment",
     inputs: [
-      { name: "paymentHash", type: "bytes32", internalType: "bytes32" },
-      { name: "amount", type: "uint256", internalType: "uint256" }
+      { internalType: "address", name: "owner", type: "address" }
     ],
-    outputs: [
-      { name: "success", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "defaultAuthExpiry",
-    inputs: [],
-    outputs: [
-      { name: "", type: "uint48", internalType: "uint48" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "defaultRefundWindow",
-    inputs: [],
-    outputs: [
-      { name: "", type: "uint48", internalType: "uint48" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "executeEscrowPayment",
-    inputs: [
-      {
-        name: "params",
-        type: "tuple",
-        internalType: "struct BaseCommerceIntegration.EscrowPaymentParams",
-        components: [
-          { name: "payer", type: "address", internalType: "address" },
-          { name: "receiver", type: "address", internalType: "address" },
-          { name: "amount", type: "uint256", internalType: "uint256" },
-          { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-          { name: "permit2Data", type: "bytes", internalType: "bytes" },
-          { name: "instantCapture", type: "bool", internalType: "bool" }
-        ]
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "getPaymentRecord",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", internalType: "bytes32" }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        internalType: "struct BaseCommerceIntegration.PaymentRecord",
-        components: [
-          { name: "paymentHash", type: "bytes32", internalType: "bytes32" },
-          { name: "payer", type: "address", internalType: "address" },
-          { name: "receiver", type: "address", internalType: "address" },
-          { name: "amount", type: "uint256", internalType: "uint256" },
-          { name: "timestamp", type: "uint256", internalType: "uint256" },
-          { name: "status", type: "uint8", internalType: "enum BaseCommerceIntegration.PaymentStatus" },
-          { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" }
-        ]
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getPaymentState",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", internalType: "bytes32" }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        internalType: "struct IAuthCaptureEscrow.PaymentState",
-        components: [
-          { name: "hasCollectedPayment", type: "bool", internalType: "bool" },
-          { name: "capturableAmount", type: "uint120", internalType: "uint120" },
-          { name: "refundableAmount", type: "uint120", internalType: "uint120" }
-        ]
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "operatorFeeDestination",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "address" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "operatorFeeRate",
-    inputs: [],
-    outputs: [
-      { name: "", type: "uint16", internalType: "uint16" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "owner",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "address" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "paymentRecords",
-    inputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
-    ],
-    outputs: [
-      { name: "paymentHash", type: "bytes32", internalType: "bytes32" },
-      { name: "payer", type: "address", internalType: "address" },
-      { name: "receiver", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "timestamp", type: "uint256", internalType: "uint256" },
-      { name: "status", type: "uint8", internalType: "enum BaseCommerceIntegration.PaymentStatus" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "permit2Collector",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract IPermit2PaymentCollector" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "refundPayment",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", internalType: "bytes32" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "permit2Data", type: "bytes", internalType: "bytes" }
-    ],
-    outputs: [
-      { name: "success", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renounceOwnership",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "transferOwnership",
-    inputs: [
-      { name: "newOwner", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "updateOperatorConfig",
-    inputs: [
-      { name: "newFeeDestination", type: "address", internalType: "address" },
-      { name: "newFeeRate", type: "uint16", internalType: "uint16" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "updateTimingConfig",
-    inputs: [
-      { name: "newAuthExpiry", type: "uint48", internalType: "uint48" },
-      { name: "newRefundWindow", type: "uint48", internalType: "uint48" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "usdcToken",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract IERC20" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "userNonces",
-    inputs: [
-      { name: "", type: "address", internalType: "address" }
-    ],
-    outputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "voidPayment",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", internalType: "bytes32" }
-    ],
-    outputs: [
-      { name: "success", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "event",
-    name: "EscrowPaymentAuthorized",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "EscrowPaymentCaptured",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "fee", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "EscrowPaymentInitiated",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "payer", type: "address", indexed: true, internalType: "address" },
-      { name: "receiver", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "EscrowPaymentRefunded",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "EscrowPaymentVoided",
-    inputs: [
-      { name: "paymentHash", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "operator", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "OperatorConfigUpdated",
-    inputs: [
-      { name: "newFeeDestination", type: "address", indexed: true, internalType: "address" },
-      { name: "newFeeRate", type: "uint16", indexed: false, internalType: "uint16" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "OwnershipTransferred",
-    inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "error",
     name: "OwnableInvalidOwner",
-    inputs: [
-      { name: "owner", type: "address", internalType: "address" }
-    ]
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "OwnableUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" }
-    ]
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [],
     name: "ReentrancyGuardReentrantCall",
-    inputs: []
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "EscrowPaymentAuthorized",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "fee", type: "uint256" }
+    ],
+    name: "EscrowPaymentCaptured",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "payer", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" }
+    ],
+    name: "EscrowPaymentInitiated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "EscrowPaymentRefunded",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "operator", type: "address" }
+    ],
+    name: "EscrowPaymentVoided",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "newFeeDestination", type: "address" },
+      { indexed: false, internalType: "uint16", name: "newFeeRate", type: "uint16" }
+    ],
+    name: "OperatorConfigUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    inputs: [],
+    name: "authCaptureEscrow",
+    outputs: [
+      { internalType: "contract IAuthCaptureEscrow", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "capturePayment",
+    outputs: [
+      { internalType: "bool", name: "success", type: "bool" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "defaultAuthExpiry",
+    outputs: [
+      { internalType: "uint48", name: "", type: "uint48" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "defaultRefundWindow",
+    outputs: [
+      { internalType: "uint48", name: "", type: "uint48" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        components: [
+          { internalType: "address", name: "payer", type: "address" },
+          { internalType: "address", name: "receiver", type: "address" },
+          { internalType: "uint256", name: "amount", type: "uint256" },
+          { internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" },
+          { internalType: "bytes", name: "permit2Data", type: "bytes" },
+          { internalType: "bool", name: "instantCapture", type: "bool" }
+        ],
+        internalType: "struct BaseCommerceIntegration.EscrowPaymentParams",
+        name: "params",
+        type: "tuple"
+      }
+    ],
+    name: "executeEscrowPayment",
+    outputs: [
+      { internalType: "bytes32", name: "paymentHash", type: "bytes32" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "paymentHash", type: "bytes32" }
+    ],
+    name: "getPaymentRecord",
+    outputs: [
+      {
+        components: [
+          { internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+          { internalType: "address", name: "payer", type: "address" },
+          { internalType: "address", name: "receiver", type: "address" },
+          { internalType: "uint256", name: "amount", type: "uint256" },
+          { internalType: "uint256", name: "timestamp", type: "uint256" },
+          { internalType: "enum BaseCommerceIntegration.PaymentStatus", name: "status", type: "uint8" },
+          { internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" }
+        ],
+        internalType: "struct BaseCommerceIntegration.PaymentRecord",
+        name: "",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "paymentHash", type: "bytes32" }
+    ],
+    name: "getPaymentState",
+    outputs: [
+      {
+        components: [
+          { internalType: "bool", name: "hasCollectedPayment", type: "bool" },
+          { internalType: "uint120", name: "capturableAmount", type: "uint120" },
+          { internalType: "uint120", name: "refundableAmount", type: "uint120" }
+        ],
+        internalType: "struct IAuthCaptureEscrow.PaymentState",
+        name: "",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "operatorFeeDestination",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "operatorFeeRate",
+    outputs: [
+      { internalType: "uint16", name: "", type: "uint16" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    name: "paymentRecords",
+    outputs: [
+      { internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { internalType: "address", name: "payer", type: "address" },
+      { internalType: "address", name: "receiver", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "uint256", name: "timestamp", type: "uint256" },
+      { internalType: "enum BaseCommerceIntegration.PaymentStatus", name: "status", type: "uint8" },
+      { internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "permit2Collector",
+    outputs: [
+      { internalType: "contract IPermit2PaymentCollector", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "paymentHash", type: "bytes32" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "bytes", name: "permit2Data", type: "bytes" }
+    ],
+    name: "refundPayment",
+    outputs: [
+      { internalType: "bool", name: "success", type: "bool" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newFeeDestination", type: "address" },
+      { internalType: "uint16", name: "newFeeRate", type: "uint16" }
+    ],
+    name: "updateOperatorConfig",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint48", name: "newAuthExpiry", type: "uint48" },
+      { internalType: "uint48", name: "newRefundWindow", type: "uint48" }
+    ],
+    name: "updateTimingConfig",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "usdcToken",
+    outputs: [
+      { internalType: "contract IERC20", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "userNonces",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "paymentHash", type: "bytes32" }
+    ],
+    name: "voidPayment",
+    outputs: [
+      { internalType: "bool", name: "success", type: "bool" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
   }
 ] as const;

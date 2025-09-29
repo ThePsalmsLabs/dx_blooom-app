@@ -3,537 +3,924 @@
  */
 export const CONTENT_REGISTRY_ABI = [
   {
-    type: "constructor",
     inputs: [
-      { name: "_contentIdManager", type: "address", internalType: "address" },
-      { name: "_accessManager", type: "address", internalType: "address" },
-      { name: "_usdcToken", type: "address", internalType: "address" }
+      { internalType: "address", name: "_creatorRegistry", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
   {
-    type: "function",
-    name: "DEFAULT_ADMIN_ROLE",
     inputs: [],
-    outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "accessManager",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract AccessManager" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "addContent",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "contentType", type: "uint8", internalType: "enum ContentRegistry.ContentType" },
-      { name: "contentHash", type: "bytes32", internalType: "bytes32" },
-      { name: "metadata", type: "string", internalType: "string" },
-      {
-        name: "pricing",
-        type: "tuple",
-        internalType: "struct ContentRegistry.ContentPricing",
-        components: [
-          { name: "payPerViewPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPeriod", type: "uint256", internalType: "uint256" },
-          { name: "isActive", type: "bool", internalType: "bool" }
-        ]
-      },
-      { name: "tags", type: "string[]", internalType: "string[]" }
-    ],
-    outputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" }
-    ],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "contentExists",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [
-      { name: "", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "contentIdManager",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract ContentIdManager" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "contents",
-    inputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "contentType", type: "uint8", internalType: "enum ContentRegistry.ContentType" },
-      { name: "contentHash", type: "bytes32", internalType: "bytes32" },
-      { name: "metadata", type: "string", internalType: "string" },
-      { name: "isActive", type: "bool", internalType: "bool" },
-      { name: "createdAt", type: "uint256", internalType: "uint256" },
-      { name: "lastUpdated", type: "uint256", internalType: "uint256" },
-      { name: "totalViews", type: "uint256", internalType: "uint256" },
-      { name: "totalRevenue", type: "uint256", internalType: "uint256" },
-      { name: "tags", type: "string[]", internalType: "string[]" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "deactivateContent",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "getContent",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [
-      {
-        name: "content",
-        type: "tuple",
-        internalType: "struct ContentRegistry.Content",
-        components: [
-          { name: "creator", type: "address", internalType: "address" },
-          { name: "contentType", type: "uint8", internalType: "enum ContentRegistry.ContentType" },
-          { name: "contentHash", type: "bytes32", internalType: "bytes32" },
-          { name: "metadata", type: "string", internalType: "string" },
-          { name: "isActive", type: "bool", internalType: "bool" },
-          { name: "createdAt", type: "uint256", internalType: "uint256" },
-          { name: "lastUpdated", type: "uint256", internalType: "uint256" },
-          { name: "totalViews", type: "uint256", internalType: "uint256" },
-          { name: "totalRevenue", type: "uint256", internalType: "uint256" },
-          { name: "tags", type: "string[]", internalType: "string[]" }
-        ]
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getContentByCreator",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "startIndex", type: "uint256", internalType: "uint256" },
-      { name: "count", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [
-      { name: "contentIds", type: "uint256[]", internalType: "uint256[]" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getContentCount",
-    inputs: [],
-    outputs: [
-      { name: "", type: "uint256", internalType: "uint256" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getContentPricing",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [
-      {
-        name: "pricing",
-        type: "tuple",
-        internalType: "struct ContentRegistry.ContentPricing",
-        components: [
-          { name: "payPerViewPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPeriod", type: "uint256", internalType: "uint256" },
-          { name: "isActive", type: "bool", internalType: "bool" }
-        ]
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getCreatorContent",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" }
-    ],
-    outputs: [
-      { name: "contentIds", type: "uint256[]", internalType: "uint256[]" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getRoleAdmin",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" }
-    ],
-    outputs: [
-      { name: "", type: "bytes32", internalType: "bytes32" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "grantRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [
-      { name: "", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "incrementViewCount",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "owner",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "address" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "recordRevenue",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      { name: "amount", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renounceOwnership",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renounceRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "callerConfirmation", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "revokeRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "searchContent",
-    inputs: [
-      { name: "query", type: "string", internalType: "string" },
-      { name: "contentType", type: "uint8", internalType: "enum ContentRegistry.ContentType" },
-      { name: "limit", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [
-      { name: "contentIds", type: "uint256[]", internalType: "uint256[]" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "supportsInterface",
-    inputs: [
-      { name: "interfaceId", type: "bytes4", internalType: "bytes4" }
-    ],
-    outputs: [
-      { name: "", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "transferOwnership",
-    inputs: [
-      { name: "newOwner", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "updateContent",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      { name: "metadata", type: "string", internalType: "string" },
-      {
-        name: "pricing",
-        type: "tuple",
-        internalType: "struct ContentRegistry.ContentPricing",
-        components: [
-          { name: "payPerViewPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPeriod", type: "uint256", internalType: "uint256" },
-          { name: "isActive", type: "bool", internalType: "bool" }
-        ]
-      },
-      { name: "tags", type: "string[]", internalType: "string[]" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "updateContentPricing",
-    inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      {
-        name: "pricing",
-        type: "tuple",
-        internalType: "struct ContentRegistry.ContentPricing",
-        components: [
-          { name: "payPerViewPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPeriod", type: "uint256", internalType: "uint256" },
-          { name: "isActive", type: "bool", internalType: "bool" }
-        ]
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "usdcToken",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract IERC20" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "event",
-    name: "ContentAdded",
-    inputs: [
-      { name: "contentId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "contentType", type: "uint8", indexed: false, internalType: "enum ContentRegistry.ContentType" },
-      { name: "contentHash", type: "bytes32", indexed: false, internalType: "bytes32" },
-      { name: "metadata", type: "string", indexed: false, internalType: "string" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ContentDeactivated",
-    inputs: [
-      { name: "contentId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ContentPricingUpdated",
-    inputs: [
-      { name: "contentId", type: "uint256", indexed: true, internalType: "uint256" },
-      {
-        name: "oldPricing",
-        type: "tuple",
-        indexed: false,
-        internalType: "struct ContentRegistry.ContentPricing",
-        components: [
-          { name: "payPerViewPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPeriod", type: "uint256", internalType: "uint256" },
-          { name: "isActive", type: "bool", internalType: "bool" }
-        ]
-      },
-      {
-        name: "newPricing",
-        type: "tuple",
-        indexed: false,
-        internalType: "struct ContentRegistry.ContentPricing",
-        components: [
-          { name: "payPerViewPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPrice", type: "uint256", internalType: "uint256" },
-          { name: "subscriptionPeriod", type: "uint256", internalType: "uint256" },
-          { name: "isActive", type: "bool", internalType: "bool" }
-        ]
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ContentRevenueRecorded",
-    inputs: [
-      { name: "contentId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "totalRevenue", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ContentUpdated",
-    inputs: [
-      { name: "contentId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "oldMetadata", type: "string", indexed: false, internalType: "string" },
-      { name: "newMetadata", type: "string", indexed: false, internalType: "string" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ContentViewIncremented",
-    inputs: [
-      { name: "contentId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "newViewCount", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "OwnershipTransferred",
-    inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "previousAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "newAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "error",
     name: "AccessControlBadConfirmation",
-    inputs: []
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
+    ],
     name: "AccessControlUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "AlreadyReported",
+    type: "error"
+  },
+  {
     inputs: [
-      { name: "account", type: "address", internalType: "address" },
-      { name: "neededRole", type: "bytes32", internalType: "bytes32" }
-    ]
+      { internalType: "string", name: "word", type: "string" }
+    ],
+    name: "BannedWordDetected",
+    type: "error"
   },
   {
-    type: "error",
-    name: "ContentNotFound",
-    inputs: []
+    inputs: [],
+    name: "ContentAlreadyExists",
+    type: "error"
   },
   {
-    type: "error",
-    name: "InvalidContentPricing",
-    inputs: []
+    inputs: [],
+    name: "ContentNotActive",
+    type: "error"
   },
   {
-    type: "error",
-    name: "InvalidContentType",
-    inputs: []
+    inputs: [],
+    name: "CreatorNotRegistered",
+    type: "error"
   },
   {
-    type: "error",
-    name: "InvalidMetadata",
-    inputs: []
+    inputs: [],
+    name: "EnforcedPause",
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [],
+    name: "ExpectedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidContentId",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidIPFSHash",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidPrice",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidReportReason",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidStringLength",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "owner", type: "address" }
+    ],
     name: "OwnableInvalidOwner",
-    inputs: [
-      { name: "owner", type: "address", internalType: "address" }
-    ]
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "OwnableUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" }
-    ]
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [],
     name: "ReentrancyGuardReentrantCall",
-    inputs: []
+    type: "error"
   },
   {
-    type: "error",
-    name: "UnauthorizedAccess",
-    inputs: []
+    inputs: [],
+    name: "ReportNotFound",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "TooManyReports",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "UnauthorizedCreator",
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "bool", name: "hasAccess", type: "bool" }
+    ],
+    name: "ContentAccessSetForTesting",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" },
+      { indexed: false, internalType: "address", name: "moderator", type: "address" }
+    ],
+    name: "ContentDeactivated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "buyer", type: "address" },
+      { indexed: false, internalType: "uint256", name: "price", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "ContentPurchased",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "string", name: "ipfsHash", type: "string" },
+      { indexed: false, internalType: "string", name: "title", type: "string" },
+      { indexed: false, internalType: "enum ISharedTypes.ContentCategory", name: "category", type: "uint8" },
+      { indexed: false, internalType: "uint256", name: "payPerViewPrice", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "ContentRegistered",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "reporter", type: "address" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" },
+      { indexed: false, internalType: "uint256", name: "reportId", type: "uint256" }
+    ],
+    name: "ContentReported",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "newPrice", type: "uint256" },
+      { indexed: false, internalType: "bool", name: "isActive", type: "bool" }
+    ],
+    name: "ContentUpdated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Paused",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "reportId", type: "uint256" },
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: false, internalType: "string", name: "action", type: "string" },
+      { indexed: false, internalType: "address", name: "moderator", type: "address" }
+    ],
+    name: "ReportResolved",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Unpaused",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "string", name: "word", type: "string" },
+      { indexed: false, internalType: "bool", name: "isPhrase", type: "bool" }
+    ],
+    name: "WordBanned",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "string", name: "word", type: "string" },
+      { indexed: false, internalType: "bool", name: "isPhrase", type: "bool" }
+    ],
+    name: "WordUnbanned",
+    type: "event"
+  },
+  {
+    inputs: [],
+    name: "DEFAULT_ADMIN_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "MAX_PAY_PER_VIEW_PRICE",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "MIN_PAY_PER_VIEW_PRICE",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "MODERATOR_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "PURCHASE_RECORDER_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum ISharedTypes.ContentCategory", name: "", type: "uint8" }
+    ],
+    name: "activeCategoryCount",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "activeContentCount",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "autoModerateThreshold",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "phrase", type: "string" }
+    ],
+    name: "banPhrase",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "word", type: "string" },
+      { internalType: "bool", name: "isPhrase", type: "bool" }
+    ],
+    name: "banWord",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "", type: "string" }
+    ],
+    name: "bannedPhrases",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "bannedPhrasesList",
+    outputs: [
+      { internalType: "string", name: "", type: "string" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "", type: "string" }
+    ],
+    name: "bannedWords",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "bannedWordsList",
+    outputs: [
+      { internalType: "string", name: "", type: "string" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum ISharedTypes.ContentCategory", name: "", type: "uint8" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "categoryContent",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum ISharedTypes.ContentCategory", name: "", type: "uint8" }
+    ],
+    name: "categoryCount",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "contentPurchasers",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "contentReports",
+    outputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "reporter", type: "address" },
+      { internalType: "string", name: "reason", type: "string" },
+      { internalType: "uint256", name: "timestamp", type: "uint256" },
+      { internalType: "bool", name: "resolved", type: "bool" },
+      { internalType: "string", name: "action", type: "string" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "contents",
+    outputs: [
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "string", name: "ipfsHash", type: "string" },
+      { internalType: "string", name: "title", type: "string" },
+      { internalType: "string", name: "description", type: "string" },
+      { internalType: "enum ISharedTypes.ContentCategory", name: "category", type: "uint8" },
+      { internalType: "uint256", name: "payPerViewPrice", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "uint256", name: "createdAt", type: "uint256" },
+      { internalType: "uint256", name: "purchaseCount", type: "uint256" },
+      { internalType: "bool", name: "isReported", type: "bool" },
+      { internalType: "uint256", name: "reportCount", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "creatorContent",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "creatorRegistry",
+    outputs: [
+      { internalType: "contract CreatorRegistry", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "deactivateContent",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum ISharedTypes.ContentCategory", name: "category", type: "uint8" }
+    ],
+    name: "getActiveContentByCategory",
+    outputs: [
+      { internalType: "uint256[]", name: "", type: "uint256[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "offset", type: "uint256" },
+      { internalType: "uint256", name: "limit", type: "uint256" }
+    ],
+    name: "getActiveContentPaginated",
+    outputs: [
+      { internalType: "uint256[]", name: "contentIds", type: "uint256[]" },
+      { internalType: "uint256", name: "total", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" }
+    ],
+    name: "getContent",
+    outputs: [
+      {
+        components: [
+          { internalType: "address", name: "creator", type: "address" },
+          { internalType: "string", name: "ipfsHash", type: "string" },
+          { internalType: "string", name: "title", type: "string" },
+          { internalType: "string", name: "description", type: "string" },
+          { internalType: "enum ISharedTypes.ContentCategory", name: "category", type: "uint8" },
+          { internalType: "uint256", name: "payPerViewPrice", type: "uint256" },
+          { internalType: "bool", name: "isActive", type: "bool" },
+          { internalType: "uint256", name: "createdAt", type: "uint256" },
+          { internalType: "uint256", name: "purchaseCount", type: "uint256" },
+          { internalType: "string[]", name: "tags", type: "string[]" },
+          { internalType: "bool", name: "isReported", type: "bool" },
+          { internalType: "uint256", name: "reportCount", type: "uint256" }
+        ],
+        internalType: "struct ContentRegistry.Content",
+        name: "",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "enum ISharedTypes.ContentCategory", name: "category", type: "uint8" }
+    ],
+    name: "getContentByCategory",
+    outputs: [
+      { internalType: "uint256[]", name: "", type: "uint256[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "tag", type: "string" }
+    ],
+    name: "getContentByTag",
+    outputs: [
+      { internalType: "uint256[]", name: "", type: "uint256[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" }
+    ],
+    name: "getContentPurchasers",
+    outputs: [
+      { internalType: "address[]", name: "", type: "address[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" }
+    ],
+    name: "getContentReports",
+    outputs: [
+      {
+        components: [
+          { internalType: "uint256", name: "contentId", type: "uint256" },
+          { internalType: "address", name: "reporter", type: "address" },
+          { internalType: "string", name: "reason", type: "string" },
+          { internalType: "uint256", name: "timestamp", type: "uint256" },
+          { internalType: "bool", name: "resolved", type: "bool" },
+          { internalType: "string", name: "action", type: "string" }
+        ],
+        internalType: "struct ContentRegistry.ContentReport[]",
+        name: "",
+        type: "tuple[]"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getCreatorActiveContent",
+    outputs: [
+      { internalType: "uint256[]", name: "", type: "uint256[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getCreatorContent",
+    outputs: [
+      { internalType: "uint256[]", name: "", type: "uint256[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getPlatformStats",
+    outputs: [
+      { internalType: "uint256", name: "totalContent", type: "uint256" },
+      { internalType: "uint256", name: "activeContent", type: "uint256" },
+      { internalType: "uint256[]", name: "categoryCounts", type: "uint256[]" },
+      { internalType: "uint256[]", name: "activeCategoryCounts", type: "uint256[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
+    name: "getRoleAdmin",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "contractAddress", type: "address" }
+    ],
+    name: "grantPurchaseRecorderRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "grantRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "hasReported",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "hasRole",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "maxReportsPerUser",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "nextContentId",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "nextReportId",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "pause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "paused",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "buyer", type: "address" }
+    ],
+    name: "recordPurchase",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "ipfsHash", type: "string" },
+      { internalType: "string", name: "title", type: "string" },
+      { internalType: "string", name: "description", type: "string" },
+      { internalType: "enum ISharedTypes.ContentCategory", name: "category", type: "uint8" },
+      { internalType: "uint256", name: "payPerViewPrice", type: "uint256" },
+      { internalType: "string[]", name: "tags", type: "string[]" }
+    ],
+    name: "registerContent",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
+    name: "renounceRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "reportContent",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "uint256", name: "reportIndex", type: "uint256" },
+      { internalType: "string", name: "action", type: "string" }
+    ],
+    name: "resolveReport",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "revokeRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
+    ],
+    name: "supportsInterface",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "", type: "string" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "tagContent",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "totalContentCount",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "word", type: "string" },
+      { internalType: "bool", name: "isPhrase", type: "bool" }
+    ],
+    name: "unbanWord",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "unpause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "uint256", name: "newPrice", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" }
+    ],
+    name: "updateContent",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "newThreshold", type: "uint256" },
+      { internalType: "uint256", name: "newMaxReports", type: "uint256" }
+    ],
+    name: "updateModerationSettings",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "userDailyReports",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   }
 ] as const;
