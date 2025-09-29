@@ -2,526 +2,523 @@
  * Permit Payment Manager Contract ABI
  */
 export const PERMIT_PAYMENT_MANAGER_ABI = [
-  // Constructor
   {
-    type: "constructor",
     inputs: [
-      { name: "_baseCommerceIntegration", type: "address", internalType: "address" },
-      { name: "_permit2", type: "address", internalType: "address" },
-      { name: "_usdcToken", type: "address", internalType: "address" }
+      { internalType: "address", name: "_baseCommerceIntegration", type: "address" },
+      { internalType: "address", name: "_permit2", type: "address" },
+      { internalType: "address", name: "_usdcToken", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
-
-  // Roles
   {
-    type: "function",
-    name: "DEFAULT_ADMIN_ROLE",
     inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
+    name: "AccessControlBadConfirmation",
+    type: "error"
   },
   {
-    type: "function",
-    name: "PAYMENT_MONITOR_ROLE",
-    inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
-  },
-
-  // View functions
-  {
-    type: "function",
-    name: "baseCommerceIntegration",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract BaseCommerceIntegration" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "canExecuteWithPermit",
     inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "deadline", type: "uint256", internalType: "uint256" },
-      { name: "hasSignature", type: "bool", internalType: "bool" },
-      {
-        name: "permitData",
-        type: "tuple",
-        internalType: "struct PermitPaymentManager.Permit2Data",
-        components: [
-          {
-            name: "permit",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.PermitTransferFrom",
-            components: [
-              {
-                name: "permitted",
-                type: "tuple",
-                internalType: "struct ISignatureTransfer.TokenPermissions",
-                components: [
-                  { name: "token", type: "address", internalType: "address" },
-                  { name: "amount", type: "uint256", internalType: "uint256" }
-                ]
-              },
-              { name: "nonce", type: "uint256", internalType: "uint256" },
-              { name: "deadline", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          {
-            name: "transferDetails",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-            components: [
-              { name: "to", type: "address", internalType: "address" },
-              { name: "requestedAmount", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          { name: "signature", type: "bytes", internalType: "bytes" },
-          { name: "paymentToken", type: "address", internalType: "address" },
-          { name: "expectedAmount", type: "uint256", internalType: "uint256" }
-        ]
-      }
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
     ],
-    outputs: [
-      { name: "canExecute", type: "bool", internalType: "bool" },
-      { name: "reason", type: "string", internalType: "string" }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "createAndExecuteWithPermit",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "paymentToken", type: "address", internalType: "address" },
-      { name: "expectedAmount", type: "uint256", internalType: "uint256" },
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      {
-        name: "permitData",
-        type: "tuple",
-        internalType: "struct PermitPaymentManager.Permit2Data",
-        components: [
-          {
-            name: "permit",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.PermitTransferFrom",
-            components: [
-              {
-                name: "permitted",
-                type: "tuple",
-                internalType: "struct ISignatureTransfer.TokenPermissions",
-                components: [
-                  { name: "token", type: "address", internalType: "address" },
-                  { name: "amount", type: "uint256", internalType: "uint256" }
-                ]
-              },
-              { name: "nonce", type: "uint256", internalType: "uint256" },
-              { name: "deadline", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          {
-            name: "transferDetails",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-            components: [
-              { name: "to", type: "address", internalType: "address" },
-              { name: "requestedAmount", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          { name: "signature", type: "bytes", internalType: "bytes" }
-        ]
-      }
-    ],
-    outputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "success", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "executePaymentWithPermit",
-    inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "paymentToken", type: "address", internalType: "address" },
-      { name: "expectedAmount", type: "uint256", internalType: "uint256" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      {
-        name: "permitData",
-        type: "tuple",
-        internalType: "struct PermitPaymentManager.Permit2Data",
-        components: [
-          {
-            name: "permit",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.PermitTransferFrom",
-            components: [
-              {
-                name: "permitted",
-                type: "tuple",
-                internalType: "struct ISignatureTransfer.TokenPermissions",
-                components: [
-                  { name: "token", type: "address", internalType: "address" },
-                  { name: "amount", type: "uint256", internalType: "uint256" }
-                ]
-              },
-              { name: "nonce", type: "uint256", internalType: "uint256" },
-              { name: "deadline", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          {
-            name: "transferDetails",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-            components: [
-              { name: "to", type: "address", internalType: "address" },
-              { name: "requestedAmount", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          { name: "signature", type: "bytes", internalType: "bytes" }
-        ]
-      }
-    ],
-    outputs: [
-      { name: "success", type: "bool", internalType: "bool" }
-    ],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "getPermitDomainSeparator",
-    inputs: [],
-    outputs: [{ name: "domainSeparator", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getPermitNonce",
-    inputs: [{ name: "user", type: "address", internalType: "address" }],
-    outputs: [{ name: "nonce", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getRoleAdmin",
-    inputs: [{ name: "role", type: "bytes32", internalType: "bytes32" }],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "grantRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "owner",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "pause",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "paused",
-    inputs: [],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "permit2",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract ISignatureTransfer" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "renounceOwnership",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renounceRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "callerConfirmation", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "revokeRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "supportsInterface",
-    inputs: [{ name: "interfaceId", type: "bytes4", internalType: "bytes4" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "transferOwnership",
-    inputs: [{ name: "newOwner", type: "address", internalType: "address" }],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "unpause",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "usdcToken",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "validatePermitContext",
-    inputs: [
-      {
-        name: "permitData",
-        type: "tuple",
-        internalType: "struct PermitPaymentManager.Permit2Data",
-        components: [
-          {
-            name: "permit",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.PermitTransferFrom",
-            components: [
-              {
-                name: "permitted",
-                type: "tuple",
-                internalType: "struct ISignatureTransfer.TokenPermissions",
-                components: [
-                  { name: "token", type: "address", internalType: "address" },
-                  { name: "amount", type: "uint256", internalType: "uint256" }
-                ]
-              },
-              { name: "nonce", type: "uint256", internalType: "uint256" },
-              { name: "deadline", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          {
-            name: "transferDetails",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-            components: [
-              { name: "to", type: "address", internalType: "address" },
-              { name: "requestedAmount", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          { name: "signature", type: "bytes", internalType: "bytes" },
-          { name: "paymentToken", type: "address", internalType: "address" },
-          { name: "expectedAmount", type: "uint256", internalType: "uint256" },
-          { name: "commerceProtocolAddress", type: "address", internalType: "address" }
-        ]
-      }
-    ],
-    outputs: [{ name: "isValid", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "validatePermitData",
-    inputs: [
-      {
-        name: "permitData",
-        type: "tuple",
-        internalType: "struct PermitPaymentManager.Permit2Data",
-        components: [
-          {
-            name: "permit",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.PermitTransferFrom",
-            components: [
-              {
-                name: "permitted",
-                type: "tuple",
-                internalType: "struct ISignatureTransfer.TokenPermissions",
-                components: [
-                  { name: "token", type: "address", internalType: "address" },
-                  { name: "amount", type: "uint256", internalType: "uint256" }
-                ]
-              },
-              { name: "nonce", type: "uint256", internalType: "uint256" },
-              { name: "deadline", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          {
-            name: "transferDetails",
-            type: "tuple",
-            internalType: "struct ISignatureTransfer.SignatureTransferDetails",
-            components: [
-              { name: "to", type: "address", internalType: "address" },
-              { name: "requestedAmount", type: "uint256", internalType: "uint256" }
-            ]
-          },
-          { name: "signature", type: "bytes", internalType: "bytes" },
-          { name: "user", type: "address", internalType: "address" }
-        ]
-      }
-    ],
-    outputs: [{ name: "isValid", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-
-  // Events
-  {
-    type: "event",
-    name: "OwnershipTransferred",
-    inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "Paused",
-    inputs: [
-      { name: "account", type: "address", indexed: false, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "PaymentExecutedWithPermit",
-    inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentToken", type: "address", indexed: false, internalType: "address" },
-      { name: "success", type: "bool", indexed: false, internalType: "bool" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "PermitPaymentCreated",
-    inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentToken", type: "address", indexed: false, internalType: "address" },
-      { name: "deadline", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "previousAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "newAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "Unpaused",
-    inputs: [
-      { name: "account", type: "address", indexed: false, internalType: "address" }
-    ],
-    anonymous: false
-  },
-
-  // Errors
-  { type: "error", name: "AccessControlBadConfirmation", inputs: [] },
-  {
-    type: "error",
     name: "AccessControlUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "EnforcedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ExpectedPause",
+    type: "error"
+  },
+  {
     inputs: [
-      { name: "account", type: "address", internalType: "address" },
-      { name: "neededRole", type: "bytes32", internalType: "bytes32" }
-    ]
-  },
-  { type: "error", name: "EnforcedPause", inputs: [] },
-  { type: "error", name: "ExpectedPause", inputs: [] },
-  { type: "error", name: "InvalidPermitData", inputs: [] },
-  { type: "error", name: "InvalidPermitSignature", inputs: [] },
-  { type: "error", name: "InvalidRecipient", inputs: [] },
-  { type: "error", name: "InvalidSignature", inputs: [] },
-  {
-    type: "error",
+      { internalType: "address", name: "owner", type: "address" }
+    ],
     name: "OwnableInvalidOwner",
-    inputs: [{ name: "owner", type: "address", internalType: "address" }]
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
     name: "OwnableUnauthorizedAccount",
-    inputs: [{ name: "account", type: "address", internalType: "address" }]
+    type: "error"
   },
-  { type: "error", name: "PaymentContextNotFound", inputs: [] },
-  { type: "error", name: "PermitDeadlineExpired", inputs: [] },
-  { type: "error", name: "PermitNonceInvalid", inputs: [] },
-  { type: "error", name: "ReentrancyGuardReentrantCall", inputs: [] },
-  { type: "error", name: "UnauthorizedSigner", inputs: [] },
-  { type: "error", name: "ZeroAmount", inputs: [] }
+  {
+    inputs: [],
+    name: "ReentrancyGuardReentrantCall",
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Paused",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "address", name: "paymentToken", type: "address" },
+      { indexed: false, internalType: "bool", name: "success", type: "bool" }
+    ],
+    name: "PaymentExecutedWithPermit",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "address", name: "paymentToken", type: "address" },
+      { indexed: false, internalType: "uint256", name: "nonce", type: "uint256" }
+    ],
+    name: "PermitPaymentCreated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Unpaused",
+    type: "event"
+  },
+  {
+    inputs: [],
+    name: "DEFAULT_ADMIN_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "PAYMENT_MONITOR_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "baseCommerceIntegration",
+    outputs: [
+      { internalType: "contract BaseCommerceIntegration", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes16", name: "", type: "bytes16" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "deadline", type: "uint256" },
+      { internalType: "bool", name: "hasSignature", type: "bool" },
+      {
+        components: [
+          {
+            components: [
+              { internalType: "address", name: "token", type: "address" },
+              { internalType: "uint256", name: "amount", type: "uint256" }
+            ],
+            internalType: "struct ISignatureTransfer.TokenPermissions",
+            name: "permitted",
+            type: "tuple"
+          },
+          { internalType: "uint256", name: "nonce", type: "uint256" },
+          { internalType: "uint256", name: "deadline", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.PermitTransferFrom",
+        name: "permit",
+        type: "tuple"
+      },
+      {
+        components: [
+          { internalType: "address", name: "to", type: "address" },
+          { internalType: "uint256", name: "requestedAmount", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+        name: "transferDetails",
+        type: "tuple"
+      },
+      { internalType: "bytes", name: "signature", type: "bytes" }
+    ],
+    name: "canExecuteWithPermit",
+    outputs: [
+      { internalType: "bool", name: "canExecute", type: "bool" },
+      { internalType: "string", name: "reason", type: "string" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "expectedAmount", type: "uint256" },
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      {
+        components: [
+          {
+            components: [
+              { internalType: "address", name: "token", type: "address" },
+              { internalType: "uint256", name: "amount", type: "uint256" }
+            ],
+            internalType: "struct ISignatureTransfer.TokenPermissions",
+            name: "permitted",
+            type: "tuple"
+          },
+          { internalType: "uint256", name: "nonce", type: "uint256" },
+          { internalType: "uint256", name: "deadline", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.PermitTransferFrom",
+        name: "permit",
+        type: "tuple"
+      },
+      {
+        components: [
+          { internalType: "address", name: "to", type: "address" },
+          { internalType: "uint256", name: "requestedAmount", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+        name: "transferDetails",
+        type: "tuple"
+      },
+      { internalType: "bytes", name: "signature", type: "bytes" }
+    ],
+    name: "createAndExecuteWithPermit",
+    outputs: [
+      { internalType: "bytes16", name: "", type: "bytes16" },
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "expectedAmount", type: "uint256" },
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "enum ISharedTypes.PaymentType", name: "paymentType", type: "uint8" },
+      {
+        components: [
+          {
+            components: [
+              { internalType: "address", name: "token", type: "address" },
+              { internalType: "uint256", name: "amount", type: "uint256" }
+            ],
+            internalType: "struct ISignatureTransfer.TokenPermissions",
+            name: "permitted",
+            type: "tuple"
+          },
+          { internalType: "uint256", name: "nonce", type: "uint256" },
+          { internalType: "uint256", name: "deadline", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.PermitTransferFrom",
+        name: "permit",
+        type: "tuple"
+      },
+      {
+        components: [
+          { internalType: "address", name: "to", type: "address" },
+          { internalType: "uint256", name: "requestedAmount", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+        name: "transferDetails",
+        type: "tuple"
+      },
+      { internalType: "bytes", name: "signature", type: "bytes" }
+    ],
+    name: "executePaymentWithPermit",
+    outputs: [
+      { internalType: "bool", name: "success", type: "bool" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getPermitDomainSeparator",
+    outputs: [
+      { internalType: "bytes32", name: "domainSeparator", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getPermitNonce",
+    outputs: [
+      { internalType: "uint256", name: "nonce", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
+    name: "getRoleAdmin",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "grantRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "hasRole",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "pause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "paused",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "permit2",
+    outputs: [
+      { internalType: "contract ISignatureTransfer", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
+    name: "renounceRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "revokeRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
+    ],
+    name: "supportsInterface",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "unpause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "usdcToken",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        components: [
+          {
+            components: [
+              { internalType: "address", name: "token", type: "address" },
+              { internalType: "uint256", name: "amount", type: "uint256" }
+            ],
+            internalType: "struct ISignatureTransfer.TokenPermissions",
+            name: "permitted",
+            type: "tuple"
+          },
+          { internalType: "uint256", name: "nonce", type: "uint256" },
+          { internalType: "uint256", name: "deadline", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.PermitTransferFrom",
+        name: "permit",
+        type: "tuple"
+      },
+      {
+        components: [
+          { internalType: "address", name: "to", type: "address" },
+          { internalType: "uint256", name: "requestedAmount", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+        name: "transferDetails",
+        type: "tuple"
+      },
+      { internalType: "bytes", name: "signature", type: "bytes" }
+    ],
+    name: "validatePermitContext",
+    outputs: [
+      { internalType: "bool", name: "isValid", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        components: [
+          {
+            components: [
+              { internalType: "address", name: "token", type: "address" },
+              { internalType: "uint256", name: "amount", type: "uint256" }
+            ],
+            internalType: "struct ISignatureTransfer.TokenPermissions",
+            name: "permitted",
+            type: "tuple"
+          },
+          { internalType: "uint256", name: "nonce", type: "uint256" },
+          { internalType: "uint256", name: "deadline", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.PermitTransferFrom",
+        name: "permit",
+        type: "tuple"
+      },
+      {
+        components: [
+          { internalType: "address", name: "to", type: "address" },
+          { internalType: "uint256", name: "requestedAmount", type: "uint256" }
+        ],
+        internalType: "struct ISignatureTransfer.SignatureTransferDetails",
+        name: "transferDetails",
+        type: "tuple"
+      },
+      { internalType: "bytes", name: "signature", type: "bytes" }
+    ],
+    name: "validatePermitData",
+    outputs: [
+      { internalType: "bool", name: "isValid", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  }
 ] as const;
