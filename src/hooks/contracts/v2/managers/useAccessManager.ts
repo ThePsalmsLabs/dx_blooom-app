@@ -1,29 +1,34 @@
 /**
- * Access Manager Hook - V2 Content Access Control
+ * Access Manager Hook - V2 Payment Processing & Access Control
  * 
- * Handles content access, subscription validation, and purchase verification
- * using the modular AccessManager contract from v2 architecture.
+ * Handles payment processing completion and access granting using the AccessManager 
+ * contract from v2 architecture. This is the critical component that grants access
+ * after successful payments and manages subscription/content access.
  */
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useReadContract, useWriteContract, useAccount, useChainId } from 'wagmi'
 import { getContractConfig } from '@/lib/contracts/config'
+import { ACCESS_MANAGER_ABI } from '@/lib/contracts/abis/v2ABIs/AccessManager'
+import { PAY_PER_VIEW_ABI } from '@/lib/contracts/abis/v2ABIs/PayPerView'
+import { SUBSCRIPTION_MANAGER_ABI } from '@/lib/contracts/abis/v2ABIs/SubscriptionManager'
+import { CONTENT_REGISTRY_ABI } from '@/lib/contracts/abis/v2ABIs/ContentRegistry'
 import { type Address } from 'viem'
 
-// Types based on AccessManager contract
-export interface AccessRecord {
-  hasAccess: boolean
-  grantedAt: bigint
-  expiresAt: bigint
-  accessType: 'purchase' | 'subscription' | 'admin'
-}
-
-export interface SubscriptionInfo {
-  isActive: boolean
-  startTime: bigint
-  expiryTime: bigint
-  autoRenew: boolean
-  totalPaid: bigint
+// Types for payment processing - matching AccessManager ABI exactly
+export interface AccessManagerPaymentContext {
+  paymentType: number // Wagmi expects number, not specific union
+  user: `0x${string}`
+  creator: `0x${string}`
+  contentId: bigint
+  platformFee: bigint
+  creatorAmount: bigint
+  operatorFee: bigint
+  timestamp: bigint
+  processed: boolean
+  paymentToken: `0x${string}`
+  expectedAmount: bigint
+  intentId: `0x${string}`
 }
 
 /**
@@ -32,162 +37,169 @@ export interface SubscriptionInfo {
 export function useAccessManager() {
   const { address: userAddress } = useAccount()
   const chainId = useChainId()
-  const contract = getContractConfig(chainId, 'ACCESS_MANAGER')
-  
+  const contractConfig = getContractConfig(chainId, 'ACCESS_MANAGER')
+  const contract = {
+    address: contractConfig.address as `0x${string}`,
+    abi: ACCESS_MANAGER_ABI
+  } as const
+
   const { writeContract, data: hash, isPending, error } = useWriteContract()
 
-  // ============ ACCESS CONTROL FUNCTIONS ============
+  // ============ PAYMENT PROCESSING ============
 
   /**
-   * Grant access after successful payment
-   * Called by CommerceProtocolCore after payment completion
+   * Handle successful payment and grant access (CRITICAL FUNCTION)
+   * This is called after a payment is successfully processed to grant access
    */
-  const grantAccess = useMutation({
-    mutationFn: async ({ 
-      user, 
-      contentId, 
-      paymentType, 
-      duration 
-    }: { 
-      user: Address
-      contentId: bigint
-      paymentType: 0 | 1 | 2 | 3 // PayPerView | Subscription | Tip | Donation
-      duration?: bigint 
+  const handleSuccessfulPayment = useMutation({
+    mutationFn: async ({
+      context,
+      intentId,
+      paymentToken,
+      amountPaid,
+      operatorFee
+    }: {
+      context: AccessManagerPaymentContext
+      intentId: `0x${string}`
+      paymentToken: Address
+      amountPaid: bigint
+      operatorFee: bigint
     }) => {
-      return writeContract({
-        ...contract,
-        functionName: 'grantAccess',
-        args: [user, contentId, paymentType, duration || BigInt(0)]
-      })
-    }
-  })
-
-  /**
-   * Revoke access (for refunds or violations)
-   */
-  const revokeAccess = useMutation({
-    mutationFn: async ({ user, contentId }: { user: Address, contentId: bigint }) => {
-      return writeContract({
-        ...contract,
-        functionName: 'revokeAccess',
-        args: [user, contentId]
-      })
-    }
-  })
-
-  // ============ SUBSCRIPTION MANAGEMENT ============
-
-  /**
-   * Create subscription for user
-   */
-  const createSubscription = useMutation({
-    mutationFn: async ({ 
-      user, 
-      creator, 
-      duration, 
-      autoRenew 
-    }: { 
-      user: Address
-      creator: Address 
-      duration: bigint
-      autoRenew: boolean 
-    }) => {
-      return writeContract({
-        ...contract,
-        functionName: 'createSubscription',
-        args: [user, creator, duration, autoRenew]
-      })
-    }
-  })
-
-  /**
-   * Cancel subscription
-   */
-  const cancelSubscription = useMutation({
-    mutationFn: async ({ creator }: { creator: Address }) => {
       if (!userAddress) throw new Error('User not connected')
+
+      // Use explicit typing to work around wagmi's complex tuple type inference
+      // The function exists in the ABI but wagmi struggles with the PaymentContext tuple
+      type WriteContractConfig = {
+        address: `0x${string}`
+        abi: typeof ACCESS_MANAGER_ABI
+        functionName: 'handleSuccessfulPayment'
+        args: [AccessManagerPaymentContext, `0x${string}`, Address, bigint, bigint]
+      }
       
-      return writeContract({
-        ...contract,
-        functionName: 'cancelSubscription',
-        args: [userAddress, creator]
-      })
+      const config: WriteContractConfig = {
+        address: contract.address,
+        abi: contract.abi,
+        functionName: 'handleSuccessfulPayment',
+        args: [context, intentId, paymentToken, amountPaid, operatorFee]
+      }
+      
+      return writeContract(config as Parameters<typeof writeContract>[0])
+    },
+    onSuccess: (hash) => {
+      console.log('Access granted for successful payment:', hash)
+    },
+    onError: (error) => {
+      console.error('Failed to handle successful payment:', error)
     }
   })
 
   // ============ READ FUNCTIONS ============
 
   /**
-   * Check if user has access to specific content
+   * Get access manager metrics
    */
-  const useHasAccess = (user: Address | undefined, contentId: bigint | undefined) => {
+  const useGetMetrics = () => {
     return useReadContract({
       ...contract,
-      functionName: 'hasAccess',
-      args: user && contentId !== undefined ? [user, contentId] : undefined,
+      functionName: 'getMetrics',
       query: {
-        enabled: !!user && contentId !== undefined,
         staleTime: 30000 // 30 seconds
       }
     })
   }
 
   /**
-   * Get detailed access record for user and content
+   * Check if AccessManager is properly configured
    */
-  const useAccessRecord = (user: Address | undefined, contentId: bigint | undefined) => {
+  const useIsConfigured = () => {
     return useReadContract({
       ...contract,
-      functionName: 'getAccessRecord',
-      args: user && contentId !== undefined ? [user, contentId] : undefined,
+      functionName: 'isConfigured',
       query: {
-        enabled: !!user && contentId !== undefined,
-        staleTime: 30000
-      }
-    })
-  }
-
-  /**
-   * Check subscription status for user and creator
-   */
-  const useSubscriptionStatus = (user: Address | undefined, creator: Address | undefined) => {
-    return useReadContract({
-      ...contract,
-      functionName: 'getSubscriptionInfo',
-      args: user && creator ? [user, creator] : undefined,
-      query: {
-        enabled: !!user && !!creator,
-        staleTime: 30000
-      }
-    })
-  }
-
-  /**
-   * Get all active subscriptions for a user
-   */
-  const useUserSubscriptions = (user: Address | undefined) => {
-    return useReadContract({
-      ...contract,
-      functionName: 'getUserSubscriptions',
-      args: user ? [user] : undefined,
-      query: {
-        enabled: !!user,
         staleTime: 60000 // 1 minute
       }
     })
   }
 
   /**
-   * Get subscriber count for a creator
+   * Get PayPerView contract address
    */
-  const useCreatorSubscriberCount = (creator: Address | undefined) => {
+  const usePayPerView = () => {
     return useReadContract({
       ...contract,
-      functionName: 'getSubscriberCount',
-      args: creator ? [creator] : undefined,
+      functionName: 'payPerView',
       query: {
-        enabled: !!creator,
-        staleTime: 60000
+        staleTime: Infinity // Never changes
+      }
+    })
+  }
+
+  /**
+   * Get SubscriptionManager contract address
+   */
+  const useSubscriptionManager = () => {
+    return useReadContract({
+      ...contract,
+      functionName: 'subscriptionManager',
+      query: {
+        staleTime: Infinity // Never changes
+      }
+    })
+  }
+
+  /**
+   * Get CreatorRegistry contract address
+   */
+  const useCreatorRegistry = () => {
+    return useReadContract({
+      ...contract,
+      functionName: 'creatorRegistry',
+      query: {
+        staleTime: Infinity // Never changes
+      }
+    })
+  }
+
+  /**
+   * Get content information including creator address
+   */
+  const useGetContent = (contentId: bigint | undefined) => {
+    const creatorRegistryAddress = useCreatorRegistry()
+    
+    return useReadContract({
+      address: creatorRegistryAddress.data,
+      abi: CONTENT_REGISTRY_ABI,
+      functionName: 'getContent',
+      args: contentId ? [contentId] : undefined,
+      query: {
+        enabled: !!creatorRegistryAddress.data && !!contentId,
+        staleTime: 300000 // 5 minutes - content rarely changes
+      }
+    })
+  }
+
+  /**
+   * Get total payments processed
+   */
+  const useTotalPaymentsProcessed = () => {
+    return useReadContract({
+      ...contract,
+      functionName: 'totalPaymentsProcessed',
+      query: {
+        staleTime: 30000 // 30 seconds
+      }
+    })
+  }
+
+  /**
+   * Get total operator fees collected
+   */
+  const useTotalOperatorFees = () => {
+    return useReadContract({
+      ...contract,
+      functionName: 'totalOperatorFees',
+      query: {
+        staleTime: 30000 // 30 seconds
       }
     })
   }
@@ -195,43 +207,64 @@ export function useAccessManager() {
   // ============ UTILITY FUNCTIONS ============
 
   /**
-   * Check multiple content access at once
+   * Check if a user has access to specific content (via PayPerView contract)
    */
-  const useBatchAccessCheck = (user: Address | undefined, contentIds: bigint[]) => {
-    return useQuery({
-      queryKey: ['batchAccess', user, contentIds],
-      queryFn: async () => {
-        if (!user || contentIds.length === 0) return []
-        
-        // This would need to be implemented as a multicall or batch function
-        // For now, return empty array
-        return []
-      },
-      enabled: !!user && contentIds.length > 0,
-      staleTime: 30000
+  const useHasAccess = (user: Address | undefined, contentId: bigint | undefined) => {
+    const payPerViewAddress = usePayPerView()
+    
+    return useReadContract({
+      address: payPerViewAddress.data,
+      abi: PAY_PER_VIEW_ABI,
+      functionName: 'hasAccess',
+      args: contentId && user ? [contentId, user] : undefined,
+      query: {
+        enabled: !!payPerViewAddress.data && !!contentId && !!user,
+        staleTime: 30000 // 30 seconds
+      }
+    })
+  }
+
+  /**
+   * Check if a user has an active subscription to a creator
+   */
+  const useHasSubscription = (user: Address | undefined, creator: Address | undefined) => {
+    const subscriptionManagerAddress = useSubscriptionManager()
+    
+    return useReadContract({
+      address: subscriptionManagerAddress.data,
+      abi: SUBSCRIPTION_MANAGER_ABI,
+      functionName: 'isSubscribed',
+      args: user && creator ? [user, creator] : undefined,
+      query: {
+        enabled: !!subscriptionManagerAddress.data && !!user && !!creator,
+        staleTime: 30000 // 30 seconds
+      }
     })
   }
 
   return {
-    // Write functions
-    grantAccess,
-    revokeAccess,
-    createSubscription,
-    cancelSubscription,
-    
-    // Read hooks
+    // Write functions - Payment Processing
+    handleSuccessfulPayment,
+
+    // Read hooks - Contract Integration
+    useGetMetrics,
+    useIsConfigured,
+    usePayPerView,
+    useSubscriptionManager,
+    useCreatorRegistry,
+    useGetContent,
+    useTotalPaymentsProcessed,
+    useTotalOperatorFees,
+
+    // Utility functions - Access Verification
     useHasAccess,
-    useAccessRecord,
-    useSubscriptionStatus,
-    useUserSubscriptions,
-    useCreatorSubscriberCount,
-    useBatchAccessCheck,
-    
+    useHasSubscription,
+
     // Transaction state
     hash,
     isPending,
     error,
-    
+
     // Contract info
     contractAddress: contract.address,
     chainId
@@ -239,19 +272,61 @@ export function useAccessManager() {
 }
 
 /**
- * Convenience hook for common access patterns
+ * Comprehensive hook for content access verification
+ * Checks both direct PayPerView access and subscription-based access
  */
-export function useContentAccess(contentId: bigint | undefined) {
+export function useContentAccess(contentId: bigint) {
   const { address: userAddress } = useAccount()
-  const { useHasAccess, useAccessRecord } = useAccessManager()
+  const { useHasAccess, useHasSubscription, useGetContent } = useAccessManager()
+
+  // Get content info to determine the creator
+  const contentInfo = useGetContent(contentId)
+  const creatorAddress = contentInfo.data?.creator
+
+  // Check direct PayPerView access
+  const hasDirectAccess = useHasAccess(userAddress, contentId)
   
-  const hasAccess = useHasAccess(userAddress, contentId)
-  const accessRecord = useAccessRecord(userAddress, contentId)
+  // Check subscription access to the creator
+  const hasSubscriptionAccess = useHasSubscription(userAddress, creatorAddress)
+  
+  // User has access if they either:
+  // 1. Purchased the content directly (PayPerView)
+  // 2. Have an active subscription to the creator
+  const hasAccess = hasDirectAccess.data || hasSubscriptionAccess.data
+  
+  const isLoading = hasDirectAccess.isLoading || hasSubscriptionAccess.isLoading || contentInfo.isLoading
+  const error = hasDirectAccess.error || hasSubscriptionAccess.error || contentInfo.error
   
   return {
-    hasAccess: hasAccess.data,
-    accessRecord: accessRecord.data,
-    isLoading: hasAccess.isLoading || accessRecord.isLoading,
-    error: hasAccess.error || accessRecord.error
+    hasAccess,
+    hasDirectAccess: hasDirectAccess.data,
+    hasSubscriptionAccess: hasSubscriptionAccess.data,
+    contentInfo: contentInfo.data,
+    isLoading,
+    error,
+    refetch: async () => {
+      await Promise.all([
+        hasDirectAccess.refetch(),
+        hasSubscriptionAccess.refetch(),
+        contentInfo.refetch()
+      ])
+    }
+  }
+}
+
+/**
+ * Convenience hook for subscription verification
+ */
+export function useCreatorSubscription(creator: Address) {
+  const { address: userAddress } = useAccount()
+  const { useHasSubscription } = useAccessManager()
+
+  const hasSubscription = useHasSubscription(userAddress, creator)
+  
+  return {
+    hasSubscription: hasSubscription.data,
+    isLoading: hasSubscription.isLoading,
+    error: hasSubscription.error,
+    refetch: hasSubscription.refetch
   }
 }
