@@ -2,564 +2,823 @@
  * Pay Per View Contract ABI
  */
 export const PAY_PER_VIEW_ABI = [
-  // Constructor
   {
-    type: "constructor",
     inputs: [
-      { name: "_creatorRegistry", type: "address", internalType: "address" },
-      { name: "_contentRegistry", type: "address", internalType: "address" },
-      { name: "_priceOracle", type: "address", internalType: "address" },
-      { name: "_usdcToken", type: "address", internalType: "address" },
-      { name: "_wethToken", type: "address", internalType: "address" }
+      { internalType: "address", name: "_creatorRegistry", type: "address" },
+      { internalType: "address", name: "_contentRegistry", type: "address" },
+      { internalType: "address", name: "_priceOracle", type: "address" },
+      { internalType: "address", name: "_usdcToken", type: "address" },
+      { internalType: "address", name: "_wethToken", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
-
-  // Roles
   {
-    type: "function",
+    inputs: [],
+    name: "AccessControlBadConfirmation",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
+    ],
+    name: "AccessControlUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "CommerceProtocolError",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "EnforcedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ExpectedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InsufficientRefundBalance",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "IntentNotFound",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidPaymentMethod",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "NoEarningsToWithdraw",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "NotRefundEligible",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "owner", type: "address" }
+    ],
+    name: "OwnableInvalidOwner",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "OwnableUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "PurchaseAlreadyCompleted",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "PurchaseExpired",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ReentrancyGuardReentrantCall",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "RefundWindowExpired",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "token", type: "address" }
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "buyer", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: false, internalType: "uint256", name: "usdcPrice", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "actualAmountPaid", type: "uint256" },
+      { indexed: false, internalType: "address", name: "paymentToken", type: "address" }
+    ],
+    name: "ContentPurchaseCompleted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "buyer", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: false, internalType: "enum PayPerView.PaymentMethod", name: "paymentMethod", type: "uint8" },
+      { indexed: false, internalType: "uint256", name: "usdcPrice", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "expectedPaymentAmount", type: "uint256" }
+    ],
+    name: "ContentPurchaseInitiated",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "CreatorEarningsWithdrawn",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "buyer", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "price", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "platformFee", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "creatorEarning", type: "uint256" }
+    ],
+    name: "DirectPurchaseCompleted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "buyer", type: "address" },
+      { indexed: false, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: false, internalType: "uint256", name: "usdcPrice", type: "uint256" },
+      { indexed: false, internalType: "address", name: "paymentToken", type: "address" },
+      { indexed: false, internalType: "uint256", name: "actualAmountPaid", type: "uint256" }
+    ],
+    name: "ExternalPurchaseRecorded",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "ExternalRefundProcessed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Paused",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "uint256", name: "contentId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "PurchaseFailed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "RefundProcessed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Unpaused",
+    type: "event"
+  },
+  {
+    inputs: [],
     name: "DEFAULT_ADMIN_ROLE",
-    inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "PAYMENT_PROCESSOR_ROLE",
-    inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "REFUND_MANAGER_ROLE",
     inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
-  },
-
-  // Payment Timeout
-  {
-    type: "function",
     name: "PAYMENT_TIMEOUT",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-
-  // Platform Fee
-  {
-    type: "function",
-    name: "addPlatformFee",
-    inputs: [
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "user", type: "address", internalType: "address" }
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "REFUND_MANAGER_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "REFUND_WINDOW",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "canPurchaseContent",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "uint256", name: "actualAmountPaid", type: "uint256" },
+      { internalType: "bool", name: "success", type: "bool" },
+      { internalType: "string", name: "failureReason", type: "string" }
+    ],
+    name: "completePurchase",
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
-
-  // Registries
   {
-    type: "function",
+    inputs: [],
     name: "contentRegistry",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract ContentRegistry" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "contract ContentRegistry", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "enum PayPerView.PaymentMethod", name: "paymentMethod", type: "uint8" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "maxSlippage", type: "uint256" }
+    ],
+    name: "createPurchaseIntent",
+    outputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "uint256", name: "expectedAmount", type: "uint256" },
+      { internalType: "uint256", name: "deadline", type: "uint256" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "creatorEarnings",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
     name: "creatorRegistry",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract CreatorRegistry" }],
-    stateMutability: "view"
-  },
-
-  // Payment Intents
-  {
-    type: "function",
-    name: "createPaymentIntent",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "paymentToken", type: "address", internalType: "address" },
-      { name: "expectedAmount", type: "uint256", internalType: "uint256" }
+    outputs: [
+      { internalType: "contract CreatorRegistry", name: "", type: "address" }
     ],
-    outputs: [{ name: "", type: "bytes16", internalType: "bytes16" }],
-    stateMutability: "nonpayable"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "executePayment",
     inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "paymentToken", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" },
-      { name: "contentId", type: "uint256", internalType: "uint256" }
+      { internalType: "address", name: "token", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" }
     ],
-    outputs: [{ name: "success", type: "bool", internalType: "bool" }],
-    stateMutability: "nonpayable"
+    name: "emergencyTokenRecovery",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
-
-  // Price
   {
-    type: "function",
-    name: "getContentPrice",
     inputs: [
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "paymentToken", type: "address", internalType: "address" }
+      { internalType: "bytes16", name: "", type: "bytes16" }
     ],
-    outputs: [{ name: "price", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    name: "failedPurchases",
+    outputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "usdcAmount", type: "uint256" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "paidAmount", type: "uint256" },
+      { internalType: "uint256", name: "failureTime", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" },
+      { internalType: "bool", name: "refunded", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
-
-  // Payment Context
   {
-    type: "function",
-    name: "getPaymentContext",
-    inputs: [{ name: "intentId", type: "bytes16", internalType: "bytes16" }],
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getCreatorEarnings",
+    outputs: [
+      { internalType: "uint256", name: "total", type: "uint256" },
+      { internalType: "uint256", name: "withdrawable", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" }
+    ],
+    name: "getPaymentOptions",
+    outputs: [
+      { internalType: "enum PayPerView.PaymentMethod[]", name: "methods", type: "uint8[]" },
+      { internalType: "uint256[]", name: "prices", type: "uint256[]" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getPurchaseDetails",
     outputs: [
       {
-        name: "",
-        type: "tuple",
-        internalType: "struct ISharedTypes.PaymentContext",
         components: [
-          { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-          { name: "user", type: "address", internalType: "address" },
-          { name: "creator", type: "address", internalType: "address" },
-          { name: "contentId", type: "uint256", internalType: "uint256" },
-          { name: "platformFee", type: "uint256", internalType: "uint256" },
-          { name: "creatorAmount", type: "uint256", internalType: "uint256" },
-          { name: "operatorFee", type: "uint256", internalType: "uint256" },
-          { name: "timestamp", type: "uint256", internalType: "uint256" },
-          { name: "processed", type: "bool", internalType: "bool" },
-          { name: "paymentToken", type: "address", internalType: "address" },
-          { name: "expectedAmount", type: "uint256", internalType: "uint256" },
-          { name: "intentId", type: "bytes16", internalType: "bytes16" }
-        ]
-      },
-      { name: "deadline", type: "uint256", internalType: "uint256" }
+          { internalType: "bool", name: "hasPurchased", type: "bool" },
+          { internalType: "uint256", name: "purchasePrice", type: "uint256" },
+          { internalType: "uint256", name: "purchaseTime", type: "uint256" },
+          { internalType: "bytes16", name: "intentId", type: "bytes16" },
+          { internalType: "address", name: "paymentToken", type: "address" },
+          { internalType: "uint256", name: "actualAmountPaid", type: "uint256" },
+          { internalType: "bool", name: "refundEligible", type: "bool" },
+          { internalType: "uint256", name: "refundDeadline", type: "uint256" }
+        ],
+        internalType: "struct PayPerView.PurchaseRecord",
+        name: "",
+        type: "tuple"
+      }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
-
-  // Role Management
   {
-    type: "function",
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
     name: "getRoleAdmin",
-    inputs: [{ name: "role", type: "bytes32", internalType: "bytes32" }],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "grantRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "renounceRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "callerConfirmation", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "revokeRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-
-  // Intent Deadlines
-  {
-    type: "function",
-    name: "intentDeadlines",
-    inputs: [{ name: "", type: "bytes16", internalType: "bytes16" }],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-
-  // Ownership
-  {
-    type: "function",
-    name: "owner",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "transferOwnership",
-    inputs: [{ name: "newOwner", type: "address", internalType: "address" }],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renounceOwnership",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-
-  // Pause/Unpause
-  {
-    type: "function",
-    name: "pause",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "unpause",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "paused",
-    inputs: [],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-
-  // Oracles and Tokens
-  {
-    type: "function",
-    name: "priceOracle",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract PriceOracle" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "usdcToken",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract IERC20" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "wethToken",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
-    stateMutability: "view"
-  },
-
-  // Refunds
-  {
-    type: "function",
-    name: "processRefund",
-    inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-
-  // External Payments
-  {
-    type: "function",
-    name: "recordExternalPayment",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "contentId", type: "uint256", internalType: "uint256" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "usdcAmount", type: "uint256", internalType: "uint256" },
-      { name: "paymentToken", type: "address", internalType: "address" },
-      { name: "actualAmountPaid", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-
-  // Interface Support
-  {
-    type: "function",
-    name: "supportsInterface",
-    inputs: [{ name: "interfaceId", type: "bytes4", internalType: "bytes4" }],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-
-  // Stats
-  {
-    type: "function",
-    name: "totalIntentsCreated",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "totalPaymentsProcessed",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "totalPlatformFees",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "totalRefundsProcessed",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-
-  // Content Access
-  {
-    type: "function",
-    name: "validateContentAccess",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "contentId", type: "uint256", internalType: "uint256" }
-    ],
     outputs: [
-      { name: "hasAccess", type: "bool", internalType: "bool" },
-      { name: "accessType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" }
+      { internalType: "bytes32", name: "", type: "bytes32" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
-
-  // Events
   {
-    type: "event",
-    name: "ContentAccessGranted",
     inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "contentId", type: "uint256", indexed: true, internalType: "uint256" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "accessType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "timestamp", type: "uint256", indexed: false, internalType: "uint256" }
+      { internalType: "address", name: "user", type: "address" }
     ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ExternalPaymentRecorded",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "contentId", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "usdcAmount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentToken", type: "address", indexed: false, internalType: "address" },
-      { name: "actualAmountPaid", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "timestamp", type: "uint256", indexed: false, internalType: "uint256" }
+    name: "getUserPurchases",
+    outputs: [
+      { internalType: "uint256[]", name: "", type: "uint256[]" }
     ],
-    anonymous: false
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "event",
-    name: "IntentAuditRecord",
     inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "creatorAmount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "platformFee", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "operatorFee", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentToken", type: "address", indexed: false, internalType: "address" },
-      { name: "deadline", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "createdAt", type: "uint256", indexed: false, internalType: "uint256" }
+      { internalType: "address", name: "processor", type: "address" }
     ],
-    anonymous: false
+    name: "grantPaymentProcessorRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "IntentFinalized",
     inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "deadline", type: "uint256", indexed: false, internalType: "uint256" }
+      { internalType: "address", name: "manager", type: "address" }
     ],
-    anonymous: false
+    name: "grantRefundManagerRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "OwnershipTransferred",
     inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" }
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
     ],
-    anonymous: false
+    name: "grantRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "Paused",
     inputs: [
-      { name: "account", type: "address", indexed: false, internalType: "address" }
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "contentId", type: "uint256" }
     ],
-    anonymous: false
+    name: "handleExternalRefund",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "event",
-    name: "PaymentCompleted",
     inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "contentId", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentToken", type: "address", indexed: false, internalType: "address" },
-      { name: "amountPaid", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "success", type: "bool", indexed: false, internalType: "bool" }
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "user", type: "address" }
     ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "PaymentIntentCreated",
-    inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "paymentType", type: "uint8", indexed: false, internalType: "enum ISharedTypes.PaymentType" },
-      { name: "totalAmount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "creatorAmount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "platformFee", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "operatorFee", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentToken", type: "address", indexed: false, internalType: "address" },
-      { name: "expectedAmount", type: "uint256", indexed: false, internalType: "uint256" }
+    name: "hasAccess",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    anonymous: false
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "event",
-    name: "RefundProcessed",
     inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" }
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
     ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "previousAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "newAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" }
+    name: "hasRole",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    anonymous: false
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
+    inputs: [],
+    name: "owner",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
     ],
-    anonymous: false
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
+    inputs: [],
+    name: "pause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "paused",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    anonymous: false
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "event",
-    name: "Unpaused",
     inputs: [
-      { name: "account", type: "address", indexed: false, internalType: "address" }
+      { internalType: "bytes16", name: "", type: "bytes16" }
     ],
-    anonymous: false
+    name: "pendingPurchases",
+    outputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "uint256", name: "usdcPrice", type: "uint256" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "expectedAmount", type: "uint256" },
+      { internalType: "uint256", name: "deadline", type: "uint256" },
+      { internalType: "bool", name: "isProcessed", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
-
-  // Errors
-  { type: "error", name: "AccessControlBadConfirmation", inputs: [] },
   {
-    type: "error",
-    name: "AccessControlUnauthorizedAccount",
     inputs: [
-      { name: "account", type: "address", internalType: "address" },
-      { name: "neededRole", type: "bytes32", internalType: "bytes32" }
-    ]
-  },
-  { type: "error", name: "AmountMismatch", inputs: [] },
-  { type: "error", name: "ContentNotFound", inputs: [] },
-  { type: "error", name: "CreatorNotRegistered", inputs: [] },
-  { type: "error", name: "DeadlineExpired", inputs: [] },
-  { type: "error", name: "DeadlineInPast", inputs: [] },
-  { type: "error", name: "DeadlineTooFar", inputs: [] },
-  { type: "error", name: "EnforcedPause", inputs: [] },
-  { type: "error", name: "ExpectedPause", inputs: [] },
-  { type: "error", name: "FeeExceedsAmount", inputs: [] },
-  { type: "error", name: "InsufficientPayment", inputs: [] },
-  { type: "error", name: "IntentAlreadyExists", inputs: [] },
-  { type: "error", name: "IntentAlreadyProcessed", inputs: [] },
-  { type: "error", name: "IntentExpired", inputs: [] },
-  { type: "error", name: "InvalidContent", inputs: [] },
-  { type: "error", name: "InvalidCreator", inputs: [] },
-  { type: "error", name: "InvalidPaymentRequest", inputs: [] },
-  { type: "error", name: "InvalidPaymentType", inputs: [] },
-  { type: "error", name: "InvalidRefundAmount", inputs: [] },
-  { type: "error", name: "InvalidRefundDestination", inputs: [] },
-  {
-    type: "error",
-    name: "OwnableInvalidOwner",
-    inputs: [{ name: "owner", type: "address", internalType: "address" }]
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "pendingRefunds",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "error",
-    name: "OwnableUnauthorizedAccount",
-    inputs: [{ name: "account", type: "address", internalType: "address" }]
+    inputs: [],
+    name: "priceOracle",
+    outputs: [
+      { internalType: "contract PriceOracle", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
-  { type: "error", name: "PaymentContextNotFound", inputs: [] },
-  { type: "error", name: "RefundAlreadyProcessed", inputs: [] },
-  { type: "error", name: "UnauthorizedSigner", inputs: [] },
-  { type: "error", name: "ZeroAmount", inputs: [] }
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "processRefundPayout",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" }
+    ],
+    name: "purchaseContentDirect",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "purchases",
+    outputs: [
+      { internalType: "bool", name: "hasPurchased", type: "bool" },
+      { internalType: "uint256", name: "purchasePrice", type: "uint256" },
+      { internalType: "uint256", name: "purchaseTime", type: "uint256" },
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "actualAmountPaid", type: "uint256" },
+      { internalType: "bool", name: "refundEligible", type: "bool" },
+      { internalType: "uint256", name: "refundDeadline", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "address", name: "buyer", type: "address" },
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "uint256", name: "usdcPrice", type: "uint256" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "actualAmountPaid", type: "uint256" }
+    ],
+    name: "recordExternalPurchase",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
+    name: "renounceRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "contentId", type: "uint256" },
+      { internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "requestRefund",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "revokeRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
+    ],
+    name: "supportsInterface",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "totalPlatformFees",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "totalPurchases",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "totalRefunds",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "totalVolume",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "unpause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "usdcToken",
+    outputs: [
+      { internalType: "contract IERC20", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "userNonces",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "userPurchases",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "userTotalSpent",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "wethToken",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "withdrawEarnings",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "withdrawableEarnings",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  }
 ] as const;

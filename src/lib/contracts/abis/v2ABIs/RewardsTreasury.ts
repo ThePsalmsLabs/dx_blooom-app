@@ -3,819 +3,446 @@
  */
 export const REWARDS_TREASURY_ABI = [
   {
-    type: "constructor",
     inputs: [
-      {
-        name: "_usdcToken",
-        type: "address",
-        internalType: "address"
-      }
+      { internalType: "address", name: "_usdcToken", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
   {
-    type: "function",
-    name: "DEFAULT_ADMIN_ROLE",
     inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "REVENUE_COLLECTOR_ROLE",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "REWARDS_DISTRIBUTOR_ROLE",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "TREASURY_MANAGER_ROLE",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "allocateRewards",
-    inputs: [
-      {
-        name: "recipient",
-        type: "address",
-        internalType: "address"
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "poolType",
-        type: "uint8",
-        internalType: "uint8"
-      },
-      {
-        name: "rewardType",
-        type: "string",
-        internalType: "string"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "campaignBudgets",
-    inputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "claimRewards",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "creatorIncentivesAllocation",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "customerRewardsAllocation",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "depositPlatformRevenue",
-    inputs: [
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "source",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "emergencyWithdraw",
-    inputs: [
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "fundCampaign",
-    inputs: [
-      {
-        name: "campaignId",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "poolType",
-        type: "uint8",
-        internalType: "uint8"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "getRoleAdmin",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bytes32",
-        internalType: "bytes32"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "getTreasuryStats",
-    inputs: [],
-    outputs: [
-      {
-        name: "totalBalance",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "customerPool",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "creatorPool",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "operationalPool",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "reservePool",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "grantRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bool",
-        internalType: "bool"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "operationalAllocation",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "owner",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "pendingRewards",
-    inputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "pools",
-    inputs: [],
-    outputs: [
-      {
-        name: "customerRewardsPool",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "creatorIncentivesPool",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "operationalPool",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "reservePool",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "renounceOwnership",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renounceRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "callerConfirmation",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "reserveAllocation",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "revokeRole",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "supportsInterface",
-    inputs: [
-      {
-        name: "interfaceId",
-        type: "bytes4",
-        internalType: "bytes4"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bool",
-        internalType: "bool"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "totalRevenueContributed",
-    inputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "transferOwnership",
-    inputs: [
-      {
-        name: "newOwner",
-        type: "address",
-        internalType: "address"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "updateAllocations",
-    inputs: [
-      {
-        name: "_customerRewards",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "_creatorIncentives",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "_operational",
-        type: "uint256",
-        internalType: "uint256"
-      },
-      {
-        name: "_reserve",
-        type: "uint256",
-        internalType: "uint256"
-      }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "usdcToken",
-    inputs: [],
-    outputs: [
-      {
-        name: "",
-        type: "address",
-        internalType: "contract IERC20"
-      }
-    ],
-    stateMutability: "view"
-  },
-  {
-    type: "event",
-    name: "CampaignFunded",
-    inputs: [
-      {
-        name: "campaignId",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "OwnershipTransferred",
-    inputs: [
-      {
-        name: "previousOwner",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "newOwner",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "PoolsRebalanced",
-    inputs: [
-      {
-        name: "oldPools",
-        type: "tuple",
-        indexed: false,
-        internalType: "struct RewardsTreasury.TreasuryPools",
-        components: [
-          {
-            name: "customerRewardsPool",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "creatorIncentivesPool",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "operationalPool",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "reservePool",
-            type: "uint256",
-            internalType: "uint256"
-          }
-        ]
-      },
-      {
-        name: "newPools",
-        type: "tuple",
-        indexed: false,
-        internalType: "struct RewardsTreasury.TreasuryPools",
-        components: [
-          {
-            name: "customerRewardsPool",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "creatorIncentivesPool",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "operationalPool",
-            type: "uint256",
-            internalType: "uint256"
-          },
-          {
-            name: "reservePool",
-            type: "uint256",
-            internalType: "uint256"
-          }
-        ]
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RevenueDeposited",
-    inputs: [
-      {
-        name: "source",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      },
-      {
-        name: "timestamp",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RewardsAllocated",
-    inputs: [
-      {
-        name: "recipient",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      },
-      {
-        name: "rewardType",
-        type: "string",
-        indexed: false,
-        internalType: "string"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RewardsClaimed",
-    inputs: [
-      {
-        name: "user",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "amount",
-        type: "uint256",
-        indexed: false,
-        internalType: "uint256"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "previousAdminRole",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "newAdminRole",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "sender",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      {
-        name: "role",
-        type: "bytes32",
-        indexed: true,
-        internalType: "bytes32"
-      },
-      {
-        name: "account",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      },
-      {
-        name: "sender",
-        type: "address",
-        indexed: true,
-        internalType: "address"
-      }
-    ],
-    anonymous: false
-  },
-  {
-    type: "error",
     name: "AccessControlBadConfirmation",
-    inputs: []
+    type: "error"
   },
   {
-    type: "error",
+    inputs: [
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
+    ],
     name: "AccessControlUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "owner", type: "address" }
+    ],
+    name: "OwnableInvalidOwner",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "OwnableUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ReentrancyGuardReentrantCall",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "token", type: "address" }
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "campaignId", type: "bytes32" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "CampaignFunded",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
     inputs: [
       {
-        name: "account",
-        type: "address",
-        internalType: "address"
+        components: [
+          { internalType: "uint256", name: "customerRewardsPool", type: "uint256" },
+          { internalType: "uint256", name: "creatorIncentivesPool", type: "uint256" },
+          { internalType: "uint256", name: "operationalPool", type: "uint256" },
+          { internalType: "uint256", name: "reservePool", type: "uint256" }
+        ],
+        indexed: false,
+        internalType: "struct RewardsTreasury.TreasuryPools",
+        name: "oldPools",
+        type: "tuple"
       },
       {
-        name: "neededRole",
-        type: "bytes32",
-        internalType: "bytes32"
+        components: [
+          { internalType: "uint256", name: "customerRewardsPool", type: "uint256" },
+          { internalType: "uint256", name: "creatorIncentivesPool", type: "uint256" },
+          { internalType: "uint256", name: "operationalPool", type: "uint256" },
+          { internalType: "uint256", name: "reservePool", type: "uint256" }
+        ],
+        indexed: false,
+        internalType: "struct RewardsTreasury.TreasuryPools",
+        name: "newPools",
+        type: "tuple"
       }
-    ]
+    ],
+    name: "PoolsRebalanced",
+    type: "event"
   },
   {
-    type: "error",
-    name: "OwnableInvalidOwner",
+    anonymous: false,
     inputs: [
-      {
-        name: "owner",
-        type: "address",
-        internalType: "address"
-      }
-    ]
+      { indexed: true, internalType: "address", name: "source", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "RevenueDeposited",
+    type: "event"
   },
   {
-    type: "error",
-    name: "OwnableUnauthorizedAccount",
+    anonymous: false,
     inputs: [
-      {
-        name: "account",
-        type: "address",
-        internalType: "address"
-      }
-    ]
+      { indexed: true, internalType: "address", name: "recipient", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "string", name: "rewardType", type: "string" }
+    ],
+    name: "RewardsAllocated",
+    type: "event"
   },
   {
-    type: "error",
-    name: "ReentrancyGuardReentrantCall",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "SafeERC20FailedOperation",
+    anonymous: false,
     inputs: [
-      {
-        name: "token",
-        type: "address",
-        internalType: "address"
-      }
-    ]
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "RewardsClaimed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    inputs: [],
+    name: "DEFAULT_ADMIN_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "REVENUE_COLLECTOR_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "REWARDS_DISTRIBUTOR_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "TREASURY_MANAGER_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "recipient", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "uint8", name: "poolType", type: "uint8" },
+      { internalType: "string", name: "rewardType", type: "string" }
+    ],
+    name: "allocateRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    name: "campaignBudgets",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "claimRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "creatorIncentivesAllocation",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "customerRewardsAllocation",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "address", name: "source", type: "address" }
+    ],
+    name: "depositPlatformRevenue",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "emergencyWithdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "campaignId", type: "bytes32" },
+      { internalType: "uint256", name: "amount", type: "uint256" },
+      { internalType: "uint8", name: "poolType", type: "uint8" }
+    ],
+    name: "fundCampaign",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
+    name: "getRoleAdmin",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getTreasuryStats",
+    outputs: [
+      { internalType: "uint256", name: "totalBalance", type: "uint256" },
+      { internalType: "uint256", name: "customerPool", type: "uint256" },
+      { internalType: "uint256", name: "creatorPool", type: "uint256" },
+      { internalType: "uint256", name: "operationalPool", type: "uint256" },
+      { internalType: "uint256", name: "reservePool", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "grantRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "hasRole",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "operationalAllocation",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "pendingRewards",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "pools",
+    outputs: [
+      { internalType: "uint256", name: "customerRewardsPool", type: "uint256" },
+      { internalType: "uint256", name: "creatorIncentivesPool", type: "uint256" },
+      { internalType: "uint256", name: "operationalPool", type: "uint256" },
+      { internalType: "uint256", name: "reservePool", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
+    name: "renounceRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "reserveAllocation",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "revokeRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
+    ],
+    name: "supportsInterface",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "totalRevenueContributed",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_customerRewards", type: "uint256" },
+      { internalType: "uint256", name: "_creatorIncentives", type: "uint256" },
+      { internalType: "uint256", name: "_operational", type: "uint256" },
+      { internalType: "uint256", name: "_reserve", type: "uint256" }
+    ],
+    name: "updateAllocations",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "usdcToken",
+    outputs: [
+      { internalType: "contract IERC20", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
   }
 ] as const;

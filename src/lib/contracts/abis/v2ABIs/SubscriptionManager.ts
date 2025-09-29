@@ -3,785 +3,1075 @@
  */
 export const SUBSCRIPTION_MANAGER_ABI = [
   {
-    type: "constructor",
     inputs: [
-      { name: "_creatorRegistry", type: "address", internalType: "address" },
-      { name: "_contentRegistry", type: "address", internalType: "address" },
-      { name: "_priceOracle", type: "address", internalType: "address" },
-      { name: "_usdcToken", type: "address", internalType: "address" },
-      { name: "_maxRenewalAttemptsPerDay", type: "uint256", internalType: "uint256" },
-      { name: "_renewalCooldown", type: "uint256", internalType: "uint256" }
+      { internalType: "address", name: "_creatorRegistry", type: "address" },
+      { internalType: "address", name: "_contentRegistry", type: "address" },
+      { internalType: "address", name: "_usdcToken", type: "address" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
   {
-    type: "function",
-    name: "DEFAULT_ADMIN_ROLE",
     inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
+    name: "AccessControlBadConfirmation",
+    type: "error"
   },
   {
-    type: "function",
-    name: "PAYMENT_PROCESSOR_ROLE",
+    inputs: [
+      { internalType: "address", name: "account", type: "address" },
+      { internalType: "bytes32", name: "neededRole", type: "bytes32" }
+    ],
+    name: "AccessControlUnauthorizedAccount",
+    type: "error"
+  },
+  {
     inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
+    name: "AlreadySubscribed",
+    type: "error"
   },
   {
-    type: "function",
-    name: "REFUND_MANAGER_ROLE",
     inputs: [],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
+    name: "CleanupTooSoon",
+    type: "error"
   },
   {
-    type: "function",
-    name: "cancelSubscription",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "immediate", type: "bool", internalType: "bool" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "cleanupExpiredSubscriptions",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "configureAutoRenewal",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "enabled", type: "bool", internalType: "bool" },
-      { name: "maxPrice", type: "uint256", internalType: "uint256" },
-      { name: "depositAmount", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "contentRegistry",
     inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract ContentRegistry" }],
-    stateMutability: "view"
+    name: "CreatorNotRegistered",
+    type: "error"
   },
   {
-    type: "function",
-    name: "createSubscription",
+    inputs: [],
+    name: "EnforcedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ExpectedPause",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InsufficientBalance",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InsufficientPayment",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidAutoRenewalConfig",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "InvalidSubscriptionPeriod",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "NoEarningsToWithdraw",
+    type: "error"
+  },
+  {
     inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "paymentType", type: "uint8", internalType: "enum ISharedTypes.PaymentType" },
-      { name: "paymentToken", type: "address", internalType: "address" },
-      { name: "expectedAmount", type: "uint256", internalType: "uint256" },
-      { name: "intentId", type: "bytes16", internalType: "bytes16" }
+      { internalType: "address", name: "owner", type: "address" }
     ],
+    name: "OwnableInvalidOwner",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "OwnableUnauthorizedAccount",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "ReentrancyGuardReentrantCall",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "RefundNotEligible",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "RenewalTooSoon",
+    type: "error"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "token", type: "address" }
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "SubscriptionAlreadyExpired",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "SubscriptionNotFound",
+    type: "error"
+  },
+  {
+    inputs: [],
+    name: "TooManyRenewalAttempts",
+    type: "error"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "bool", name: "enabled", type: "bool" },
+      { indexed: false, internalType: "uint256", name: "maxPrice", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "depositAmount", type: "uint256" }
+    ],
+    name: "AutoRenewalConfigured",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "price", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "newEndTime", type: "uint256" }
+    ],
+    name: "AutoRenewalExecuted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" },
+      { indexed: false, internalType: "uint256", name: "attemptTime", type: "uint256" }
+    ],
+    name: "AutoRenewalFailed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "cleanedCount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "ExpiredSubscriptionsCleaned",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "refundAmount", type: "uint256" }
+    ],
+    name: "ExternalRefundProcessed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { indexed: false, internalType: "uint256", name: "usdcAmount", type: "uint256" },
+      { indexed: false, internalType: "address", name: "paymentToken", type: "address" },
+      { indexed: false, internalType: "uint256", name: "actualAmountPaid", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "endTime", type: "uint256" }
+    ],
+    name: "ExternalSubscriptionRecorded",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Paused",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "previousAdminRole", type: "bytes32" },
+      { indexed: true, internalType: "bytes32", name: "newAdminRole", type: "bytes32" }
+    ],
+    name: "RoleAdminChanged",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleGranted",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "role", type: "bytes32" },
+      { indexed: true, internalType: "address", name: "account", type: "address" },
+      { indexed: true, internalType: "address", name: "sender", type: "address" }
+    ],
+    name: "RoleRevoked",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "price", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "platformFee", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "creatorEarning", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "startTime", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "endTime", type: "uint256" }
+    ],
+    name: "Subscribed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "endTime", type: "uint256" },
+      { indexed: false, internalType: "bool", name: "immediate", type: "bool" }
+    ],
+    name: "SubscriptionCancelled",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "SubscriptionEarningsWithdrawn",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "timestamp", type: "uint256" }
+    ],
+    name: "SubscriptionExpired",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "amount", type: "uint256" },
+      { indexed: false, internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "SubscriptionRefunded",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "creator", type: "address" },
+      { indexed: false, internalType: "uint256", name: "price", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "newEndTime", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "renewalCount", type: "uint256" }
+    ],
+    name: "SubscriptionRenewed",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: false, internalType: "address", name: "account", type: "address" }
+    ],
+    name: "Unpaused",
+    type: "event"
+  },
+  {
+    inputs: [],
+    name: "CLEANUP_INTERVAL",
     outputs: [
-      { name: "startTime", type: "uint256", internalType: "uint256" },
-      { name: "endTime", type: "uint256", internalType: "uint256" }
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    stateMutability: "nonpayable"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "creatorRegistry",
     inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract CreatorRegistry" }],
-    stateMutability: "view"
+    name: "DEFAULT_ADMIN_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "executeAutoRenewal",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" }
+    inputs: [],
+    name: "GRACE_PERIOD",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "RENEWAL_BOT_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "RENEWAL_WINDOW",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "SUBSCRIPTION_DURATION",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "SUBSCRIPTION_PROCESSOR_ROLE",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "autoRenewals",
+    outputs: [
+      { internalType: "bool", name: "enabled", type: "bool" },
+      { internalType: "uint256", name: "maxPrice", type: "uint256" },
+      { internalType: "uint256", name: "balance", type: "uint256" },
+      { internalType: "uint256", name: "lastRenewalAttempt", type: "uint256" },
+      { internalType: "uint256", name: "failedAttempts", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "bool", name: "immediate", type: "bool" }
+    ],
+    name: "cancelSubscription",
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "getRoleAdmin",
     inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" }
+      { internalType: "address", name: "creator", type: "address" }
     ],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "view"
+    name: "cleanupExpiredSubscriptions",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "getSubscription",
     inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" }
+      { internalType: "address", name: "creator", type: "address" }
     ],
+    name: "cleanupExpiredSubscriptionsEnhanced",
+    outputs: [
+      { internalType: "address[]", name: "cleanedUsers", type: "address[]" }
+    ],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "bool", name: "enabled", type: "bool" },
+      { internalType: "uint256", name: "maxPrice", type: "uint256" },
+      { internalType: "uint256", name: "depositAmount", type: "uint256" }
+    ],
+    name: "configureAutoRenewal",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "contentRegistry",
+    outputs: [
+      { internalType: "contract ContentRegistry", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "creatorRegistry",
+    outputs: [
+      { internalType: "contract CreatorRegistry", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "creatorSubscriberCount",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    name: "creatorSubscribers",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "creatorSubscriptionEarnings",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "token", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" }
+    ],
+    name: "emergencyTokenRecovery",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "executeAutoRenewal",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "failedSubscriptions",
+    outputs: [
+      { internalType: "uint256", name: "attemptTime", type: "uint256" },
+      { internalType: "uint256", name: "attemptedPrice", type: "uint256" },
+      { internalType: "string", name: "failureReason", type: "string" },
+      { internalType: "bool", name: "refunded", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getAutoRenewalConfig",
     outputs: [
       {
-        name: "subscription",
-        type: "tuple",
-        internalType: "struct SubscriptionManager.Subscription",
         components: [
-          { name: "isActive", type: "bool", internalType: "bool" },
-          { name: "startTime", type: "uint256", internalType: "uint256" },
-          { name: "endTime", type: "uint256", internalType: "uint256" },
-          { name: "renewalCount", type: "uint256", internalType: "uint256" },
-          { name: "totalPaid", type: "uint256", internalType: "uint256" },
-          { name: "lastPayment", type: "uint256", internalType: "uint256" },
-          { name: "lastRenewalTime", type: "uint256", internalType: "uint256" },
-          { name: "autoRenewalEnabled", type: "bool", internalType: "bool" }
-        ]
+          { internalType: "bool", name: "enabled", type: "bool" },
+          { internalType: "uint256", name: "maxPrice", type: "uint256" },
+          { internalType: "uint256", name: "balance", type: "uint256" },
+          { internalType: "uint256", name: "lastRenewalAttempt", type: "uint256" },
+          { internalType: "uint256", name: "failedAttempts", type: "uint256" }
+        ],
+        internalType: "struct SubscriptionManager.AutoRenewal",
+        name: "",
+        type: "tuple"
       }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
-    name: "grantRole",
     inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
+      { internalType: "address", name: "creator", type: "address" }
     ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "handleExternalRefund",
-    inputs: [
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "isSubscribed",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "lastCleanupTime",
-    inputs: [
-      { name: "", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "maxRenewalAttemptsPerDay",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "owner",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "pause",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "paused",
-    inputs: [],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "pendingRefunds",
-    inputs: [
-      { name: "", type: "address", internalType: "address" },
-      { name: "", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "processRefundPayout",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "recordSubscriptionPayment",
-    inputs: [
-      { name: "user", type: "address", internalType: "address" },
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "intentId", type: "bytes16", internalType: "bytes16" },
-      { name: "usdcAmount", type: "uint256", internalType: "uint256" },
-      { name: "paymentToken", type: "address", internalType: "address" },
-      { name: "actualAmountPaid", type: "uint256", internalType: "uint256" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renewalCooldown",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "renounceOwnership",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "renounceRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "callerConfirmation", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "requestSubscriptionRefund",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "reason", type: "string", internalType: "string" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "revokeRole",
-    inputs: [
-      { name: "role", type: "bytes32", internalType: "bytes32" },
-      { name: "account", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "subscribeToCreator",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" }
-    ],
-    outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "function",
-    name: "subscriptionCount",
-    inputs: [
-      { name: "", type: "address", internalType: "address" },
-      { name: "", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "subscriptionEndTime",
-    inputs: [
-      { name: "", type: "address", internalType: "address" },
-      { name: "", type: "address", internalType: "address" }
-    ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "subscriptions",
-    inputs: [
-      { name: "", type: "address", internalType: "address" },
-      { name: "", type: "address", internalType: "address" }
-    ],
+    name: "getCreatorActiveSubscribers",
     outputs: [
-      { name: "isActive", type: "bool", internalType: "bool" },
-      { name: "startTime", type: "uint256", internalType: "uint256" },
-      { name: "endTime", type: "uint256", internalType: "uint256" },
-      { name: "renewalCount", type: "uint256", internalType: "uint256" },
-      { name: "totalPaid", type: "uint256", internalType: "uint256" },
-      { name: "lastPayment", type: "uint256", internalType: "uint256" },
-      { name: "lastRenewalTime", type: "uint256", internalType: "uint256" },
-      { name: "autoRenewalEnabled", type: "bool", internalType: "bool" }
+      { internalType: "address[]", name: "", type: "address[]" }
     ],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getCreatorSubscribers",
+    outputs: [
+      { internalType: "address[]", name: "", type: "address[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getCreatorSubscriptionEarnings",
+    outputs: [
+      { internalType: "uint256", name: "totalEarnings", type: "uint256" },
+      { internalType: "uint256", name: "withdrawableEarnings", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getPlatformSubscriptionMetrics",
+    outputs: [
+      { internalType: "uint256", name: "activeSubscriptions", type: "uint256" },
+      { internalType: "uint256", name: "totalVolume", type: "uint256" },
+      { internalType: "uint256", name: "platformFees", type: "uint256" },
+      { internalType: "uint256", name: "totalRenewalCount", type: "uint256" },
+      { internalType: "uint256", name: "totalRefundAmount", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" }
+    ],
+    name: "getRoleAdmin",
+    outputs: [
+      { internalType: "bytes32", name: "", type: "bytes32" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getSubscriptionDetails",
+    outputs: [
+      {
+        components: [
+          { internalType: "bool", name: "isActive", type: "bool" },
+          { internalType: "uint256", name: "startTime", type: "uint256" },
+          { internalType: "uint256", name: "endTime", type: "uint256" },
+          { internalType: "uint256", name: "renewalCount", type: "uint256" },
+          { internalType: "uint256", name: "totalPaid", type: "uint256" },
+          { internalType: "uint256", name: "lastPayment", type: "uint256" },
+          { internalType: "uint256", name: "lastRenewalTime", type: "uint256" },
+          { internalType: "bool", name: "autoRenewalEnabled", type: "bool" }
+        ],
+        internalType: "struct SubscriptionManager.SubscriptionRecord",
+        name: "",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getSubscriptionEndTime",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "getSubscriptionStatus",
+    outputs: [
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "bool", name: "inGracePeriod", type: "bool" },
+      { internalType: "uint256", name: "endTime", type: "uint256" },
+      { internalType: "uint256", name: "gracePeriodEnd", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getUserActiveSubscriptions",
+    outputs: [
+      { internalType: "address[]", name: "", type: "address[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" }
+    ],
+    name: "getUserSubscriptions",
+    outputs: [
+      { internalType: "address[]", name: "", type: "address[]" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "bot", type: "address" }
+    ],
+    name: "grantRenewalBotRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "grantRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "processor", type: "address" }
+    ],
+    name: "grantSubscriptionProcessorRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "handleExternalRefund",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "hasRole",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "isSubscribed",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "lastCleanupTime",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "maxRenewalAttemptsPerDay",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "pause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "paused",
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "pendingRefunds",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "processRefundPayout",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "user", type: "address" },
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "bytes16", name: "intentId", type: "bytes16" },
+      { internalType: "uint256", name: "usdcAmount", type: "uint256" },
+      { internalType: "address", name: "paymentToken", type: "address" },
+      { internalType: "uint256", name: "actualAmountPaid", type: "uint256" }
+    ],
+    name: "recordSubscriptionPayment",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "renewalCooldown",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "callerConfirmation", type: "address" }
+    ],
+    name: "renounceRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "string", name: "reason", type: "string" }
+    ],
+    name: "requestSubscriptionRefund",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes32", name: "role", type: "bytes32" },
+      { internalType: "address", name: "account", type: "address" }
+    ],
+    name: "revokeRole",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" }
+    ],
+    name: "subscribeToCreator",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "subscriptionCount",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "subscriptionEndTime",
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "address", name: "", type: "address" }
+    ],
+    name: "subscriptions",
+    outputs: [
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "uint256", name: "startTime", type: "uint256" },
+      { internalType: "uint256", name: "endTime", type: "uint256" },
+      { internalType: "uint256", name: "renewalCount", type: "uint256" },
+      { internalType: "uint256", name: "totalPaid", type: "uint256" },
+      { internalType: "uint256", name: "lastPayment", type: "uint256" },
+      { internalType: "uint256", name: "lastRenewalTime", type: "uint256" },
+      { internalType: "bool", name: "autoRenewalEnabled", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "bytes4", name: "interfaceId", type: "bytes4" }
+    ],
     name: "supportsInterface",
-    inputs: [
-      { name: "interfaceId", type: "bytes4", internalType: "bytes4" }
+    outputs: [
+      { internalType: "bool", name: "", type: "bool" }
     ],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "totalActiveSubscriptions",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "totalPlatformSubscriptionFees",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "totalRefunds",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "totalRenewals",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
     name: "totalSubscriptionRevenue",
-    inputs: [
-      { name: "", type: "address", internalType: "address" }
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "totalSubscriptionVolume",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "newOwner", type: "address" }
+    ],
     name: "transferOwnership",
-    inputs: [
-      { name: "newOwner", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "unpause",
-    inputs: [],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "uint256", name: "newMaxAttempts", type: "uint256" },
+      { internalType: "uint256", name: "newCooldown", type: "uint256" }
+    ],
     name: "updateRenewalSettings",
-    inputs: [
-      { name: "newMaxAttempts", type: "uint256", internalType: "uint256" },
-      { name: "newCooldown", type: "uint256", internalType: "uint256" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [],
     name: "usdcToken",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract IERC20" }],
-    stateMutability: "view"
+    outputs: [
+      { internalType: "contract IERC20", name: "", type: "address" }
+    ],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "", type: "address" }
+    ],
     name: "userSubscriptionSpending",
-    inputs: [
-      { name: "", type: "address", internalType: "address" }
+    outputs: [
+      { internalType: "uint256", name: "", type: "uint256" }
     ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "", type: "address" },
+      { internalType: "uint256", name: "", type: "uint256" }
+    ],
     name: "userSubscriptions",
-    inputs: [
-      { name: "", type: "address", internalType: "address" },
-      { name: "", type: "uint256", internalType: "uint256" }
+    outputs: [
+      { internalType: "address", name: "", type: "address" }
     ],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
-    stateMutability: "view"
+    stateMutability: "view",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "creator", type: "address" },
+      { internalType: "uint256", name: "amount", type: "uint256" }
+    ],
     name: "withdrawAutoRenewalBalance",
-    inputs: [
-      { name: "creator", type: "address", internalType: "address" },
-      { name: "amount", type: "uint256", internalType: "uint256" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
+    inputs: [
+      { internalType: "address", name: "recipient", type: "address" }
+    ],
     name: "withdrawPlatformSubscriptionFees",
-    inputs: [
-      { name: "recipient", type: "address", internalType: "address" }
-    ],
     outputs: [],
-    stateMutability: "nonpayable"
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    type: "function",
-    name: "withdrawSubscriptionEarnings",
     inputs: [],
+    name: "withdrawSubscriptionEarnings",
     outputs: [],
-    stateMutability: "nonpayable"
-  },
-  {
-    type: "event",
-    name: "AutoRenewalConfigured",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "enabled", type: "bool", indexed: false, internalType: "bool" },
-      { name: "maxPrice", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "depositAmount", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "AutoRenewalExecuted",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "price", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "newEndTime", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "AutoRenewalFailed",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "reason", type: "string", indexed: false, internalType: "string" },
-      { name: "attemptTime", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ExpiredSubscriptionsCleaned",
-    inputs: [
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "cleanedCount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "timestamp", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ExternalRefundProcessed",
-    inputs: [
-      { name: "intentId", type: "bytes16", indexed: true, internalType: "bytes16" },
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "refundAmount", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "ExternalSubscriptionRecorded",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "intentId", type: "bytes16", indexed: false, internalType: "bytes16" },
-      { name: "usdcAmount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "paymentToken", type: "address", indexed: false, internalType: "address" },
-      { name: "actualAmountPaid", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "endTime", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "OwnershipTransferred",
-    inputs: [
-      { name: "previousOwner", type: "address", indexed: true, internalType: "address" },
-      { name: "newOwner", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "Paused",
-    inputs: [
-      { name: "account", type: "address", indexed: false, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleAdminChanged",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "previousAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "newAdminRole", type: "bytes32", indexed: true, internalType: "bytes32" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleGranted",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "RoleRevoked",
-    inputs: [
-      { name: "role", type: "bytes32", indexed: true, internalType: "bytes32" },
-      { name: "account", type: "address", indexed: true, internalType: "address" },
-      { name: "sender", type: "address", indexed: true, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "Subscribed",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "price", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "platformFee", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "creatorEarning", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "startTime", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "endTime", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "SubscriptionCancelled",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "endTime", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "immediate", type: "bool", indexed: false, internalType: "bool" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "SubscriptionEarningsWithdrawn",
-    inputs: [
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "timestamp", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "SubscriptionExpired",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "timestamp", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "SubscriptionRefunded",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "reason", type: "string", indexed: false, internalType: "string" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "SubscriptionRenewed",
-    inputs: [
-      { name: "user", type: "address", indexed: true, internalType: "address" },
-      { name: "creator", type: "address", indexed: true, internalType: "address" },
-      { name: "price", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "newEndTime", type: "uint256", indexed: false, internalType: "uint256" },
-      { name: "renewalCount", type: "uint256", indexed: false, internalType: "uint256" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "event",
-    name: "Unpaused",
-    inputs: [
-      { name: "account", type: "address", indexed: false, internalType: "address" }
-    ],
-    anonymous: false
-  },
-  {
-    type: "error",
-    name: "AccessControlBadConfirmation",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "AccessControlUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" },
-      { name: "neededRole", type: "bytes32", internalType: "bytes32" }
-    ]
-  },
-  {
-    type: "error",
-    name: "AlreadySubscribed",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "CleanupTooSoon",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "CreatorNotRegistered",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "EnforcedPause",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "ExpectedPause",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InsufficientBalance",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InsufficientPayment",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InvalidAutoRenewalConfig",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "InvalidSubscriptionPeriod",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "NoEarningsToWithdraw",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "OwnableInvalidOwner",
-    inputs: [
-      { name: "owner", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "OwnableUnauthorizedAccount",
-    inputs: [
-      { name: "account", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "ReentrancyGuardReentrantCall",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "RefundNotEligible",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "RenewalTooSoon",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "SafeERC20FailedOperation",
-    inputs: [
-      { name: "token", type: "address", internalType: "address" }
-    ]
-  },
-  {
-    type: "error",
-    name: "SubscriptionAlreadyExpired",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "SubscriptionNotFound",
-    inputs: []
-  },
-  {
-    type: "error",
-    name: "TooManyRenewalAttempts",
-    inputs: []
+    stateMutability: "nonpayable",
+    type: "function"
   }
 ] as const;
