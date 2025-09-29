@@ -7,11 +7,11 @@
 
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAccount, useChainId } from 'wagmi'
-import { type Address } from 'viem'
+import { type Address, type Hash } from 'viem'
 
 // Import all v2 hooks
-import { useCommerceProtocolCore, type PlatformPaymentRequest } from '../useCommerceProtocolCore'
-import { useSignatureManager, type PaymentIntentData } from '../managers/useSignatureManager'
+import { useCommerceProtocolCore, type PlatformPaymentRequest, type PaymentContext as CorePaymentContext } from '../managers/useCommerceProtocolCore'
+import { useSignatureManager } from '../managers/useSignatureManager'
 import { useAccessManager } from '../managers/useAccessManager'
 
 // Payment flow states
@@ -29,9 +29,10 @@ export interface PaymentFlowState {
   status: PaymentFlowStatus
   intentId?: `0x${string}`
   signature?: `0x${string}`
-  transactionHash?: `0x${string}`
+  transactionHash?: Hash
   error?: string
   progress: number // 0-100
+  context?: CorePaymentContext
 }
 
 export interface V2PaymentParams {
@@ -63,83 +64,33 @@ export function useV2PaymentOrchestrator() {
   const accessManager = useAccessManager()
 
   /**
-   * Complete V2 payment workflow
+   * Create payment intent - Step 1 of payment flow
    */
-  const processPayment = useMutation({
-    mutationFn: async (params: V2PaymentParams): Promise<PaymentFlowState> => {
+  const createIntentStep = useMutation({
+    mutationFn: async (params: V2PaymentParams) => {
       if (!userAddress) throw new Error('User not connected')
       
-      const state: PaymentFlowState = { status: 'idle', progress: 0 }
-      
-      try {
-        // Step 1: Create payment intent
-        state.status = 'creating_intent'
-        state.progress = 10
-        
-        const paymentRequest: PlatformPaymentRequest = {
-          paymentType: params.paymentType,
-          creator: params.creator,
-          contentId: params.contentId,
-          paymentToken: params.paymentToken || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
-          maxSlippage: params.maxSlippage || BigInt(500),
-          deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
-        }
-        
-        const intentResult = await commerceCore.createPaymentIntent.mutateAsync(paymentRequest)
-        
-        // Extract intentId from transaction receipt (in real implementation)
-        // For now, we'll use a placeholder
-        const intentId = generateMockIntentId()
-        state.intentId = intentId
-        state.progress = 30
-        
-        // Step 2: Create and provide signature
-        state.status = 'waiting_signature'
-        
-        const nonce = BigInt(Date.now()) // In practice, get from contract
-        const intentData: PaymentIntentData = {
-          intentId,
-          user: userAddress,
-          creator: params.creator,
-          paymentType: params.paymentType,
-          contentId: params.contentId,
-          amount: BigInt(100000), // In practice, calculate from getPaymentInfo
-          paymentToken: paymentRequest.paymentToken,
-          deadline: paymentRequest.deadline,
-          nonce
-        }
-        
-        const signatureResult = await signatureManager.signAndProvideIntent.mutateAsync(intentData)
-        state.signature = signatureResult.signature as `0x${string}`
-        state.status = 'signature_ready'
-        state.progress = 60
-        
-        // Step 3: Execute payment
-        state.status = 'executing_payment'
-        
-        const paymentResult = await commerceCore.executePaymentWithSignature.mutateAsync(intentId)
-        state.transactionHash = paymentResult as `0x${string}`
-        state.progress = 80
-        
-        // Step 4: Grant access (handled automatically by AccessManager via CommerceProtocolCore)
-        state.status = 'processing_access'
-        
-        if (params.paymentType === 0) { // PayPerView
-          // Access is granted automatically for pay-per-view
-        } else if (params.paymentType === 1) { // Subscription
-          // Subscription is created automatically
-        }
-        
-        state.status = 'completed'
-        state.progress = 100
-        
-        return state
-        
-      } catch (error) {
-        state.status = 'failed'
-        state.error = (error as Error).message
-        throw state
+      const paymentRequest: PlatformPaymentRequest = {
+        paymentType: params.paymentType,
+        creator: params.creator,
+        contentId: params.contentId,
+        paymentToken: params.paymentToken || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
+        maxSlippage: params.maxSlippage || BigInt(500),
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
       }
+      
+      return commerceCore.createPaymentIntent.mutateAsync(paymentRequest)
+    }
+  })
+
+  /**
+   * Execute payment with signature - Step 2 of payment flow
+   */
+  const executePaymentStep = useMutation({
+    mutationFn: async (intentId: `0x${string}`) => {
+      if (!userAddress) throw new Error('User not connected')
+      
+      return commerceCore.executePaymentWithSignature.mutateAsync(intentId)
     }
   })
 
@@ -148,7 +99,7 @@ export function useV2PaymentOrchestrator() {
    */
   const quickPurchase = useMutation({
     mutationFn: async ({ creator, contentId }: { creator: Address, contentId: bigint }) => {
-      return processPayment.mutateAsync({
+      return createIntentStep.mutateAsync({
         paymentType: 0, // PayPerView
         creator,
         contentId
@@ -167,7 +118,7 @@ export function useV2PaymentOrchestrator() {
       creator: Address
       duration?: bigint 
     }) => {
-      return processPayment.mutateAsync({
+      return createIntentStep.mutateAsync({
         paymentType: 1, // Subscription
         creator,
         contentId: BigInt(0), // Subscriptions use contentId 0
@@ -182,14 +133,12 @@ export function useV2PaymentOrchestrator() {
   const sendTip = useMutation({
     mutationFn: async ({ 
       creator, 
-      amount,
       contentId 
     }: { 
       creator: Address
-      amount: bigint
       contentId?: bigint 
     }) => {
-      return processPayment.mutateAsync({
+      return createIntentStep.mutateAsync({
         paymentType: 2, // Tip
         creator,
         contentId: contentId || BigInt(0)
@@ -227,8 +176,9 @@ export function useV2PaymentOrchestrator() {
   }
 
   return {
-    // Main payment functions
-    processPayment,
+    // Step-by-step payment functions
+    createIntentStep,
+    executePaymentStep,
     quickPurchase,
     subscribeToCreator,
     sendTip,
@@ -242,8 +192,8 @@ export function useV2PaymentOrchestrator() {
     accessManager,
     
     // Transaction state
-    isPending: processPayment.isPending,
-    error: processPayment.error,
+    isPending: createIntentStep.isPending || executePaymentStep.isPending,
+    error: createIntentStep.error || executePaymentStep.error,
     
     // Utils
     chainId,
@@ -255,7 +205,7 @@ export function useV2PaymentOrchestrator() {
  * Convenience hook for simple content purchases
  */
 export function useContentPurchase(contentId: bigint, creator: Address) {
-  const { quickPurchase, usePaymentFlowStatus } = useV2PaymentOrchestrator()
+  const { quickPurchase } = useV2PaymentOrchestrator()
   const { useHasAccess } = useAccessManager()
   const { address: userAddress } = useAccount()
   
@@ -271,11 +221,4 @@ export function useContentPurchase(contentId: bigint, creator: Address) {
     isLoading: hasAccess.isLoading || purchase.isPending,
     error: hasAccess.error || purchase.error
   }
-}
-
-// Utility function to generate mock intent ID (replace with real implementation)
-function generateMockIntentId(): `0x${string}` {
-  const bytes = new Uint8Array(16)
-  crypto.getRandomValues(bytes)
-  return `0x${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')}` as `0x${string}`
 }
