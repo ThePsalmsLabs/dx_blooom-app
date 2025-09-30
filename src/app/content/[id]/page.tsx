@@ -74,6 +74,9 @@ import { RouteGuards } from '@/components/layout/RouteGuards'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
 
+// Import V2 Payment Modal
+import { V2PaymentModal, useV2PaymentModal } from '@/components/v2/V2PaymentModal'
+
 // Import business logic hooks
 import { useContentById, useHasContentAccess } from '@/hooks/contracts/core'
 
@@ -144,6 +147,37 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
   
   // Local state for purchase success tracking
   const [purchaseCompleted, setPurchaseCompleted] = useState(false)
+
+  // V2 Payment Modal integration
+  const paymentModal = useV2PaymentModal({
+    contentId: contentId || BigInt(0),
+    creator: (contentQuery.data?.creator as `0x${string}`) || '0x0000000000000000000000000000000000000000',
+    title: contentQuery.data?.title || 'Premium Content',
+    description: contentQuery.data?.description,
+    onSuccess: (txHash) => {
+      console.log('V2 Payment successful:', txHash)
+      setPurchaseCompleted(true)
+      accessQuery.refetch()
+      
+      toast.success("Purchase Successful! 🎉", {
+        description: `You now have access to "${contentQuery.data?.title || 'this content'}". Redirecting to content view...`,
+        duration: 4000,
+      })
+      
+      setTimeout(() => {
+        if (contentId) {
+          router.push(`/content/${contentId}/view`)
+        }
+      }, 2000)
+    },
+    onError: (error) => {
+      console.error('V2 Payment failed:', error)
+      toast.error("Purchase Failed", {
+        description: error.message,
+        duration: 5000,
+      })
+    }
+  })
 
   /**
    * Content Access State Computation
@@ -346,19 +380,39 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
               <div className="sticky top-6 space-y-6">
                 {/* Purchase Card Integration */}
                 {accessState.showPurchaseCard && contentId && (
-                  <OrchestratedContentPurchaseCard
-                    contentId={contentId}
-                    userAddress={userAddress}
-                    onPurchaseSuccess={() => handlePurchaseSuccess(contentId, {} as PaymentResult)}
-                    onViewContent={handleViewContent}
-                    variant="full"
-                    showCreatorInfo={true}
-                    showPurchaseDetails={true}
-                    enableMultiPayment={true}
-                    showSystemHealth={true}
-                    enablePerformanceMetrics={false}
-                  />
+                  <Card className="p-6">
+                    <div className="text-center space-y-4">
+                      <div className="flex items-center justify-center w-16 h-16 mx-auto bg-primary/10 rounded-full">
+                        <DollarSign className="h-8 w-8 text-primary" />
+                      </div>
+                      
+                      <div>
+                        <h3 className="text-lg font-semibold mb-2">Premium Content</h3>
+                        <p className="text-muted-foreground text-sm mb-4">
+                          Unlock this content to access the full experience
+                        </p>
+                        <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground mb-4">
+                          <Zap className="h-4 w-4" />
+                          <span>Multiple payment options</span>
+                          <span>•</span>
+                          <span>Secure transactions</span>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        onClick={paymentModal.openModal}
+                        className="w-full"
+                        size="lg"
+                      >
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Purchase Content
+                      </Button>
+                    </div>
+                  </Card>
                 )}
+                
+                {/* Payment Modal */}
+                <V2PaymentModal {...paymentModal.modalProps} />
 
                 {/* Access Status Card */}
                 {!accessState.showPurchaseCard && (
