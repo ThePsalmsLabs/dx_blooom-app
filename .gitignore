@@ -168,3 +168,6 @@ next-env.d.ts
 # local smart contracts (do not commit)
 /contracts/
 /contractsV2/
+# V2 demo files (development only)
+src/app/v2-demo/
+src/components/v2/*Demo*
