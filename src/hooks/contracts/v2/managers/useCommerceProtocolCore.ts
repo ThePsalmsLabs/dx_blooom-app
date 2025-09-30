@@ -85,7 +85,7 @@ export function useCommerceProtocolCore() {
 
   /**
    * Create a payment intent - First step in v2 payment flow
-   * This only executes the transaction, use useSimulateCreatePaymentIntent to get return values
+   * Returns transaction hash for monitoring, use simulation for return values
    */
   const createPaymentIntent = useMutation({
     mutationFn: async (request: PlatformPaymentRequest) => {
@@ -108,6 +108,7 @@ export function useCommerceProtocolCore() {
 
   /**
    * Execute payment with signature - Second step after signature is provided
+   * Returns boolean success status from the contract
    */
   const executePaymentWithSignature = useMutation({
     mutationFn: async (intentId: `0x${string}`) => {

@@ -22,6 +22,7 @@
 import { http, createConfig, fallback } from 'wagmi'
 import { base, baseSepolia } from 'wagmi/chains'
 import { metaMask, coinbaseWallet, walletConnect, injected, safe } from 'wagmi/connectors'
+import { optimizedRpcTransports } from './optimized-rpc-fallback'
 
 // =============================================================================
 // RPC PROVIDER CONFIGURATION
@@ -310,11 +311,8 @@ export const enhancedWagmiConfig = createConfig({
   chains: network === 'base-sepolia' ? [baseSepolia] : [base], // FIXED: Only use current chain
   connectors: createWalletConnectors(),
   
-  // Transport configuration - only for the active chain  
-  transports: {
-    [base.id]: createBaseMainnetTransport(),
-    [baseSepolia.id]: createBaseSepoliaTransport(),
-  },
+  // Transport configuration - use optimized RPC setup with health monitoring
+  transports: optimizedRpcTransports,
   
   // Global batching configuration
   batch: {
