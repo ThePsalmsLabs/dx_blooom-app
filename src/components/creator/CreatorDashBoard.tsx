@@ -277,12 +277,12 @@ export function EnhancedCreatorDashboard({
       traditional,
       social,
       combined: {
-        // Traditional metrics from existing dashboard - properly formatted
-        totalEarnings: traditional?.totalEarnings ? formatCurrency(BigInt(traditional.totalEarnings), 6, 'USDC') : '$0.00',
-        pendingEarnings: traditional?.pendingEarnings ? formatCurrency(BigInt(traditional.pendingEarnings), 6, 'USDC') : '$0.00',
+        // Traditional metrics from existing dashboard - already formatted as strings
+        totalEarnings: traditional?.totalEarnings || '$0.00 USDC',
+        pendingEarnings: traditional?.pendingEarnings || '$0.00 USDC',
         contentCount: traditional?.contentCount || '0',
         subscriberCount: traditional?.subscriberCount || '0',
-        monthlyRevenue: traditional?.monthlyRevenue ? formatCurrency(BigInt(traditional.monthlyRevenue), 6, 'USDC') : '$0.00',
+        monthlyRevenue: traditional?.monthlyRevenue || '$0.00 USDC',
 
         // Social metrics from Mini App analytics
         frameViews: social?.frameViews || 0,
@@ -369,7 +369,7 @@ export function EnhancedCreatorDashboard({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Subscription Price</span>
-                    <span className="font-medium">{creatorProfile.data?.subscriptionPrice ? `${creatorProfile.data.subscriptionPrice} USDC` : 'Not set'}</span>
+                    <span className="font-medium">{creatorProfile.data?.subscriptionPrice ? formatCurrency(creatorProfile.data.subscriptionPrice, 6, 'USDC') : 'Not set'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Status</span>
@@ -702,7 +702,7 @@ function CreatorOverview({ metrics, profile, isLoading }: CreatorOverviewProps) 
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Subscription Price</span>
-              <span className="font-medium">{profile.subscriptionPrice ? formatCurrency(BigInt(profile.subscriptionPrice), 6, 'USDC') : 'Not set'}</span>
+              <span className="font-medium">{profile.subscriptionPrice || 'Not set'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Status</span>
@@ -777,15 +777,15 @@ function EarningsAnalytics({ earnings, metrics, isLoading }: EarningsAnalyticsPr
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Total Earnings</span>
-              <span className="text-lg font-bold">{metrics.totalEarnings ? formatCurrency(BigInt(metrics.totalEarnings), 6, 'USDC') : '$0.00'}</span>
+              <span className="text-lg font-bold">{metrics.totalEarnings || '$0.00 USDC'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Pending Earnings</span>
-              <span className="font-medium">{metrics.pendingEarnings ? formatCurrency(BigInt(metrics.pendingEarnings), 6, 'USDC') : '$0.00'}</span>
+              <span className="font-medium">{metrics.pendingEarnings || '$0.00 USDC'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Monthly Revenue</span>
-              <span className="font-medium">{metrics.monthlyRevenue ? formatCurrency(BigInt(metrics.monthlyRevenue), 6, 'USDC') : '$0.00'}</span>
+              <span className="font-medium">{metrics.monthlyRevenue || '$0.00 USDC'}</span>
             </div>
           </div>
         )}
@@ -805,7 +805,7 @@ function EarningsAnalytics({ earnings, metrics, isLoading }: EarningsAnalyticsPr
               ) : (
                 <>
                   <Wallet className="h-4 w-4 mr-2" />
-                  Withdraw {earnings.withdrawableAmount ? formatCurrency(BigInt(earnings.withdrawableAmount), 6, 'USDC') : '$0.00'}
+                  Withdraw {earnings.withdrawableAmount || '$0.00 USDC'}
                 </>
               )}
             </Button>
@@ -1263,7 +1263,7 @@ function EarningsManagement({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Total Platform Revenue</span>
-                <span className="font-bold">{metrics.totalEarnings ? formatCurrency(BigInt(metrics.totalEarnings), 6, 'USDC') : '$0.00'}</span>
+                <span className="font-bold">{metrics.totalEarnings || '$0.00 USDC'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Social Revenue</span>
@@ -1274,11 +1274,11 @@ function EarningsManagement({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Pending Withdrawal</span>
-                <span className="font-medium">{metrics.pendingEarnings ? formatCurrency(BigInt(metrics.pendingEarnings), 6, 'USDC') : '$0.00'}</span>
+                <span className="font-medium">{metrics.pendingEarnings || '$0.00 USDC'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Monthly Revenue</span>
-                <span className="font-medium">{metrics.monthlyRevenue ? formatCurrency(BigInt(metrics.monthlyRevenue), 6, 'USDC') : '$0.00'}</span>
+                <span className="font-medium">{metrics.monthlyRevenue || '$0.00 USDC'}</span>
               </div>
             </div>
           </div>
@@ -1299,7 +1299,7 @@ function EarningsManagement({
               ) : (
                 <>
                   <Download className="h-4 w-4 mr-2" />
-                  Withdraw {earnings.withdrawableAmount ? formatCurrency(BigInt(earnings.withdrawableAmount), 6, 'USDC') : '$0.00'}
+                  Withdraw {earnings.withdrawableAmount || '$0.00 USDC'}
                 </>
               )}
             </Button>
@@ -1536,7 +1536,7 @@ function BasicDashboardContent({
                </div>
                <div className="flex items-center justify-between">
                  <span className="text-sm text-muted-foreground">Subscription Price</span>
-                 <span className="font-medium">{creatorProfile?.subscriptionPrice ? formatCurrency(BigInt(creatorProfile.subscriptionPrice), 6, 'USDC') : 'Not set'}</span>
+                 <span className="font-medium">{creatorProfile?.subscriptionPrice ? formatCurrency(creatorProfile.subscriptionPrice, 6, 'USDC') : 'Not set'}</span>
                </div>
                <div className="flex items-center justify-between">
                  <span className="text-sm text-muted-foreground">Status</span>
