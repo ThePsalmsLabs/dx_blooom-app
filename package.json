@@ -12,14 +12,12 @@
     "validate-rpc": "tsx scripts/validate-rpc-config.ts",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "clean:all": "rm -rf .next && rm -rf node_modules/.cache && rm -rf node_modules && npm install",
-    
     "dev:v1": "cp .env.local .env && npm run dev",
     "dev:v2": "cp .env.v2 .env && npm run dev",
     "build:v1": "cp .env.local .env && npm run build",
     "build:v2": "cp .env.v2 .env && npm run build",
     "start:v1": "cp .env.local .env && npm run start",
     "start:v2": "cp .env.v2 .env && npm run start",
-    
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -40,7 +38,6 @@
     "@biconomy/paymaster": "^3.1.4",
     "@coinbase/onchainkit": "^0.38.19",
     "@coinbase/wallet-sdk": "^4.3.7",
-    "@coinbase/x402": "^0.4.2",
     "@farcaster/auth-kit": "^0.8.1",
     "@farcaster/miniapp-sdk": "^0.1.8",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",
@@ -78,8 +75,6 @@
     "tailwind-merge": "^3.3.1",
     "viem": "^2.33.1",
     "wagmi": "^2.16.0",
-    "x402-express": "^0.4.2",
-    "x402-fetch": "^0.3.3",
     "zustand": "^5.0.6"
   },
   "devDependencies": {
