@@ -21,7 +21,6 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { base } from 'viem/chains'
 import { Address } from 'viem'
-import { getX402MiddlewareConfig } from '@/lib/web3/x402-config'
 
 /**
  * Conditional MiniKit Import Pattern
@@ -250,8 +249,6 @@ function validateMiniKitEnvironment(): void {
 export function createMiniKitConfig(): MiniKitConfig {
   validateMiniKitEnvironment()
 
-  // Use base.id as the default chainId for x402 config
-  const x402Config = getX402MiddlewareConfig(base.id)
   const isDevMode = process.env.NEXT_PUBLIC_FARCASTER_DEV_MODE === 'true'
   const baseUrl = process.env.NEXT_PUBLIC_URL
 
@@ -260,9 +257,9 @@ export function createMiniKitConfig(): MiniKitConfig {
   return {
     theme: 'auto',
     enablePayments: true,
-    supportedChains: [x402Config.chainId],
-    // Proper filtering with explicit typing to avoid 'implicit any' errors
-    supportedTokens: [x402Config.usdcTokenAddress],
+    supportedChains: [base.id], // Use Base mainnet
+    // Use Base USDC token address
+    supportedTokens: ['0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address],
     debugMode: isDevMode,
     manifestUrl: `${cleanBaseUrl}/.well-known/farcaster.json`,
   }
