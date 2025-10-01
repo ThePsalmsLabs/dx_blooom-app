@@ -87,13 +87,8 @@ test-wagmi-config.js
 # Modules (development/experimental features)
 src/modules/
 
-# Utility scripts (development tools)
-scripts/check-price-oracle.ts
-scripts/check-rpc-health.ts
-scripts/diagnose-rpc.ts
-scripts/find-debug-info.js
-scripts/test-miniapp-connection.ts
-scripts/validate-rpc-config.ts
+# Utility scripts (development tools) - exclude entire scripts directory
+scripts/
 
 # Backup files and directories
 **/backup*/
