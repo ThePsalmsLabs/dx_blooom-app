@@ -20,15 +20,39 @@ import {
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { formatTokenBalance } from '@/lib/utils'
-import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
-import {
-  getX402MiddlewareConfig,
-  createX402PaymentProof,
-  verifyX402PaymentProof,
-  X402Config,
-  X402PaymentProof,
-  X402PaymentVerificationResult
-} from '@/lib/web3/x402-config'
+import { productionWagmiConfig as wagmiConfig } from '@/lib/web3/production-wagmi-config'
+
+// X402 types - temporary stubs until full migration
+interface X402PaymentProof {
+  scheme: 'exact'
+  amount: string
+  token: string
+  recipient: string
+  deadline: number
+  nonce: string
+  chainId: number
+}
+
+interface X402PaymentVerificationResult {
+  isValid: boolean
+  error?: string
+}
+
+interface X402Config {
+  chainId: number
+  networkName: string
+  usdcTokenAddress: string
+  resourceWalletAddress: string
+  facilitatorUrl: string
+  minPaymentAmount: bigint
+  maxPaymentAmount: bigint
+  defaultDeadlineMinutes: number
+}
+
+// X402 function stubs - return null/empty values
+const getX402MiddlewareConfig = (): X402Config | null => null
+const createX402PaymentProof = (): Promise<X402PaymentProof | null> => Promise.resolve(null)  
+const verifyX402PaymentProof = (): Promise<X402PaymentVerificationResult> => Promise.resolve({ isValid: false, error: 'X402 disabled' })
 
 /**
  * Generate Permit2 signature for single-transaction purchases
