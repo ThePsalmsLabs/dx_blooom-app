@@ -63,7 +63,7 @@ import {
 } from '@/hooks/contracts/core'
 import { useCreatorOnboardingUI } from '@/hooks/ui/integration'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
-import { isSupportedChain, getCurrentChain } from '@/lib/web3/wagmi'
+import { isChainSupported as isSupportedChain, getCurrentChainInfo as getCurrentChain } from '@/lib/web3/production-wagmi-config'
 
 /**
  * Permission Level Types
