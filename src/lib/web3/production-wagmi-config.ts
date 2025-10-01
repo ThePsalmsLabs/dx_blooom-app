@@ -24,9 +24,7 @@ interface WalletConnectorConfig {
   appIconUrl: string
 }
 
-interface ProductionWagmiConfig extends Config {
-  chains: readonly [import('wagmi/chains').Chain, ...import('wagmi/chains').Chain[]]
-}
+type ProductionWagmiConfig = ReturnType<typeof createConfig>
 
 // ============================================================================
 // APP METADATA
@@ -47,10 +45,11 @@ function getAppMetadata(): WalletConnectorConfig {
 // WALLET CONNECTOR CONFIGURATION
 // ============================================================================
 
-function createProductionConnectors(): ReturnType<typeof createConfig>['connectors'] {
+function createProductionConnectors() {
   const metadata = getAppMetadata()
   
-  const connectors = [
+  // Core connectors that are always compatible
+  const coreConnectors = [
     // MetaMask - Most popular wallet
     metaMask({
       dappMetadata: {
@@ -67,30 +66,41 @@ function createProductionConnectors(): ReturnType<typeof createConfig>['connecto
       preference: 'smartWalletOnly', // Use smart wallets when possible
     }),
     
-    // Safe Wallet - For institutional users
-    safe(),
-    
     // Injected connector - Detects other wallets
     injected(),
   ]
 
+  // Optional connectors - only add if environment variables are present
+  const optionalConnectors = []
+  
   // WalletConnect - Only add if project ID is available
   if (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
-    connectors.splice(2, 0, // Insert before Safe
-      walletConnect({
-        projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-        metadata: {
-          name: metadata.appName,
-          description: metadata.appDescription,
-          url: metadata.appUrl,
-          icons: [metadata.appIconUrl],
-        },
-        showQrModal: true,
-      })
-    )
+    try {
+      optionalConnectors.push(
+        walletConnect({
+          projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+          metadata: {
+            name: metadata.appName,
+            description: metadata.appDescription,
+            url: metadata.appUrl,
+            icons: [metadata.appIconUrl],
+          },
+          showQrModal: true,
+        })
+      )
+    } catch (error) {
+      console.warn('WalletConnect connector failed to initialize:', error)
+    }
   }
 
-  return connectors
+  // Safe Wallet - Add if available
+  try {
+    optionalConnectors.push(safe())
+  } catch (error) {
+    console.warn('Safe connector failed to initialize:', error)
+  }
+
+  return [...coreConnectors, ...optionalConnectors]
 }
 
 // ============================================================================
@@ -110,7 +120,7 @@ export function createProductionWagmiConfig(): ProductionWagmiConfig {
   }
 
   return createConfig({
-    chains: supportedChains as readonly [import('wagmi/chains').Chain, ...import('wagmi/chains').Chain[]],
+    chains: [supportedChains[0], ...supportedChains.slice(1)],
     connectors: createProductionConnectors(),
     transports,
     
@@ -234,20 +244,14 @@ export function resetProductionConfig(): void {
 /**
  * Get current chain information
  */
-export function getCurrentChainInfo(): { 
-  id: number
-  name: string 
-  nativeCurrency: { name: string; symbol: string; decimals: number }
-  rpcUrls: { default: { http: readonly string[] } }
-  blockExplorers: { default: { name: string; url: string } }
-} {
+export function getCurrentChainInfo() {
   const { chain } = getCurrentChainConfig()
   return {
     id: chain.id,
     name: chain.name,
     nativeCurrency: chain.nativeCurrency,
     rpcUrls: chain.rpcUrls,
-    blockExplorers: chain.blockExplorers
+    blockExplorers: chain.blockExplorers || { default: { name: 'Unknown', url: '' } }
   }
 }
 
