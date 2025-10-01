@@ -7,20 +7,7 @@ import { getContractConfig } from '../../../../../lib/contracts/config'
 // Import verification functions
 import { hasActiveSubscription } from '../../../../../lib/contracts/subscription'
 
-// Define the payment proof interface based on x402 specifications
-// This structure represents the cryptographic proof that a payment was made
 import { type Address, type Hash } from 'viem'
-
-interface PaymentProof {
-  readonly transactionId: Hash // The blockchain transaction hash
-  readonly amount: string // Payment amount in USDC (as string to handle precision)
-  readonly contentId: string // The content ID this payment was for
-  readonly userAddress: Address // Address of the user who made the payment
-  readonly timestamp: number // When the payment was made (Unix timestamp)
-  readonly tokenAddress: Address // The token contract address used for payment (should be USDC)
-  readonly recipientAddress: Address // The recipient address that should have received the payment
-  readonly signature?: string // Optional cryptographic signature for additional verification
-}
 
 // Define the request body structure for the protected content endpoint
 interface ProtectedContentRequest {
@@ -288,32 +275,15 @@ export async function POST(
         )
       }
 
-      // Verify the payment proof against your existing contracts
-      // This function will be implemented in Component 1.3
-      try {
-        const isValidPayment = await verifyWithExistingContracts(typedPaymentProof)
-        
-        if (!isValidPayment) {
-          return NextResponse.json(
-            { 
-              error: 'Payment verification failed',
-              details: 'The provided payment proof could not be verified',
-              code: 'PAYMENT_VERIFICATION_FAILED'
-            },
-            { status: 402 }
-          )
-        }
-      } catch (error) {
-        console.error('Payment verification error:', error)
-        return NextResponse.json(
-          { 
-            error: 'Payment verification error',
-            details: 'Unable to verify payment at this time',
-            code: 'PAYMENT_VERIFICATION_ERROR'
-          },
-          { status: 503 }
-        )
-      }
+      // X402 payment verification has been disabled - redirect to V2 Commerce Protocol
+      return NextResponse.json(
+        { 
+          error: 'Payment method not supported',
+          details: 'X402 payment verification has been disabled. Please use the V2 Commerce Protocol for content purchases.',
+          code: 'PAYMENT_METHOD_DEPRECATED'
+        },
+        { status: 410 } // 410 Gone - indicates this functionality is no longer available
+      )
 
     } else if (pricingModel === 'subscription') {
       // For subscription content, check active subscription status
