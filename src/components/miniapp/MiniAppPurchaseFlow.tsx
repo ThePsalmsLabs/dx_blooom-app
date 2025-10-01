@@ -7,7 +7,7 @@
 
 import React, { useCallback, useMemo } from 'react'
 import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
-import { useX402ContentPurchaseFlow } from '@/hooks/business/workflows'
+import { useExtendedContentPurchaseFlow } from '@/hooks/business/workflows'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useTokenAllowance } from '@/hooks/contracts/core'
@@ -240,8 +240,8 @@ export function MiniAppPurchaseFlow({
   // Get contract addresses for token allowance check
   const contractAddresses = useMemo(() => getContractAddresses(chainId), [chainId])
 
-  // Initialize x402 payment flow with social context integration
-  const purchaseFlow = useX402ContentPurchaseFlow(contentId, address as `0x${string}` | undefined)
+  // Initialize payment flow with social context integration
+  const purchaseFlow = useExtendedContentPurchaseFlow(contentId, address as `0x${string}` | undefined)
 
   // Get token allowance directly
   const tokenAllowance = useTokenAllowance(
@@ -254,7 +254,7 @@ export function MiniAppPurchaseFlow({
   const { canShare, shareContent } = useMiniAppSocial()
 
   // Extract payment validation data
-  const userBalance = purchaseFlow.userBalance || BigInt(0)
+  const userBalance = purchaseFlow.userBalance ?? BigInt(0)
   const userAllowance = tokenAllowance.data || BigInt(0)
   const contentPrice = purchaseFlow.content?.payPerViewPrice || BigInt(0)
 

@@ -43,7 +43,7 @@ import {
   type MiniAppAuthResult
 } from '@/hooks/business/miniapp-auth'
 import { 
-  useX402ContentPurchaseFlow
+  useExtendedContentPurchaseFlow
 } from '@/hooks/business/workflows'
 
 // Simple strategy type for the X402 flow
@@ -313,7 +313,7 @@ export function PaymentInterface({
 }: PaymentInterfaceProps) {
   // Hooks integration
   const authResult = useMiniAppAuth()
-  const purchaseFlow = useX402ContentPurchaseFlow(contentId, userAddress)
+  const purchaseFlow = useExtendedContentPurchaseFlow(contentId, userAddress)
   const farcasterContext = useFarcasterContext()
   
   // Content data for display
