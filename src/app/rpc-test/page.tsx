@@ -4,20 +4,16 @@ import React, { useState } from 'react'
 import { RPCHealthCheck } from '@/components/debug'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { validateProductionConfig } from '@/lib/web3/production-wagmi-config'
+import { validateProductionConfig, type ConfigValidationResult } from '@/lib/web3/production-wagmi-config'
 
 export default function RPCTestPage() {
-  const [rpcResults, setRpcResults] = useState<{
-    premiumProvidersConfigured: number
-    publicProvidersAvailable: number
-    recommendedActions: string[]
-  } | null>(null)
+  const [rpcResults, setRpcResults] = useState<ConfigValidationResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
 
   React.useEffect(() => {
     const checkConfig = async () => {
       try {
-        const results = await validateRPCConfiguration()
+        const results = validateProductionConfig()
         setRpcResults(results)
       } catch (error) {
         console.error('Failed to validate RPC configuration:', error)
@@ -51,23 +47,25 @@ export default function RPCTestPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-primary">
-                    {rpcResults.premiumProvidersConfigured}/4
+                    <Badge variant={rpcResults.isValid ? "default" : "destructive"}>
+                      {rpcResults.isValid ? "Valid" : "Invalid"}
+                    </Badge>
                   </div>
-                  <div className="text-sm text-muted-foreground">Premium Providers</div>
+                  <div className="text-sm text-muted-foreground">Configuration Status</div>
                 </div>
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
-                    {rpcResults.publicProvidersAvailable}
+                    {rpcResults.errors.length}
                   </div>
-                  <div className="text-sm text-muted-foreground">Public Providers</div>
+                  <div className="text-sm text-muted-foreground">Errors</div>
                 </div>
               </div>
 
-              {rpcResults.recommendedActions.length > 0 && (
+              {rpcResults.recommendations.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="font-semibold text-amber-600">Recommendations:</h3>
                   <ul className="space-y-1">
-                    {rpcResults.recommendedActions.map((action: string, index: number) => (
+                    {rpcResults.recommendations.map((action: string, index: number) => (
                       <li key={index} className="flex items-center gap-2 text-sm">
                         <Badge variant="outline" className="text-xs">⚠️</Badge>
                         {action}
@@ -77,7 +75,7 @@ export default function RPCTestPage() {
                 </div>
               )}
 
-              {rpcResults.recommendedActions.length === 0 && (
+              {rpcResults.recommendations.length === 0 && (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="text-center text-green-800">
                     ✅ RPC configuration is optimal!

@@ -144,7 +144,7 @@ export function createProductionWagmiConfig(): ProductionWagmiConfig {
 // CONFIGURATION VALIDATION
 // ============================================================================
 
-interface ConfigValidationResult {
+export interface ConfigValidationResult {
   isValid: boolean
   errors: string[]
   warnings: string[]
