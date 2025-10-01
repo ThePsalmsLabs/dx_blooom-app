@@ -9,7 +9,7 @@
  * 5. Reduces aggressive retry behavior that triggers 403 errors
  */
 
-import { http, fallback, type HttpTransport, type FallbackTransport } from 'wagmi'
+import { http, fallback, type Transport } from 'wagmi'
 import { base, baseSepolia, type Chain } from 'wagmi/chains'
 
 // ============================================================================
@@ -29,7 +29,7 @@ interface RateLimitState {
 
 interface ChainConfig {
   chain: Chain
-  transport: FallbackTransport | HttpTransport
+  transport: Transport
 }
 
 type NetworkType = 'mainnet' | 'sepolia'
@@ -269,33 +269,10 @@ function getTransportConfig(tier: EndpointTier): TransportConfig {
   return configs[tier]
 }
 
-function createMonitoredHttpTransport(endpoint: string, tier: EndpointTier): HttpTransport {
+function createMonitoredHttpTransport(endpoint: string, tier: EndpointTier): Transport {
   const config = getTransportConfig(tier)
 
-  return http(endpoint, {
-    ...config,
-    
-    // Add request interceptor for rate limiting and caching
-    fetchOptions: {
-      // Add custom request handler
-      onRequest: async (request: Request): Promise<Request> => {
-        // Check rate limit
-        const canProceed = await rateLimiter.checkRateLimit(endpoint)
-        if (!canProceed) {
-          throw new Error(`Rate limit exceeded for ${endpoint}`)
-        }
-        
-        return request
-      },
-      
-      onResponse: async (response: Response): Promise<Response> => {
-        if (!response.ok && response.status === 403) {
-          rateLimiter.recordError(endpoint)
-        }
-        return response
-      }
-    }
-  })
+  return http(endpoint, config)
 }
 
 // ============================================================================
@@ -314,7 +291,7 @@ function getEndpointTier(endpoint: string, index: number, totalEndpoints: number
   return 'public'
 }
 
-function createOptimizedTransportForChain(chainId: number): FallbackTransport | HttpTransport {
+function createOptimizedTransportForChain(chainId: number): Transport {
   const isMainnet = chainId === base.id
   const endpoints = isMainnet ? getVerifiedBaseMainnetEndpoints() : getVerifiedBaseSepoliaEndpoints()
   
@@ -396,7 +373,7 @@ export function getCurrentChainConfig(): ChainConfig {
  * Fixed RPC transports that only include the current network
  * This prevents the dual mainnet/sepolia calls causing issues
  */
-export function createFixedRpcTransports(): Record<number, FallbackTransport | HttpTransport> {
+export function createFixedRpcTransports(): Record<number, Transport> {
   const { chain, transport } = getCurrentChainConfig()
   
   return {
