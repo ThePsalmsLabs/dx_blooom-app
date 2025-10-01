@@ -164,34 +164,44 @@ function EnhancedWagmiProvider({ children }: { children: ReactNode }) {
         setIsLoading(true)
         setConfigError(null)
         
-        // Import enhanced config (supports Farcaster connector)
-        const { getEnhancedWagmiConfig } = await import('@/lib/contracts/miniapp-config')
-        const config = await getEnhancedWagmiConfig()
+        // Import production config with fixed RPC setup
+        const { getProductionWagmiConfig } = await import('@/lib/web3/production-wagmi-config')
+        const config = getProductionWagmiConfig()
         
-        debug.log('✅ Enhanced wagmi config initialized with Farcaster support')
+        debug.log('✅ Production wagmi config initialized with fixed RPC setup')
         setWagmiConfig(config)
       } catch (error) {
-        console.error('❌ Failed to initialize enhanced wagmi config:', error)
+        console.error('❌ Failed to initialize production wagmi config:', error)
         setConfigError(error as Error)
         
-        // Fallback to basic config
-        const { http, fallback } = await import('wagmi')
-        const fallbackConfig = createConfig({
-          chains: [base, baseSepolia],
-          transports: {
-            [base.id]: fallback([
-              ...(process.env.NEXT_PUBLIC_ALCHEMY_API_KEY ? [
-                http(`https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
-              ] : []),
-              http('https://mainnet.base.org')
-            ]),
-            [baseSepolia.id]: http('https://sepolia.base.org')
-          },
-          ssr: typeof window === 'undefined'
-        })
+        // Fallback to basic config with fixed endpoints
+        const { http } = await import('wagmi')
+        const { getCurrentChainConfig } = await import('@/lib/web3/fixed-rpc-config')
         
-        console.log('⚠️ Using fallback wagmi config')
-        setWagmiConfig(fallbackConfig)
+        try {
+          const { chain, transport } = getCurrentChainConfig()
+          const fallbackConfig = createConfig({
+            chains: [chain],
+            transports: {
+              [chain.id]: transport
+            },
+            ssr: typeof window === 'undefined'
+          })
+          
+          console.log('⚠️ Using minimal fallback wagmi config')
+          setWagmiConfig(fallbackConfig)
+        } catch (fallbackError) {
+          console.error('❌ Even fallback config failed:', fallbackError)
+          // Last resort - basic HTTP transport
+          const basicConfig = createConfig({
+            chains: [base],
+            transports: {
+              [base.id]: http('https://base.llamarpc.com')
+            },
+            ssr: typeof window === 'undefined'
+          })
+          setWagmiConfig(basicConfig)
+        }
       } finally {
         setIsLoading(false)
       }
