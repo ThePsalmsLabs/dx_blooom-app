@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { RPCHealthCheck } from '@/components/debug'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { validateRPCConfiguration } from '@/lib/web3/enhanced-wagmi-config'
+import { validateProductionConfig } from '@/lib/web3/production-wagmi-config'
 
 export default function RPCTestPage() {
   const [rpcResults, setRpcResults] = useState<{

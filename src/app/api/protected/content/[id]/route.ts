@@ -4,9 +4,7 @@ import { getSharedPublicClient } from '@/lib/web3/client'
 import { base, baseSepolia } from 'viem/chains'
 import { getContractConfig } from '../../../../../lib/contracts/config'
 
-// Import verification functions (these will be implemented in subsequent components)
-// Using placeholder implementations for now that can be replaced with actual logic
-import { verifyWithExistingContracts } from '../../../../../lib/x402/verification'
+// Import verification functions
 import { hasActiveSubscription } from '../../../../../lib/contracts/subscription'
 
 // Define the payment proof interface based on x402 specifications
