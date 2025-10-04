@@ -16,7 +16,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useBalance, useChainId, useReadContract } from 'wagmi'
-import { formatUnits, type Address } from 'viem'
+import { formatUnits } from 'viem'
 import { useFarcasterAutoWallet } from './useFarcasterAutoWallet'
 import { getSafeAddress } from '@/lib/utils/wallet-utils'
 import { getContractAddresses, USDC_DECIMALS } from '@/lib/contracts/config'

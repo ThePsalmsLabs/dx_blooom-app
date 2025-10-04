@@ -5,7 +5,7 @@
  * DNS resolution issues, and excessive RPC calls we've been experiencing.
  */
 
-import { createConfig, type Config } from 'wagmi'
+import { createConfig } from 'wagmi'
 import { metaMask, coinbaseWallet, walletConnect, injected, safe } from 'wagmi/connectors'
 import { 
   createFixedRpcTransports, 
