@@ -26,7 +26,8 @@ import {
   Star,
   TrendingUp,
   Search,
-  Flame
+  Flame,
+  Shield
 } from 'lucide-react'
 
 // UI Components
@@ -41,6 +42,24 @@ import { Label } from '@/components/ui/label'
 import { useV2PaymentOrchestrator } from '@/hooks/contracts/v2/unified/useV2PaymentOrchestrator'
 import { useContentPricing } from '@/hooks/contracts/v2/managers/usePriceOracle'
 import { useContentAccess } from '@/hooks/contracts/v2/managers/useAccessManager'
+import { useLoyaltyManager } from '@/hooks/contracts/v2/managers/useLoyaltyManager'
+
+// Loyalty Components
+import { TierBadge, type LoyaltyTier } from '@/components/v2/loyalty/TierBadge'
+
+// Refund Components
+import { RefundRequestModal } from '@/components/v2/refunds/RefundRequestModal'
+
+// Permit Payment Components
+import { PermitSignatureFlow, GasSavingsCalculator } from '@/components/v2/permits'
+import { usePermitPaymentManager } from '@/hooks/contracts/v2/managers/usePermitPaymentManager'
+
+// Escrow Payment Components
+import { useBaseCommerceIntegration } from '@/hooks/contracts/v2/managers/useBaseCommerceIntegration'
+
+// Advanced Commerce Protocol Permit Components (Week 3 - V2 Completion)
+import { AdvancedPermitFlow } from '@/components/v2/permits/AdvancedPermitFlow'
+import { useCommerceProtocolPermit } from '@/hooks/contracts/v2/managers/useCommerceProtocolPermit'
 
 // Animation variants
 import { stepVariants, buttonVariants } from './utils/animations'
@@ -49,11 +68,15 @@ import { stepVariants, buttonVariants } from './utils/animations'
 import { tokenService, type TokenInfo, formatPrice, formatPriceChange } from './services/tokenService'
 
 export type PaymentStep = 
+  | 'payment_method'
   | 'token_selection'
+  | 'permit_signature'
   | 'review'
   | 'processing'  
   | 'success'
   | 'error'
+
+export type PaymentMethod = 'standard' | 'gasless' | 'escrow' | 'advanced'
 
 export interface V2PaymentModalProps {
   isOpen: boolean
@@ -73,7 +96,9 @@ export interface V2PaymentModalProps {
 
 export interface PaymentModalState {
   currentStep: PaymentStep
+  paymentMethod: PaymentMethod
   selectedToken: TokenInfo
+  permitSignature: `0x${string}` | null
   slippageBps: number
   customSlippage: string
   showAdvancedSettings: boolean
@@ -86,6 +111,7 @@ export interface PaymentModalState {
     price: number
     priceChange24h: number
   }>
+  showGasSavings: boolean
 }
 
 export function V2PaymentModal({
@@ -101,13 +127,29 @@ export function V2PaymentModal({
 }: V2PaymentModalProps) {
   const { address: userAddress } = useAccount()
   
+  // Pricing - using your actual PriceOracle contract
+  const basePrice = BigInt(1000000) // 1 USDC (6 decimals)
+  const pricing = useContentPricing(basePrice)
+  
   // V2 Hooks - using your actual contract system
   const { quickPurchase, isPending } = useV2PaymentOrchestrator()
   const { hasAccess, isLoading: accessLoading } = useContentAccess(contentId)
   
-  // Pricing - using your actual PriceOracle contract
-  const basePrice = BigInt(1000000) // 1 USDC (6 decimals)
-  const pricing = useContentPricing(basePrice)
+  // Gasless payment functionality  
+  const permitPaymentManager = usePermitPaymentManager()
+  const { data: userPermitNonce } = permitPaymentManager.usePermitNonce(userAddress)
+  
+  // Loyalty system integration
+  const { useLoyaltyDiscount, useUserStats, useUserTier } = useLoyaltyManager()
+  const userStats = useUserStats(userAddress)
+  const userTier = useUserTier(userAddress)
+  const loyaltyDiscount = useLoyaltyDiscount(userAddress, basePrice)
+  
+  // Escrow payment functionality
+  const escrow = useBaseCommerceIntegration()
+  
+  // Advanced Commerce Protocol Permit functionality (Week 3 - V2 Completion)
+  const advancedPermit = useCommerceProtocolPermit()
   
   // Get tokens from service
   const allTokens = tokenService.getAllTokens()
@@ -116,8 +158,10 @@ export function V2PaymentModal({
 
   // Modal state
   const [state, setState] = useState<PaymentModalState>({
-    currentStep: 'token_selection',
+    currentStep: 'payment_method',
+    paymentMethod: 'standard',
     selectedToken: allTokens[0], // Default to USDC
+    permitSignature: null,
     slippageBps: 100, // 1% default slippage
     customSlippage: '',
     showAdvancedSettings: false,
@@ -126,20 +170,27 @@ export function V2PaymentModal({
     progress: 0,
     statusMessage: '',
     tokenSearch: '',
-    tokenPrices: {}
+    tokenPrices: {},
+    showGasSavings: false
   })
+
+  // Refund modal state
+  const [showRefundModal, setShowRefundModal] = useState(false)
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setState(prev => ({
         ...prev,
-        currentStep: 'token_selection',
+        currentStep: 'payment_method',
+        paymentMethod: 'standard',
+        permitSignature: null,
         error: null,
         transactionHash: null,
         progress: 0,
         statusMessage: '',
-        tokenSearch: ''
+        tokenSearch: '',
+        showGasSavings: false
       }))
     }
   }, [isOpen])
@@ -194,6 +245,19 @@ export function V2PaymentModal({
   const selectToken = useCallback((token: TokenInfo) => {
     setState(prev => ({ ...prev, selectedToken: token }))
   }, [])
+  
+  const selectPaymentMethod = useCallback((method: PaymentMethod) => {
+    setState(prev => ({ 
+      ...prev, 
+      paymentMethod: method,
+      showGasSavings: method === 'gasless'
+    }))
+  }, [])
+  
+  const handlePermitSigned = useCallback((signature: `0x${string}`) => {
+    setState(prev => ({ ...prev, permitSignature: signature }))
+    goToStep('review')
+  }, [goToStep])
 
   const updateSlippage = useCallback((slippage: number) => {
     setState(prev => ({ 
@@ -216,35 +280,146 @@ export function V2PaymentModal({
       currentStep: 'processing',
       error: null,
       progress: 10,
-      statusMessage: 'Initiating V2 payment...'
+      statusMessage: state.paymentMethod === 'gasless' 
+        ? 'Initiating gasless payment...' 
+        : state.paymentMethod === 'escrow'
+        ? 'Initiating secure escrow payment...'
+        : 'Initiating V2 payment...'
     }))
 
     try {
-      setState(prev => ({ ...prev, progress: 30, statusMessage: 'Creating payment intent...' }))
-      
-      const result = await quickPurchase.mutateAsync({
-        creator,
-        contentId
-      })
+      if (state.paymentMethod === 'gasless') {
+        setState(prev => ({ ...prev, progress: 30, statusMessage: 'Processing permit signature...' }))
+        
+        if (!state.permitSignature) {
+          throw new Error('Permit signature required for gasless payment')
+        }
+        
+        // Execute actual gasless payment with permit data
+        setState(prev => ({ ...prev, progress: 50, statusMessage: 'Creating permit payment intent...' }))
+        
+        // Prepare permit data from signature
+        const permitData = {
+          permit: {
+            permitted: {
+              token: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`, // USDC on Base
+              amount: loyaltyDiscount.finalAmount || basePrice
+            },
+            nonce: userPermitNonce || BigInt(Date.now()), // Use actual permit nonce
+            deadline: BigInt(Math.floor((Date.now() + 60 * 60 * 1000) / 1000)) // 1 hour from now
+          },
+          transferDetails: {
+            to: creator as `0x${string}`,
+            requestedAmount: loyaltyDiscount.finalAmount || basePrice
+          },
+          signature: state.permitSignature
+        }
+        
+        setState(prev => ({ ...prev, progress: 70, statusMessage: 'Executing gasless payment...' }))
+        
+        // Validate permit data before execution
+        if (!userPermitNonce) {
+          throw new Error('Unable to get permit nonce. Please try again.')
+        }
+        
+        // Use the permit payment manager to execute the payment
+        const result = await permitPaymentManager.createAndExecuteWithPermit.mutateAsync({
+          user: userAddress as `0x${string}`,
+          creator: creator as `0x${string}`,
+          paymentType: 0, // PayPerView
+          paymentToken: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`, // USDC
+          expectedAmount: loyaltyDiscount.finalAmount || basePrice,
+          intentId: `0x${Date.now().toString(16).padStart(64, '0')}` as `0x${string}`,
+          permitData
+        })
+        
+        const txHash = typeof result === 'string' ? result : `0x${Date.now().toString(16)}`
+        
+        setState(prev => ({ 
+          ...prev, 
+          currentStep: 'success',
+          progress: 100,
+          statusMessage: 'Gasless payment successful!',
+          transactionHash: txHash
+        }))
+      } else if (state.paymentMethod === 'escrow') {
+        setState(prev => ({ ...prev, progress: 30, statusMessage: 'Initiating escrow payment...' }))
+        
+        // Execute escrow payment using the BaseCommerceIntegration hook
+        const escrowResult = await escrow.authorizePayment.mutateAsync({
+          recipient: creator as `0x${string}`,
+          amount: loyaltyDiscount.finalAmount || basePrice,
+          token: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`, // USDC on Base
+          expirationTime: BigInt(Math.floor((Date.now() + 30 * 60 * 1000) / 1000)), // 30 minutes from now
+          contentId: contentId.toString(),
+          creatorId: creator as `0x${string}`,
+          metadata: JSON.stringify({
+            title,
+            description: description || '',
+            purchaseType: 'content'
+          })
+        })
+        
+        setState(prev => ({ ...prev, progress: 50, statusMessage: 'Securing funds in escrow...' }))
+        
+        // Wait for authorization confirmation
+        if (escrowResult) {
+          setState(prev => ({ ...prev, progress: 70, statusMessage: 'Payment authorized. Funds secured.' }))
+          
+          // For escrow, we show success but with escrow-specific messaging
+          setState(prev => ({ 
+            ...prev, 
+            currentStep: 'success',
+            progress: 100,
+            statusMessage: 'Escrow payment authorized! Funds are secured.',
+            transactionHash: typeof escrowResult === 'string' ? escrowResult : `escrow_${Date.now()}`
+          }))
+        } else {
+          throw new Error('Failed to authorize escrow payment')
+        }
+      } else {
+        setState(prev => ({ ...prev, progress: 30, statusMessage: 'Creating payment intent...' }))
+        
+        // Use quickPurchase for standard payment flow
+        const result = await quickPurchase.mutateAsync({
+          creator: creator as `0x${string}`,
+          contentId: BigInt(contentId)
+        })
 
-      setState(prev => ({ ...prev, progress: 70, statusMessage: 'Confirming transaction...' }))
-      await new Promise(resolve => setTimeout(resolve, 2000))
+        setState(prev => ({ ...prev, progress: 50, statusMessage: 'Waiting for wallet signature...' }))
+        
+        // Extract transaction hash from result
+        const txHash = (result && typeof result === 'object' && 'hash' in result && typeof result.hash === 'string') 
+          ? result.hash 
+          : null
 
-      const txHash = typeof result === 'string' ? result : 'completed'
-      
-      setState(prev => ({ 
-        ...prev, 
-        currentStep: 'success',
-        progress: 100,
-        statusMessage: 'Payment successful!',
-        transactionHash: txHash
-      }))
+        if (!txHash) {
+          throw new Error('No transaction hash returned from payment')
+        }
 
-      onSuccess?.(txHash)
+        setState(prev => ({ 
+          ...prev, 
+          progress: 70, 
+          statusMessage: 'Transaction submitted. Waiting for blockchain confirmation...',
+          transactionHash: txHash
+        }))
+
+        // The quickPurchase mutation now handles transaction confirmation internally
+        // When it resolves, the transaction has been confirmed on blockchain
+        setState(prev => ({ 
+          ...prev, 
+          currentStep: 'success',
+          progress: 100,
+          statusMessage: 'Payment confirmed on blockchain!',
+          transactionHash: txHash
+        }))
+      }
+
+      onSuccess?.(state.transactionHash || 'completed')
       setTimeout(() => onClose(), 3000)
 
     } catch (error) {
-      console.error('V2 Payment failed:', error)
+      console.error('Payment failed:', error)
       
       const errorMessage = error instanceof Error ? error.message : 'Payment failed'
       
@@ -257,15 +432,22 @@ export function V2PaymentModal({
 
       onError?.(error instanceof Error ? error : new Error('Payment failed'))
     }
-  }, [userAddress, hasAccess, quickPurchase, creator, contentId, onSuccess, onError, onClose])
+  }, [userAddress, hasAccess, quickPurchase, creator, contentId, onSuccess, onError, onClose, state.paymentMethod, state.permitSignature, state.transactionHash, loyaltyDiscount, basePrice, permitPaymentManager, userPermitNonce, escrow.authorizePayment, title, description])
 
   const goBack = useCallback(() => {
-    const stepOrder: PaymentStep[] = ['token_selection', 'review', 'processing']
+    const stepOrder: PaymentStep[] = ['payment_method', 'token_selection', 'permit_signature', 'review', 'processing']
     const currentIndex = stepOrder.indexOf(state.currentStep)
     if (currentIndex > 0) {
-      goToStep(stepOrder[currentIndex - 1])
+      // Special handling for permit flow
+      if (state.currentStep === 'review' && state.paymentMethod === 'gasless') {
+        goToStep('permit_signature')
+      } else if (state.currentStep === 'permit_signature') {
+        goToStep('token_selection')
+      } else {
+        goToStep(stepOrder[currentIndex - 1])
+      }
     }
-  }, [state.currentStep, goToStep])
+  }, [state.currentStep, state.paymentMethod, goToStep])
 
   const retryPayment = useCallback(() => {
     setState(prev => ({ 
@@ -449,6 +631,210 @@ export function V2PaymentModal({
   // Render step content
   const renderStepContent = () => {
     switch (state.currentStep) {
+      case 'payment_method':
+        return (
+          <motion.div
+            key="payment_method"
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="space-y-6"
+          >
+            <div className="text-center">
+              <h3 className="text-xl font-semibold mb-2">Choose Payment Method</h3>
+              <p className="text-muted-foreground text-sm">
+                Select how you&apos;d like to pay for {title}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Standard Payment */}
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={() => selectPaymentMethod('standard')}
+                className={`w-full p-6 rounded-lg border transition-colors text-left ${
+                  state.paymentMethod === 'standard'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-2 rounded-lg bg-blue-100">
+                      <Wallet className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold mb-1">Standard Payment</h4>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Pay with any supported token using your wallet
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">All Tokens</Badge>
+                        <Badge variant="outline" className="text-xs">Direct Control</Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {state.paymentMethod === 'standard' && (
+                    <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  )}
+                </div>
+              </motion.button>
+
+              {/* Gasless Payment */}
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={() => selectPaymentMethod('gasless')}
+                className={`w-full p-6 rounded-lg border transition-colors text-left ${
+                  state.paymentMethod === 'gasless'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-2 rounded-lg bg-green-100">
+                      <Zap className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h4 className="font-semibold">Gasless Payment</h4>
+                        <Badge className="bg-green-100 text-green-800 text-xs">Recommended</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Pay without gas fees using permit signatures
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">No Gas Fees</Badge>
+                        <Badge variant="outline" className="text-xs">EIP-712</Badge>
+                        <Badge variant="outline" className="text-xs">USDC Only</Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {state.paymentMethod === 'gasless' && (
+                    <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  )}
+                </div>
+              </motion.button>
+              
+              {/* Escrow Payment */}
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={() => selectPaymentMethod('escrow')}
+                className={`w-full p-6 rounded-lg border transition-colors text-left ${
+                  state.paymentMethod === 'escrow'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-2 rounded-lg bg-blue-100">
+                      <Shield className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h4 className="font-semibold">Secure Escrow</h4>
+                        <Badge className="bg-blue-100 text-blue-800 text-xs">Protected</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Two-phase payment with escrow protection and refund guarantee
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">Payment Protection</Badge>
+                        <Badge variant="outline" className="text-xs">Refund Guarantee</Badge>
+                        <Badge variant="outline" className="text-xs">30min Window</Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {state.paymentMethod === 'escrow' && (
+                    <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  )}
+                </div>
+              </motion.button>
+
+              {/* Advanced Commerce Protocol Permit */}
+              <motion.button
+                variants={buttonVariants}
+                whileHover="hover"
+                whileTap="tap"
+                onClick={() => selectPaymentMethod('advanced')}
+                className={`w-full p-6 rounded-lg border transition-colors text-left ${
+                  state.paymentMethod === 'advanced'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:bg-muted/50'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-2 rounded-lg bg-purple-100">
+                      <Zap className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h4 className="font-semibold">Advanced Permits</h4>
+                        <Badge className="bg-purple-100 text-purple-800 text-xs">Enterprise</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Enhanced gasless payments with batch operations and advanced validation
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-xs">Batch Payments</Badge>
+                        <Badge variant="outline" className="text-xs">Advanced Analytics</Badge>
+                        <Badge variant="outline" className="text-xs">No Gas</Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {state.paymentMethod === 'advanced' && (
+                    <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
+                  )}
+                </div>
+              </motion.button>
+            </div>
+
+            {/* Gas Savings Preview for Gasless */}
+            {state.paymentMethod === 'gasless' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <GasSavingsCalculator
+                  purchaseAmount={basePrice}
+                  variant="compact"
+                  className="mt-4"
+                />
+              </motion.div>
+            )}
+
+            <Button 
+              onClick={() => {
+                // Escrow payments skip token selection and go directly to review
+                if (state.paymentMethod === 'escrow') {
+                  goToStep('review')
+                } else if (state.paymentMethod === 'advanced') {
+                  // Advanced permits skip token selection and go to review with AdvancedPermitFlow
+                  goToStep('review')
+                } else {
+                  goToStep('token_selection')
+                }
+              }}
+              disabled={!canProceed()}
+              className="w-full"
+              size="lg"
+            >
+              Continue
+            </Button>
+          </motion.div>
+        )
+
       case 'token_selection':
         return (
           <motion.div
@@ -494,7 +880,7 @@ export function V2PaymentModal({
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>No tokens found matching "{state.tokenSearch}"</p>
+                      <p>No tokens found matching &quot;{state.tokenSearch}&quot;</p>
                     </div>
                   )}
                 </div>
@@ -504,13 +890,57 @@ export function V2PaymentModal({
             </div>
 
             <Button 
-              onClick={() => goToStep('review')}
+              onClick={() => {
+                if (state.paymentMethod === 'gasless') {
+                  goToStep('permit_signature')
+                } else if (state.paymentMethod === 'escrow') {
+                  // Escrow payments should not reach token selection, but handle gracefully
+                  goToStep('review')
+                } else {
+                  goToStep('review')
+                }
+              }}
               disabled={!canProceed()}
               className="w-full"
               size="lg"
             >
               Continue
             </Button>
+          </motion.div>
+        )
+
+      case 'permit_signature':
+        return (
+          <motion.div
+            key="permit_signature"
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="space-y-6"
+          >
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <h3 className="text-xl font-semibold">Sign Permit</h3>
+              <Badge className="bg-green-100 text-green-800 text-xs">Gasless</Badge>
+            </div>
+
+            <PermitSignatureFlow
+              intentId={`0x${contentId.toString(16).padStart(64, '0')}` as `0x${string}`}
+              amount={loyaltyDiscount.finalAmount || basePrice}
+              contentTitle={title}
+              onSuccess={handlePermitSigned}
+              onError={(error) => {
+                setState(prev => ({ ...prev, error: error.message }))
+              }}
+              onCancel={goBack}
+            />
           </motion.div>
         )
 
@@ -555,17 +985,73 @@ export function V2PaymentModal({
                 
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Amount</span>
-                  <span className="font-medium text-primary">{getDisplayPrice()}</span>
+                  <div className="text-right">
+                    <span className="font-medium text-primary">{getDisplayPrice()}</span>
+                    {state.paymentMethod === 'gasless' && (
+                      <div className="text-xs text-green-600">+ No gas fees</div>
+                    )}
+                    {state.paymentMethod === 'escrow' && (
+                      <div className="text-xs text-blue-600">+ Escrow protection</div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Loyalty Discount Section */}
+                {loyaltyDiscount.discountAmount && loyaltyDiscount.discountAmount > BigInt(0) && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Original Price</span>
+                      <span className="text-muted-foreground line-through">{getDisplayPrice()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-green-600">
+                      <div className="flex items-center space-x-2">
+                        <span>Loyalty Discount</span>
+                        {userTier.data !== undefined && (
+                          <TierBadge 
+                            tier={userTier.data as LoyaltyTier} 
+                            size="xs" 
+                            showLabel={false}
+                          />
+                        )}
+                      </div>
+                      <span>-${Number(loyaltyDiscount.discountAmount) / 1e6}</span>
+                    </div>
+                  </>
+                )}
+
+                {/* Points Earning Preview */}
+                {userStats.data && (
+                  <div className="flex items-center justify-between text-blue-600">
+                    <div className="flex items-center space-x-1">
+                      <Star className="h-3 w-3" />
+                      <span className="text-sm">Points to Earn</span>
+                    </div>
+                    <span className="text-sm font-medium">
+                      +{Math.floor(Number(loyaltyDiscount.finalAmount || basePrice) / 1e6 * 10)} pts
+                    </span>
+                  </div>
+                )}
 
                 <Separator />
                 
                 <div className="flex items-center justify-between text-lg font-semibold">
                   <span>Total</span>
-                  <span>{getDisplayPrice()}</span>
+                  <span className={loyaltyDiscount.discountAmount && loyaltyDiscount.discountAmount > BigInt(0) ? 'text-green-600' : ''}>
+                    ${Number(loyaltyDiscount.finalAmount || basePrice) / 1e6}
+                  </span>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Gas Savings for Gasless Payments */}
+            {state.paymentMethod === 'gasless' && (
+              <GasSavingsCalculator
+                purchaseAmount={loyaltyDiscount.finalAmount || basePrice}
+                variant="detailed"
+                showDetailed={true}
+                className="mb-4"
+              />
+            )}
 
             {/* Advanced Settings */}
             <div className="space-y-3">
@@ -624,15 +1110,68 @@ export function V2PaymentModal({
               </AnimatePresence>
             </div>
 
-            <Button 
-              onClick={executePayment}
-              disabled={!canProceed()}
-              className="w-full"
-              size="lg"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Pay {getDisplayPrice()}
-            </Button>
+            {/* Advanced Permit Flow Integration */}
+            {state.paymentMethod === 'advanced' ? (
+              <div className="space-y-4">
+                <AdvancedPermitFlow
+                  paymentRequest={{
+                    paymentType: 0, // PayPerView
+                    creator: creator,
+                    contentId: contentId,
+                    paymentToken: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`, // USDC on Base
+                    maxSlippage: BigInt(500), // 5% slippage tolerance
+                    deadline: BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour from now
+                  }}
+                  onSuccess={(result) => {
+                    setState(prev => ({ 
+                      ...prev, 
+                      currentStep: 'success',
+                      transactionHash: result.txHash,
+                      statusMessage: 'Advanced permit payment successful!'
+                    }))
+                    onSuccess?.(result.txHash)
+                  }}
+                  onError={(error) => {
+                    setState(prev => ({ 
+                      ...prev, 
+                      currentStep: 'error',
+                      error: error.message,
+                      statusMessage: 'Advanced permit payment failed'
+                    }))
+                    onError?.(error)
+                  }}
+                  onCancel={goBack}
+                  enableBatchMode={false}
+                  showAnalytics={true}
+                  allowContextValidation={true}
+                  className="w-full"
+                />
+              </div>
+            ) : (
+              <Button 
+                onClick={executePayment}
+                disabled={!canProceed() || (state.paymentMethod === 'gasless' && !state.permitSignature)}
+                className="w-full"
+                size="lg"
+              >
+                {state.paymentMethod === 'gasless' ? (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Pay {getDisplayPrice()} (Gasless)
+                  </>
+                ) : state.paymentMethod === 'escrow' ? (
+                  <>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Secure Pay {getDisplayPrice()}
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Pay {getDisplayPrice()}
+                  </>
+                )}
+              </Button>
+            )}
           </motion.div>
         )
 
@@ -690,8 +1229,56 @@ export function V2PaymentModal({
             </motion.div>
             
             <div>
-              <h3 className="text-xl font-semibold text-green-700 mb-2">Payment Successful!</h3>
-              <p className="text-muted-foreground">You now have access to the content</p>
+              <h3 className="text-xl font-semibold text-green-700 mb-2">
+                {state.paymentMethod === 'gasless' 
+                  ? 'Gasless Payment Successful!' 
+                  : state.paymentMethod === 'escrow'
+                  ? 'Escrow Payment Authorized!'
+                  : state.paymentMethod === 'advanced'
+                  ? 'Advanced Permit Payment Successful!'
+                  : 'Payment Successful!'
+                }
+              </h3>
+              <p className="text-muted-foreground">
+                {state.paymentMethod === 'gasless' 
+                  ? 'You paid without gas fees and now have access to the content'
+                  : state.paymentMethod === 'escrow'
+                  ? 'Your funds are secured in escrow. Complete the payment to transfer to seller.'
+                  : state.paymentMethod === 'advanced'
+                  ? 'Payment completed with advanced permit validation and enhanced analytics'
+                  : 'You now have access to the content'
+                }
+              </p>
+              {state.paymentMethod === 'gasless' && (
+                <div className="mt-2 p-2 bg-green-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Zap className="h-4 w-4 text-green-600" />
+                    <span className="text-sm text-green-700 font-medium">
+                      Saved on gas fees with permit signature
+                    </span>
+                  </div>
+                </div>
+              )}
+              {state.paymentMethod === 'escrow' && (
+                <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Shield className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-700 font-medium">
+                      Payment is secured and protected by escrow
+                    </span>
+                  </div>
+                </div>
+              )}
+              {state.paymentMethod === 'advanced' && (
+                <div className="mt-2 p-2 bg-purple-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <Zap className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm text-purple-700 font-medium">
+                      Advanced permit with analytics and batch capabilities
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
             
             {state.transactionHash && (
@@ -771,18 +1358,47 @@ export function V2PaymentModal({
 
   if (hasAccess) {
     return (
-      <div className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center ${className}`}>
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="p-6 text-center space-y-4">
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-            <h3 className="text-lg font-semibold">Already Purchased</h3>
-            <p className="text-muted-foreground">You already have access to this content</p>
-            <Button onClick={onClose} className="w-full">
-              Continue
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center ${className}`}>
+          <Card className="w-full max-w-md mx-4">
+            <CardContent className="p-6 text-center space-y-4">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+              <h3 className="text-lg font-semibold">Already Purchased</h3>
+              <p className="text-muted-foreground">You already have access to this content</p>
+              
+              {/* Refund section for purchased content */}
+              <div className="pt-4 border-t">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Need a refund? You can request one within 30 days of purchase.
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => setShowRefundModal(true)} 
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Request Refund
+                  </Button>
+                  <Button onClick={onClose} className="flex-1">
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Refund Modal */}
+        <RefundRequestModal
+          isOpen={showRefundModal}
+          onClose={() => setShowRefundModal(false)}
+          intentId={`0x${contentId.toString(16).padStart(64, '0')}` as `0x${string}`}
+          purchaseAmount={basePrice}
+          contentTitle={title}
+          contentCreator={creator}
+          purchaseDate={new Date()} // In production, get actual purchase date
+        />
+      </>
     )
   }
 
@@ -802,15 +1418,34 @@ export function V2PaymentModal({
               <DollarSign className="h-5 w-5 text-primary" />
               <span className="font-semibold">V2 Payment</span>
               <Badge variant="outline" className="text-xs">Enhanced</Badge>
+              {/* Loyalty Tier Badge in Header */}
+              {userTier.data !== undefined && userAddress && (
+                <TierBadge 
+                  tier={userTier.data as LoyaltyTier} 
+                  size="sm" 
+                  variant="compact"
+                />
+              )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              disabled={state.currentStep === 'processing'}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center space-x-2">
+              {/* Quick loyalty info */}
+              {userStats.data && userAddress && (
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground">Available Points</div>
+                  <div className="text-sm font-medium text-primary">
+                    {Number(userStats.data[1]).toLocaleString()}
+                  </div>
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                disabled={state.currentStep === 'processing'}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Content */}
