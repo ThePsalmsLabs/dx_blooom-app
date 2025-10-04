@@ -25,6 +25,21 @@ export interface RefundMetrics {
   totalRefunds: bigint
 }
 
+// Interface for historical refund data (combines on-chain and off-chain data)
+export interface RefundHistoryItem {
+  id: string
+  intentId: `0x${string}`
+  contentTitle: string
+  contentCreator: string
+  amount: bigint
+  reason: string
+  status: 'pending' | 'approved' | 'rejected' | 'processed'
+  requestDate: Date
+  processedDate?: Date
+  adminNotes?: string
+  transactionHash?: `0x${string}`
+}
+
 /**
  * Hook for RefundManager contract interactions
  */
@@ -356,21 +371,26 @@ export function useRefundManager() {
 
   /**
    * Get refund history for a user
+   * Note: This would typically fetch from an indexer or subgraph in production
+   * For now, returns empty array but with proper typing
    */
   const useRefundHistory = (user: Address | undefined) => {
     return useQuery({
       queryKey: ['refundHistory', user],
-      queryFn: async () => {
+      queryFn: async (): Promise<RefundHistoryItem[]> => {
         if (!user) return []
 
-        // This would typically fetch from an indexer or subgraph
-        // For now, return empty array
+        // TODO: Implement actual data fetching from indexer/subgraph
+        // This should query historical RefundRequested and RefundProcessed events
+        // and combine with off-chain data for content titles, creators, etc.
+        
         return []
       },
       enabled: !!user,
       staleTime: 60000 // 1 minute
     })
   }
+
 
   return {
     // Write functions
