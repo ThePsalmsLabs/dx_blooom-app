@@ -78,7 +78,6 @@ import {
 } from 'lucide-react'
 
 import { OrchestratedPaymentFlowState } from '@/hooks/web3/usePaymentFlowOrchestrator'
-import { useMiniApp } from '@/components/social/MiniAppSDKIntegration'
 import { useMiniAppUtils, useMiniAppState } from '@/contexts/UnifiedMiniAppProvider'
 import { ERC20_ABI, COMMERCE_PROTOCOL_INTEGRATION_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
 import { getContractAddresses } from '@/lib/contracts/config'

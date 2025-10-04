@@ -5,8 +5,7 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { type Address } from 'viem'
 import { 
-  ShoppingCart,
-  Zap, 
+  ShoppingCart, 
   Share2, 
   Loader2,
   Wallet,

@@ -43,7 +43,6 @@ import {
 import {
   CheckCircle,
   Wallet,
-  UserCheck,
   Shield,
   Users,
   LogOut,

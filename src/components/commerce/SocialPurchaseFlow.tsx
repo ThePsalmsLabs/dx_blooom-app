@@ -76,7 +76,7 @@ import {
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 
 // Import your existing integrations
-import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
+import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 
 // ================================================
 // COMPONENT INTERFACES

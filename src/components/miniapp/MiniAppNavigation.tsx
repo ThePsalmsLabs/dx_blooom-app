@@ -28,22 +28,19 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home,
   Compass,
   Users,
   User,
   Wallet,
-  Zap,
   Moon,
   Sun,
   Sparkles,
-  ArrowUpRight,
   Loader2,
   CheckCircle,
-  AlertTriangle,
-  Waves
+  AlertTriangle
 } from 'lucide-react'
 
 // Import UI components

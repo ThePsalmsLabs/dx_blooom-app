@@ -16,7 +16,6 @@ import { base, baseSepolia } from 'viem/chains'
 import { type Address } from 'viem'
 import { BiconomySmartAccountV2 } from '@biconomy/account'
 import { useChainId } from 'wagmi'
-import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { usePrivy } from '@privy-io/react-auth'
 import { debug } from '@/lib/utils/debug'
 
