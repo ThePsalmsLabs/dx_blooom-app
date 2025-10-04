@@ -9,7 +9,7 @@
 'use client'
 
 import React from 'react'
-import { UnifiedMiniAppLayout, FullMiniAppLayout } from '@/components/layout/UnifiedMiniAppLayout'
+import { UnifiedMiniAppLayout } from '@/components/layout/UnifiedMiniAppLayout'
 import { UnifiedMiniAppProvider } from '@/contexts/UnifiedMiniAppProvider'
 
 interface UnifiedMiniLayoutProps {

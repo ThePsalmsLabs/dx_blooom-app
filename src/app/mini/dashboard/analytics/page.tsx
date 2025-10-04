@@ -24,7 +24,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
@@ -36,20 +36,13 @@ import {
   DollarSign,
   Eye,
   Heart,
-  Share2,
-  Calendar,
   Download,
-  Filter,
   RefreshCw,
   AlertCircle,
-  ChevronDown,
-  ChevronRight,
   Target,
   Zap,
   Globe,
-  PieChart,
-  Activity,
-  Loader2
+  Activity
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -61,8 +54,6 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
   Select,
   SelectContent,
   SelectItem,
@@ -84,10 +75,9 @@ import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/l
 import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import utilities
-import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils'
+import { formatCurrency, formatNumber } from '@/lib/utils'
 
 /**
  * Analytics Time Period Types

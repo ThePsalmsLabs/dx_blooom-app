@@ -24,38 +24,19 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   Search,
-  Filter,
-  TrendingUp,
-  Heart,
-  Share2,
-  Eye,
-  DollarSign,
-  Clock,
-  Star,
   Users,
-  Zap,
-  Target,
   Grid3X3,
   List,
   SlidersHorizontal,
   X,
-  ChevronDown,
-  ChevronRight,
   AlertCircle,
-  Loader2,
   Sparkles,
   Flame,
-  BookOpen,
-  Video,
-  Music,
-  Image,
-  ThumbsUp,
-  Bookmark,
   RefreshCw,
   ArrowLeft
 } from 'lucide-react'
@@ -69,8 +50,6 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
   Input,
   Select,
   SelectContent,
@@ -82,8 +61,7 @@ import {
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTitle,
-  SheetTrigger
+  SheetTitle
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
@@ -93,13 +71,9 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 // Import utilities
-import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils'
-import type { Content } from '@/types/contracts'
-import type { ContractReadResult } from '@/hooks/contracts/core'
 
 /**
  * Discovery Tab Types

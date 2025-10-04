@@ -21,8 +21,7 @@ import React, {
   Suspense, 
   useEffect, 
   useState, 
-  useCallback, 
-  useMemo,
+  useCallback,
   ReactNode 
 } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'

@@ -24,7 +24,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -42,11 +42,9 @@ import {
   Lock,
   AlertCircle,
   Loader2,
-  ChevronRight,
   DollarSign,
   MessageCircle,
   Bookmark,
-  TrendingUp,
   ShoppingCart
 } from 'lucide-react'
 
@@ -61,7 +59,6 @@ import {
   Skeleton,
   Alert,
   AlertDescription,
-  Separator,
   Avatar,
   AvatarFallback
 } from '@/components/ui/index'
@@ -74,8 +71,6 @@ import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/l
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
-import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
 
 // Import V2 Payment Modal for mini app integration

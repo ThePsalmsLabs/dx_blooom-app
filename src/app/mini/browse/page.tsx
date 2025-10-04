@@ -25,8 +25,10 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+
+// Import V2 MiniApp Components for mobile-optimized browse experience
 // Wallet connection handled by useWalletConnectionUI below
 import { ErrorBoundary } from 'react-error-boundary'
 import {
@@ -41,8 +43,6 @@ import {
   Play,
   FileText,
   Headphones,
-  Image,
-  BookOpen,
   RefreshCw,
   AlertCircle,
   ArrowUp,
@@ -81,12 +81,10 @@ import { cn } from '@/lib/utils'
 import { useMiniAppUtils, useMiniAppState, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimization'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
-import { useIsCreatorRegistered } from '@/hooks/contracts/core'
 import { useContentByCategory } from '@/hooks/contracts/content/useContentDiscovery'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { useMiniAppBalance } from '@/hooks/miniapp/useMiniAppBalance'
 import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
-import InsufficientBalanceAlert from '@/components/miniapp/InsufficientBalanceAlert'
 
 // Import your existing content components
 import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'

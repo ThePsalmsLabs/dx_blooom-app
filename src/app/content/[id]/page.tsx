@@ -23,7 +23,6 @@ import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
 import {
   ArrowLeft,
-  Share2,
   Bookmark,
   Flag,
   Eye,
@@ -57,11 +56,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  Skeleton,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
+  Skeleton
 } from '@/components/ui/index'
 
 import { ShareButton } from '@/components/ui/share-button'
@@ -71,7 +66,6 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { RouteGuards } from '@/components/layout/RouteGuards'
 
 // Import the enhanced ContentPurchaseCard
-import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { ContentNFTPromotionAdapter } from '@/components/content/ContentNFTPromotionAdapter'
 
 // Import V2 Payment Modal

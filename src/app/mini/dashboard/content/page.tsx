@@ -24,7 +24,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
@@ -35,25 +35,14 @@ import {
   Eye,
   EyeOff,
   MoreVertical,
-  Filter,
   Search,
   Plus,
-  TrendingUp,
-  DollarSign,
-  Users,
-  Calendar,
   CheckCircle,
   XCircle,
   AlertCircle,
   RefreshCw,
   Grid3X3,
-  List,
-  Download,
-  Upload,
-  Settings,
-  Loader2,
-  ChevronDown,
-  ChevronRight
+  List
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -65,8 +54,6 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
   Input,
   Select,
   SelectContent,
@@ -76,8 +63,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
-  Separator
+  DropdownMenuTrigger
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
@@ -88,12 +74,9 @@ import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/l
 import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
-import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 // Import utilities
 import { formatCurrency, formatRelativeTime, formatNumber } from '@/lib/utils'
-import type { Content } from '@/types/contracts'
 
 /**
  * Content Status Types

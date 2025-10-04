@@ -23,7 +23,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
@@ -31,32 +31,15 @@ import {
   BookOpen,
   Video,
   Music,
-  Image,
-  FileText,
-  Target,
-  Eye,
   Sparkles,
   TrendingUp,
-  Users,
-  DollarSign,
   Star,
-  Heart,
   Grid3X3,
   List,
   Search,
-  Filter,
   ChevronRight,
   AlertCircle,
-  Loader2,
-  Zap,
-  Code,
-  Palette,
-  Camera,
-  Headphones,
-  Gamepad2,
-  Briefcase,
-  GraduationCap,
-  Wrench
+  GraduationCap
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -68,13 +51,7 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
-  Input,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
+  Input
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
@@ -84,12 +61,10 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useActiveContentPaginated } from '@/hooks/contracts/core'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 
 // Import utilities
-import { formatCurrency, formatNumber } from '@/lib/utils'
-import type { Content } from '@/types/contracts'
+import { formatNumber } from '@/lib/utils'
 import { ContentCategory } from '@/types/contracts'
 
 /**

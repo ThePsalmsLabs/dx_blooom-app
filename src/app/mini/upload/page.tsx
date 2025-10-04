@@ -24,20 +24,15 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   ArrowLeft,
   Upload as UploadIcon,
   FileText,
-  Image,
   Video,
-  Music,
   DollarSign,
-  Tag,
-  Eye,
-  CheckCircle,
   AlertCircle,
   Loader2,
   X,
@@ -48,8 +43,7 @@ import {
   Crown,
   Users,
   Target,
-  Lightbulb,
-  RefreshCw
+  Lightbulb
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -61,9 +55,6 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
-  Separator,
   Input,
   Textarea,
   Label,
@@ -71,21 +62,19 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-  Progress
+  SelectValue
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
-import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
+import { isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 import { useCreatorProfile } from '@/hooks/contracts/core'
 import { useContentPublishingUI } from '@/hooks/ui/integration'
 
 // Import your existing sophisticated components
 import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
-import { ContentUploadForm } from '@/components/content/ContentUpload'
 
 // Import utilities
 import { formatCurrency } from '@/lib/utils'

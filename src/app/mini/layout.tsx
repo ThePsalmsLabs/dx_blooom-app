@@ -94,7 +94,6 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   
   // Import your existing hooks for seamless integration
-  import { useIsCreatorRegistered } from '@/hooks/contracts/core'
   import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
   import { useMiniAppAuth } from '@/hooks/business/miniapp-auth'
   import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
