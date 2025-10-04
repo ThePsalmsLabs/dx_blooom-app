@@ -209,3 +209,9 @@ src/components/v2/*Guide*.md
 
 # Version control documentation
 version-control.md
+
+# V2 implementation documentation (development only - not needed in production)
+V2_COMPLETION_PLAN.md
+V2_CONTRACT_INTEGRATION_AUDIT.md
+V2_IMPLEMENTATION_ANALYSIS.md
+V2_IMPLEMENTATION_CHECKLIST.md
