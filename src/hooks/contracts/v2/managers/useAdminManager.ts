@@ -6,7 +6,7 @@
  * AdminManager contract from v2 architecture.
  */
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useReadContract, useWriteContract, useAccount, useChainId } from 'wagmi'
 import { getContractConfig } from '@/lib/contracts/config'
 import { ADMIN_MANAGER_ABI } from '@/lib/contracts/abis/v2ABIs/AdminManager'

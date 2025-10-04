@@ -5,11 +5,11 @@
  * using the modular SignatureManager contract from v2 architecture.
  */
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useReadContract, useWriteContract, useAccount, useChainId, useSignTypedData } from 'wagmi'
 import { getContractConfig } from '../../../../lib/contracts/config'
 import { SIGNATURE_MANAGER_ABI } from '../../../../lib/contracts/abis/v2ABIs/SignatureManager'
-import { type Address, type Hash } from 'viem'
+import { type Address } from 'viem'
 
 // EIP-712 types for payment intent signatures
 export const PAYMENT_INTENT_TYPES = {
