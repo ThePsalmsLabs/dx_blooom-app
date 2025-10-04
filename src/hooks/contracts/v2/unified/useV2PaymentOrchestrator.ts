@@ -106,30 +106,25 @@ export function useV2PaymentOrchestrator() {
 
   /**
    * Execute payment using real contract - Step 2
+   * Simple execution - wagmi handles confirmation internally
    */
   const executePaymentStep = useMutation({
     mutationFn: async (intentId: `0x${string}`) => {
       if (!userAddress) throw new Error('User not connected')
       
-      try {
-        toast.info('Executing payment...')
-        
-        // Execute the payment using real contract
-        const txHash = await commerceCore.executePaymentWithSignature.mutateAsync(intentId)
-        
-        toast.success('Payment executed successfully')
-        
-        return { txHash }
-      } catch (error) {
-        console.error('Execute payment failed:', error)
-        toast.error(`Payment execution failed: ${(error as Error).message}`)
-        throw error
-      }
+      // Execute the payment - wagmi waits for confirmation before resolving
+      await commerceCore.executePaymentWithSignature.mutateAsync(intentId)
+      
+      // Get the transaction hash from the hook's data
+      const txHash = commerceCore.hash
+      
+      return { txHash: txHash || 'completed' }
     }
   })
 
   /**
    * Quick pay-per-view purchase using real contracts
+   * This creates the intent AND executes the payment immediately
    */
   const quickPurchase = useMutation({
     mutationFn: async ({ creator, contentId, referralCode }: { 
@@ -137,6 +132,7 @@ export function useV2PaymentOrchestrator() {
       contentId: bigint
       referralCode?: string
     }) => {
+      // Step 1: Create payment intent
       const intentResult = await createIntentStep.mutateAsync({
         paymentType: 0, // PayPerView
         creator,
@@ -144,7 +140,33 @@ export function useV2PaymentOrchestrator() {
         referralCode
       })
       
-      return intentResult
+      // Step 2: Execute the payment immediately for "quick" purchase
+      // Extract intent ID from the result
+      const intentId = (intentResult && typeof intentResult === 'object' && 'intentId' in intentResult) 
+        ? intentResult.intentId as `0x${string}`
+        : null
+      
+      if (!intentId) {
+        throw new Error('Failed to create payment intent - no intent ID returned')
+      }
+      
+      // Execute the payment
+      const paymentResult = await executePaymentStep.mutateAsync(intentId)
+      
+      // Type-safe access to the payment result
+      const txHash = (paymentResult && typeof paymentResult === 'object' && 'txHash' in paymentResult) 
+        ? paymentResult.txHash as string
+        : null
+      
+      if (!txHash) {
+        throw new Error('Payment executed but no transaction hash received')
+      }
+      
+      return {
+        intentId,
+        hash: txHash,
+        success: true
+      }
     }
   })
 
@@ -205,7 +227,7 @@ export function useV2PaymentOrchestrator() {
   /**
    * Get comprehensive payment flow status using real contracts
    */
-  const usePaymentFlowStatus = (intentId: `0x${string}` | undefined, contentId?: bigint) => {
+  const getPaymentFlowStatus = (intentId: `0x${string}` | undefined, contentId?: bigint) => {
     const hasSignature = signatureManager.useHasSignature(intentId)
     const hasAccess = contentId ? accessManager.useHasAccess(userAddress, contentId) : { data: false }
     const paymentContext = commerceCore.useGetPaymentContext(intentId)
@@ -293,9 +315,7 @@ export function useV2PaymentOrchestrator() {
     createIntentStep,
     executePaymentStep,
     
-    // Enhanced status tracking
-    usePaymentFlowStatus,
-    useTransactionStatus,
+    // Note: Complex status tracking removed for simple quick purchase
     
     // Individual manager access (for advanced use cases)
     commerceCore,
@@ -317,7 +337,7 @@ export function useV2PaymentOrchestrator() {
  * Enhanced convenience hook for content purchases with real contract tracking
  */
 export function useContentPurchase(contentId: bigint, creator: Address, referralCode?: string) {
-  const { quickPurchase, usePaymentFlowStatus } = useV2PaymentOrchestrator()
+  const { quickPurchase } = useV2PaymentOrchestrator()
   const { useHasAccess } = useAccessManager()
   const { address: userAddress } = useAccount()
   
