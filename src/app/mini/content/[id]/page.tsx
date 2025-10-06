@@ -43,9 +43,7 @@ import {
   AlertCircle,
   Loader2,
   DollarSign,
-  MessageCircle,
   Bookmark,
-  ShoppingCart
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -74,7 +72,11 @@ import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvid
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
 
 // Import V2 Payment Modal for mini app integration
-import { V2PaymentModal, useV2PaymentModal } from '@/components/v2/V2PaymentModal'
+import { useV2PaymentModal } from '@/components/v2/V2PaymentModal'
+
+// Import V2 Messaging Components for post-purchase messaging
+import { V2MiniAppSmartMessagingButton } from '@/components/v2/miniapp/V2MiniAppSmartMessagingButton'
+import { V2MiniAppPurchaseButton } from '@/components/v2/miniapp/V2MiniAppPurchaseButton'
 
 // Import utilities
 import { formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
@@ -652,9 +654,16 @@ function SocialActionsBar({
             </Button>
           )}
 
-          <Button variant="outline" size="sm" className="px-3">
-            <MessageCircle className="h-4 w-4" />
-          </Button>
+          <V2MiniAppSmartMessagingButton
+            creatorAddress={contentData?.creator as `0x${string}` || '0x0000000000000000000000000000000000000000'}
+            contentId={contentId.toString()}
+            context="general"
+            variant="outline"
+            size="sm"
+            className="px-3"
+            showUnreadBadge={true}
+            autoNavigate={true}
+          />
         </div>
       </CardContent>
     </Card>
@@ -758,7 +767,7 @@ function PurchaseCardModal({
             </div>
           </div>
 
-          {/* Purchase Button */}
+          {/* V2 Purchase Button with Post-Purchase Messaging */}
           <div className="bg-gradient-to-r from-primary/10 to-primary/20 rounded-xl p-4 border border-primary/30">
             <div className="text-center space-y-3">
               <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto">
@@ -767,22 +776,32 @@ function PurchaseCardModal({
               <div>
                 <h4 className="font-semibold">Ready to unlock?</h4>
                 <p className="text-sm text-muted-foreground">
-                  Get instant access to premium content
+                  Get instant access and connect with the creator
                 </p>
               </div>
-              <Button 
-                onClick={paymentModal.openModal}
-                className="w-full"
+              
+              {/* V2 Purchase Button with integrated messaging */}
+              <V2MiniAppPurchaseButton
+                contentId={contentId}
+                creator={(contentData?.creator as `0x${string}`) || '0x0000000000000000000000000000000000000000'}
+                title={contentData?.title || 'Premium Content'}
+                variant="primary"
                 size="lg"
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Purchase Content
-              </Button>
+                showPricing={true}
+                showLoyaltyDiscount={true}
+                enablePostPurchaseMessaging={true}
+                className="w-full"
+                onSuccess={(txHash) => {
+                  console.log('Content page purchase successful:', txHash)
+                  onPurchaseSuccess()
+                  onClose()
+                }}
+                onError={(error) => {
+                  console.error('Content page purchase failed:', error)
+                }}
+              />
             </div>
           </div>
-          
-          {/* Payment Modal */}
-          <V2PaymentModal {...paymentModal.modalProps} />
 
           {/* Benefits Footer */}
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
