@@ -9,7 +9,9 @@ export { V2MiniAppTreasuryCard } from './V2MiniAppTreasuryCard'
 export { V2MiniAppLoyaltyWidget } from './V2MiniAppLoyaltyWidget'
 export { V2MiniAppPurchaseButton } from './V2MiniAppPurchaseButton'
 
-// Re-export types
-export type { V2MiniAppTreasuryCardProps } from './V2MiniAppTreasuryCard'
-export type { V2MiniAppLoyaltyWidgetProps } from './V2MiniAppLoyaltyWidget'
-export type { V2MiniAppPurchaseButtonProps } from './V2MiniAppPurchaseButton'
+// V2 Mobile-First Messaging Components
+export { V2MiniAppMessagingInterface } from './V2MiniAppMessagingInterface'
+export { V2MiniAppConversationList } from './V2MiniAppConversationList'
+export { V2MiniAppMessageComposer } from './V2MiniAppMessageComposer'
+export { V2MiniAppSmartMessagingButton } from './V2MiniAppSmartMessagingButton'
+export { V2MiniAppContentCardWithMessaging } from './V2MiniAppContentCardWithMessaging'
