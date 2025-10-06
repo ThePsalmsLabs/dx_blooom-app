@@ -9,7 +9,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ShoppingCart, 
   Zap, 
@@ -26,8 +26,11 @@ import { cn } from '@/lib/utils'
 import { type Address } from 'viem'
 
 // V2 Hooks
-import { useV2PaymentModal } from '@/components/v2/V2PaymentModal'
+import { V2PaymentModal, useV2PaymentModal } from '@/components/v2/V2PaymentModal'
 import { useContentPricing } from '@/hooks/contracts/v2/managers/usePriceOracle'
+
+// V2 Messaging Integration
+import { V2MiniAppSmartMessagingButton } from './V2MiniAppSmartMessagingButton'
 import { useLoyaltyManager } from '@/hooks/contracts/v2/managers/useLoyaltyManager'
 import { useAccount } from 'wagmi'
 
@@ -41,6 +44,7 @@ interface V2MiniAppPurchaseButtonProps {
   size?: 'sm' | 'md' | 'lg'
   showPricing?: boolean
   showLoyaltyDiscount?: boolean
+  enablePostPurchaseMessaging?: boolean
   onSuccess?: (txHash: string) => void
   onError?: (error: Error) => void
 }
@@ -55,6 +59,7 @@ export function V2MiniAppPurchaseButton({
   size = 'md',
   showPricing = true,
   showLoyaltyDiscount = true,
+  enablePostPurchaseMessaging = true,
   onSuccess,
   onError
 }: V2MiniAppPurchaseButtonProps) {
@@ -65,7 +70,7 @@ export function V2MiniAppPurchaseButton({
   // V2 Hooks
   const pricing = useContentPricing(price || BigInt(1000000)) // 1 USDC default
   const loyalty = useLoyaltyManager()
-  const userTier = loyalty.useUserLoyaltyTier(address)
+  const userTier = loyalty.useUserTier(address)
 
   // V2 Payment Modal
   const paymentModal = useV2PaymentModal({
@@ -74,6 +79,12 @@ export function V2MiniAppPurchaseButton({
     title,
     onSuccess: (txHash) => {
       console.log('V2 MiniApp purchase successful:', txHash)
+      
+      // Trigger post-purchase messaging if enabled
+      if (enablePostPurchaseMessaging) {
+        setShowPostPurchaseMessaging(true)
+      }
+      
       onSuccess?.(txHash)
     },
     onError: (error) => {
@@ -82,6 +93,9 @@ export function V2MiniAppPurchaseButton({
     }
   })
 
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showPostPurchaseMessaging, setShowPostPurchaseMessaging] = useState(false)
+
   const handleQuickPurchase = () => {
     paymentModal.openModal()
   }
@@ -89,6 +103,13 @@ export function V2MiniAppPurchaseButton({
   const formatPrice = (amount: bigint | undefined) => {
     if (!amount) return '$1.00'
     return `$${(Number(amount) / 1e6).toFixed(2)}`
+  }
+
+  const getTierName = (tierNumber: number | bigint | undefined): 'bronze' | 'silver' | 'gold' | 'platinum' => {
+    if (!tierNumber) return 'bronze'
+    const tier = typeof tierNumber === 'bigint' ? Number(tierNumber) : tierNumber
+    const tierNames = ['bronze', 'silver', 'gold', 'platinum', 'platinum'] as const
+    return tierNames[Math.min(tier, 4)] || 'bronze'
   }
 
   const getLoyaltyDiscount = () => {
@@ -102,7 +123,8 @@ export function V2MiniAppPurchaseButton({
       platinum: 20
     }
     
-    return discounts[tier as keyof typeof discounts] || 0
+    const tierName = getTierName(tier)
+    return discounts[tierName] || 0
   }
 
   const getDiscountedPrice = () => {
@@ -131,14 +153,14 @@ export function V2MiniAppPurchaseButton({
       >
         <Button
           onClick={handleQuickPurchase}
-          disabled={paymentModal.isLoading}
+          disabled={isProcessing}
           className={cn(
             "relative overflow-hidden rounded-lg font-medium transition-all",
             sizeClasses[size],
             variantClasses[variant]
           )}
         >
-          {paymentModal.isLoading ? (
+          {isProcessing ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
             <ShoppingCart className="h-4 w-4 mr-2" />
@@ -155,8 +177,8 @@ export function V2MiniAppPurchaseButton({
         </Button>
         
         {/* Payment Modal */}
-        {paymentModal.modalProps.isOpen && (
-          <paymentModal.modalProps.component {...paymentModal.modalProps} />
+        {paymentModal.isOpen && (
+          <V2PaymentModal {...paymentModal.modalProps} />
         )}
       </motion.div>
     )
@@ -263,13 +285,13 @@ export function V2MiniAppPurchaseButton({
           <motion.div whileTap={{ scale: 0.98 }}>
             <Button
               onClick={handleQuickPurchase}
-              disabled={paymentModal.isLoading}
+              disabled={isProcessing}
               className={cn(
                 "w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg",
                 sizeClasses[size]
               )}
             >
-              {paymentModal.isLoading ? (
+              {isProcessing ? (
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -294,9 +316,90 @@ export function V2MiniAppPurchaseButton({
       </Card>
 
       {/* Payment Modal */}
-      {paymentModal.modalProps.isOpen && (
-        <paymentModal.modalProps.component {...paymentModal.modalProps} />
+      {paymentModal.isOpen && (
+        <V2PaymentModal {...paymentModal.modalProps} />
       )}
+
+      {/* Post-Purchase Messaging */}
+      <AnimatePresence>
+        {showPostPurchaseMessaging && enablePostPurchaseMessaging && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowPostPurchaseMessaging(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              className="bg-background rounded-2xl p-6 shadow-2xl max-w-sm w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Success Header */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Sparkles className="w-8 h-8 text-green-600" />
+                  </motion.div>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Purchase Complete!</h2>
+                <p className="text-sm text-gray-600">
+                  Thank you for supporting {title}. Connect with the creator!
+                </p>
+              </div>
+
+              {/* Messaging CTA */}
+              <div className="space-y-3 mb-6">
+                <V2MiniAppSmartMessagingButton
+                  creatorAddress={creator}
+                  contentId={contentId.toString()}
+                  context="purchase"
+                  variant="default"
+                  size="lg"
+                  className="w-full h-12"
+                  showLabel={false}
+                  showUnreadBadge={false}
+                  quickMessage="Thanks for the content! 🎉"
+                  autoNavigate={true}
+                  onMessagingStart={() => {
+                    setShowPostPurchaseMessaging(false)
+                  }}
+                />
+                <p className="text-xs text-center text-gray-500">
+                  Send a quick thank you message to the creator
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowPostPurchaseMessaging(false)}
+                >
+                  Maybe Later
+                </Button>
+                <Button
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  onClick={() => {
+                    setShowPostPurchaseMessaging(false)
+                    // Navigate to content
+                    window.location.href = `/mini/content/${contentId}`
+                  }}
+                >
+                  View Content
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
