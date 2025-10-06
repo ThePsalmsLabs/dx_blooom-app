@@ -47,7 +47,7 @@ import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 import type { Address } from 'viem'
-import type { Conversation, ConversationPreview } from '@/types/messaging'
+import type { Conversation, ConversationPreview, ConversationContext } from '@/types/messaging'
 
 // ================================================
 // MOBILE-OPTIMIZED LOADING COMPONENTS
@@ -154,6 +154,7 @@ function convertPreviewToConversation(preview: ConversationPreview): Conversatio
       content: preview.lastMessage.content,
       sender: preview.lastMessage.sender,
       timestamp: preview.lastMessage.timestamp,
+      status: 'sent' as const,
       type: 'text' as const,
       category: preview.lastMessage.category,
       isOwn: false
@@ -478,8 +479,7 @@ function MiniAppMessagesContent() {
               ) : (
                 <ConversationList
                   conversations={conversations.map(convertPreviewToConversation)}
-                  onConversationSelect={(conversation) => handleConversationSelect(conversation.id)}
-                  searchQuery={conversationState.searchQuery}
+                  onSelectConversation={(conversation) => handleConversationSelect(conversation.id)}
                   className="p-4"
                 />
               )}
@@ -487,15 +487,24 @@ function MiniAppMessagesContent() {
           </div>
         ) : (
           /* Individual Conversation View */
-          conversationState.selectedConversation && (
-            <MessagingInterface
-              userAddress={userAddress}
-              creatorAddress={conversationState.selectedConversation as Address}
-              contentId={searchParams.get('contentId') || undefined}
-              context={(searchParams.get('context') as any) || 'general'}
-              className="h-full"
-            />
-          )
+          conversationState.selectedConversation && (() => {
+            const selectedConv = conversations.find(conv => conv.id === conversationState.selectedConversation)
+            return selectedConv ? (
+              <MessagingInterface
+                userAddress={userAddress as Address}
+                creatorAddress={selectedConv.peerAddress as Address}
+                contentId={searchParams.get('contentId') || undefined}
+                context={(() => {
+                  const contextParam = searchParams.get('context')
+                  if (contextParam === 'post_purchase' || contextParam === 'social_share' || contextParam === 'general') {
+                    return contextParam
+                  }
+                  return 'general'
+                })()}
+                className="h-full"
+              />
+            ) : null
+          })()
         )}
       </div>
     </div>
