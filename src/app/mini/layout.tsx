@@ -93,6 +93,10 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider'
   import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
 import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
   
+  // XMTP Messaging Integration
+  import { useXMTPClient } from '@/hooks/messaging/useXMTPClient'
+  import { useConversationManager } from '@/hooks/messaging/useConversationManager'
+  
   // Import your existing hooks for seamless integration
   import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
   import { useMiniAppAuth } from '@/hooks/business/miniapp-auth'
@@ -698,6 +702,10 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	// Format address for display
 	const formattedAddress = fullAddress ? `${fullAddress.slice(0, 6)}...${fullAddress.slice(-4)}` : null
 
+	// XMTP Messaging Integration
+	const { client: xmtpClient, isConnected: xmtpConnected, connect: connectXMTP, error: xmtpError } = useXMTPClient()
+	const { conversations, isLoading: conversationsLoading, sendMessage } = useConversationManager()
+
 	// Removed excessive creator check - only check when needed for specific actions
 	
 	// MiniApp-specific hooks
@@ -750,6 +758,16 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		// Don't increment error count for minor issues
 	  }
 	}, [miniAppUtils.isMiniApp, miniAppState.isConnected, fullAddress, autoDetectedMiniApp])
+
+	// Auto-connect XMTP when wallet is connected
+	useEffect(() => {
+	  if (walletConnected && fullAddress && !xmtpConnected && !xmtpError) {
+		console.log('🔄 Auto-connecting XMTP for miniapp...')
+		connectXMTP().catch((error) => {
+		  console.warn('XMTP auto-connect failed:', error)
+		})
+	  }
+	}, [walletConnected, fullAddress, xmtpConnected, xmtpError, connectXMTP])
 
 	// Performance monitoring
 	const handlePerformanceUpdate = useCallback((metrics: PerformanceMetrics) => {
