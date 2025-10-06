@@ -35,7 +35,7 @@ import {
 import { useAnalyticsContext } from '@/contexts/AnalyticsContext'
 import { useCreatorAnalytics } from '@/hooks/contracts/analytics/useCreatorAnalytics'
 import { usePlatformAnalytics } from '@/hooks/contracts/analytics/usePlatformAnalytics'
-import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
+import { useMiniAppUtils } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import icons
 import {

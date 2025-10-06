@@ -28,7 +28,6 @@ import { formatAddress } from '../../lib/utils'
 import type { Connector } from 'wagmi'
 import type { Address } from 'viem'
 import {
-  getWalletState,
   listenForWalletState,
   isMiniAppContext
 } from '@/lib/utils/miniapp-communication'

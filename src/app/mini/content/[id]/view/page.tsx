@@ -26,7 +26,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { useParams } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   ArrowLeft,
@@ -39,13 +38,9 @@ import {
   User,
   Clock,
   Eye,
-  DollarSign,
   Star,
   ThumbsUp,
-  Flag,
-  Zap,
   AlertCircle,
-  Loader2,
   CheckCircle,
   Gift,
   TrendingUp
@@ -62,10 +57,8 @@ import {
   Skeleton,
   Alert,
   AlertDescription,
-  Progress,
   Avatar,
-  AvatarFallback,
-  Separator
+  AvatarFallback
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
@@ -76,7 +69,6 @@ import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/l
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
 
 // Import utilities

@@ -23,11 +23,12 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
+
+// Import V2 MiniApp Components for mobile-optimized dashboard
 import {
-  ArrowLeft,
   DollarSign,
   Users,
   FileText,
@@ -35,23 +36,12 @@ import {
   TrendingUp,
   Download,
   PlusCircle,
-  Eye,
-  Heart,
-  MessageCircle,
-  Zap,
   CheckCircle,
   AlertCircle,
   RefreshCw,
-  ChevronRight,
   Crown,
-  Target,
-  Calendar,
   Wallet,
-  Settings,
-  Loader2,
-  Grid3X3,
-  List,
-  Filter
+  Loader2
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -63,18 +53,12 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
   Separator,
-  Progress,
-  Avatar,
-  AvatarFallback,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger
 } from '@/components/ui/index'
-import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks
 import { useCreatorProfile, useCreatorContent, useCreatorPendingEarnings, useWithdrawEarnings } from '@/hooks/contracts/core'
@@ -85,10 +69,9 @@ import { useCreatorDashboardUI } from '@/hooks/ui/integration'
 
 // Import your existing sophisticated components
 import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
-import { CreatorDashboard } from '@/components/creator/CreatorDashBoard'
 
 // Import utilities
-import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils'
+import { formatCurrency, formatNumber } from '@/lib/utils'
 
 /**
  * Dashboard Tab Types

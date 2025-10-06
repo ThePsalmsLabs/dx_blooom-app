@@ -24,7 +24,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useParams } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
@@ -42,11 +42,9 @@ import {
   Lock,
   AlertCircle,
   Loader2,
-  ChevronRight,
   DollarSign,
   MessageCircle,
   Bookmark,
-  TrendingUp,
   ShoppingCart
 } from 'lucide-react'
 
@@ -61,7 +59,6 @@ import {
   Skeleton,
   Alert,
   AlertDescription,
-  Separator,
   Avatar,
   AvatarFallback
 } from '@/components/ui/index'
@@ -74,9 +71,10 @@ import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/l
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
-import { OrchestratedContentPurchaseCard } from '@/components/content/OrchestratedContentPurchaseCard'
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
+
+// Import V2 Payment Modal for mini app integration
+import { V2PaymentModal, useV2PaymentModal } from '@/components/v2/V2PaymentModal'
 
 // Import utilities
 import { formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
@@ -141,6 +139,25 @@ function MiniAppContentDisplayCore({ params }: ContentDisplayPageProps) {
   // Content and access data
   const contentQuery = useContentById(contentId)
   const accessQuery = useHasContentAccess(userAddress, contentId)
+
+  // V2 Payment Modal integration for mini app
+  const paymentModal = useV2PaymentModal({
+    contentId: contentId || BigInt(0),
+    creator: (contentQuery.data?.creator as `0x${string}`) || '0x0000000000000000000000000000000000000000',
+    title: contentQuery.data?.title || 'Premium Content',
+    description: contentQuery.data?.description,
+    onSuccess: (txHash) => {
+      console.log('Mini app payment successful:', txHash)
+      accessQuery.refetch()
+      setShowPurchaseCard(false)
+      
+      // Mini app specific success handling
+      router.push(`/mini/content/${contentId}/view`)
+    },
+    onError: (error) => {
+      console.error('Mini app payment failed:', error)
+    }
+  })
 
   /**
    * Content Access State Computation
@@ -662,6 +679,21 @@ function PurchaseCardModal({
   onPurchaseSuccess: () => void
   onClose: () => void
 }) {
+  // V2 Payment Modal integration for purchase modal
+  const paymentModal = useV2PaymentModal({
+    contentId,
+    creator: (contentData?.creator as `0x${string}`) || '0x0000000000000000000000000000000000000000',
+    title: contentData?.title || 'Premium Content',
+    description: contentData?.description,
+    onSuccess: (txHash) => {
+      console.log('Purchase modal payment successful:', txHash)
+      onPurchaseSuccess()
+      onClose()
+    },
+    onError: (error) => {
+      console.error('Purchase modal payment failed:', error)
+    }
+  })
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-br from-white via-blue-50 to-purple-50 dark:from-gray-900 dark:via-blue-900/20 dark:to-purple-900/20 rounded-t-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
@@ -726,18 +758,31 @@ function PurchaseCardModal({
             </div>
           </div>
 
-          {/* Purchase Component */}
-          <OrchestratedContentPurchaseCard
-            contentId={contentId}
-            userAddress={userAddress}
-            onPurchaseSuccess={onPurchaseSuccess}
-            variant="minimal"
-            showCreatorInfo={false}
-            showPurchaseDetails={false}
-            enableMultiPayment={false}
-            showSystemHealth={false}
-            enablePerformanceMetrics={false}
-          />
+          {/* Purchase Button */}
+          <div className="bg-gradient-to-r from-primary/10 to-primary/20 rounded-xl p-4 border border-primary/30">
+            <div className="text-center space-y-3">
+              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h4 className="font-semibold">Ready to unlock?</h4>
+                <p className="text-sm text-muted-foreground">
+                  Get instant access to premium content
+                </p>
+              </div>
+              <Button 
+                onClick={paymentModal.openModal}
+                className="w-full"
+                size="lg"
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Purchase Content
+              </Button>
+            </div>
+          </div>
+          
+          {/* Payment Modal */}
+          <V2PaymentModal {...paymentModal.modalProps} />
 
           {/* Benefits Footer */}
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">

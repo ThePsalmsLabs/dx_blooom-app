@@ -3,7 +3,7 @@
 import React from 'react'
 import { CreatorVerificationStatus } from '@/components/creator/CreatorVerificationStatus'
 import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Shield, CheckCircle, Users, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 

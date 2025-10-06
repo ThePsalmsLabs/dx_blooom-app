@@ -87,13 +87,8 @@ test-wagmi-config.js
 # Modules (development/experimental features)
 src/modules/
 
-# Utility scripts (development tools)
-scripts/check-price-oracle.ts
-scripts/check-rpc-health.ts
-scripts/diagnose-rpc.ts
-scripts/find-debug-info.js
-scripts/test-miniapp-connection.ts
-scripts/validate-rpc-config.ts
+# Utility scripts (development tools) - exclude entire scripts directory
+scripts/
 
 # Backup files and directories
 **/backup*/
@@ -168,3 +163,55 @@ next-env.d.ts
 # local smart contracts (do not commit)
 /contracts/
 /contractsV2/
+# V2 demo files (development only)
+src/app/v2-demo/
+src/components/v2/*Demo*
+
+# All demo files and directories
+src/app/demo/
+src/components/demo/
+src/components/examples/
+src/modules/
+
+# Test and debug scripts (root level)
+test-*.js
+test-*.tsx
+test-*.ts
+debug-*.js
+comprehensive-wallet-audit.js
+fix-wallet-sync.js
+
+# Specific test files in root
+test-pinata.js
+test-upload.js
+test-purchase-modal.tsx
+test-walletconnect-fix.js
+debug-creator-registration.js
+debug-ipfs.js
+debug-publishing-flow.js
+
+# Additional RPC config files (untracked experimental files)
+src/lib/web3/fixed-rpc-config.ts
+src/lib/web3/robust-rpc-config.ts
+src/lib/web3/rpc-test-suite.ts
+# NOTE: production-wagmi-config.ts is kept in repo as it's imported by production code
+
+# RPC and Debug test pages
+src/app/rpc-test/
+src/app/debug/
+
+# Mini app demo pages
+src/app/mini/demo-navigation/
+
+# V2 documentation (development only)
+src/components/v2/*.md
+src/components/v2/*Guide*.md
+
+# Version control documentation
+version-control.md
+
+# V2 implementation documentation (development only - not needed in production)
+V2_COMPLETION_PLAN.md
+V2_CONTRACT_INTEGRATION_AUDIT.md
+V2_IMPLEMENTATION_ANALYSIS.md
+V2_IMPLEMENTATION_CHECKLIST.md

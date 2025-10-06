@@ -7,9 +7,8 @@ import { MiniAppWalletProvider } from '@/contexts/MiniAppWalletContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Globe, User, Copy, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Globe, Copy, ExternalLink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { formatAddress } from '@/lib/utils'
 
 export default function MiniAppBasenamesPage() {
   const router = useRouter()

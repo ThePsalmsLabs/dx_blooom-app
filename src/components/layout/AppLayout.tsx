@@ -74,7 +74,7 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { isSupportedChain, getCurrentChain } from '@/lib/web3/enhanced-wagmi-config'
+import { isChainSupported as isSupportedChain, getCurrentChainInfo as getCurrentChain } from '@/lib/web3/production-wagmi-config'
 import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
 import { WalletConnectionButton } from '@/components/web3/WalletConnect'
 import { RPCHealthMonitor } from '@/components/debug/RPCHealthMonitor'

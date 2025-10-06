@@ -24,7 +24,7 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
@@ -32,31 +32,15 @@ import {
   BookOpen,
   Trophy,
   TrendingUp,
-  Heart,
   Bookmark,
-  Clock,
-  Eye,
   DollarSign,
   Star,
   Share2,
   Grid3X3,
   List,
-  Filter,
   Search,
-  Calendar,
-  Target,
-  Zap,
-  Crown,
-  Award,
-  Medal,
-  Flame,
   CheckCircle,
   AlertCircle,
-  Loader2,
-  ChevronRight,
-  MoreVertical,
-  Download,
-  ExternalLink,
   BarChart3
 } from 'lucide-react'
 
@@ -69,19 +53,10 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
   Progress,
   Tabs,
-  TabsContent,
   TabsList,
-  TabsTrigger,
-  Avatar,
-  AvatarFallback,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
+  TabsTrigger
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
@@ -91,7 +66,6 @@ import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { formatWalletAddress, isWalletFullyConnected, getSafeAddress } from '@/lib/utils/wallet-utils'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import utilities
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils'

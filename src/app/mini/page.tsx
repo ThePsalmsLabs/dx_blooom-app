@@ -61,7 +61,6 @@ import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 // Import your existing sophisticated components
 import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { PerformanceMonitor } from '@/components/debug/PerformanceMonitor'
-import { MiniAppContentBrowser } from '@/components/content/MiniAppContentBrowser'
 import ContentCarousel from '@/components/miniapp/ContentCarousel'
 import { NavigationDebug } from '@/components/debug/NavigationDebug'
 

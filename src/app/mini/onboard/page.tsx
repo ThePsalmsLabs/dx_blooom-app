@@ -30,7 +30,6 @@ import {
   ArrowLeft,
   Wallet,
   User,
-  FileText,
   Upload,
   Sparkles,
   Crown,
@@ -39,14 +38,10 @@ import {
   DollarSign,
   Users,
   TrendingUp,
-  Star,
   AlertCircle,
   Loader2,
   ChevronRight,
   ChevronLeft,
-  Camera,
-  Edit,
-  Target,
   Lightbulb,
   Rocket,
   CheckCircle
@@ -66,9 +61,7 @@ import {
   Input,
   Textarea,
   Label,
-  Progress,
-  Avatar,
-  AvatarFallback
+  Progress
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 

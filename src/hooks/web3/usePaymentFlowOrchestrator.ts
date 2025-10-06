@@ -51,7 +51,7 @@ import {
 } from '@/utils/transactions/intentExtraction'
 import { getContractAddresses } from '@/lib/contracts/config'
 import { COMMERCE_PROTOCOL_INTEGRATION_ABI, CONTENT_REGISTRY_ABI, ERC20_ABI, PAY_PER_VIEW_ABI } from '@/lib/contracts/abis'
-import { enhancedWagmiConfig as wagmiConfig } from '@/lib/web3/enhanced-wagmi-config'
+import { productionWagmiConfig as wagmiConfig } from '@/lib/web3/production-wagmi-config'
 import { USDC_DECIMALS } from '@/lib/contracts/helpers/usdcHelpers'
 import { debug } from '@/lib/utils/debug'
 

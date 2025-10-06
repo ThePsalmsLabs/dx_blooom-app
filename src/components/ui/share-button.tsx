@@ -8,7 +8,7 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
-import { Share2, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Share2, Loader2, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useMiniAppSocial } from '@/hooks/business/miniapp-social'

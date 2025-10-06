@@ -13,10 +13,8 @@ import {
   AlertCircle, 
   Wallet, 
   Plus, 
-  ArrowRight, 
   RefreshCw,
-  DollarSign,
-  Zap
+  DollarSign
 } from 'lucide-react'
 
 import {
@@ -26,8 +24,7 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
-  Badge
+  CardTitle
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 import type { MiniAppBalanceState } from '@/hooks/miniapp/useMiniAppBalance'

@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/index'
 
 // Import your existing MiniApp integration
-import { useMiniAppUtils, useMiniAppState, useMiniAppActions, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
+import { useMiniAppUtils, useMiniAppState, useMiniAppActions } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import icons
 import {

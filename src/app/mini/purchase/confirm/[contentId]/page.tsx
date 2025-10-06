@@ -25,27 +25,19 @@
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { useParams } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   ArrowLeft,
   Shield,
   AlertTriangle,
-  CheckCircle,
   CreditCard,
   DollarSign,
   User,
-  Clock,
-  Tag,
   Lock,
-  Zap,
   AlertCircle,
   Loader2,
   ChevronRight,
-  Wallet,
   Eye,
-  Heart,
-  Star,
   Info,
   RefreshCw
 } from 'lucide-react'
@@ -61,10 +53,7 @@ import {
   Skeleton,
   Alert,
   AlertDescription,
-  Separator,
-  Progress,
-  Avatar,
-  AvatarFallback
+  Separator
 } from '@/components/ui/index'
 import { cn } from '@/lib/utils'
 
@@ -74,14 +63,14 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useUnifiedContentPurchaseFlow } from '@/hooks/business/workflows'
 
+// Import V2 Components for enhanced miniapp experience
+
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { TransactionStatusModal } from '@/components/web3/TransactionStatus'
 
 // Import utilities
 import { formatCurrency, formatRelativeTime, formatAddress } from '@/lib/utils'
 import type { Content } from '@/types/contracts'
-import type { PaymentResult } from '@/hooks/web3/usePaymentFlowOrchestrator'
 
 /**
  * Page Props Interface

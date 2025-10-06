@@ -25,30 +25,19 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  ArrowRight,
-  Shield,
   Zap,
-  DollarSign,
-  RefreshCw,
-  ExternalLink,
-  Smartphone,
-  Monitor,
-  Globe,
-  Clock
+  RefreshCw
 } from 'lucide-react'
 
 import { CustomModal } from './custom-modal'
 import { Button } from './button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card'
-import { Badge } from './badge'
+import { Card, CardContent } from './card'
 import { Alert, AlertDescription } from './alert'
 import { Progress } from './progress'
 import { cn } from '@/lib/utils'
-import { formatCurrency, formatTokenBalance } from '@/lib/utils'
+import { formatTokenBalance } from '@/lib/utils'
 
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
-import { useTokenBalance, useTokenAllowance } from '@/hooks/contracts/core'
-import { getContractAddresses } from '@/lib/contracts/config'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useUSDCPurchaseFlow } from '@/hooks/contracts/usdc-purchase-flow'
 import { enhancedToast } from '@/lib/utils/toast'

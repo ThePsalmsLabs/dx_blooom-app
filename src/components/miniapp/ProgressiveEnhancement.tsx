@@ -40,7 +40,6 @@ import { cn } from '@/lib/utils'
 import { useMiniAppErrorHandling, type MiniAppError } from '@/utils/error-handling'
 
 // Import existing configuration and capability detection
-import { getX402MiddlewareConfig, isX402Supported } from '@/lib/web3/x402-config'
 import { useFarcasterContext } from '@/hooks/farcaster/useFarcasterContext'
 
 /**
@@ -320,49 +319,17 @@ class ClientCapabilityDetector {
     }
   } {
     try {
-      // Check if the current chain supports x402
-      const networkSupported = isX402Supported(chainId)
-      
-      if (!networkSupported) {
-        return {
-          isSupported: false,
-          details: {
-            networkSupported: false,
-            configurationValid: false,
-            facilitatorAccessible: false
-          }
-        }
-      }
-
-      // Check if configuration is valid
-      let configurationValid = false
-      try {
-        const config = getX402MiddlewareConfig(chainId)
-        configurationValid = Boolean(
-          config.resourceWalletAddress && 
-          config.resourceWalletAddress !== '0x' &&
-          config.facilitatorUrl &&
-          config.usdcTokenAddress
-        )
-      } catch (configError) {
-        console.warn('x402 configuration validation failed:', configError)
-        configurationValid = false
-      }
-
-      // Note: Facilitator accessibility would require an actual network request
-      // For capability detection, we assume it's accessible if configuration is valid
-      const facilitatorAccessible = configurationValid
-
+      // X402 has been disabled - always return unsupported
       return {
-        isSupported: networkSupported && configurationValid,
+        isSupported: false,
         details: {
-          networkSupported,
-          configurationValid,
-          facilitatorAccessible
+          networkSupported: false,
+          configurationValid: false,
+          facilitatorAccessible: false
         }
       }
     } catch (error) {
-      console.warn('x402 support detection failed:', error)
+      console.warn('x402 support detection failed (disabled):', error)
       return {
         isSupported: false,
         details: {

@@ -13,7 +13,6 @@
  */
 
 import dotenv from 'dotenv'
-import { validateRPCConfiguration } from '../src/lib/web3/enhanced-wagmi-config'
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' })
@@ -22,15 +21,48 @@ async function main() {
   console.log('🔧 Validating RPC Configuration...\n')
   
   try {
-    const results = await validateRPCConfiguration()
+    // Simple validation - check if environment variables are set
+    const infuraKey = process.env.NEXT_PUBLIC_INFURA_API_KEY
+    const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+    const baseRPC = process.env.NEXT_PUBLIC_BASE_MAINNET_RPC
+    const sepoliaRPC = process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC
     
-    console.log('📊 Configuration Status:')
-    console.log(`   Premium Providers: ${results.premiumProvidersConfigured}/4`)
-    console.log(`   Public Providers: ${results.publicProvidersAvailable}`)
+    let premiumProviders = 0
+    const recommendations: string[] = []
     
-    if (results.recommendedActions.length > 0) {
+    if (infuraKey) {
+      premiumProviders++
+      console.log('✅ Infura API key configured')
+    } else {
+      recommendations.push('Add NEXT_PUBLIC_INFURA_API_KEY to .env.local')
+    }
+    
+    if (alchemyKey) {
+      premiumProviders++
+      console.log('✅ Alchemy API key configured')
+    } else {
+      recommendations.push('Add NEXT_PUBLIC_ALCHEMY_API_KEY to .env.local for redundancy')
+    }
+    
+    if (baseRPC) {
+      console.log('✅ Base mainnet RPC configured')
+    } else {
+      console.log('ℹ️  Using default Base mainnet RPC')
+    }
+    
+    if (sepoliaRPC) {
+      console.log('✅ Base Sepolia RPC configured')
+    } else {
+      console.log('ℹ️  Using default Base Sepolia RPC')
+    }
+    
+    console.log(`\n📊 Configuration Status:`)
+    console.log(`   Premium Providers: ${premiumProviders}/2`)
+    console.log(`   Public Providers: Available`)
+    
+    if (recommendations.length > 0) {
       console.log('\n🚨 Recommendations:')
-      results.recommendedActions.forEach((action, index) => {
+      recommendations.forEach((action, index) => {
         console.log(`   ${index + 1}. ${action}`)
       })
     } else {

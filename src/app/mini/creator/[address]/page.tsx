@@ -23,40 +23,27 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { useParams } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   ArrowLeft,
   Share2,
   Heart,
-  MessageCircle,
   User,
-  Star,
   TrendingUp,
-  Award,
   DollarSign,
   Users,
   FileText,
-  Calendar,
   Zap,
   CheckCircle,
   Crown,
   Target,
   Sparkles,
   Video,
-  Image,
-  Headphones,
-  BookOpen,
-  Eye,
-  ThumbsUp,
   AlertCircle,
-  Loader2,
-  ChevronRight,
   Grid3X3,
-  List,
-  Filter
+  List
 } from 'lucide-react'
 
 // Import your existing UI components
@@ -70,7 +57,6 @@ import {
   Skeleton,
   Alert,
   AlertDescription,
-  Separator,
   Avatar,
   AvatarFallback,
   Tabs,
@@ -86,7 +72,6 @@ import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 import { CreatorSubscriptionPurchase } from '@/components/subscription'
 import { ContentPreviewCard } from '@/components/content/ContentPreviewCard'
 

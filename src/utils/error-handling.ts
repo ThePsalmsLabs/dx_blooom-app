@@ -13,7 +13,7 @@ import { type Address } from 'viem'
 import { formatWeb3Error } from '@/lib/utils'
 
 // Import Component 3.2's x402 payment flow for retry integration
-import { useX402ContentPurchaseFlow } from '@/hooks/business/workflows'
+import { useExtendedContentPurchaseFlow } from '@/hooks/business/workflows'
 
 // Import Component 3.3's Farcaster context for context error handling
 import { useFarcasterContext } from '@/hooks/business/workflows'
@@ -362,7 +362,7 @@ export function useMiniAppErrorHandling(contentId?: bigint) {
   const farcasterContext = useFarcasterContext()
   
   // Integration with Component 3.2's x402 payment flow for retry functionality
-  const x402PurchaseFlow = useX402ContentPurchaseFlow(contentId, undefined)
+  const purchaseFlow = useExtendedContentPurchaseFlow(contentId, undefined)
   
   const [miniAppErrors, setMiniAppErrors] = useState<MiniAppError[]>([])
 
@@ -374,12 +374,12 @@ export function useMiniAppErrorHandling(contentId?: bigint) {
    * failures in Mini App contexts.
    */
   const retryX402Payment = useCallback(async (): Promise<void> => {
-    if (!x402PurchaseFlow.purchaseWithX402) {
+    if (!purchaseFlow.purchase) {
       throw new Error('X402 payment retry not available')
     }
 
     try {
-      await x402PurchaseFlow.purchaseWithX402()
+      purchaseFlow.purchase()
     } catch (error) {
       const retryError: MiniAppError = {
         type: 'X402_PAYMENT_FAILED',
@@ -392,7 +392,7 @@ export function useMiniAppErrorHandling(contentId?: bigint) {
       }
       throw retryError
     }
-  }, [x402PurchaseFlow, contentId])
+  }, [purchaseFlow, contentId])
 
   /**
    * Handle Mini App Error Function
@@ -630,11 +630,11 @@ export function useMiniAppErrorHandling(contentId?: bigint) {
     detectContextErrors,
     
     // Integration hooks for components
-    isX402Available: Boolean(x402PurchaseFlow.purchaseWithX402),
+    isX402Available: Boolean(purchaseFlow.purchase),
     isFarcasterAvailable: Boolean(farcasterContext),
     
     // Error recovery helpers
-    canRetryPayment: Boolean(contentId && x402PurchaseFlow.purchaseWithX402),
+    canRetryPayment: Boolean(contentId && purchaseFlow.purchase),
     canUseFallbackFlow: true // Always true since we have traditional flows
   }
 }

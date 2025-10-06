@@ -24,37 +24,25 @@
 
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useCallback, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   ArrowLeft,
   Star,
   Heart,
-  Share2,
   TrendingUp,
   Users,
-  Clock,
-  Play,
   BookOpen,
-  Image,
-  Music,
   Video,
   Eye,
   DollarSign,
   Crown,
   Sparkles,
-  Grid3X3,
-  List,
-  Filter,
-  Search,
   ChevronRight,
   AlertCircle,
-  Loader2,
   Zap,
   Target,
-  Award,
-  ThumbsUp,
   FileText
 } from 'lucide-react'
 
@@ -67,8 +55,6 @@ import {
   CardTitle,
   Badge,
   Skeleton,
-  Alert,
-  AlertDescription,
   Tabs,
   TabsContent,
   TabsList,
@@ -76,14 +62,12 @@ import {
   Avatar,
   AvatarFallback
 } from '@/components/ui/index'
-import { cn } from '@/lib/utils'
 
 // Import your existing business logic hooks
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useMiniAppWalletUI } from '@/hooks/web3/useMiniAppWalletUI'
 
 // Import your existing sophisticated components
-import { MiniAppLayout } from '@/components/miniapp/MiniAppLayout'
 
 // Import utilities
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils'

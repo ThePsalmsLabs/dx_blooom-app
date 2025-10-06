@@ -36,7 +36,6 @@ const nextConfig: NextConfig = {
       config.externals = config.externals || [];
       config.externals.push({
         'ipfs-http-client': 'ipfs-http-client',
-        'x402-express': 'x402-express',
         'cloudflared': 'cloudflared',
       });
     }

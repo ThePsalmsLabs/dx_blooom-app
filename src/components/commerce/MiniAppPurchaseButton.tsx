@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 
 // Import enhanced MiniApp hooks from Phase 2
 import {
-  useX402ContentPurchaseFlow
+  useExtendedContentPurchaseFlow
 } from '@/hooks/business/workflows'
 import { useMiniAppSocial } from '@/hooks/business/miniapp-social'
 import { trackMiniAppEvent } from '@/lib/miniapp/analytics'
@@ -173,7 +173,7 @@ export function MiniAppPurchaseButton({
   // ===== CORE INTEGRATION WITH ENHANCED HOOKS =====
   
   // Simple USDC-only purchase flow (no ETH calculations)
-  const purchaseFlow = useX402ContentPurchaseFlow(contentId, userAddress)
+  const purchaseFlow = useExtendedContentPurchaseFlow(contentId, userAddress)
 
   // Use the orchestrated payment system for proper error handling and monitoring
   const paymentOrchestrator = useMiniAppPaymentOrchestrator({
