@@ -140,21 +140,10 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
     }
   }, [unwrappedParams])
 
-  // Show loading state while params are being resolved
-  if (!unwrappedParams || !contentId) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading content...</p>
-        </div>
-      </div>
-    )
-  }
-
   // Core data hooks for content information and access control
-  const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(userAddress, contentId)
+  // These must be called before any early returns to maintain hook order
+  const contentQuery = useContentById(contentId || undefined)
+  const accessQuery = useHasContentAccess(userAddress, contentId || undefined)
   
   // Local state for purchase success tracking
   const [purchaseCompleted, setPurchaseCompleted] = useState(false)
@@ -189,6 +178,18 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
       })
     }
   })
+
+  // Show loading state while params are being resolved
+  if (!unwrappedParams || !contentId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading content...</p>
+        </div>
+      </div>
+    )
+  }
 
   /**
    * Content Access State Computation
