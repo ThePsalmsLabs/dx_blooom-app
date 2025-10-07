@@ -1,0 +1,660 @@
+/**
+ * Messaging Accessibility Styles
+ * 
+ * High contrast mode, visual accessibility, and enhanced focus management
+ * for messaging components.
+ */
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  /* Message bubbles with enhanced contrast */
+  .message-bubble-own {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+  }
+  
+  .message-bubble-other {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+  }
+  
+  /* Conversation list with high contrast */
+  .conversation-item {
+    border: 1px solid currentColor !important;
+  }
+  
+  .conversation-item:hover,
+  .conversation-item:focus {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+  
+  .conversation-item.selected {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border: 3px solid #ffffff !important;
+  }
+  
+  /* Buttons with enhanced contrast */
+  .messaging-button {
+    border: 2px solid currentColor !important;
+  }
+  
+  .messaging-button:focus {
+    outline: 3px solid #ffff00 !important;
+    outline-offset: 2px !important;
+  }
+  
+  /* Input fields with high contrast */
+  .message-input {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+  }
+  
+  .message-input:focus {
+    outline: 3px solid #ffff00 !important;
+    outline-offset: 2px !important;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .messaging-animation,
+  .typing-indicator,
+  .message-bubble,
+  .conversation-transition {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Remove transforms that cause motion */
+  .message-enter-animation {
+    transform: none !important;
+  }
+  
+  /* Keep essential focus indicators */
+  .focus-ring:focus {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+  }
+}
+
+/* Enhanced Focus Management */
+.messaging-focus-visible {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.messaging-focus-visible:focus-visible {
+  outline: 3px solid #0066cc;
+  outline-offset: 3px;
+}
+
+/* Skip Link for Keyboard Navigation */
+.messaging-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000000;
+  color: #ffffff;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+  font-weight: bold;
+}
+
+.messaging-skip-link:focus {
+  top: 6px;
+}
+
+/* Large Text Support */
+@media (min-resolution: 192dpi) {
+  .message-text {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  
+  .conversation-title {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  
+  .timestamp {
+    font-size: 14px;
+  }
+}
+
+/* Dark Theme Accessibility Enhancements */
+@media (prefers-color-scheme: dark) {
+  .messaging-interface {
+    /* Ensure sufficient contrast in dark mode */
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --background-primary: #1a1a1a;
+    --background-secondary: #2a2a2a;
+    --border-color: #404040;
+    --focus-color: #66b3ff;
+  }
+  
+  .message-bubble-own {
+    background-color: #0066cc;
+    color: #ffffff;
+  }
+  
+  .message-bubble-other {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #404040;
+  }
+}
+
+/* Screen Reader Only Content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Status Indicators with High Visibility */
+.status-indicator {
+  min-width: 8px;
+  min-height: 8px;
+  border-radius: 50%;
+}
+
+.status-online {
+  background-color: #00aa00;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #00aa00;
+}
+
+.status-offline {
+  background-color: #888888;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #888888;
+}
+
+/* Typing Indicator Accessibility */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background-color: currentColor;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .typing-dot {
+    animation: typing-bounce 1.4s infinite ease-in-out;
+  }
+  
+  .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+  .typing-dot:nth-child(3) { animation-delay: 0s; }
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Message Actions Accessibility */
+.message-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.message-bubble:hover .message-actions,
+.message-bubble:focus-within .message-actions {
+  opacity: 1;
+}
+
+.message-action-button {
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.message-action-button:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 1px;
+}
+
+/* Touch Target Size for Mobile Accessibility */
+@media (pointer: coarse) {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .conversation-item {
+    min-height: 56px;
+    padding: 12px 16px;
+  }
+  
+  .message-input {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Enhanced touch targets for messaging buttons */
+  .v2-messaging-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+  
+  .v2-conversation-item {
+    min-height: 72px;
+    padding: 16px;
+    touch-action: pan-y; /* Allow vertical scrolling but enable horizontal swipes */
+  }
+  
+  /* Swipe action areas */
+  .v2-swipe-action {
+    min-width: 60px;
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Message composer touch optimizations */
+  .v2-message-composer textarea {
+    min-height: 44px;
+    font-size: 16px;
+    line-height: 1.4;
+    padding: 12px 16px;
+  }
+  
+  .v2-composer-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Error States with High Visibility */
+.error-state {
+  color: #cc0000;
+  font-weight: 600;
+}
+
+.error-icon {
+  color: #cc0000;
+  filter: drop-shadow(0 0 2px rgba(204, 0, 0, 0.5));
+}
+
+@media (prefers-contrast: high) {
+  .error-state,
+  .error-icon {
+    color: #ff0000 !important;
+    text-shadow: 0 0 3px #ffffff !important;
+  }
+}
+
+/* Loading States */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #cccccc;
+  border-top: 2px solid #0066cc;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+    border: 2px solid #0066cc;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* V2 Mobile Miniapp Messaging Accessibility Enhancements */
+
+/* Voice Control and Screen Reader Support */
+.v2-messaging-interface {
+  /* Ensure proper landmarks for screen readers */
+  role: "main";
+}
+
+.v2-conversation-list {
+  /* Screen reader navigation */
+  role: "navigation";
+  aria-label: "Conversations";
+}
+
+.v2-message-thread {
+  role: "log";
+  aria-live: "polite";
+  aria-atomic: "false";
+}
+
+/* Haptic Feedback Simulation for Accessibility */
+.v2-haptic-feedback:focus {
+  animation: haptic-pulse 0.1s ease-in-out;
+}
+
+@keyframes haptic-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-haptic-feedback:focus {
+    animation: none;
+    outline: 3px solid #0066cc;
+    outline-offset: 2px;
+  }
+}
+
+/* Mobile Keyboard Handling */
+.v2-keyboard-visible {
+  /* Adjust layout when mobile keyboard is shown */
+  transform: translateY(-50px);
+  transition: transform 0.3s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-keyboard-visible {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* High Contrast Mobile Optimizations */
+@media (prefers-contrast: high) and (pointer: coarse) {
+  .v2-messaging-button {
+    border: 3px solid currentColor !important;
+    background-color: transparent !important;
+  }
+  
+  .v2-conversation-item:hover,
+  .v2-conversation-item:focus {
+    border: 3px solid #ffffff !important;
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+  
+  .v2-message-bubble {
+    border: 2px solid currentColor !important;
+    font-weight: 600 !important;
+  }
+  
+  .v2-swipe-action {
+    border: 2px solid #ffffff !important;
+    font-weight: bold !important;
+  }
+}
+
+/* Voice Recording Accessibility */
+.v2-voice-recording {
+  animation: voice-pulse 1s infinite ease-in-out;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-voice-recording {
+    animation: none;
+    background-color: #cc0000 !important;
+    color: #ffffff !important;
+  }
+}
+
+/* Long Press Visual Feedback */
+.v2-long-press-active {
+  transform: scale(0.95);
+  background-color: rgba(0, 102, 204, 0.1);
+  transition: all 0.1s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-long-press-active {
+    transform: none;
+    outline: 3px solid #0066cc;
+    outline-offset: 2px;
+  }
+}
+
+/* Status and Connection Indicators */
+.v2-connection-status {
+  position: relative;
+}
+
+.v2-connection-status::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+}
+
+.v2-status-connected::before {
+  background-color: #00aa00;
+}
+
+.v2-status-connecting::before {
+  background-color: #ffaa00;
+  animation: status-blink 1s infinite;
+}
+
+.v2-status-disconnected::before {
+  background-color: #cc0000;
+}
+
+@keyframes status-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-status-connecting::before {
+    animation: none;
+    background-color: #ffaa00;
+  }
+}
+
+/* Unread Badge Accessibility */
+.v2-unread-badge {
+  font-weight: bold;
+  min-width: 20px;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+}
+
+@media (prefers-contrast: high) {
+  .v2-unread-badge {
+    border: 2px solid #000000 !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-weight: bold !important;
+  }
+}
+
+/* Quick Message Preview Accessibility */
+.v2-quick-message-preview {
+  border: 2px solid #0066cc;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (prefers-contrast: high) {
+  .v2-quick-message-preview {
+    border: 3px solid #000000 !important;
+    background-color: #ffffff !important;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+}
+
+/* Search Input Mobile Optimizations */
+.v2-search-input {
+  font-size: 16px; /* Prevents zoom on iOS */
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.v2-search-input:focus {
+  border-color: #0066cc;
+  outline: none;
+  background-color: #ffffff;
+}
+
+@media (prefers-contrast: high) {
+  .v2-search-input {
+    border: 2px solid #000000 !important;
+    background-color: #ffffff !important;
+  }
+  
+  .v2-search-input:focus {
+    border: 3px solid #0066cc !important;
+    outline: 2px solid #ffff00 !important;
+    outline-offset: 2px !important;
+  }
+}
+
+/* Loading States for Mobile */
+.v2-mobile-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 16px;
+}
+
+.v2-loading-text {
+  font-size: 16px;
+  color: #666666;
+  text-align: center;
+}
+
+@media (prefers-contrast: high) {
+  .v2-loading-text {
+    color: #000000 !important;
+    font-weight: bold !important;
+  }
+}
+
+/* Error State Mobile Enhancements */
+.v2-error-container {
+  padding: 24px;
+  text-align: center;
+  border: 2px solid #cc0000;
+  border-radius: 12px;
+  background-color: rgba(204, 0, 0, 0.05);
+}
+
+.v2-error-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #cc0000;
+  margin-bottom: 8px;
+}
+
+.v2-error-message {
+  font-size: 14px;
+  color: #666666;
+  margin-bottom: 16px;
+}
+
+@media (prefers-contrast: high) {
+  .v2-error-container {
+    border: 3px solid #cc0000 !important;
+    background-color: #ffffff !important;
+  }
+  
+  .v2-error-title {
+    color: #cc0000 !important;
+    text-shadow: 0 0 2px #ffffff !important;
+  }
+  
+  .v2-error-message {
+    color: #000000 !important;
+    font-weight: 600 !important;
+  }
+}
+
+/* Floating Widget Accessibility */
+.v2-floating-widget {
+  position: fixed;
+  z-index: 1000;
+  border: 2px solid #0066cc;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: #0066cc;
+  color: #ffffff;
+}
+
+.v2-floating-widget:focus {
+  outline: 3px solid #ffff00;
+  outline-offset: 2px;
+}
+
+@media (prefers-contrast: high) {
+  .v2-floating-widget {
+    border: 3px solid #ffffff !important;
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+  
+  .v2-floating-widget:focus {
+    outline: 3px solid #ffff00 !important;
+    outline-offset: 3px !important;
+  }
+}

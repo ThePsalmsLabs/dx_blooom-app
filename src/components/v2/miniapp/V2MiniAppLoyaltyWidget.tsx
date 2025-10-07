@@ -59,9 +59,9 @@ export function V2MiniAppLoyaltyWidget({
   const [showDetails, setShowDetails] = useState(false)
 
   // Get loyalty data
-  const userTier = loyalty.useUserLoyaltyTier(address)
-  const userPoints = loyalty.useUserLoyaltyPoints(address)
-  const benefits = loyalty.useActiveBenefits(address)
+  const userTier = loyalty.useUserTier(address)
+  const userPoints = loyalty.useUserPoints(address)
+  const benefits = loyalty.useUserTierBenefits(address)
 
   // Mock tier data (replace with actual tier calculation)
   const currentTier = userTier.data || 'bronze'

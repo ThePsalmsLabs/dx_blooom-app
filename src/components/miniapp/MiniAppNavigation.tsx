@@ -34,6 +34,7 @@ import {
   Compass,
   Users,
   User,
+  MessageCircle,
   Wallet,
   Moon,
   Sun,
@@ -57,6 +58,8 @@ import { cn } from '@/lib/utils'
 import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
 import { useMiniAppUtils, useSocialState } from '@/contexts/UnifiedMiniAppProvider'
 import { useTheme } from '@/components/providers/ThemeProvider'
+import { useConversationManager } from '@/hooks/messaging/useConversationManager'
+import { useMessageReadState } from '@/hooks/messaging/useMessageReadState'
 
 // ================================================
 // ULTRA MODERN TYPE DEFINITIONS
@@ -100,6 +103,15 @@ const NAVIGATION_ITEMS: readonly NavigationItem[] = [
     color: 'rgb(34, 197, 94)', // Green
     gradient: 'from-green-500/20 to-emerald-500/20',
     description: 'Explore creators and content'
+  },
+  {
+    id: 'messages',
+    label: 'Messages',
+    href: '/mini/messages',
+    icon: MessageCircle,
+    color: 'rgb(59, 130, 246)', // Blue
+    gradient: 'from-blue-500/20 to-cyan-500/20',
+    description: 'Chat with creators and community'
   },
   {
     id: 'creators',
@@ -163,9 +175,12 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
     isConnecting,
     connect: connectWallet,
     disconnect: disconnectWallet,
-    error: walletError,
-    isInMiniApp
+    error: walletError
   } = useFarcasterAutoWallet()
+  
+  // Messaging integration for unread badges
+  const { conversations } = useConversationManager()
+  const { hasUnreadMessages, unreadCount, markMessagesPageVisited } = useMessageReadState(conversations)
   
   // Animation state
   const [activeItemId, setActiveItemId] = useState<string | null>(null)
@@ -224,12 +239,17 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
     // Set active state immediately for smooth transition
     setActiveItemId(item.id)
     
+    // Mark messages as read when visiting messages page
+    if (item.id === 'messages') {
+      markMessagesPageVisited()
+    }
+    
     // Call external handler
     onNavigate?.(item)
     
     // Navigate
     router.push(item.href)
-  }, [router, onNavigate, activeItemId])
+  }, [router, onNavigate, activeItemId, markMessagesPageVisited])
   
   const handleConnect = useCallback(async () => {
     try {
@@ -416,6 +436,20 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
               "group-hover:text-white"
             )}
           />
+          
+          {/* Unread Badge for Messages */}
+          {item.id === 'messages' && hasUnreadMessages && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center border border-background"
+            >
+              <span className="text-xs font-bold text-white leading-none">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            </motion.div>
+          )}
         </motion.div>
         
         {/* Label */}

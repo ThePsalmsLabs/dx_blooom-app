@@ -23,7 +23,7 @@
 
 'use client'
 
-import React, { useState, useCallback, useMemo, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
@@ -106,17 +106,34 @@ interface CreatorProfileState {
 function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
   const router = useRouter()
 
-  // Unwrap params using React.use() for Next.js 15 compatibility
-  const unwrappedParams = React.use(params) as { readonly address: string }
+  // Await params 
+  const [unwrappedParams, setUnwrappedParams] = useState<{ readonly address: string } | null>(null)
+  
+  useEffect(() => {
+    params.then(setUnwrappedParams)
+  }, [params])
 
   // Parse creator address from route parameters
   const creatorAddress = useMemo(() => {
+    if (!unwrappedParams) return null
     try {
       return unwrappedParams.address as Address
     } catch {
       return undefined
     }
-  }, [unwrappedParams.address])
+  }, [unwrappedParams])
+
+  // Show loading state while params are being resolved
+  if (!unwrappedParams || !creatorAddress) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading creator profile...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Core state management
   const [profileState, setProfileState] = useState<CreatorProfileState>({

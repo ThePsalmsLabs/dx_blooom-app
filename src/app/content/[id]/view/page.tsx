@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 
@@ -33,8 +33,14 @@ export default function ContentViewPage({ params }: ViewPageProps) {
 
   // Extract user address from wallet UI with proper type checking
   const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
-  const unwrapped = React.use(params) as { readonly id: string }
+  // Await params
+  const [unwrapped, setUnwrapped] = useState<{ readonly id: string } | null>(null)
+  
+  useEffect(() => {
+    params.then(setUnwrapped)
+  }, [params])
   const contentId = useMemo(() => {
+    if (!unwrapped) return null
     try {
       const id = BigInt(unwrapped.id)
       if (id <= BigInt(0)) throw new Error('Invalid id')
@@ -42,7 +48,19 @@ export default function ContentViewPage({ params }: ViewPageProps) {
     } catch {
       return undefined
     }
-  }, [unwrapped.id])
+  }, [unwrapped])
+
+  // Show loading state while params are being resolved
+  if (!unwrapped || !contentId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading content...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Always call hooks unconditionally
   const contentQuery = useContentById(contentId || (BigInt(0) as unknown as bigint))

@@ -11,7 +11,8 @@ import {
   AlertCircle,
   RefreshCw,
   DollarSign,
-  Coins
+  Coins,
+  MessageCircle
 } from 'lucide-react'
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,6 +29,8 @@ import {
 } from '@/hooks/contracts/payments'
 import { useContentById as useContentDetails } from '@/hooks/contracts/content'
 import { useEnhancedTokenBalances, formatUSDValue } from '@/hooks/web3/useEnhancedTokenBalances'
+import { SmartMessagingButton } from '@/components/messaging/SmartMessagingButton'
+import { PostPurchaseMessaging, usePostPurchaseMessaging } from '@/components/messaging/PostPurchaseMessaging'
 
 /* -------------------------------------------------------------------------- */
 /*                              INTERNAL TYPES                                */
@@ -46,6 +49,9 @@ interface PaymentOption {
 interface ContentPurchaseCardProps {
   contentId: bigint
   userAddress?: Address
+  creatorAddress?: Address
+  creatorName?: string
+  contentTitle?: string
   onPurchaseSuccess?: (contentId: bigint) => void
   onViewContent?: (contentId: bigint) => void
   variant?: 'full' | 'compact' | 'minimal'
@@ -59,6 +65,9 @@ interface ContentPurchaseCardProps {
 export function ContentPurchaseCard({
   contentId,
   userAddress,
+  creatorAddress,
+  creatorName,
+  contentTitle,
   onPurchaseSuccess,
   onViewContent,
   variant = 'full',
@@ -70,6 +79,7 @@ export function ContentPurchaseCard({
   const unifiedPurchase = useUnifiedContentPurchase(contentId, userAddress)
   const contentDetails = useContentDetails(contentId)
   const tokenBalances = useEnhancedTokenBalances()
+  const postPurchaseMessaging = usePostPurchaseMessaging()
 
   const priceDisplay = contentDetails.data
     ? (Number(contentDetails.data.payPerViewPrice) / 1_000_000).toFixed(2)
@@ -168,12 +178,24 @@ export function ContentPurchaseCard({
     router.push(`/content/${contentId}/view`)
   }, [router, contentId])
 
-  // Fire success callback only after on-chain confirmation to avoid premature navigation
+  // Fire success callback and show post-purchase messaging
   React.useEffect(() => {
     if (unifiedPurchase.purchaseState.step === 'completed') {
+      // Show post-purchase messaging if we have creator info
+      if (userAddress && creatorAddress) {
+        postPurchaseMessaging.show({
+          userAddress,
+          creatorAddress,
+          contentId: contentId.toString(),
+          contentTitle,
+          creatorName,
+          purchaseAmount: priceDisplay
+        })
+      }
+      
       onPurchaseSuccess?.(contentId)
     }
-  }, [unifiedPurchase.purchaseState.step, onPurchaseSuccess, contentId])
+  }, [unifiedPurchase.purchaseState.step, onPurchaseSuccess, contentId, userAddress, creatorAddress, contentTitle, creatorName, priceDisplay, postPurchaseMessaging])
 
   /* ----------------------------- RENDERING -------------------------------- */
 
@@ -215,18 +237,33 @@ export function ContentPurchaseCard({
             </Badge>
           </div>
         </CardHeader>
-        <CardFooter>
-          <Button onClick={handleViewContent} className="w-full">
+        <CardFooter className="flex gap-2">
+          <Button onClick={handleViewContent} className="flex-1">
             <Eye className="h-4 w-4 mr-2" />
             View Content
           </Button>
+          
+          {userAddress && creatorAddress && (
+            <SmartMessagingButton
+              userAddress={userAddress}
+              creatorAddress={creatorAddress}
+              contentId={contentId.toString()}
+              context="general"
+              variant="outline"
+              className="flex-1"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Message Creator
+            </SmartMessagingButton>
+          )}
         </CardFooter>
       </Card>
     )
   }
 
   return (
-    <Card className={cn('w-full', className)}>
+    <>
+      <Card className={cn('w-full', className)}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Purchase Content</CardTitle>
@@ -310,7 +347,22 @@ export function ContentPurchaseCard({
           }
         />
       </CardFooter>
-    </Card>
+      </Card>
+      
+      {/* Post-purchase messaging modal */}
+      {userAddress && creatorAddress && (
+        <PostPurchaseMessaging
+          userAddress={userAddress}
+          creatorAddress={creatorAddress}
+          contentId={contentId.toString()}
+          contentTitle={contentTitle}
+          creatorName={creatorName}
+          isVisible={postPurchaseMessaging.isVisible}
+          onDismiss={postPurchaseMessaging.dismiss}
+          variant="celebration"
+        />
+      )}
+    </>
   )
 }
 
