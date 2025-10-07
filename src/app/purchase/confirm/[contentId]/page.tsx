@@ -100,17 +100,34 @@ interface PurchaseIntentState {
  * blockchain transaction while preventing common error scenarios.
  */
 export default function PurchaseConfirmationPage({ params }: PurchaseConfirmationPageProps) {
-  // Unwrap params using React.use() for Next.js 15 compatibility
-  const unwrappedParams = React.use(params) as { readonly contentId: string }
+  // Await params
+  const [unwrappedParams, setUnwrappedParams] = useState<{ readonly contentId: string } | null>(null)
+  
+  useEffect(() => {
+    params.then(setUnwrappedParams)
+  }, [params])
   
   // Extract and validate contentId from route parameters
   const contentId = useMemo(() => {
+    if (!unwrappedParams) return null
     try {
       return BigInt(unwrappedParams.contentId)
     } catch {
       return undefined
     }
-  }, [unwrappedParams.contentId])
+  }, [unwrappedParams])
+
+  // Show loading state while params are being resolved
+  if (!unwrappedParams || !contentId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading purchase details...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Navigation and wallet state
   const router = useRouter()
