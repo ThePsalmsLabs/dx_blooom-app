@@ -335,7 +335,6 @@ export const useConversationManager = () => {
     createConversation,
     getConversation,
     markAsRead,
-    deleteConversation: async () => { throw new Error('Not implemented') },
     loadMore: async () => {},
     refresh: async () => {
       await conversationsQuery.refetch()
@@ -370,10 +369,6 @@ export const useMessageManager = (conversationTopic: string) => {
     error: messagesQuery.error as XMTPError | null,
     hasMore: false,
     sendMessage,
-    editMessage: async () => { throw new Error('Not implemented') },
-    deleteMessage: async () => { throw new Error('Not implemented') },
-    addReaction: async () => { throw new Error('Not implemented') },
-    removeReaction: async () => { throw new Error('Not implemented') },
     loadMore: async () => {},
     markAsRead
   }

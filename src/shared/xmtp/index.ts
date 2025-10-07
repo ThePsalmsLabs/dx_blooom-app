@@ -89,7 +89,6 @@ export type {
   ExtendedMessage,
   MessageType,
   MessageStatus,
-  MessageReaction,
   MessageMetadata,
   MessageAttachment,
   
@@ -138,8 +137,8 @@ export type {
 // ================================================
 
 export const XMTP_ENVIRONMENTS = ['dev', 'production', 'local'] as const
-export const MESSAGE_TYPES = ['text', 'image', 'file', 'audio', 'video', 'system', 'reaction', 'reply'] as const
-export const MESSAGE_STATUSES = ['sending', 'sent', 'delivered', 'read', 'failed', 'deleted'] as const
+export const MESSAGE_TYPES = ['text', 'image', 'file', 'video', 'reply'] as const
+export const MESSAGE_STATUSES = ['sending', 'sent', 'delivered', 'read', 'failed'] as const
 export const MESSAGING_CONTEXTS = ['general', 'content', 'creator', 'purchase', 'support', 'group'] as const
 export const SOCIAL_CONTEXTS = ['miniapp', 'web', 'farcaster', 'lens', 'direct'] as const
 
