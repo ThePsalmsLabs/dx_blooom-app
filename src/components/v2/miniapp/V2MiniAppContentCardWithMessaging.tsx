@@ -115,7 +115,7 @@ export function V2MiniAppContentCardWithMessaging({
 
   // Derived state
   const hasAccess = content.hasAccess || false
-  const needsPurchase = !hasAccess && content.price && content.price > 0n
+  const needsPurchase = !hasAccess && content.price && content.price > BigInt(0)
   const isVideo = content.duration && content.duration > 0
   const isVerifiedCreator = content.isVerified || false
 
