@@ -17,7 +17,7 @@
 
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { FarcasterEmbed } from '@/components/farcaster/FarcasterEmbed'
@@ -121,11 +121,16 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
   // Extract user address from wallet UI
   const userAddress = walletUI.address && typeof walletUI.address === 'string' ? walletUI.address as `0x${string}` : undefined
 
-  // Unwrap params using React.use() for Next.js 15 compatibility
-  const unwrappedParams = React.use(params) as { readonly id: string }
+  // Await params 
+  const [unwrappedParams, setUnwrappedParams] = useState<{ readonly id: string } | null>(null)
+  
+  useEffect(() => {
+    params.then(setUnwrappedParams)
+  }, [params])
   
   // Parse and validate content ID from route parameters
   const contentId = useMemo(() => {
+    if (!unwrappedParams) return null
     try {
       const id = BigInt(unwrappedParams.id)
       if (id <= 0) throw new Error('Invalid content ID')
@@ -133,7 +138,19 @@ export default function ContentDisplayPage({ params }: ContentDisplayPageProps) 
     } catch {
       return undefined
     }
-  }, [unwrappedParams.id])
+  }, [unwrappedParams])
+
+  // Show loading state while params are being resolved
+  if (!unwrappedParams || !contentId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading content...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Core data hooks for content information and access control
   const contentQuery = useContentById(contentId)
