@@ -56,7 +56,6 @@ export interface MessagePreview {
   messageType: MessageType
   status: MessageStatus
   replyTo?: string
-  reactions?: MessageReaction[]
 }
 
 export interface ExtendedMessage extends MessagePreview {
@@ -69,10 +68,7 @@ export type MessageType =
   | 'text' 
   | 'image' 
   | 'file' 
-  | 'audio' 
   | 'video' 
-  | 'system' 
-  | 'reaction'
   | 'reply'
 
 export type MessageStatus = 
@@ -81,26 +77,15 @@ export type MessageStatus =
   | 'delivered' 
   | 'read' 
   | 'failed'
-  | 'deleted'
 
-export interface MessageReaction {
-  emoji: string
-  senderAddress: Address
-  timestamp: Date
-}
 
 export interface MessageMetadata {
-  edited?: boolean
-  editedAt?: Date
-  forwarded?: boolean
-  forwardedFrom?: Address
-  priority?: 'low' | 'normal' | 'high'
-  expiresAt?: Date
+  // XMTP-compatible metadata only
 }
 
 export interface MessageAttachment {
   id: string
-  type: 'image' | 'file' | 'audio' | 'video'
+  type: 'image' | 'file' | 'video'
   url: string
   name: string
   size: number
@@ -179,7 +164,6 @@ export interface MessageQuery {
   offset?: number
   since?: Date
   before?: Date
-  includeReactions?: boolean
   includeAttachments?: boolean
 }
 
@@ -214,7 +198,6 @@ export interface MessageStreamEvent {
 export interface StreamingOptions {
   includeIncoming?: boolean
   includeOutgoing?: boolean
-  includeReactions?: boolean
   contextFilter?: MessagingContextType[]
 }
 
@@ -254,7 +237,6 @@ export interface ConversationManagerResult {
   createConversation: (request: CreateConversationRequest) => Promise<ConversationPreview>
   getConversation: (topic: string) => ConversationPreview | undefined
   markAsRead: (topic: string) => void
-  deleteConversation: (topic: string) => Promise<void>
   loadMore: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -267,10 +249,6 @@ export interface MessageManagerResult {
   
   // Actions
   sendMessage: (request: SendMessageRequest) => Promise<ExtendedMessage>
-  editMessage: (messageId: string, content: string) => Promise<void>
-  deleteMessage: (messageId: string) => Promise<void>
-  addReaction: (messageId: string, emoji: string) => Promise<void>
-  removeReaction: (messageId: string, emoji: string) => Promise<void>
   loadMore: () => Promise<void>
   markAsRead: () => void
 }
@@ -320,7 +298,6 @@ export interface MessageComposerProps extends MessagingUIProps {
   placeholder?: string
   disabled?: boolean
   enableAttachments?: boolean
-  enableVoice?: boolean
   maxLength?: number
 }
 
@@ -338,7 +315,6 @@ export interface WebMessagingConfig {
 export interface MobileMessagingConfig {
   enablePushNotifications: boolean
   enableHapticFeedback: boolean
-  enableVoiceMessages: boolean
   enableSwipeGestures: boolean
 }
 
