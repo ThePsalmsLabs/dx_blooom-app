@@ -123,18 +123,6 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
     }
   }, [unwrappedParams])
 
-  // Show loading state while params are being resolved
-  if (!unwrappedParams || !creatorAddress) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading creator profile...</p>
-        </div>
-      </div>
-    )
-  }
-
   // Core state management
   const [profileState, setProfileState] = useState<CreatorProfileState>({
     activeTab: 'content',
@@ -152,8 +140,8 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
     : undefined
 
   // Creator data hooks
-  const creatorProfile = useCreatorProfile(creatorAddress)
-  const creatorContent = useCreatorContent(creatorAddress)
+  const creatorProfile = useCreatorProfile(creatorAddress || undefined)
+  const creatorContent = useCreatorContent(creatorAddress || undefined)
 
   /**
    * Tab Change Handler
@@ -193,8 +181,8 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
     }
   }, [creatorProfile.data, creatorAddress])
 
-  // Handle invalid creator address
-  if (!creatorAddress) {
+  // Show loading state while params are being resolved or handle invalid creator address
+  if (!unwrappedParams || !creatorAddress) {
     return (
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
@@ -203,12 +191,19 @@ function MiniAppCreatorProfileCore({ params }: CreatorProfilePageProps) {
         </div>
 
         <div className="container mx-auto px-4 py-8 text-center">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Invalid creator address provided. Please check the URL and try again.
-            </AlertDescription>
-          </Alert>
+          {creatorAddress === undefined ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Invalid creator address provided. Please check the URL and try again.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading creator profile...</p>
+            </div>
+          )}
         </div>
       </div>
     )
