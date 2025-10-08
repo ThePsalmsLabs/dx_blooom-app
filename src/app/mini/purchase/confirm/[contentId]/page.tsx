@@ -118,18 +118,6 @@ function MiniAppPurchaseConfirmationCore({ params }: PurchaseConfirmationPagePro
     }
   }, [unwrappedParams])
 
-  // Show loading state while params are being resolved
-  if (!unwrappedParams || !contentId) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading purchase details...</p>
-        </div>
-      </div>
-    )
-  }
-
   // Core state management
   const [flowState, setFlowState] = useState<PurchaseFlowState>({
     step: 'reviewing',
@@ -149,11 +137,11 @@ function MiniAppPurchaseConfirmationCore({ params }: PurchaseConfirmationPagePro
     : undefined
 
   // Content and access data
-  const contentQuery = useContentById(contentId)
-  const accessQuery = useHasContentAccess(userAddress, contentId)
+  const contentQuery = useContentById(contentId || undefined)
+  const accessQuery = useHasContentAccess(userAddress, contentId || undefined)
 
   // Use the unified content purchase flow hook
-  const purchaseFlow = useUnifiedContentPurchaseFlow(contentId, userAddress)
+  const purchaseFlow = useUnifiedContentPurchaseFlow(contentId || undefined, userAddress)
 
   /**
    * Access Verification Effect
@@ -277,8 +265,8 @@ function MiniAppPurchaseConfirmationCore({ params }: PurchaseConfirmationPagePro
     router.back()
   }, [router])
 
-  // Handle invalid content ID
-  if (!contentId) {
+  // Show loading state while params are being resolved or handle invalid content ID
+  if (!unwrappedParams || !contentId) {
     return (
       <div className="min-h-screen bg-background">
         <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b">
@@ -287,12 +275,19 @@ function MiniAppPurchaseConfirmationCore({ params }: PurchaseConfirmationPagePro
         </div>
 
         <div className="container mx-auto px-4 py-8 text-center">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Invalid content ID provided. Please check the URL and try again.
-            </AlertDescription>
-          </Alert>
+          {contentId === undefined ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Invalid content ID provided. Please check the URL and try again.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading purchase details...</p>
+            </div>
+          )}
         </div>
       </div>
     )
