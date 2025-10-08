@@ -2,17 +2,18 @@
  * Unified MiniApp Provider - Streamlined Social Commerce Architecture
  * File: src/contexts/UnifiedMiniAppProvider.tsx
  *
- * This is the new, streamlined MiniApp provider that consolidates all functionality
- * from the previous complex provider system into a single, optimized provider.
- * It provides a clean, performant interface for social commerce experiences.
+ * Consolidates MiniApp functionality into a single optimized provider,
+ * delivering a clean interface for social commerce experiences.
  *
- * Key Improvements:
- * - Single provider consolidating all functionality
- * - Optimized state management with minimal re-renders
+ * Features:
+ * - Centralized state management with minimal re-renders
  * - Unified transaction state management
  * - Progressive enhancement with graceful fallbacks
- * - Performance monitoring and optimization
- * - Clean separation of concerns with focused modules
+ * - Auto-reconnect on navigation and page refresh
+ * - localStorage-based wallet connection persistence
+ * - Connection health monitoring and automatic recovery
+ * - Navigation lifecycle protection
+ * - Page visibility API integration
  */
 
 'use client'
@@ -33,6 +34,29 @@ import { useChainId } from 'wagmi'
 import { usePrivy } from '@privy-io/react-auth'
 import { useLoginToMiniApp } from '@privy-io/react-auth/farcaster'
 import { type Address } from 'viem'
+
+// Import connection persistence utilities
+import {
+  saveConnectionState,
+  getConnectionState,
+  shouldBeConnected,
+  clearConnectionState,
+  recordDisconnection,
+  saveNavigationSnapshot,
+  getNavigationSnapshot,
+  clearNavigationSnapshot,
+  refreshConnectionTimestamp,
+  migrateOldConnectionState,
+} from '@/lib/wallet/connection-persistence'
+
+// Import type-safe wagmi global accessors
+import {
+  getWagmiAccount,
+  getWagmiConfig,
+  getWagmiConnectors,
+  getWagmiConnectionStatus,
+  isWagmiInitialized,
+} from '@/types/wagmi-globals'
 
 // ================================================
 // CORE TYPES AND INTERFACES
@@ -262,7 +286,7 @@ const createInitialState = (): UnifiedAppState => ({
 // ================================================
 
 /**
- * Capability Detection Hook
+ * Detect and aggregate wallet, social, and platform capabilities
  */
 function useCapabilityDetection(): Capabilities {
   const [capabilities, setCapabilities] = useState<Capabilities>(createInitialState().capabilities)
@@ -270,13 +294,13 @@ function useCapabilityDetection(): Capabilities {
   useEffect(() => {
     const detectCapabilities = async () => {
       try {
-        // Wallet capabilities
+        // Detect wallet capabilities
         const walletCapabilities = await detectWalletCapabilities()
 
-        // Social capabilities
+        // Detect social capabilities
         const socialCapabilities = await detectSocialCapabilities()
 
-        // Platform capabilities
+        // Detect platform capabilities
         const platformCapabilities = await detectPlatformCapabilities()
 
         setCapabilities({
@@ -286,7 +310,7 @@ function useCapabilityDetection(): Capabilities {
         })
       } catch (error) {
         console.warn('Capability detection failed:', error)
-        // Keep default capabilities on failure
+        // Fallback to default capabilities
       }
     }
 
@@ -297,24 +321,23 @@ function useCapabilityDetection(): Capabilities {
 }
 
 /**
- * Detect Wallet Capabilities
+ * Check if wallet connection is available and determine supported features
  */
 async function detectWalletCapabilities() {
   const canConnect = typeof window !== 'undefined' && window.ethereum !== undefined
 
-  // Defer batch transaction check to avoid authorization prompts during initial load
-  // We'll check this lazily when actually needed
-  const canBatchTransactions = false // Default to false, check later if needed
+  // Batch transactions checked lazily to avoid triggering wallet authorization prompts
+  const canBatchTransactions = false
 
   return {
     canConnect,
     canBatchTransactions,
-    supportedChains: [8453, 84532] // Base networks
+    supportedChains: [8453, 84532]
   }
 }
 
 /**
- * Detect Social Capabilities
+ * Determine available social features based on environment
  */
 async function detectSocialCapabilities() {
   const isMiniApp = detectMiniAppEnvironment()
@@ -330,7 +353,7 @@ async function detectSocialCapabilities() {
 }
 
 /**
- * Detect Platform Capabilities
+ * Check browser API availability for platform-specific features
  */
 async function detectPlatformCapabilities() {
   const canDeepLink = typeof window !== 'undefined' &&
@@ -350,22 +373,21 @@ async function detectPlatformCapabilities() {
 }
 
 /**
- * Check Batch Transaction Support (Lazy)
- * Only call this when batch transactions are actually needed to avoid authorization prompts
+ * Test wallet_sendCalls support without triggering authorization prompts
+ * Should only be called when batch transactions are needed
  */
 async function checkBatchTransactionSupport(): Promise<boolean> {
   if (typeof window === 'undefined' || !window.ethereum) return false
 
   try {
-    // Step 1: Check if wallet is connected first
+    // Verify wallet is connected before testing
     const accounts = await window.ethereum.request({ method: 'eth_accounts' })
     if (!accounts || accounts.length === 0) {
       console.log('Wallet not connected - skipping batch transaction support check')
       return false
     }
 
-    // Step 2: Try to test wallet_sendCalls support with minimal parameters
-    // Use a timeout to prevent hanging on authorization prompts
+    // Test wallet_sendCalls with timeout to prevent hanging
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Method check timeout')), 3000)
     )
@@ -374,9 +396,9 @@ async function checkBatchTransactionSupport(): Promise<boolean> {
       method: 'wallet_sendCalls',
       params: [{
         version: '1.0',
-        chainId: '0x2105', // Base mainnet
-        from: accounts[0], // Use actual connected account
-        calls: [], // Empty calls array - should not require authorization
+        chainId: '0x2105',
+        from: accounts[0],
+        calls: [],
         atomicRequired: false
       }]
     })
@@ -385,39 +407,40 @@ async function checkBatchTransactionSupport(): Promise<boolean> {
     return true
 
   } catch (error: any) {
-    // Handle specific error codes
+    // Identify authorization errors
     if (error?.code === 4100 || error?.message?.includes('not authorized')) {
       console.log('Wallet method not authorized - batch transactions not supported')
       return false
     }
 
+    // Identify unsupported method errors
     if (error?.code === -32601 || error?.message?.includes('Method not found')) {
       console.log('wallet_sendCalls method not supported by wallet')
       return false
     }
 
+    // Handle timeout
     if (error?.message?.includes('Method check timeout')) {
       console.log('Batch transaction support check timed out')
       return false
     }
 
-    // Handle other errors gracefully
+    // Log other errors without failing
     console.log('Batch transaction support check failed:', error?.message || error)
     return false
   }
 }
 
 /**
- * Lazy Batch Transaction Support Checker
- * This function can be called when batch transactions are actually needed
- * It performs the full check without causing authorization prompts during app load
+ * Deferred batch transaction support check
+ * Call when batch transactions are required to avoid initial load authorization prompts
  */
 export async function checkBatchTransactionSupportLazy(): Promise<boolean> {
   return await checkBatchTransactionSupport()
 }
 
 /**
- * Detect MiniApp Environment
+ * Determine if running inside Farcaster MiniApp context
  */
 function detectMiniAppEnvironment(): boolean {
   if (typeof window === 'undefined') return false
@@ -439,7 +462,7 @@ function detectMiniAppEnvironment(): boolean {
 // ================================================
 
 /**
- * Social Context Detection Hook
+ * Retrieve Farcaster user context and social capabilities from MiniApp SDK
  */
 function useSocialContext(): SocialContext {
   const [socialContext, setSocialContext] = useState<SocialContext>(createInitialState().socialContext)
@@ -450,10 +473,10 @@ function useSocialContext(): SocialContext {
         const isMiniApp = detectMiniAppEnvironment()
 
         if (!isMiniApp) {
-          return // Keep default state for web context
+          return
         }
 
-        // Try to get social context from MiniApp SDK
+        // Fetch MiniApp SDK context
         const sdkContext = await getMiniAppSDKContext()
 
         const canShare = sdkContext !== null
@@ -478,7 +501,7 @@ function useSocialContext(): SocialContext {
         })
       } catch (error) {
         console.warn('Social context detection failed:', error)
-        // Keep default state on failure
+        // Retain default state
       }
     }
 
@@ -489,7 +512,7 @@ function useSocialContext(): SocialContext {
 }
 
 /**
- * Get MiniApp SDK Context
+ * Load Farcaster MiniApp SDK and retrieve context
  */
 async function getMiniAppSDKContext() {
   try {
@@ -501,7 +524,7 @@ async function getMiniAppSDKContext() {
 }
 
 /**
- * Calculate Trust Score
+ * Compute trust score based on Farcaster user profile attributes
  */
 function calculateTrustScore(userProfile: SocialUserProfile | null): number {
   if (!userProfile) return 0
@@ -567,7 +590,7 @@ export function UnifiedMiniAppProvider({
   // CONTEXT DETECTION
   // ================================================
 
-  // Determine application context
+  // Detect whether running in miniapp or web context
   const appContext = useMemo<AppContext>(() => {
     if (typeof window === 'undefined') return 'web'
 
@@ -600,10 +623,10 @@ export function UnifiedMiniAppProvider({
   }, [appContext])
 
   // ================================================
-  // CENTRALIZED FARCASTER WALLET CONNECTION
+  // FARCASTER WALLET CONNECTION
   // ================================================
 
-  // App-level Farcaster wallet state
+  // Centralized Farcaster wallet connection state
   const [farcasterWallet, setFarcasterWallet] = useState({
     isConnected: false,
     address: undefined as string | undefined,
@@ -612,7 +635,7 @@ export function UnifiedMiniAppProvider({
     isInMiniApp: false
   })
 
-  // Initialize Farcaster wallet connection at app level (only once)
+  // Initialize Farcaster wallet connection once on mount
   useEffect(() => {
     if (appContext !== 'miniapp') return
 
@@ -625,14 +648,14 @@ export function UnifiedMiniAppProvider({
 
       try {
         setFarcasterWallet(prev => ({ ...prev, isConnecting: true, error: null }))
-        console.log('🚀 App-level Farcaster wallet initialization starting...')
+        console.log('🚀 Farcaster wallet initialization starting...')
 
-        // Wait for wagmi to be ready - extended slightly for connector initialization
+        // Delay to allow wagmi connector initialization
         await new Promise(resolve => setTimeout(resolve, 1500))
         
-        console.log('🔗 Starting Farcaster auto-connection at app level...')
+        console.log('🔗 Starting Farcaster auto-connection...')
         
-        // Auto-connect logic similar to the working hook implementation
+        // Poll for SDK availability
         const checkSDKReady = async () => {
           let attempts = 0
           const maxAttempts = 10
@@ -658,16 +681,16 @@ export function UnifiedMiniAppProvider({
 
         await checkSDKReady()
 
-        // Import wagmi hooks (not used directly in provider but ensures they're loaded)
+        // Preload wagmi module
         await import('wagmi')
         
-        // Check if wallet is already connected
+        // Verify existing wallet connection
         const checkConnection = () => {
           try {
-            // Access current wagmi state
-            const currentState = (globalThis as any).__wagmi_account
+            // Read current wagmi account state
+            const currentState = getWagmiAccount()
             if (currentState?.isConnected && currentState?.address) {
-              console.log('✅ Farcaster wallet already connected at app level:', currentState.address)
+              console.log('✅ Farcaster wallet already connected:', currentState.address)
               if (mounted) {
                 setFarcasterWallet({
                   isConnected: true,
@@ -686,45 +709,27 @@ export function UnifiedMiniAppProvider({
           }
         }
 
-        // If already connected, we're done
+        // Skip auto-connection if already connected
         if (checkConnection()) {
           return
         }
 
-        // Otherwise attempt auto-connection
+        // Attempt auto-connection
         console.log('⏳ Wallet not connected, attempting auto-connect...')
         
-        // Get wagmi connectors from the store
-        const getConnectors = () => {
-          try {
-            const wagmiStore = (globalThis as any).__wagmi_store
-            const wagmiConfig = (globalThis as any).__wagmi_config
-            
-            if (wagmiConfig?.connectors) {
-              return Array.from(wagmiConfig.connectors.values())
-            } else if (wagmiStore?.connectors) {
-              return wagmiStore.connectors
-            }
-            return []
-          } catch (error) {
-            console.warn('Failed to get connectors:', error)
-            return []
-          }
-        }
-
-        let connectors = getConnectors()
-        console.log('🔍 Available connectors at app level (first check):', connectors.map((c: any) => ({ id: c.id, name: c.name })))
+        // Retrieve wagmi connectors
+        let connectors = getWagmiConnectors()
+        console.log('🔍 Available connectors (first check):', connectors.map(c => ({ id: c.id, name: c.name })))
         
-        // If no connectors found on first check, wait a brief moment and try once more
-        // This handles the case where wagmi config is still initializing connectors
+        // Retry connector retrieval if empty (wagmi may still be initializing)
         if (connectors.length === 0) {
           console.log('⏳ No connectors found, waiting briefly and retrying once...')
           await new Promise(resolve => setTimeout(resolve, 500))
-          connectors = getConnectors()
-          console.log('🔍 Available connectors at app level (second check):', connectors.map((c: any) => ({ id: c.id, name: c.name })))
+          connectors = getWagmiConnectors()
+          console.log('🔍 Available connectors (second check):', connectors.map(c => ({ id: c.id, name: c.name })))
         }
         
-        const farcasterConnector = connectors.find((connector: any) => 
+        const farcasterConnector = connectors.find(connector => 
           connector.id === 'farcasterMiniApp' || 
           connector.name === 'Farcaster Mini App' ||
           connector.id === 'farcaster'
@@ -732,15 +737,15 @@ export function UnifiedMiniAppProvider({
         
         if (farcasterConnector && mounted) {
           try {
-            console.log('🎯 Found Farcaster connector at app level, attempting auto-connection...')
+            console.log('🎯 Found Farcaster connector, attempting auto-connection...')
             
-            // Use the connector's connect method directly
-            await farcasterConnector.connect()
+            // Invoke connector's connect method
+            await (farcasterConnector as any).connect()
             
-            // Check if connection was successful
+            // Verify connection succeeded
             const connectionResult = checkConnection()
             if (connectionResult) {
-              console.log('✅ App-level Farcaster auto-connection successful')
+              console.log('✅ Farcaster auto-connection successful')
             } else {
               console.warn('⚠️ Auto-connection completed but no connection detected')
               if (mounted) {
@@ -752,7 +757,7 @@ export function UnifiedMiniAppProvider({
               }
             }
           } catch (connectError) {
-            console.warn('⚠️ App-level Farcaster auto-connection failed:', connectError)
+            console.warn('⚠️ Farcaster auto-connection failed:', connectError)
             if (mounted) {
               setFarcasterWallet(prev => ({ 
                 ...prev, 
@@ -763,12 +768,12 @@ export function UnifiedMiniAppProvider({
             }
           }
         } else {
-          console.warn('⚠️ No Farcaster connector found at app level')
+          console.warn('⚠️ No Farcaster connector found')
           console.log('📊 Connection status:', {
             connectorsCount: connectors.length,
             farcasterConnectorFound: !!farcasterConnector,
-            allConnectorIds: connectors.map((c: any) => c.id),
-            allConnectorNames: connectors.map((c: any) => c.name)
+            allConnectorIds: connectors.map(c => c.id),
+            allConnectorNames: connectors.map(c => c.name)
           })
           
           if (mounted) {
@@ -781,7 +786,7 @@ export function UnifiedMiniAppProvider({
         }
 
       } catch (error) {
-        console.error('❌ App-level Farcaster initialization failed:', error)
+        console.error('❌ Farcaster initialization failed:', error)
         if (mounted) {
           setFarcasterWallet(prev => ({ 
             ...prev, 
@@ -793,7 +798,7 @@ export function UnifiedMiniAppProvider({
       }
     }
 
-    // Initialize with a small delay to ensure wagmi is ready
+    // Delay initialization to ensure wagmi is ready
     const timeoutId = setTimeout(initializeFarcasterConnection, 1500)
     
     return () => {
@@ -802,7 +807,7 @@ export function UnifiedMiniAppProvider({
     }
   }, [appContext])
 
-  // Sync Farcaster wallet state with actual wagmi account state
+  // Synchronize local wallet state with wagmi global state
   useEffect(() => {
     if (appContext !== 'miniapp') return
 
@@ -810,21 +815,21 @@ export function UnifiedMiniAppProvider({
     
     const syncWagmiState = () => {
       try {
-        // Get current wagmi account state from global store
-        const globalAccount = (globalThis as any).__wagmi_account
+        // Read current wagmi account state
+        const globalAccount = getWagmiAccount()
         
         if (globalAccount && mounted) {
           const isConnected = Boolean(globalAccount.isConnected && globalAccount.address)
           const address = globalAccount.address
           
-          // Only update if state has actually changed to avoid infinite loops
+          // Update only when state differs to prevent render loops
           if (farcasterWallet.isConnected !== isConnected || farcasterWallet.address !== address) {
             console.log('🔄 Syncing Farcaster wallet state with wagmi:', { isConnected, address })
             setFarcasterWallet(prev => ({
               ...prev,
               isConnected,
               address,
-              isConnecting: prev.isConnecting && !isConnected // Clear connecting if now connected
+              isConnecting: prev.isConnecting && !isConnected
             }))
           }
         }
@@ -833,10 +838,10 @@ export function UnifiedMiniAppProvider({
       }
     }
     
-    // Sync immediately
+    // Initial sync
     syncWagmiState()
     
-    // Set up periodic sync to catch wagmi state changes
+    // Poll for state changes every second
     const syncInterval = setInterval(syncWagmiState, 1000)
     
     return () => {
@@ -845,7 +850,280 @@ export function UnifiedMiniAppProvider({
     }
   }, [appContext, farcasterWallet.isConnected, farcasterWallet.address])
 
-  // Update legacy wallet connection state for backwards compatibility
+  // ================================================
+  // WALLET CONNECTION PERSISTENCE
+  // ================================================
+
+  // Migrate old connection state formats to current schema on initial mount
+  useEffect(() => {
+    migrateOldConnectionState()
+  }, [])
+
+  // Monitor connection state and trigger automatic reconnection when state mismatch detected
+  useEffect(() => {
+    if (appContext !== 'miniapp') return
+    
+    let mounted = true
+    let reconnectAttempts = 0
+    const MAX_RECONNECT_ATTEMPTS = 3
+    
+    const checkAndReconnect = async () => {
+      if (!mounted) return
+      
+      // Compare expected connection state from storage with actual connection status
+      const expectedToBeConnected = shouldBeConnected()
+      
+      // Get current connection status
+      const isActuallyConnected = farcasterWallet.isConnected
+      const isCurrentlyConnecting = farcasterWallet.isConnecting
+      
+      // Detect state mismatch requiring reconnection
+      if (expectedToBeConnected && !isActuallyConnected && !isCurrentlyConnecting) {
+        
+        // Prevent infinite reconnection loops
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+          console.warn('⚠️ Max reconnection attempts reached, clearing stale state')
+          clearConnectionState()
+          reconnectAttempts = 0
+          return
+        }
+        
+        reconnectAttempts++
+        console.log(`🔄 Auto-reconnect triggered (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`)
+        
+        try {
+          if (!mounted) return
+          
+          setFarcasterWallet(prev => ({ ...prev, isConnecting: true, error: null }))
+          
+          // Retrieve available wagmi connectors
+          const connectors = getWagmiConnectors()
+          console.log('🔍 Available connectors for reconnection:', connectors.map(c => ({ id: c.id, name: c.name })))
+          
+          // Locate Farcaster connector by ID or name
+          const farcasterConnector = connectors.find(connector => 
+            connector.id === 'farcasterMiniApp' || 
+            connector.name === 'Farcaster Mini App' ||
+            connector.id === 'farcaster'
+          )
+          
+          if (farcasterConnector && mounted) {
+            console.log('🎯 Found Farcaster connector, attempting reconnection...')
+            
+            // Execute connector's connect method
+            await (farcasterConnector as any).connect()
+            
+            // Verify connection established successfully
+            const globalAccount = getWagmiAccount()
+            if (globalAccount?.isConnected && globalAccount?.address) {
+              console.log('✅ Auto-reconnection successful!')
+              
+              if (mounted) {
+                setFarcasterWallet({
+                  isConnected: true,
+                  address: globalAccount.address,
+                  isConnecting: false,
+                  error: null,
+                  isInMiniApp: true
+                })
+              }
+              
+              reconnectAttempts = 0
+            } else {
+              console.warn('⚠️ Connector.connect() completed but no connection detected')
+              if (mounted) {
+                setFarcasterWallet(prev => ({ 
+                  ...prev, 
+                  isConnecting: false 
+                }))
+              }
+            }
+          } else {
+            console.warn('⚠️ No Farcaster connector found for reconnection')
+            if (mounted) {
+              setFarcasterWallet(prev => ({ 
+                ...prev, 
+                isConnecting: false,
+                error: new Error('Farcaster connector not found')
+              }))
+            }
+          }
+        } catch (error) {
+          console.error('❌ Auto-reconnection failed:', error)
+          if (mounted) {
+            setFarcasterWallet(prev => ({ 
+              ...prev, 
+              isConnecting: false,
+              error: error as Error 
+            }))
+          }
+        }
+      } else if (isActuallyConnected && reconnectAttempts > 0) {
+        // Reset counter when connection restored
+        reconnectAttempts = 0
+      }
+    }
+    
+    // Perform initial check after wagmi initialization delay
+    const initialCheckTimeout = setTimeout(() => {
+      checkAndReconnect()
+    }, 1000)
+    
+    // Monitor connection state at 3-second intervals
+    const watchdogInterval = setInterval(() => {
+      checkAndReconnect()
+    }, 3000)
+    
+    return () => {
+      mounted = false
+      clearTimeout(initialCheckTimeout)
+      clearInterval(watchdogInterval)
+    }
+  }, [appContext, farcasterWallet.isConnected, farcasterWallet.isConnecting])
+
+  // Persist wallet connection state to localStorage when connected
+  useEffect(() => {
+    if (appContext !== 'miniapp') return
+    
+    if (farcasterWallet.isConnected && farcasterWallet.address) {
+      // Store connection state for future sessions
+      const wagmiAccount = getWagmiAccount()
+      const chainId = wagmiAccount?.chainId || 8453
+      saveConnectionState(
+        farcasterWallet.address,
+        'farcasterMiniApp',
+        chainId
+      )
+      
+      // Update timestamp every 5 minutes to prevent expiration
+      const refreshInterval = setInterval(() => {
+        if (farcasterWallet.isConnected) {
+          refreshConnectionTimestamp()
+        }
+      }, 5 * 60 * 1000)
+      
+      return () => clearInterval(refreshInterval)
+    } else if (!farcasterWallet.isConnected && !farcasterWallet.isConnecting) {
+      // Defer clearing state to allow auto-reconnect attempts
+      const storedState = getConnectionState()
+      if (storedState && storedState.address !== farcasterWallet.address) {
+        // Address mismatch indicates intentional disconnect, auto-reconnect will handle cleanup
+      }
+    }
+  }, [appContext, farcasterWallet.isConnected, farcasterWallet.address, farcasterWallet.isConnecting])
+
+  // ================================================
+  // NAVIGATION LIFECYCLE PROTECTION
+  // ================================================
+
+  // Track route changes to detect navigations
+  const pathname = usePathname()
+  const previousPathnameRef = useRef(pathname)
+
+  // Preserve connection state across Next.js route transitions
+  useEffect(() => {
+    if (appContext !== 'miniapp') return
+    
+    // Detect route change and protect connection
+    if (pathname !== previousPathnameRef.current) {
+      console.log('🧭 Navigation detected:', previousPathnameRef.current, '→', pathname)
+      
+      // Capture current connection state before React unmounts components
+      if (farcasterWallet.isConnected && farcasterWallet.address) {
+        saveNavigationSnapshot(
+          farcasterWallet.address,
+          previousPathnameRef.current,
+          pathname
+        )
+        
+        console.log('💾 Saved connection snapshot for navigation protection')
+      }
+      
+      // Verify connection integrity after navigation completes
+      const verificationTimeout = setTimeout(() => {
+        const snapshot = getNavigationSnapshot()
+        
+        if (snapshot) {
+          const { address: expectedAddress } = snapshot
+          
+          // Detect connection loss during transition
+          if (expectedAddress && !farcasterWallet.isConnected && !farcasterWallet.isConnecting) {
+            console.warn('⚠️ Connection lost during navigation, triggering recovery')
+            
+            // Reset connecting state to allow reconnection
+            setFarcasterWallet(prev => ({ ...prev, isConnecting: false }))
+            
+            // Automatic reconnection will be triggered by watchdog
+          } else if (farcasterWallet.isConnected && farcasterWallet.address === expectedAddress) {
+            console.log('✅ Connection survived navigation successfully')
+          }
+          
+          // Remove snapshot after verification
+          clearNavigationSnapshot()
+        }
+      }, 500)
+      
+      previousPathnameRef.current = pathname
+      
+      return () => clearTimeout(verificationTimeout)
+    }
+  }, [pathname, appContext, farcasterWallet.isConnected, farcasterWallet.address, farcasterWallet.isConnecting])
+
+  // Restore connection when user returns to tab using Page Visibility API
+  useEffect(() => {
+    if (typeof document === 'undefined' || appContext !== 'miniapp') return
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ Page became visible, checking connection status...')
+        
+        // Check if reconnection is needed
+        const expectedToBeConnected = shouldBeConnected()
+        const isActuallyConnected = farcasterWallet.isConnected
+        
+        if (expectedToBeConnected && !isActuallyConnected && !farcasterWallet.isConnecting) {
+          console.log('🔄 Page visible but disconnected, triggering reconnection')
+          
+          // Reset connecting state to enable reconnection
+          setFarcasterWallet(prev => ({ ...prev, isConnecting: false }))
+          
+          // Queue reconnection after tab restoration
+          setTimeout(() => {
+            // Watchdog will handle the actual reconnection
+            console.log('🎯 Visibility-triggered reconnection queued')
+          }, 500)
+        } else if (isActuallyConnected) {
+          console.log('✅ Connection verified after page became visible')
+          
+          // Update timestamp to prevent expiration
+          refreshConnectionTimestamp()
+        }
+      } else {
+        console.log('🌙 Page became hidden, connection state preserved')
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Handle window focus as additional safety measure
+    const handleFocus = () => {
+      console.log('🎯 Page focused, verifying connection...')
+      
+      if (shouldBeConnected() && !farcasterWallet.isConnected) {
+        // Reset state to trigger reconnection check
+        setFarcasterWallet(prev => ({ ...prev, isConnecting: false }))
+      }
+    }
+    
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [appContext, farcasterWallet.isConnected, farcasterWallet.isConnecting])
+
+  // Synchronize connection state between miniapp and web contexts for backwards compatibility
   useEffect(() => {
     const isConnected = (appContext === 'miniapp' ? farcasterWallet.isConnected : authenticated && Boolean(user?.wallet?.address))
     const userAddress = (appContext === 'miniapp' ? farcasterWallet.address : user?.wallet?.address) as Address || null
@@ -854,12 +1132,116 @@ export function UnifiedMiniAppProvider({
     dispatch({ type: 'SET_USER_ADDRESS', payload: userAddress })
   }, [appContext, authenticated, user?.wallet?.address, farcasterWallet.isConnected, farcasterWallet.address])
 
-  // Update capabilities in state
+  // ================================================
+  // CONNECTION HEALTH MONITORING
+  // ================================================
+
+  // Validate connection integrity and detect stale or unresponsive connectors
+  useEffect(() => {
+    if (appContext !== 'miniapp' || !farcasterWallet.isConnected) return
+    
+    let mounted = true
+    
+    const performHealthCheck = async () => {
+      if (!mounted || !farcasterWallet.isConnected) return
+      
+      try {
+        console.log('🏥 Performing connection health check...')
+        
+        // Verify wagmi connectors are available
+        const connectors = getWagmiConnectors()
+        
+        if (connectors.length === 0) {
+          console.warn('⚠️ Health check: No connectors available')
+          // May be temporary, avoid immediate disconnection
+          return
+        }
+        
+        // Verify Farcaster connector is present
+        const farcasterConnector = connectors.find(c => 
+          c.id === 'farcasterMiniApp' || 
+          c.name === 'Farcaster Mini App' ||
+          c.id === 'farcaster'
+        )
+        
+        if (!farcasterConnector) {
+          console.warn('⚠️ Health check: Farcaster connector missing')
+          // Mark disconnected to trigger reconnection flow
+          if (mounted) {
+            setFarcasterWallet(prev => ({
+              ...prev,
+              isConnected: false,
+              error: new Error('Connector became unavailable')
+            }))
+          }
+          return
+        }
+        
+        // Verify wagmi reports active connection
+        const globalAccount = getWagmiAccount()
+        const wagmiReportsConnected = Boolean(globalAccount?.isConnected && globalAccount?.address)
+        
+        if (!wagmiReportsConnected) {
+          console.warn('⚠️ Health check: wagmi reports disconnected')
+          // Synchronize local state with wagmi state
+          if (mounted) {
+            setFarcasterWallet(prev => ({
+              ...prev,
+              isConnected: false
+            }))
+          }
+          return
+        }
+        
+        // Verify current address matches stored state
+        const storedState = getConnectionState()
+        if (storedState && globalAccount?.address !== storedState.address) {
+          console.warn('⚠️ Health check: Address mismatch detected', {
+            current: globalAccount?.address,
+            expected: storedState.address
+          })
+          // Update storage with current address
+          if (globalAccount?.address) {
+            const chainId = globalAccount?.chainId || 8453
+            saveConnectionState(globalAccount.address, 'farcasterMiniApp', chainId)
+          }
+        }
+        
+        // All health checks passed
+        console.log('✅ Connection health check passed')
+        
+        // Update timestamp to maintain fresh state
+        refreshConnectionTimestamp()
+        
+      } catch (error) {
+        console.warn('⚠️ Health check error (non-critical):', error)
+        // Avoid disconnecting on transient errors
+      }
+    }
+    
+    // Delay initial check to allow connection to stabilize
+    const initialCheckTimeout = setTimeout(() => {
+      performHealthCheck()
+    }, 10000)
+    
+    // Run health checks every 30 seconds
+    const healthCheckInterval = setInterval(() => {
+      performHealthCheck()
+    }, 30000)
+    
+    return () => {
+      mounted = false
+      clearTimeout(initialCheckTimeout)
+      clearInterval(healthCheckInterval)
+    }
+  }, [appContext, farcasterWallet.isConnected])
+
+  // Propagate capabilities to state
   useEffect(() => {
     dispatch({ type: 'SET_CAPABILITIES', payload: capabilities })
   }, [capabilities])
 
-  // Update social context in state
+  // Propagate social context to state
   useEffect(() => {
     dispatch({ type: 'SET_SOCIAL_CONTEXT', payload: socialContext })
   }, [socialContext])
@@ -887,7 +1269,7 @@ export function UnifiedMiniAppProvider({
         sdkRef.current = sdk
         console.log('✅ MiniApp SDK imported successfully')
 
-        // Signal ready to MiniApp platform
+        // Notify Farcaster platform that app is ready
         console.log('📡 Calling sdk.actions.ready()...')
         await sdk.actions.ready()
         console.log('✅ sdk.actions.ready() completed - splash screen should dismiss')
@@ -904,7 +1286,7 @@ export function UnifiedMiniAppProvider({
     return initPromise
   }, [appContext])
 
-  // Initialize SDK on mount if in MiniApp context
+  // Initialize SDK when in miniapp context
   useEffect(() => {
     if (appContext === 'miniapp') {
       initializeSDK()
@@ -915,10 +1297,10 @@ export function UnifiedMiniAppProvider({
   // FARCASTER AUTO-LOGIN FLOW
   // ================================================
 
-  // Auto-login flow for seamless Farcaster user experience
+  // Automatically authenticate Farcaster users via signature-based login
   useEffect(() => {
     const handleFarcasterAutoLogin = async () => {
-      // Check if we're actually inside Farcaster client vs just on /mini route
+      // Verify we're in an actual Farcaster client environment
       const isInFarcasterClient = typeof window !== 'undefined' && 
                                  (window.parent !== window || // iframe context
                                   navigator.userAgent.includes('Farcaster') ||
@@ -939,17 +1321,17 @@ export function UnifiedMiniAppProvider({
       try {
         console.log('🔐 Attempting Farcaster auto-login...')
 
-        // Initialize a new login attempt to get a nonce for the Farcaster wallet to sign
+        // Generate nonce for signature verification
         const { nonce } = await initLoginToMiniApp()
         console.log('📝 Generated nonce for Farcaster login:', nonce)
 
-        // Import MiniApp SDK and request signature from Farcaster
+        // Request signature from Farcaster MiniApp SDK
         const { sdk } = await import('@farcaster/miniapp-sdk')
         const result = await sdk.actions.signIn({ nonce })
 
         console.log('✍️ Obtained signature from Farcaster')
 
-        // Send the received signature from Farcaster to Privy for authentication
+        // Authenticate with Privy using Farcaster signature
         await loginToMiniApp({
           message: result.message,
           signature: result.signature,
@@ -958,7 +1340,7 @@ export function UnifiedMiniAppProvider({
         console.log('✅ Farcaster auto-login successful')
       } catch (error) {
         console.warn('⚠️ Farcaster auto-login failed, user will need to login manually:', error)
-        // Don't throw - allow manual login fallback
+        // Allow manual login fallback
       }
     }
 
@@ -980,26 +1362,26 @@ export function UnifiedMiniAppProvider({
                                   window.location.search.includes('farcaster=true'))
       
       if (isInFarcasterClient) {
-        // Only disable Privy when ACTUALLY in Farcaster client to prevent conflicts
+        // Use Farcaster auto-connect in miniapp context
         console.log('🔄 Real Farcaster client detected - letting Farcaster auto-connect handle it')
         
-        // Check if we're already connected via Farcaster
+        // Check for existing authentication
         if (authenticated) {
           console.log('✅ Already authenticated via Farcaster')
           dispatch({ type: 'SET_LOADING', payload: 'success' })
           return
         }
         
-        // Wait for Farcaster auto-connect
+        // Defer to auto-connect flow
         console.log('⏳ Waiting for Farcaster auto-connect...')
         dispatch({ type: 'SET_LOADING', payload: 'success' })
       } else {
-        // Use Privy for web context or when testing /mini route outside Farcaster
+        // Use Privy for web context
         console.log('🔄 Web context or /mini testing: Using Privy authentication')
         if (!logout) {
           throw new Error('Privy not available')
         }
-        // Re-enable Privy login for web/testing contexts
+        // Trigger Privy login
         login()
         dispatch({ type: 'SET_LOADING', payload: 'success' })
       }
@@ -1018,7 +1400,12 @@ export function UnifiedMiniAppProvider({
     if (!logout) return
 
     try {
+      // Mark as explicit disconnect to prevent automatic reconnection
+      recordDisconnection()
+      
       await logout()
+      
+      console.log('✅ Wallet disconnected and state cleared')
     } catch (error) {
       console.warn('Wallet disconnect failed:', error)
     }
@@ -1031,7 +1418,7 @@ export function UnifiedMiniAppProvider({
 
     try {
               if (sdkRef.current && typeof sdkRef.current === 'object' && sdkRef.current !== null && 'actions' in sdkRef.current) {
-          // Use MiniApp SDK for sharing
+          // Share via Farcaster MiniApp SDK
           const shareText = `Check out "${title}" on Bloom! 🚀`
           await (sdkRef.current as { actions: { composeCast: (params: { text: string; embeds: string[] }) => Promise<void> } }).actions.composeCast({
             text: shareText,
@@ -1064,15 +1451,14 @@ export function UnifiedMiniAppProvider({
         }
       }})
 
-      // Route to payment orchestrator for payment transactions
+      // Delegate payment transactions to payment orchestrator
       if (type === 'content_purchase' && params.contentId && params.ethAmount) {
-        // This should be handled by the MiniApp payment orchestrator
+        // Payment orchestrator handles this flow
         console.log('Content purchase should use useMiniAppPaymentOrchestrator:', params)
         throw new Error('Use useMiniAppPaymentOrchestrator for content purchases')
       }
 
-      // Handle other transaction types here
-      // For now, just log the transaction details
+      // Handle other transaction types
       console.log('Transaction type:', type, 'Params:', params)
 
       dispatch({ type: 'SET_TRANSACTION_STATE', payload: {
