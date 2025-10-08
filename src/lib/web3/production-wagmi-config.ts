@@ -1,11 +1,12 @@
 /**
  * Production Wagmi Configuration
  * 
- * This configuration uses the fixed RPC setup to eliminate the 403 errors,
- * DNS resolution issues, and excessive RPC calls we've been experiencing.
+ * Uses fixed RPC setup to eliminate 403 errors, DNS resolution issues,
+ * and excessive RPC calls. Includes wallet connection persistence for
+ * seamless miniapp reconnection across navigation and page refreshes.
  */
 
-import { createConfig } from 'wagmi'
+import { createConfig, createStorage } from 'wagmi'
 import { metaMask, coinbaseWallet, walletConnect, injected, safe } from 'wagmi/connectors'
 import { 
   createFixedRpcTransports, 
@@ -48,9 +49,9 @@ function getAppMetadata(): WalletConnectorConfig {
 function createProductionConnectors() {
   const metadata = getAppMetadata()
   
-  // Core connectors that are always compatible
+  // Core wallet connectors always included
   const coreConnectors = [
-    // MetaMask - Most popular wallet
+    // MetaMask connector
     metaMask({
       dappMetadata: {
         name: metadata.appName,
@@ -59,21 +60,21 @@ function createProductionConnectors() {
       },
     }),
     
-    // Coinbase Wallet - Optimized for Base network
+    // Coinbase Wallet with smart wallet preference for Base network
     coinbaseWallet({
       appName: metadata.appName,
       appLogoUrl: metadata.appIconUrl,
-      preference: 'smartWalletOnly', // Use smart wallets when possible
+      preference: 'smartWalletOnly',
     }),
     
     // Injected connector - Detects other wallets
     injected(),
   ]
 
-  // Optional connectors - only add if environment variables are present
+  // Optional connectors requiring environment configuration
   const optionalConnectors = []
   
-  // WalletConnect - Only add if project ID is available
+  // WalletConnect requires project ID from environment
   if (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
     try {
       optionalConnectors.push(
@@ -93,7 +94,7 @@ function createProductionConnectors() {
     }
   }
 
-  // Safe Wallet - Add if available
+  // Safe wallet connector
   try {
     optionalConnectors.push(safe())
   } catch (error) {
@@ -108,8 +109,8 @@ function createProductionConnectors() {
 // ============================================================================
 
 /**
- * Create production-ready wagmi configuration
- * Uses fixed RPC transports and single-chain configuration
+ * Create production-ready wagmi configuration with fixed RPC transports
+ * and persistent wallet connection state for automatic reconnection
  */
 export function createProductionWagmiConfig(): ProductionWagmiConfig {
   const supportedChains = getSupportedChains()
@@ -124,19 +125,28 @@ export function createProductionWagmiConfig(): ProductionWagmiConfig {
     connectors: createProductionConnectors(),
     transports,
     
-    // Optimized batching configuration
+    // Configure multicall batching for efficient contract reads
     batch: {
       multicall: {
-        batchSize: 1024 * 100,    // 100KB batch size (conservative)
-        wait: 16,                 // 16ms wait time
+        batchSize: 1024 * 100,    // 100KB batch size limit
+        wait: 16,                 // 16ms debounce delay
       },
     },
     
-    // Cache configuration for better performance
-    cacheTime: 4_000,             // Cache results for 4 seconds
+    // Cache contract call results for 4 seconds
+    cacheTime: 4_000,
     
-    // Enable SSR support
+    // Enable server-side rendering support
     ssr: typeof window === 'undefined',
+    
+    // Persist wallet connection state to localStorage for automatic reconnection
+    storage: createStorage({
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      key: 'dxbloom-wallet-v1', // Versioned for future migrations
+    }),
+    
+    // Enable detection of multiple injected wallet providers
+    multiInjectedProviderDiscovery: true,
   })
 }
 
@@ -166,13 +176,13 @@ export function validateProductionConfig(): ConfigValidationResult {
     const { chain } = getCurrentChainConfig()
     const supportedChains = getSupportedChains()
     
-    // Check if we have supported chains
+    // Verify at least one chain is configured
     if (supportedChains.length === 0) {
       result.errors.push('No supported chains configured')
       result.isValid = false
     }
     
-    // Check RPC provider configuration
+    // Check for premium RPC provider credentials
     const hasAlchemy = Boolean(process.env.NEXT_PUBLIC_ALCHEMY_API_KEY)
     const hasInfura = Boolean(process.env.NEXT_PUBLIC_INFURA_API_KEY)
     const hasWalletConnect = Boolean(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID)
@@ -187,7 +197,7 @@ export function validateProductionConfig(): ConfigValidationResult {
       result.recommendations.push('Add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID for mobile wallet support')
     }
     
-    // Log current configuration
+    // Log validation results in development
     if (process.env.NODE_ENV === 'development') {
       console.log('📊 Production Config Validation:')
       console.log(`   Current Chain: ${chain.name} (${chain.id})`)
@@ -210,7 +220,7 @@ export function validateProductionConfig(): ConfigValidationResult {
 let configInstance: ProductionWagmiConfig | null = null
 
 /**
- * Get or create the singleton wagmi configuration instance
+ * Get singleton wagmi configuration instance, creating if needed
  */
 export function getProductionWagmiConfig(): ProductionWagmiConfig {
   if (!configInstance) {
@@ -235,14 +245,14 @@ export function getProductionWagmiConfig(): ProductionWagmiConfig {
 // ============================================================================
 
 /**
- * Reset the configuration (useful for testing or environment changes)
+ * Reset configuration instance (used for testing or environment changes)
  */
 export function resetProductionConfig(): void {
   configInstance = null
 }
 
 /**
- * Get current chain information
+ * Retrieve current chain metadata
  */
 export function getCurrentChainInfo() {
   const { chain } = getCurrentChainConfig()
@@ -256,7 +266,7 @@ export function getCurrentChainInfo() {
 }
 
 /**
- * Check if a chain ID is currently supported
+ * Verify if chain ID is in supported chains list
  */
 export function isChainSupported(chainId: number): boolean {
   const supportedChains = getSupportedChains()
@@ -267,8 +277,8 @@ export function isChainSupported(chainId: number): boolean {
 // EXPORTS
 // ============================================================================
 
-// Main configuration export
+// Export singleton wagmi configuration instance
 export const productionWagmiConfig = getProductionWagmiConfig()
 
-// Re-export utilities from fixed RPC config
+// Re-export RPC cache utilities
 export { rpcCacheUtils } from './fixed-rpc-config'
