@@ -178,8 +178,9 @@ export function MiniAppNavigation({ className, onNavigate }: MiniAppNavigationPr
     error: walletError
   } = useFarcasterAutoWallet()
   
-  // Messaging integration for unread badges
-  const { conversations } = useConversationManager()
+  // Messaging integration for unread badges (with error handling)
+  const conversationManagerResult = useConversationManager()
+  const conversations = conversationManagerResult?.conversations || []
   const { hasUnreadMessages, unreadCount, markMessagesPageVisited } = useMessageReadState(conversations)
   
   // Animation state

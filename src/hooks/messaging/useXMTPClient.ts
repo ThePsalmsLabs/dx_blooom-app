@@ -14,6 +14,7 @@ import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { XMTP_CONFIG, MESSAGING_FEATURES } from '@/lib/messaging/xmtp-config'
 import type { XMTPClientResult } from '@/types/messaging'
 import { MessagingError, MessagingErrorCode } from '@/types/messaging'
+import { WalletStateManager } from '@/lib/wallet/WalletStateManager'
 
 /**
  * XMTP Client Hook
@@ -186,7 +187,14 @@ export function useXMTPClient(): XMTPClientResult {
   useEffect(() => {
     // Check if we have a cached client for this address
     if (globalXMTPClient && address === globalXMTPClient.address && !client) {
+      console.log('🔄 Restoring cached XMTP client for address:', address)
       setClient(globalXMTPClient)
+    } else if (globalXMTPClient && address !== globalXMTPClient.address) {
+      // Address changed, clear stale client
+      console.log('🧹 Address changed, clearing stale XMTP client')
+      globalXMTPClient = null
+      globalConnectionPromise = null
+      setClient(null)
     }
   }, [address, client])
   
@@ -204,6 +212,56 @@ export function useXMTPClient(): XMTPClientResult {
       })
     }
   }, [isWalletConnected, client, disconnect])
+  
+  /**
+   * CRITICAL: Auto-reconnect XMTP when wallet reconnects after navigation
+   * 
+   * This fixes the issue where XMTP client becomes stale after navigation
+   * when wallet disconnects and reconnects.
+   */
+  useEffect(() => {
+    if (isWalletConnected && address && !client && !isConnecting && !connectingRef.current) {
+      console.log('🔄 Wallet reconnected after navigation, auto-connecting XMTP...')
+      connect().catch(error => {
+        console.warn('Auto-reconnection to XMTP failed:', error)
+      })
+    }
+  }, [isWalletConnected, address, client, isConnecting, connect])
+  
+  /**
+   * CRITICAL: Listen to WalletStateManager events for XMTP integration
+   * 
+   * This ensures XMTP client stays synchronized with wallet state changes
+   * managed by our centralized wallet state system.
+   */
+  useEffect(() => {
+    const handleWalletDisconnected = () => {
+      if (client) {
+        console.log('🔔 WalletStateManager: Wallet disconnected, disconnecting XMTP...')
+        disconnect().catch(error => {
+          console.warn('WalletStateManager-triggered XMTP disconnection failed:', error)
+        })
+      }
+    }
+    
+    const handleWalletConnected = (event: any) => {
+      if (event.state.isConnected && event.state.address && !client && !isConnecting) {
+        console.log('🔔 WalletStateManager: Wallet connected, auto-connecting XMTP...')
+        connect().catch(error => {
+          console.warn('WalletStateManager-triggered XMTP connection failed:', error)
+        })
+      }
+    }
+    
+    // Subscribe to wallet state events
+    WalletStateManager.on('disconnected', handleWalletDisconnected)
+    WalletStateManager.on('connected', handleWalletConnected)
+    
+    return () => {
+      WalletStateManager.off('disconnected', handleWalletDisconnected)
+      WalletStateManager.off('connected', handleWalletConnected)
+    }
+  }, [client, isConnecting, connect, disconnect])
   
   // ===== CLEANUP =====
   

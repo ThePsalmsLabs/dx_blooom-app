@@ -5,7 +5,7 @@ import { UnifiedAppProvider } from '@/providers/UnifiedAppProvider'
 import { MiniKitProvider } from '@/components/providers/MiniKitProvider'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { Web3Provider } from '@/components/providers/Web3Provider'
-import { UnifiedMiniAppProvider } from '@/contexts/UnifiedMiniAppProvider'
+import { OptimizedMiniAppProvider } from '@/components/providers/OptimizedMiniAppProvider'
 import { BackendHealthProvider } from '@/contexts/BackendHealthContext'
 import { OnchainKitProvider } from '@/components/providers/OnchainKitProvider'
 import { AuthProvider } from '@/components/providers/AuthProvider'
@@ -28,7 +28,7 @@ export function Providers({ children }: ProvidersProps) {
         <ThemeProvider>
           <AuthProvider>
             <MiniKitProvider>
-              <UnifiedMiniAppProvider>
+              <OptimizedMiniAppProvider>
                 <BackendHealthProvider>
                   <UnifiedAppProvider>
                     {children}
@@ -57,7 +57,7 @@ export function Providers({ children }: ProvidersProps) {
                     />
                   </UnifiedAppProvider>
                 </BackendHealthProvider>
-              </UnifiedMiniAppProvider>
+              </OptimizedMiniAppProvider>
             </MiniKitProvider>
           </AuthProvider>
         </ThemeProvider>
