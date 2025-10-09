@@ -49,6 +49,9 @@ import {
   migrateOldConnectionState,
 } from '@/lib/wallet/connection-persistence'
 
+// Import centralized wallet state manager
+import { WalletStateManager } from '@/lib/wallet/WalletStateManager'
+
 // Import type-safe wagmi global accessors
 import {
   getWagmiAccount,
@@ -648,10 +651,14 @@ export function UnifiedMiniAppProvider({
 
       try {
         setFarcasterWallet(prev => ({ ...prev, isConnecting: true, error: null }))
+        
+        // Update centralized state manager
+        WalletStateManager.updateConnecting(true, 'auto')
+        
         console.log('🚀 Farcaster wallet initialization starting...')
 
         // Delay to allow wagmi connector initialization
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        await new Promise(resolve => setTimeout(resolve, 300))
         
         console.log('🔗 Starting Farcaster auto-connection...')
         
@@ -746,6 +753,17 @@ export function UnifiedMiniAppProvider({
             const connectionResult = checkConnection()
             if (connectionResult) {
               console.log('✅ Farcaster auto-connection successful')
+              
+              // Update centralized state manager
+              const globalAccount = getWagmiAccount()
+              if (globalAccount?.address && globalAccount?.chainId) {
+                WalletStateManager.updateConnection(
+                  globalAccount.address,
+                  globalAccount.chainId,
+                  'farcasterMiniApp',
+                  'auto'
+                )
+              }
             } else {
               console.warn('⚠️ Auto-connection completed but no connection detected')
               if (mounted) {
@@ -758,6 +776,10 @@ export function UnifiedMiniAppProvider({
             }
           } catch (connectError) {
             console.warn('⚠️ Farcaster auto-connection failed:', connectError)
+            
+            // Update centralized state manager with error
+            WalletStateManager.updateError(connectError as Error, 'auto')
+            
             if (mounted) {
               setFarcasterWallet(prev => ({ 
                 ...prev, 
@@ -799,7 +821,7 @@ export function UnifiedMiniAppProvider({
     }
 
     // Delay initialization to ensure wagmi is ready
-    const timeoutId = setTimeout(initializeFarcasterConnection, 1500)
+    const timeoutId = setTimeout(initializeFarcasterConnection, 300)
     
     return () => {
       mounted = false
@@ -807,7 +829,7 @@ export function UnifiedMiniAppProvider({
     }
   }, [appContext])
 
-  // Synchronize local wallet state with wagmi global state
+  // Synchronize local wallet state with wagmi global state AND WalletStateManager
   useEffect(() => {
     if (appContext !== 'miniapp') return
 
@@ -825,23 +847,38 @@ export function UnifiedMiniAppProvider({
           // Update only when state differs to prevent render loops
           if (farcasterWallet.isConnected !== isConnected || farcasterWallet.address !== address) {
             console.log('🔄 Syncing Farcaster wallet state with wagmi:', { isConnected, address })
+            
+            // Update local state
             setFarcasterWallet(prev => ({
               ...prev,
               isConnected,
               address,
               isConnecting: prev.isConnecting && !isConnected
             }))
+            
+            // CRITICAL: Update WalletStateManager with wagmi changes
+            if (isConnected && address) {
+              WalletStateManager.updateConnection(
+                address,
+                globalAccount.chainId || 8453,
+                'farcasterMiniApp',
+                'auto'
+              )
+            } else if (!isConnected && farcasterWallet.isConnected) {
+              WalletStateManager.updateDisconnection('auto')
+            }
           }
         }
       } catch (error) {
         console.warn('Failed to sync wagmi state:', error)
+        WalletStateManager.updateError(error as Error, 'system')
       }
     }
     
     // Initial sync
     syncWagmiState()
     
-    // Poll for state changes every second
+    // Poll for state changes every second (will be replaced by wagmi listener in future)
     const syncInterval = setInterval(syncWagmiState, 1000)
     
     return () => {
@@ -896,6 +933,9 @@ export function UnifiedMiniAppProvider({
           
           setFarcasterWallet(prev => ({ ...prev, isConnecting: true, error: null }))
           
+          // Update centralized state manager
+          WalletStateManager.updateConnecting(true, 'auto')
+          
           // Retrieve available wagmi connectors
           const connectors = getWagmiConnectors()
           console.log('🔍 Available connectors for reconnection:', connectors.map(c => ({ id: c.id, name: c.name })))
@@ -917,6 +957,14 @@ export function UnifiedMiniAppProvider({
             const globalAccount = getWagmiAccount()
             if (globalAccount?.isConnected && globalAccount?.address) {
               console.log('✅ Auto-reconnection successful!')
+              
+              // Update centralized state manager
+              WalletStateManager.updateConnection(
+                globalAccount.address,
+                globalAccount.chainId || 8453,
+                'farcasterMiniApp',
+                'auto'
+              )
               
               if (mounted) {
                 setFarcasterWallet({
