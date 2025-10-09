@@ -87,7 +87,6 @@ import React, {
   useMiniAppUtils,
   useSocialState
 } from '@/contexts/UnifiedMiniAppProvider'
-import { OptimizedMiniAppProvider } from '@/components/providers/OptimizedMiniAppProvider'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
   import { FastRPCProvider } from '@/components/debug/FastRPCProvider'
@@ -1163,7 +1162,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 	className,
 	enableAnalytics = true,
 	showDebugInfo = process.env.NODE_ENV === 'development',
-	fallbackToWeb = true,
+	fallbackToWeb: _fallbackToWeb = true, // Keep for interface compatibility but mark as unused
 	customErrorBoundary: CustomErrorBoundary,
 	loadingComponent: CustomLoadingComponent
   }: EnhancedMiniAppLayoutProps) {
@@ -1212,19 +1211,13 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 		)}
 		<FastRPCProvider>
 		  <ThemeProvider defaultTheme="system" enableTransitions={true}>
-			<OptimizedMiniAppProvider
-			  enableAnalytics={enableAnalytics}
-			  enableOptimizations={true}
-			  fallbackToWeb={fallbackToWeb}
-			>
-			  <Suspense fallback={<LoadingComponent progress={90} />}>
-				<div className={cn('enhanced-miniapp-layout', className)}>
-				  <MiniAppLayoutContent>
-					{children}
-				  </MiniAppLayoutContent>
-				</div>
-			  </Suspense>
-			</OptimizedMiniAppProvider>
+			<Suspense fallback={<LoadingComponent progress={90} />}>
+			  <div className={cn('enhanced-miniapp-layout', className)}>
+				<MiniAppLayoutContent>
+				  {children}
+				</MiniAppLayoutContent>
+			  </div>
+			</Suspense>
 		  </ThemeProvider>
 		</FastRPCProvider>
 	  </ErrorBoundary>
@@ -1352,7 +1345,7 @@ import { initializeErrorRecovery } from '@/lib/utils/error-recovery'
 
 	return (
 	  <ErrorBoundary
-		FallbackComponent={({ error, resetErrorBoundary }) => (
+		FallbackComponent={({ error: _error, resetErrorBoundary }) => (
 		  <div className="min-h-screen flex items-center justify-center bg-background p-4">
 			<Card className="w-full max-w-md mx-4">
 			  <CardHeader className="text-center">
