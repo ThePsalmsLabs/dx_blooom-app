@@ -8,7 +8,7 @@
  * Note: wagmi stores state on globalThis for cross-component access
  */
 
-import type { Config, Connector } from 'wagmi'
+import type { Connector } from 'wagmi'
 import type { Address } from 'viem'
 
 // ============================================================================
