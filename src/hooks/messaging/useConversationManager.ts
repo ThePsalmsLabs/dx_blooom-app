@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Address } from 'viem'
-import type { Conversation as XMTPConversation } from '@xmtp/xmtp-js'
 import { useXMTPClient } from './useXMTPClient'
 import { useMessagingPermissions } from './useMessagingPermissions'
 import { MESSAGING_ANALYTICS, MESSAGING_UI } from '@/lib/messaging/xmtp-config'
@@ -19,7 +18,11 @@ import type {
   MessageContent,
   MessagingContext,
   MessagePreview,
-  ConversationStatus
+  ConversationStatus,
+  AnyXMTPConversation,
+  TypedDm,
+  TypedGroup,
+  TypedDecodedMessage
 } from '@/types/messaging'
 import { MessageCategory } from '@/types/messaging'
 import { MessagingError, MessagingErrorCode } from '@/types/messaging'
@@ -41,7 +44,7 @@ export function useConversationManager(): ConversationManagerResult {
   const [error, setError] = useState<Error | null>(null)
   
   // Track active conversations to prevent duplicates
-  const [activeConversations, setActiveConversations] = useState<Map<string, XMTPConversation>>(new Map())
+  const [activeConversations, setActiveConversations] = useState<Map<string, AnyXMTPConversation>>(new Map())
   
   // ===== EXISTING INTEGRATIONS =====
   
@@ -73,47 +76,52 @@ export function useConversationManager(): ConversationManagerResult {
    * Convert XMTP Conversation to Preview
    * 
    * Transforms XMTP conversation data into platform-specific preview format.
+   * Supports both Dm and Group conversation types from XMTP v3.
    */
   const conversationToPreview = useCallback(async (
-    conversation: XMTPConversation,
+    conversation: AnyXMTPConversation,
     context?: MessagingContext
   ): Promise<ConversationPreview> => {
     try {
       // Get conversation messages for preview
-      const messages = await conversation.messages({ limit: 1 })
+      const messages = await conversation.messages({ limit: BigInt(1) })
       const lastMessage = messages[0]
       
       let lastMessagePreview: MessagePreview | undefined
       if (lastMessage) {
         lastMessagePreview = {
           id: lastMessage.id,
-          content: lastMessage.content,
-          sender: lastMessage.senderAddress as Address,
-          timestamp: lastMessage.sent,
+          content: typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content),
+          sender: lastMessage.senderInboxId as Address,
+          timestamp: new Date(Number(lastMessage.sentAtNs) / 1000000),
           isRead: false, // Would integrate with read receipt system
           category: MessageCategory.COMMUNITY_MSG,
         }
       }
       
+      // Get peer address - for DMs use peerInboxId, for Groups use group address
+      const peerAddress = ('peerInboxId' in conversation ? conversation.peerInboxId : conversation.id) as Address
+      
       return {
-        id: conversation.topic,
-        peerAddress: conversation.peerAddress as Address,
+        id: conversation.id,
+        peerAddress,
         lastMessage: lastMessagePreview,
         unreadCount: 0, // Would calculate from read receipts
         status: 'active' as ConversationStatus,
-        createdAt: conversation.createdAt,
+        createdAt: new Date(Number(conversation.createdAtNs) / 1000000),
         context,
       }
     } catch (conversionError) {
       console.error('Failed to convert conversation to preview:', conversionError)
       
       // Return minimal preview on error
+      const peerAddress = ('peerInboxId' in conversation ? conversation.peerInboxId : conversation.id) as Address
       return {
-        id: conversation.topic,
-        peerAddress: conversation.peerAddress as Address,
+        id: conversation.id,
+        peerAddress,
         unreadCount: 0,
         status: 'active' as ConversationStatus,
-        createdAt: conversation.createdAt,
+        createdAt: new Date(Number(conversation.createdAtNs) / 1000000),
         context,
       }
     }
@@ -140,13 +148,13 @@ export function useConversationManager(): ConversationManagerResult {
       
       // Convert to preview format
       const conversationPreviews: ConversationPreview[] = []
-      const conversationMap = new Map<string, XMTPConversation>()
+      const conversationMap = new Map<string, AnyXMTPConversation>()
       
       for (const conversation of xmtpConversations) {
         try {
           const preview = await conversationToPreview(conversation)
           conversationPreviews.push(preview)
-          conversationMap.set(conversation.topic, conversation)
+          conversationMap.set(conversation.id, conversation)
         } catch (error) {
           console.warn('Failed to process conversation:', error)
         }
@@ -188,11 +196,12 @@ export function useConversationManager(): ConversationManagerResult {
    * Get or Create Conversation
    * 
    * Retrieves existing conversation or creates new one with peer address.
+   * XMTP v3 API creates DM conversations.
    */
   const getOrCreateConversation = useCallback(async (
     peerAddress: Address,
     context?: MessagingContext
-  ): Promise<XMTPConversation> => {
+  ): Promise<AnyXMTPConversation> => {
     if (!client || !isConnected) {
       throw new MessagingError(
         'XMTP client not connected',
@@ -211,7 +220,7 @@ export function useConversationManager(): ConversationManagerResult {
       
       // Check permissions before creating conversation
       const permissions = await checkPermissions({
-        fromAddress: client.address as Address,
+        fromAddress: (client as any).inboxId as Address,
         toAddress: peerAddress,
         context: context?.socialContext === 'farcaster' ? 'community' : 'general',
         contentId: context?.contentId,
@@ -225,8 +234,8 @@ export function useConversationManager(): ConversationManagerResult {
         )
       }
       
-      // Create new conversation
-      const conversation = await client.conversations.newConversation(peerAddress)
+      // Create new DM conversation using v3 API
+      const conversation = await (client as any).conversations.newDm(peerAddress)
       
       // Update active conversations map
       setActiveConversations(prev => new Map(prev).set(peerAddress, conversation))
@@ -403,7 +412,7 @@ export function useConversationManager(): ConversationManagerResult {
           // Add new conversation to list
           const preview = await conversationToPreview(conversation)
           setConversations(prev => [preview, ...prev])
-          setActiveConversations(prev => new Map(prev).set(conversation.topic, conversation))
+          setActiveConversations(prev => new Map(prev).set(conversation.id, conversation))
         }
       } catch (streamError) {
         console.error('Conversation stream error:', streamError)
