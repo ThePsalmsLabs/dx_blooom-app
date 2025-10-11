@@ -271,11 +271,11 @@ export const useMessageStream = (conversationTopic: string, enabled: boolean = t
     const setupStream = async () => {
       try {
         const conversations = await client.conversations.list()
-        const conversation = conversations.find(c => c.topic === conversationTopic)
+        const conversation = conversations.find(c => c.id === conversationTopic)
         if (!conversation) return
 
-        // Stream new messages
-        const stream = await conversation.streamMessages()
+        // Stream new messages - V3 API
+        const stream = await conversation.stream()
         
         for await (const message of stream) {
           if (cancelled) break
@@ -288,12 +288,12 @@ export const useMessageStream = (conversationTopic: string, enabled: boolean = t
               const exists = old.find(msg => msg.id === message.id)
               if (exists) return old
               
-              // Add new message
+              // Add new message - V3 API
               const newMessage: ExtendedMessage = {
                 id: message.id,
-                content: message.content,
-                senderAddress: message.senderAddress as Address,
-                timestamp: message.sent,
+                content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content || ''),
+                senderAddress: message.senderInboxId as Address, // V3 uses senderInboxId
+                timestamp: new Date(Number(message.sentAtNs) / 1000000), // V3 uses sentAtNs in nanoseconds
                 messageType: 'text',
                 status: 'sent',
                 conversationTopic
@@ -313,13 +313,13 @@ export const useMessageStream = (conversationTopic: string, enabled: boolean = t
                       ...conv,
                       lastMessage: {
                         id: message.id,
-                        content: message.content,
-                        senderAddress: message.senderAddress as Address,
-                        timestamp: message.sent,
+                        content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content || ''),
+                        senderAddress: message.senderInboxId as Address, // V3 uses senderInboxId
+                        timestamp: new Date(Number(message.sentAtNs) / 1000000), // V3 uses sentAtNs
                         messageType: 'text',
                         status: 'sent'
                       },
-                      lastMessageTime: message.sent
+                      lastMessageTime: new Date(Number(message.sentAtNs) / 1000000) // V3 uses sentAtNs
                     }
                   : conv
               )
@@ -363,15 +363,15 @@ export const useConversationStream = (enabled: boolean = true) => {
           queryClient.setQueryData(
             xmtpQueryKeys.conversations(),
             (old: ConversationPreview[] = []) => {
-              // Check if conversation already exists
-              const exists = old.find(conv => conv.topic === conversation.topic)
+              // Check if conversation already exists - V3 API
+              const exists = old.find(conv => conv.topic === conversation.id)
               if (exists) return old
               
-              // Create new conversation preview
+              // Create new conversation preview - V3 API
               const newConversation: ConversationPreview = {
-                id: conversation.topic,
-                topic: conversation.topic,
-                peerAddress: conversation.peerAddress as Address,
+                id: conversation.id,
+                topic: conversation.id, // V3 uses id instead of topic
+                peerAddress: 'pending' as Address, // Would need async peer resolution
                 unreadCount: 0,
                 lastMessageTime: new Date()
               }

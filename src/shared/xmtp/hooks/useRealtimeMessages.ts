@@ -18,7 +18,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { Conversation as XMTPConversation, DecodedMessage } from '@xmtp/xmtp-js'
+import type { Conversation as XMTPConversation, DecodedMessage } from '@xmtp/browser-sdk'
 import type { Address } from 'viem'
 import { useXMTPClient } from '../client'
 import type { MessagePreview, MessageStatus, MessageContent } from '../types/index'
@@ -82,17 +82,19 @@ export function useRealtimeMessages({
    * Check if message is a typing indicator
    */
   const isTypingIndicator = useCallback((xmtpMessage: DecodedMessage): boolean => {
-    return xmtpMessage.content.startsWith('__TYPING_INDICATOR__:')
+    // V3 API - content can be undefined, need to check
+    const content = xmtpMessage.content
+    return typeof content === 'string' && content.startsWith('__TYPING_INDICATOR__:')
   }, [])
   
   /**
    * Handle typing indicator message
    */
   const handleTypingIndicator = useCallback((xmtpMessage: DecodedMessage) => {
-    const senderAddress = xmtpMessage.senderAddress as Address
+    const senderAddress = xmtpMessage.senderInboxId as Address
     
-    // Don't show typing for our own messages
-    if (client && senderAddress === client.address) return
+    // Don't show typing for our own messages - V3 API uses inboxId
+    if (client && senderAddress === client.inboxId) return
     
     // Add user to typing set
     typingUsersRef.current.add(senderAddress)
@@ -115,11 +117,14 @@ export function useRealtimeMessages({
    * Convert XMTP message to platform message
    */
   const convertXMTPMessage = useCallback((xmtpMessage: DecodedMessage): MessagePreview => {
+    // V3 API - handle content properly and use correct property names
+    const contentText = typeof xmtpMessage.content === 'string' ? xmtpMessage.content : JSON.stringify(xmtpMessage.content || '')
+    
     return {
       id: xmtpMessage.id,
-      content: xmtpMessage.content,
-      sender: xmtpMessage.senderAddress as Address,
-      timestamp: xmtpMessage.sent,
+      content: { type: 'text', text: contentText } as MessageContent,
+      sender: xmtpMessage.senderInboxId as Address, // V3 uses senderInboxId
+      timestamp: new Date(Number(xmtpMessage.sentAtNs) / 1000000), // V3 uses sentAtNs in nanoseconds
       isRead: false, // Would integrate with read receipt system
       category: MessageCategory.COMMUNITY_MSG,
       status: 'delivered' as MessageStatus
@@ -136,12 +141,12 @@ export function useRealtimeMessages({
     
     try {
       // Load initial messages
-      const initialMessages = await conversation.messages({ limit: messageLimit })
+      const initialMessages = await conversation.messages({ limit: BigInt(messageLimit) })
       const convertedMessages = initialMessages.map(convertXMTPMessage)
       setMessages(convertedMessages)
       
-      // Start streaming new messages
-      const stream = await conversation.streamMessages()
+      // Start streaming new messages - V3 API
+      const stream = await conversation.stream()
       streamRef.current = stream
       
       // Process stream
@@ -161,8 +166,8 @@ export function useRealtimeMessages({
           return [...prev, convertedMessage]
         })
         
-        // Play sound if enabled
-        if (enableSound && message.senderAddress !== client.address) {
+        // Play sound if enabled - V3 API uses senderInboxId and client.inboxId
+        if (enableSound && message.senderInboxId !== client?.inboxId) {
           // Simple beep sound
           const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT')
           audio.volume = 0.3
@@ -257,7 +262,7 @@ export function useRealtimeMessages({
     setError(null)
     
     try {
-      const freshMessages = await conversation.messages({ limit: messageLimit })
+      const freshMessages = await conversation.messages({ limit: BigInt(messageLimit) })
       const convertedMessages = freshMessages.map(convertXMTPMessage)
       setMessages(convertedMessages)
     } catch (error) {

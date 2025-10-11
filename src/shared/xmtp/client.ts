@@ -18,14 +18,11 @@
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { Client } from '@xmtp/xmtp-js'
-import type { Signer } from '@xmtp/xmtp-js'
+import { Client, type Signer } from '@xmtp/browser-sdk'
 import type { Address } from 'viem'
 import { 
-  createValidatedMiniAppXMTPSigner, 
   detectMiniAppContext,
-  canCreateXMTPSigner,
-  type MiniAppXMTPSigner 
+  canCreateXMTPSigner
 } from './miniapp-signer'
 
 // ================================================
@@ -118,14 +115,15 @@ export const useXMTPClientStore = create<XMTPClientStore>()(
           // Merge configuration
           const finalConfig = { ...DEFAULT_CONFIG, ...config }
           
-          // Extract user address from signer
-          const userAddress = (await signer.getAddress()) as Address
+          // Extract user address from signer (V3 browser SDK)
+          const identifier = await signer.getIdentifier()
+          const userAddress = identifier.identifier as Address
 
-          // Create XMTP client with configuration
+          // Create XMTP client with V3 configuration
           const client = await Client.create(signer, {
             env: finalConfig.env,
-            apiUrl: finalConfig.apiUrl
-            // Note: codecs field removed as XMTP v13 handles this automatically
+            appVersion: 'onchain-content-platform/1.0.0'
+            // Note: V3 browser SDK uses different config format
           })
 
           // Update store with successful connection
@@ -162,7 +160,7 @@ export const useXMTPClientStore = create<XMTPClientStore>()(
         }
       },
 
-      connectWithAutoSigner: async (config?: Partial<XMTPClientConfig>) => {
+      connectWithAutoSigner: async (_config?: Partial<XMTPClientConfig>) => {
         const store = get()
         
         try {
@@ -171,11 +169,12 @@ export const useXMTPClientStore = create<XMTPClientStore>()(
             throw new Error('Auto-connect not available - wallet not connected or not in miniapp context')
           }
 
-          // Create validated miniapp signer
-          const signer = createValidatedMiniAppXMTPSigner()
+          // DEPRECATED: This method is deprecated in favor of useMiniAppXMTP
+          // The auto-signer approach violates React hooks rules
+          throw new Error('connectWithAutoSigner is deprecated. Use useMiniAppXMTP hook instead for MiniApp context.')
           
           // Use the standard connect method with the auto-generated signer
-          await store.connect(signer, config)
+          // await store.connect(signer, config)
 
         } catch (error) {
           console.error('XMTP auto-connect failed:', error)

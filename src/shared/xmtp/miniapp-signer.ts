@@ -17,8 +17,8 @@
 'use client'
 
 import { useAccount, useSignMessage } from 'wagmi'
-import type { Signer } from '@xmtp/xmtp-js'
 import type { Address } from 'viem'
+import type { Signer } from '@xmtp/browser-sdk'
 
 // ================================================
 // TYPES & INTERFACES
@@ -26,12 +26,14 @@ import type { Address } from 'viem'
 
 /**
  * XMTP Signer Interface Implementation
- * Compliant with @xmtp/xmtp-js Signer interface
+ * Compliant with @xmtp/browser-sdk V3 Signer interface (EOA type)
+ * Includes helper method for convenience
  */
-export interface MiniAppXMTPSigner extends Signer {
+export interface MiniAppXMTPSigner {
   readonly type: 'EOA'
   getIdentifier(): Promise<{ identifier: string; identifierKind: 'Ethereum' }>
-  signMessage(message: string): Promise<string>
+  signMessage(message: string): Promise<Uint8Array>
+  // Helper method for getting address directly
   getAddress(): Promise<string>
 }
 
@@ -127,29 +129,27 @@ export function useWalletStateForXMTP(): WalletState {
 // ================================================
 
 /**
- * Create a production-ready XMTP signer for miniapp context
+ * Create a production-ready XMTP signer from wallet state
  * Implements the complete XMTP Signer interface with proper error handling
  * 
- * Note: This function must be called within a React component that has access
- * to wagmi hooks. The signer captures the current wallet state at creation time.
+ * Note: Pass wallet state from useMiniAppWallet() to avoid hook violations
  */
-export function createMiniAppXMTPSigner(): MiniAppXMTPSigner {
+export function createMiniAppXMTPSigner(
+  address: string,
+  signMessage: (message: string) => Promise<string>
+): MiniAppXMTPSigner {
   const context = detectMiniAppContext()
 
   if (!context.isMiniApp) {
     throw new Error('MiniApp XMTP signer can only be used in miniapp context')
   }
 
-  // Get current wallet state from wagmi hooks
-  const { address, isConnected } = useAccount()
-  const { signMessageAsync } = useSignMessage()
-
-  if (!isConnected || !address) {
-    throw new Error('Wallet not connected - cannot create XMTP signer')
+  if (!address) {
+    throw new Error('Address required to create XMTP signer')
   }
 
-  if (!signMessageAsync) {
-    throw new Error('Message signing not available - wallet may not support signing')
+  if (!signMessage) {
+    throw new Error('Sign message function required to create XMTP signer')
   }
 
   return {
@@ -166,15 +166,22 @@ export function createMiniAppXMTPSigner(): MiniAppXMTPSigner {
       }
     },
 
-    async signMessage(message: string): Promise<string> {
+    async signMessage(message: string): Promise<Uint8Array> {
       try {
-        const signature = await signMessageAsync({ message })
+        const signature = await signMessage(message)
         
         if (!signature) {
           throw new Error('Signature request was rejected or failed')
         }
 
-        return signature
+        // Convert hex string to Uint8Array as required by V3
+        const cleanHex = signature.startsWith('0x') ? signature.slice(2) : signature
+        const bytes = new Uint8Array(cleanHex.length / 2)
+        for (let i = 0; i < cleanHex.length; i += 2) {
+          bytes[i / 2] = parseInt(cleanHex.slice(i, i + 2), 16)
+        }
+
+        return bytes
       } catch (error) {
         if (error instanceof Error) {
           throw new Error(`XMTP message signing failed: ${error.message}`)
@@ -237,8 +244,11 @@ export function validateMiniAppSigner(signer: MiniAppXMTPSigner): {
  * Create and validate a MiniApp XMTP signer
  * Throws descriptive errors if signer cannot be created
  */
-export function createValidatedMiniAppXMTPSigner(): MiniAppXMTPSigner {
-  const signer = createMiniAppXMTPSigner()
+export function createValidatedMiniAppXMTPSigner(
+  address: string,
+  signMessage: (message: string) => Promise<string>
+): MiniAppXMTPSigner {
+  const signer = createMiniAppXMTPSigner(address, signMessage)
   const validation = validateMiniAppSigner(signer)
 
   if (!validation.isValid) {
