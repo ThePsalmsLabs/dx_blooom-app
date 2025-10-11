@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import webpack from 'webpack';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -23,13 +24,64 @@ const nextConfig: NextConfig = {
   
   // Webpack optimizations for faster builds
   webpack: (config, { dev, isServer }) => {
-    // Optimize module resolution
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false,
+    // XMTP V3 WASM Support Configuration - Enhanced for browser SDK
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      syncWebAssembly: true,
+      layers: true,
+      topLevelAwait: true,
     };
+
+    // Configure WASM file handling for XMTP - Alternative approach
+    config.module.rules.push({
+      test: /\.wasm$/,
+      type: 'javascript/auto',
+      use: {
+        loader: 'file-loader',
+        options: {
+          publicPath: '/_next/static/wasm/',
+          outputPath: 'static/wasm/',
+        },
+      },
+    });
+
+    // Fix WASM file paths in production
+    if (!dev && !isServer) {
+      config.output.webassemblyModuleFilename = 'static/wasm/[modulehash].wasm';
+    }
+
+    // XMTP React SDK Polyfills - Fix for "url.replace is not a function" error
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        path: false,
+        dns: false,
+        crypto: require.resolve('crypto-browserify'),
+        stream: require.resolve('stream-browserify'),
+        url: require.resolve('url'),
+        buffer: require.resolve('buffer'),
+      };
+
+      // Provide Buffer and process globals for XMTP
+      config.plugins = (config.plugins || []).concat([
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+          process: 'process/browser',
+        }),
+      ]);
+    } else {
+      // Server-side fallbacks (minimal)
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
 
     // Reduce bundle size by excluding heavy dependencies from client bundle
     if (!isServer) {
@@ -64,6 +116,9 @@ const nextConfig: NextConfig = {
 
     return config;
   },
+
+  // XMTP external packages for Next.js 15+
+  serverExternalPackages: ["@xmtp/user-preferences-bindings-wasm"],
 
   // Experimental features for better performance
   experimental: {
