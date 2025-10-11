@@ -200,13 +200,13 @@ function getVerifiedBaseMainnetEndpoints(): string[] {
     endpoints.push(`https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`)
   }
   
-  // Working public endpoints (verified)
+  // Working public endpoints (verified) - removed failing 1rpc.io
   endpoints.push(
     'https://base.llamarpc.com', // Working - note: no "base-sepolia" subdomain
     'https://base.drpc.org',
     'https://base.publicnode.com',
-    'https://1rpc.io/base',
     'https://base.meowrpc.com'
+    // REMOVED: 'https://1rpc.io/base' - causing persistent connection failures
   )
 
   // Base official (as last resort with conservative settings)

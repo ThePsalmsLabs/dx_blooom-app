@@ -11,8 +11,21 @@ import type { XMTPClientConfig } from '@/types/messaging'
 // ENVIRONMENT CONFIGURATION
 // ================================================
 
+// Validate and ensure proper env value
+const getXMTPEnv = (): 'dev' | 'production' => {
+  const envValue = process.env.NEXT_PUBLIC_XMTP_ENV
+  console.log('🔍 XMTP_ENV from process.env:', envValue)
+  
+  if (envValue === 'production') return 'production'
+  if (envValue === 'dev') return 'dev'
+  
+  // Default to 'production' for V3 (dev is deprecated)
+  console.warn('⚠️ Invalid or missing NEXT_PUBLIC_XMTP_ENV, defaulting to production')
+  return 'production'
+}
+
 export const XMTP_CONFIG: XMTPClientConfig = {
-  env: process.env.NEXT_PUBLIC_XMTP_ENV === 'production' ? 'production' : 'dev',
+  env: getXMTPEnv(),
   enableV3: process.env.NEXT_PUBLIC_XMTP_V3_ENABLED === 'true',
 } as const
 
