@@ -140,48 +140,21 @@ const XMTPAutoInitializer: React.FC<XMTPAutoInitializerProps> = ({ children, con
   const activeWallet = farcasterWallet.isConnected ? farcasterWallet : webWallet
 
   const initializeXMTP = useCallback(async () => {
-    if (!config.autoConnect || !activeWallet.isConnected || !activeWallet.address || isConnected()) {
-      return
-    }
-
-    // Check if we're in miniapp context and can auto-connect
-    const context = detectMiniAppContext()
+    // DISABLED: Auto-connection has been disabled to prevent unwanted signature prompts
+    // Components should use useMiniAppXMTP for MiniApp context or manually trigger XMTP connection
     
-    if (context.isMiniApp && canAutoConnect) {
-      try {
-        setIsInitializing(true)
-        setInitializationError(null)
-        
-        console.log('🚀 Initializing XMTP with auto-signer in miniapp context')
-        await connectWithAutoSigner({
-          env: config.environment || 'production'
-        })
-        
-        console.log('✅ XMTP client initialized successfully with auto-signer')
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'XMTP initialization failed'
-        console.error('❌ XMTP auto-initialization failed:', errorMessage)
-        setInitializationError(errorMessage)
-      } finally {
-        setIsInitializing(false)
-      }
-    } else {
-      console.log('📝 XMTP auto-connect not available:', {
+    console.log('📝 XMTP auto-initialization disabled. Use useMiniAppXMTP hook or manual connection instead.')
+    
+    // Only restore cached client if available
+    const context = detectMiniAppContext()
+    if (context.isMiniApp && activeWallet.isConnected && activeWallet.address) {
+      console.log('📋 XMTP Provider ready for manual connection:', {
         isMiniApp: context.isMiniApp,
-        canAutoConnect,
         walletConnected: activeWallet.isConnected,
-        walletAddress: activeWallet.address
+        walletAddress: activeWallet.address ? `${activeWallet.address.slice(0, 6)}...${activeWallet.address.slice(-4)}` : null
       })
     }
-  }, [
-    config.autoConnect, 
-    config.environment, 
-    activeWallet.isConnected, 
-    activeWallet.address, 
-    isConnected,
-    canAutoConnect,
-    connectWithAutoSigner
-  ])
+  }, [activeWallet.isConnected, activeWallet.address])
 
   const retryInitialization = useCallback(() => {
     setInitializationError(null)

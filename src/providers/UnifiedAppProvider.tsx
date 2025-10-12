@@ -881,6 +881,11 @@ export function UnifiedAppProvider({
     },
 
     connectWallet: async () => {
+      // DISABLE WALLET CONNECTION IN MINIAPP CONTEXT DURING REBUILD
+      if (state.context === 'miniapp') {
+        throw new Error('WALLET CONNECTION DISABLED IN MINIAPP CONTEXT - TO BE REBUILT')
+      }
+      
       try {
         if (connectors.length > 0) {
           await connect({ connector: connectors[0] })
@@ -895,6 +900,11 @@ export function UnifiedAppProvider({
     },
 
     disconnectWallet: async () => {
+      // DISABLE WALLET CONNECTION IN MINIAPP CONTEXT DURING REBUILD
+      if (state.context === 'miniapp') {
+        throw new Error('WALLET CONNECTION DISABLED IN MINIAPP CONTEXT - TO BE REBUILT')
+      }
+      
       console.log('🔌 UnifiedAppProvider: Using Privy logout for proper synchronization')
       try {
         await logout()

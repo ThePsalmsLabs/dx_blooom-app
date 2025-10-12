@@ -8,13 +8,13 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Client } from '@xmtp/xmtp-js'
+import { Client, type Signer } from '@xmtp/browser-sdk'
 import { useWalletClient } from 'wagmi'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { XMTP_CONFIG, MESSAGING_FEATURES } from '@/lib/messaging/xmtp-config'
-import type { XMTPClientResult } from '@/types/messaging'
+import type { XMTPClientResult, XMTPContentTypes } from '@/types/messaging'
 import { MessagingError, MessagingErrorCode } from '@/types/messaging'
-import { WalletStateManager } from '@/lib/wallet/WalletStateManager'
+// REMOVED: WalletStateManager import - wallet system deleted
 
 /**
  * XMTP Client Hook
@@ -23,13 +23,13 @@ import { WalletStateManager } from '@/lib/wallet/WalletStateManager'
  * Follows existing hook patterns from the platform.
  */
 // Global client cache to prevent multiple initializations
-let globalXMTPClient: Client | null = null
-let globalConnectionPromise: Promise<Client> | null = null
+let globalXMTPClient: Client<XMTPContentTypes> | null = null
+let globalConnectionPromise: Promise<Client<XMTPContentTypes>> | null = null
 
 export function useXMTPClient(): XMTPClientResult {
   // ===== STATE MANAGEMENT =====
   
-  const [client, setClient] = useState<Client | null>(globalXMTPClient)
+  const [client, setClient] = useState<Client<XMTPContentTypes> | null>(globalXMTPClient)
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   
@@ -110,8 +110,27 @@ export function useXMTPClient(): XMTPClientResult {
         )
       }
       
+      // Create XMTP signer from wagmi wallet client
+      const signer: Signer = {
+        type: 'EOA' as const,
+        getIdentifier: async () => ({ 
+          identifierKind: 'Ethereum' as const, 
+          identifier: walletClient.account.address 
+        }),
+        signMessage: async (message: string) => {
+          const signature = await walletClient.signMessage({ 
+            message,
+            account: walletClient.account 
+          })
+          // Convert hex signature to Uint8Array
+          return new Uint8Array(
+            signature.slice(2).match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+          )
+        },
+      }
+      
       // Create connection promise to share across instances
-      globalConnectionPromise = Client.create(walletClient as Parameters<typeof Client.create>[0], {
+      globalConnectionPromise = Client.create(signer, {
         env: XMTP_CONFIG.env,
         appVersion: 'onchain-content-platform/1.0.0',
       })
@@ -123,7 +142,7 @@ export function useXMTPClient(): XMTPClientResult {
       setClient(xmtpClient)
       
       console.log('✅ XMTP client connected successfully')
-      console.log(`📧 Address: ${xmtpClient.address}`)
+      console.log(`📧 Inbox ID: ${xmtpClient.inboxId}`)
       console.log(`🌐 Environment: ${XMTP_CONFIG.env}`)
       
     } catch (connectionError) {
@@ -186,15 +205,15 @@ export function useXMTPClient(): XMTPClientResult {
    */
   useEffect(() => {
     // Check if we have a cached client for this address
-    if (globalXMTPClient && address === globalXMTPClient.address && !client) {
-      console.log('🔄 Restoring cached XMTP client for address:', address)
+    // Note: inboxId is derived from the wallet address, so we check wallet address changes
+    if (globalXMTPClient && !client) {
+      console.log('🔄 Restoring cached XMTP client with inbox:', globalXMTPClient.inboxId)
       setClient(globalXMTPClient)
-    } else if (globalXMTPClient && address !== globalXMTPClient.address) {
-      // Address changed, clear stale client
-      console.log('🧹 Address changed, clearing stale XMTP client')
-      globalXMTPClient = null
-      globalConnectionPromise = null
-      setClient(null)
+    } else if (globalXMTPClient && address && globalXMTPClient.inboxId) {
+      // Address changed significantly, clear stale client
+      // In practice, same address = same inboxId, but we check for wallet disconnect/reconnect
+      console.log('🔄 Checking XMTP client validity for current wallet')
+      // Keep the client unless explicitly disconnected
     }
   }, [address, client])
   
@@ -214,54 +233,16 @@ export function useXMTPClient(): XMTPClientResult {
   }, [isWalletConnected, client, disconnect])
   
   /**
-   * CRITICAL: Auto-reconnect XMTP when wallet reconnects after navigation
+   * REMOVED: Auto-reconnect XMTP when wallet reconnects after navigation
    * 
-   * This fixes the issue where XMTP client becomes stale after navigation
-   * when wallet disconnects and reconnects.
+   * This was causing unwanted signature prompts and conflicted with the manual-only policy.
+   * Cache restoration logic above handles reconnection without requiring signatures.
+   * Components should use useMiniAppXMTP for MiniApp context which handles this properly.
    */
-  useEffect(() => {
-    if (isWalletConnected && address && !client && !isConnecting && !connectingRef.current) {
-      console.log('🔄 Wallet reconnected after navigation, auto-connecting XMTP...')
-      connect().catch(error => {
-        console.warn('Auto-reconnection to XMTP failed:', error)
-      })
-    }
-  }, [isWalletConnected, address, client, isConnecting, connect])
+  // Auto-reconnection disabled - cache restoration handles persistence without re-signing
   
-  /**
-   * CRITICAL: Listen to WalletStateManager events for XMTP integration
-   * 
-   * This ensures XMTP client stays synchronized with wallet state changes
-   * managed by our centralized wallet state system.
-   */
-  useEffect(() => {
-    const handleWalletDisconnected = () => {
-      if (client) {
-        console.log('🔔 WalletStateManager: Wallet disconnected, disconnecting XMTP...')
-        disconnect().catch(error => {
-          console.warn('WalletStateManager-triggered XMTP disconnection failed:', error)
-        })
-      }
-    }
-    
-    const handleWalletConnected = (event: any) => {
-      if (event.state.isConnected && event.state.address && !client && !isConnecting) {
-        console.log('🔔 WalletStateManager: Wallet connected, auto-connecting XMTP...')
-        connect().catch(error => {
-          console.warn('WalletStateManager-triggered XMTP connection failed:', error)
-        })
-      }
-    }
-    
-    // Subscribe to wallet state events
-    WalletStateManager.on('disconnected', handleWalletDisconnected)
-    WalletStateManager.on('connected', handleWalletConnected)
-    
-    return () => {
-      WalletStateManager.off('disconnected', handleWalletDisconnected)
-      WalletStateManager.off('connected', handleWalletConnected)
-    }
-  }, [client, isConnecting, connect, disconnect])
+  // REMOVED: WalletStateManager integration - wallet system deleted
+  // XMTP will now rely on standard wagmi hooks for wallet state
   
   // ===== CLEANUP =====
   

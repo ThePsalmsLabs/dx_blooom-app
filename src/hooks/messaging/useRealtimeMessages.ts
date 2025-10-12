@@ -8,16 +8,15 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { Conversation as XMTPConversation, DecodedMessage } from '@xmtp/xmtp-js'
 import type { Address } from 'viem'
 import { useXMTPClient } from './useXMTPClient'
 import { MESSAGING_UI } from '@/lib/messaging/xmtp-config'
-import type { Message, MessageStatus } from '@/types/messaging'
+import type { Message, MessageStatus, AnyXMTPConversation, TypedDecodedMessage } from '@/types/messaging'
 import { MessageCategory } from '@/types/messaging'
 
 interface RealtimeMessagesOptions {
   /** The conversation to stream messages for */
-  conversation: XMTPConversation | null
+  conversation: AnyXMTPConversation | null
   /** Whether to auto-scroll to new messages */
   autoScroll?: boolean
   /** Whether to play sound for new messages */
@@ -61,7 +60,7 @@ export function useRealtimeMessages({
   
   // ===== REFS FOR CLEANUP =====
   
-  const streamRef = useRef<AsyncIterable<DecodedMessage> | null>(null)
+  const streamRef = useRef<AsyncIterable<TypedDecodedMessage> | null>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const typingClearTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastMessageRef = useRef<string | null>(null)
@@ -76,24 +75,25 @@ export function useRealtimeMessages({
   /**
    * Check if message is a typing indicator
    */
-  const isTypingIndicator = useCallback((xmtpMessage: DecodedMessage): boolean => {
-    return xmtpMessage.content.startsWith('__TYPING_INDICATOR__:')
+  const isTypingIndicator = useCallback((xmtpMessage: TypedDecodedMessage): boolean => {
+    const content = typeof xmtpMessage.content === 'string' ? xmtpMessage.content : JSON.stringify(xmtpMessage.content)
+    return content.startsWith('__TYPING_INDICATOR__:')
   }, [])
   
   /**
    * Handle typing indicator message
    */
-  const handleTypingIndicator = useCallback((xmtpMessage: DecodedMessage) => {
-    const senderAddress = xmtpMessage.senderAddress as Address
+  const handleTypingIndicator = useCallback((xmtpMessage: TypedDecodedMessage) => {
+    const senderInboxId = xmtpMessage.senderInboxId
     
     // Don't show typing for our own messages
-    if (client && senderAddress === client.address) return
+    if (client && senderInboxId === client.inboxId) return
     
-    // Add user to typing set
-    typingUsersRef.current.add(senderAddress)
+    // Add user to typing set (inboxId used as identifier)
+    typingUsersRef.current.add(senderInboxId as Address)
     setIsTyping(typingUsersRef.current.size > 0)
     
-    console.log(`✍️ ${senderAddress} is typing...`)
+    console.log(`✍️ ${senderInboxId} is typing...`)
     
     // Clear typing indicator after timeout
     if (typingClearTimeoutRef.current) {
@@ -101,25 +101,26 @@ export function useRealtimeMessages({
     }
     
     typingClearTimeoutRef.current = setTimeout(() => {
-      typingUsersRef.current.delete(senderAddress)
+      typingUsersRef.current.delete(senderInboxId as Address)
       setIsTyping(typingUsersRef.current.size > 0)
-      console.log(`⏰ ${senderAddress} stopped typing`)
+      console.log(`⏰ ${senderInboxId} stopped typing`)
     }, MESSAGING_UI.typingIndicatorTimeout)
   }, [client])
   
   /**
    * Convert XMTP message to platform Message format
    */
-  const convertXMTPMessage = useCallback((xmtpMessage: DecodedMessage): Message => {
+  const convertXMTPMessage = useCallback((xmtpMessage: TypedDecodedMessage): Message => {
+    const content = typeof xmtpMessage.content === 'string' ? xmtpMessage.content : JSON.stringify(xmtpMessage.content)
     return {
       id: xmtpMessage.id,
-      content: xmtpMessage.content,
-      sender: xmtpMessage.senderAddress as Address,
-      timestamp: xmtpMessage.sent,
+      content,
+      sender: xmtpMessage.senderInboxId as Address,
+      timestamp: new Date(Number(xmtpMessage.sentAtNs) / 1000000),
       status: 'sent' as MessageStatus,
       type: 'text',
       category: MessageCategory.COMMUNITY_MSG,
-      isOwn: client ? xmtpMessage.senderAddress === client.address : false
+      isOwn: client ? xmtpMessage.senderInboxId === client.inboxId : false
     }
   }, [client])
   
@@ -135,10 +136,10 @@ export function useRealtimeMessages({
     setError(null)
     
     try {
-      console.log('📥 Loading messages for conversation:', conversation.topic)
+      console.log('📥 Loading messages for conversation:', conversation.id)
       
-      // Get messages with limit
-      const xmtpMessages = await conversation.messages({ limit: messageLimit })
+      // Get messages with limit (v3 requires bigint)
+      const xmtpMessages = await conversation.messages({ limit: BigInt(messageLimit) })
       
       // Convert to platform format
       const convertedMessages = xmtpMessages.map(convertXMTPMessage)
@@ -182,10 +183,10 @@ export function useRealtimeMessages({
     
     const setupStream = async () => {
       try {
-        console.log('🔄 Setting up message stream for:', conversation.topic)
+        console.log('🔄 Setting up message stream for:', conversation.id)
         
-        // Create message stream
-        const messageStream = await conversation.streamMessages()
+        // Create message stream (v3 uses stream() method)
+        const messageStream = await conversation.stream()
         streamRef.current = messageStream
         
         // Listen for new messages
@@ -226,9 +227,9 @@ export function useRealtimeMessages({
           lastMessageRef.current = message.id
           
           // Clear typing indicators when real message arrives
-          const senderAddress = message.senderAddress as Address
-          if (typingUsersRef.current.has(senderAddress)) {
-            typingUsersRef.current.delete(senderAddress)
+          const senderInboxId = message.senderInboxId as Address
+          if (typingUsersRef.current.has(senderInboxId)) {
+            typingUsersRef.current.delete(senderInboxId)
             setIsTyping(typingUsersRef.current.size > 0)
           }
           
@@ -298,7 +299,7 @@ export function useRealtimeMessages({
     try {
       // Send a special typing indicator message that won't be displayed
       // Use a special prefix to identify typing indicators
-      const typingIndicatorContent = `__TYPING_INDICATOR__:${Date.now()}:${client.address}`
+      const typingIndicatorContent = `__TYPING_INDICATOR__:${Date.now()}:${client.inboxId}`
       
       // Send as regular message but with special format for identification
       await conversation.send(typingIndicatorContent)

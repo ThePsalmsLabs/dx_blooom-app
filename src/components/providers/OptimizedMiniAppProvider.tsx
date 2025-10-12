@@ -8,10 +8,9 @@
 
 'use client'
 
-import React, { ReactNode, useEffect, useMemo } from 'react'
+import React, { ReactNode, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { UnifiedMiniAppProvider } from '@/contexts/UnifiedMiniAppProvider'
-import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimization'
 
 interface OptimizedMiniAppProviderProps {
   children: ReactNode
@@ -85,7 +84,7 @@ function useMiniAppQueryConfig() {
       console.warn('Query error in MiniApp:', error, query.queryKey)
     }
 
-    queryClient.getQueryCache().config.onSuccess = (data, query) => {
+    queryClient.getQueryCache().config.onSuccess = (_data, query) => {
       // Optionally log successful queries for debugging
       if (process.env.NODE_ENV === 'development') {
         console.debug('Query success:', query.queryKey)
@@ -100,23 +99,17 @@ function useMiniAppQueryConfig() {
 /**
  * RPC Call Deduplication Context
  * Prevents duplicate contract calls across components
+ * Simplified version without UnifiedMiniAppProvider dependencies
  */
 function useRPCDeduplication() {
-  const rpcOptimization = useMiniAppRPCOptimization({
-    enableBatching: true,
-    enablePrefetching: true,
-    mobileOptimizations: true,
-    aggressiveCaching: true,
-    throttleMs: 1000
-  })
-
   useEffect(() => {
     // Set up global RPC deduplication
     const globalRequestCache = new Map<string, Promise<any>>()
+    let originalRequest: any = null
     
     // Override window.ethereum if available to add deduplication
     if (typeof window !== 'undefined' && window.ethereum) {
-      const originalRequest = window.ethereum.request
+      originalRequest = window.ethereum.request
       
       window.ethereum.request = async (args: any) => {
         const requestKey = JSON.stringify(args)
@@ -143,14 +136,23 @@ function useRPCDeduplication() {
     }
 
     return () => {
-      // Cleanup optimization state - only call once on unmount
-      if (rpcOptimization.clearOptimizationCache) {
-        rpcOptimization.clearOptimizationCache()
+      // Restore original request method on cleanup
+      if (typeof window !== 'undefined' && window.ethereum && originalRequest) {
+        window.ethereum.request = originalRequest
       }
     }
-  }, []) // Remove rpcOptimization dependency to prevent infinite loop
+  }, [])
 
-  return rpcOptimization
+  // Return simplified metrics
+  return {
+    metrics: {
+      savedCalls: 0,
+      cacheHits: 0
+    },
+    clearOptimizationCache: () => {
+      // No-op for simplified version
+    }
+  }
 }
 
 /**
@@ -169,20 +171,7 @@ export function OptimizedMiniAppProvider({
   // Set up RPC deduplication
   const rpcOptimization = useRPCDeduplication()
   
-  // Performance monitoring in development
-  const performanceConfig = useMemo(() => {
-    if (process.env.NODE_ENV === 'development') {
-      return {
-        onQueryStart: (queryKey: string[]) => {
-          console.time(`Query: ${queryKey.join('/')}`)
-        },
-        onQueryEnd: (queryKey: string[]) => {
-          console.timeEnd(`Query: ${queryKey.join('/')}`)
-        }
-      }
-    }
-    return {}
-  }, [])
+  // Performance monitoring would go here in development if needed
 
   return (
     <UnifiedMiniAppProvider

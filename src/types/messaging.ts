@@ -6,7 +6,46 @@
  */
 
 import type { Address } from 'viem'
-import type { Client, Conversation as XMTPConversation } from '@xmtp/xmtp-js'
+import type { 
+  Client, 
+  Conversation as XMTPConversation, 
+  DecodedMessage,
+  Dm,
+  Group,
+  Identifier
+} from '@xmtp/browser-sdk'
+import type { GroupUpdated } from '@xmtp/content-type-group-updated'
+
+// ================================================
+// XMTP V3 CONTENT TYPES
+// ================================================
+
+/**
+ * Supported content types for XMTP v3
+ * - string: Text messages
+ * - GroupUpdated: Group update notifications
+ */
+export type XMTPContentTypes = string | GroupUpdated
+
+/**
+ * Typed Dm conversation with our supported content types
+ */
+export type TypedDm = Dm<XMTPContentTypes>
+
+/**
+ * Typed Group conversation with our supported content types
+ */
+export type TypedGroup = Group<XMTPContentTypes>
+
+/**
+ * Union type for any XMTP conversation
+ */
+export type AnyXMTPConversation = TypedDm | TypedGroup
+
+/**
+ * Typed decoded message with our supported content types
+ */
+export type TypedDecodedMessage = DecodedMessage<XMTPContentTypes>
 
 // ================================================
 // CORE MESSAGING TYPES
@@ -134,7 +173,7 @@ export interface ConversationState {
 // ================================================
 
 export interface XMTPClientResult {
-  readonly client: Client | null
+  readonly client: Client<XMTPContentTypes> | null
   readonly isConnected: boolean
   readonly isConnecting: boolean
   readonly isInitializing: boolean
@@ -158,7 +197,7 @@ export interface ConversationManagerResult {
   readonly isLoading: boolean
   readonly error: Error | null
   readonly sendMessage: (recipientAddress: Address, content: MessageContent) => Promise<void>
-  readonly getOrCreateConversation: (peerAddress: Address, context?: MessagingContext) => Promise<XMTPConversation>
+  readonly getOrCreateConversation: (peerAddress: Address, context?: MessagingContext) => Promise<AnyXMTPConversation>
   readonly createConversation: (peerAddress: Address, context?: MessagingContext) => Promise<ConversationPreview>
   readonly markAsRead: (conversationId: string) => Promise<void>
   readonly refreshConversations: () => Promise<void>

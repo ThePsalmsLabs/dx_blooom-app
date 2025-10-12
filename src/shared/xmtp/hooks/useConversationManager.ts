@@ -18,10 +18,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Address } from 'viem'
-import type { Conversation as XMTPConversation } from '@xmtp/xmtp-js'
+import type { Conversation as XMTPConversation } from '@xmtp/browser-sdk'
 import { useXMTPClient, useIsXMTPConnected } from '../client'
 import { useMessagingPermissions } from './useMessagingPermissions'
-import { detectContentType } from '../utils/contentTypeDetection'
+// Note: Content type detection will need to be updated for V3
+// import { detectContentType } from '../utils/contentTypeDetection'
 import type { 
   ConversationManagerResult,
   ConversationPreview,
@@ -34,16 +35,8 @@ import { MessageCategory } from '../types/index'
 import { MessagingError, MessagingErrorCode } from '../types/index'
 
 // ================================================
-// TYPES & INTERFACES
+// TYPES & INTERFACES  
 // ================================================
-
-interface ConversationManagerState {
-  readonly conversations: ConversationPreview[]
-  readonly isLoading: boolean
-  readonly error: Error | null
-  readonly activeConversations: Map<string, XMTPConversation>
-  readonly archivedTopics: Set<string>
-}
 
 // ================================================
 // MAIN CONVERSATION MANAGER HOOK
@@ -106,37 +99,41 @@ export function useConversationManager(): ConversationManagerResult {
     context?: MessagingContext
   ): Promise<ConversationPreview> => {
     try {
-      // Get conversation messages for preview
-      const messages = await conversation.messages({ limit: 1 })
+      // Get conversation messages for preview - V3 API
+      const messages = await conversation.messages({ limit: BigInt(1) })
       const lastMessage = messages[0]
       
       let lastMessagePreview: MessagePreview | undefined
       if (lastMessage) {
-        // Detect content type and convert to structured format
-        const contentDetection = detectContentType(lastMessage)
+        // V3 messages have direct content access - create proper MessageContent object
+        const contentText = typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content || '')
         
         lastMessagePreview = {
           id: lastMessage.id,
-          content: contentDetection.data,
-          sender: lastMessage.senderAddress as Address,
-          timestamp: lastMessage.sent,
+          content: { type: 'text', text: contentText } as MessageContent,
+          sender: lastMessage.senderInboxId as Address, // V3 uses inboxId
+          timestamp: new Date(Number(lastMessage.sentAtNs) / 1000000), // Convert nanoseconds to milliseconds
           isRead: false, // Would integrate with read receipt system
           category: MessageCategory.COMMUNITY_MSG,
           status: 'delivered'
         }
       }
       
+      const members = await conversation.members()
+      const currentClientInboxId = client!.inboxId
+      const peerMember = members.find(member => member.inboxId !== currentClientInboxId)
+      
       return {
-        id: conversation.topic,
-        peerAddress: conversation.peerAddress as Address,
+        id: conversation.id,
+        peerAddress: peerMember?.inboxId as Address, // V3 uses members array
         lastMessage: lastMessagePreview,
         unreadCount: 0, // Would integrate with read receipt system
         status: 'active' as ConversationStatus,
         context: context || {
           socialContext: 'web'
         },
-        createdAt: new Date(),
-        updatedAt: lastMessage ? lastMessage.sent : new Date()
+        createdAt: conversation.createdAt || new Date(),
+        updatedAt: lastMessage ? new Date(Number(lastMessage.sentAtNs) / 1000000) : new Date()
       }
     } catch (error) {
       console.error('Failed to convert conversation to preview:', error)
@@ -181,8 +178,9 @@ export function useConversationManager(): ConversationManagerResult {
         return existingConversation
       }
 
-      // Create new conversation
-      const conversation = await client.conversations.newConversation(peerAddress)
+      // Create new conversation - V3 API uses newDmWithIdentifier
+      const identifier = { identifier: peerAddress, identifierKind: 'Ethereum' as const }
+      const conversation = await client.conversations.newDmWithIdentifier(identifier)
       
       // Store in active conversations
       setActiveConversations(prev => {
@@ -228,40 +226,38 @@ export function useConversationManager(): ConversationManagerResult {
       // Get or create conversation
       const conversation = await getOrCreateConversation(peerAddress, context)
       
-      // Send message based on content type
-      let messageToSend: string
+      // V3 API - handle MessageContent discriminated union properly
+      let textToSend: string
+      let contentLength: number
       
       switch (content.type) {
         case 'text':
-          messageToSend = content.text
+          textToSend = content.text
+          contentLength = content.text.length
           break
-          
         case 'attachment':
-          // For now, send attachment info as text (will be enhanced with XMTP content types)
-          messageToSend = `[Attachment: ${content.attachment.name}]`
+          textToSend = `[Attachment: ${content.attachment.name}]`
+          contentLength = textToSend.length
           break
-          
         case 'mixed':
-          // Combine text and attachment info
           const attachmentInfo = content.attachments.map(att => `[${att.name}]`).join(' ')
-          messageToSend = content.text + (attachmentInfo ? `\n\nAttachments: ${attachmentInfo}` : '')
+          textToSend = content.text + (attachmentInfo ? `\n\nAttachments: ${attachmentInfo}` : '')
+          contentLength = textToSend.length
           break
-          
         default:
           throw new MessagingError(
             'Unsupported message content type',
-            MessagingErrorCode.UNKNOWN_ERROR
+            MessagingErrorCode.MESSAGE_SEND_FAILED
           )
       }
       
-      await conversation.send(messageToSend)
+      await conversation.send(textToSend)
       
       // Track analytics
       trackMessagingEvent('message_sent', {
         peerAddress,
         contentType: content.type,
-        contentLength: content.type === 'text' ? content.text.length : 0,
-        hasAttachments: content.type === 'attachment' || content.type === 'mixed',
+        contentLength,
         context: context?.socialContext || 'unknown'
       })
       

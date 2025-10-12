@@ -7,7 +7,7 @@
  * consistency throughout the application.
  */
 
-import type { Client, Conversation, Message } from '@xmtp/xmtp-js'
+import type { Client, Conversation, DecodedMessage } from '@xmtp/browser-sdk'
 import type { Address } from 'viem'
 
 // ================================================
@@ -16,7 +16,7 @@ import type { Address } from 'viem'
 
 export type XMTPClient = Client
 export type XMTPConversation = Conversation
-export type XMTPMessage = Message
+export type XMTPMessage = DecodedMessage
 
 // ================================================
 // CONVERSATION TYPES

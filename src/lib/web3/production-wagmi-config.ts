@@ -8,6 +8,7 @@
 
 import { createConfig, createStorage } from 'wagmi'
 import { metaMask, coinbaseWallet, walletConnect, injected, safe } from 'wagmi/connectors'
+import farcasterMiniApp from '@farcaster/miniapp-wagmi-connector'
 import { 
   createFixedRpcTransports, 
   getSupportedChains,
@@ -51,6 +52,9 @@ function createProductionConnectors() {
   
   // Core wallet connectors always included
   const coreConnectors = [
+    // Farcaster MiniApp connector - ADD FIRST for MiniApp context
+    farcasterMiniApp(),
+    
     // MetaMask connector
     metaMask({
       dappMetadata: {

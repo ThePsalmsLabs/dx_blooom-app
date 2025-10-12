@@ -15,7 +15,7 @@
  */
 
 import type { Address } from 'viem'
-import type { Client, Conversation as XMTPConversation } from '@xmtp/xmtp-js'
+import type { Client, Conversation as XMTPConversation } from '@xmtp/browser-sdk'
 
 // ================================================
 // CORE MESSAGING TYPES

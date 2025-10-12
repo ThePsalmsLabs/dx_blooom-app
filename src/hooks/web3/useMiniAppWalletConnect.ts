@@ -1,36 +1,15 @@
 /**
- * Enhanced Wallet Connection Hook for MiniApp Context
+ * Enhanced Wallet Connection Hook for MiniApp Context - DISABLED
  * File: src/hooks/web3/useMiniAppWalletConnect.ts
  * 
- * This hook provides a robust wallet connection interface specifically designed
- * for MiniApp environments. It handles the unique challenges of embedded contexts
- * while maintaining full compatibility with your existing codebase.
- * 
- * KEY FEATURES:
- * - Automatic error recovery from wagmi state corruption
- * - MiniApp-specific connection flow optimization
- * - Farcaster integration for social verification
- * - Progressive enhancement that works in both web and MiniApp contexts
- * - Comprehensive error handling with user-friendly fallbacks
+ * WALLET CONNECTION DISABLED - TO BE REBUILT
+ * This hook has been disabled during wallet architecture rebuilding.
  */
 
-import { useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import {
-  useAccount,
-  useChainId,
-  useDisconnect,
-  useConnect,
-  useConfig,
-  useReconnect
-} from 'wagmi'
+// WALLET CONNECTION IMPORTS REMOVED - TO BE REBUILT
 import { base, baseSepolia } from 'viem/chains'
-import { formatAddress } from '../../lib/utils'
 import type { Connector } from 'wagmi'
 import type { Address } from 'viem'
-import {
-  listenForWalletState,
-  isMiniAppContext
-} from '@/lib/utils/miniapp-communication'
 
 // =============================================================================
 // TYPES AND INTERFACES
@@ -265,319 +244,58 @@ const resetWagmiState = async (config: any) => {
 // =============================================================================
 
 export function useMiniAppWalletConnect(): UseMiniAppWalletConnectReturn {
-  // Core wagmi hooks
-  const { address, isConnected, isConnecting, connector } = useAccount()
-  const { disconnect: wagmiDisconnect } = useDisconnect()
-  const { connect: wagmiConnect, connectors, error: connectError, isPending } = useConnect()
-  const { reconnect } = useReconnect()
-  const chainId = useChainId()
-  const config = useConfig()
-
-  // Local state for error handling and recovery
-  const [error, setError] = useState<ConnectionError | null>(null)
-  const [isRecovering, setIsRecovering] = useState(false)
-  const [recoveryAttempts, setRecoveryAttempts] = useState(0)
-  const lastErrorRef = useRef<string>('')
-  const recoveryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // =============================================================================
-  // ERROR HANDLING AND RECOVERY
-  // =============================================================================
-
-  /**
-   * Enhanced recovery mechanism for connection errors
-   */
-  const recover = useCallback(async () => {
-    // Clear any existing recovery timeout
-    if (recoveryTimeoutRef.current) {
-      clearTimeout(recoveryTimeoutRef.current)
-      recoveryTimeoutRef.current = null
-    }
-
-    // Use a ref to track current recovery attempts to avoid dependency issues
-    const currentAttempts = recoveryAttempts
-    if (currentAttempts >= MAX_RECOVERY_ATTEMPTS) {
-      console.warn('Maximum recovery attempts reached')
-      return
-    }
-
-    setIsRecovering(true)
-    setRecoveryAttempts(prev => prev + 1)
-
-    try {
-      console.log(`🔄 Recovery attempt ${currentAttempts + 1}/${MAX_RECOVERY_ATTEMPTS}`)
-
-      // Step 1: Perform comprehensive wagmi state reset
-      await resetWagmiState(config)
-
-      // Step 2: Wait for the reset to take effect
-      await delay(RECOVERY_DELAY)
-
-      // Step 3: Try to reconnect using the last successful configuration
-      try {
-        await reconnect()
-      } catch (reconnectError) {
-        console.warn('Reconnect failed, will require manual connection:', reconnectError)
-      }
-
-      // Step 4: Clear the error if we got this far
-      setError(null)
-      
-      console.log('✅ Recovery completed successfully')
-
-    } catch (recoveryError) {
-      console.error('Recovery failed:', recoveryError)
-      setError(categorizeError(recoveryError as Error))
-    } finally {
-      setIsRecovering(false)
-    }
-  }, [config, reconnect, recoveryAttempts])
-
-  /**
-   * Enhanced error handling with automatic recovery
-   */
-  useEffect(() => {
-    if (connectError) {
-      const categorized = categorizeError(connectError)
-      const errorString = connectError.message
-
-      // Avoid duplicate error processing
-      if (lastErrorRef.current === errorString) {
-        return
-      }
-      lastErrorRef.current = errorString
-
-      setError(categorized)
-
-      // Auto-recovery for specific errors
-      if (categorized.code === 'CONNECTIONS_MAP_ERROR' && recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
-        console.log('🚨 Automatically attempting recovery for connections.get error')
-        
-        // Use setTimeout with a stable reference to avoid dependency issues
-        recoveryTimeoutRef.current = setTimeout(() => {
-          recover()
-        }, 500)
-      }
-    }
-  }, [connectError, recoveryAttempts, recover])
-
-  // Reset recovery attempts on successful connection
-  useEffect(() => {
-    if (isConnected && error) {
-      setError(null)
-      setRecoveryAttempts(0)
-      lastErrorRef.current = ''
-      
-      // Clear any pending recovery timeout
-      if (recoveryTimeoutRef.current) {
-        clearTimeout(recoveryTimeoutRef.current)
-        recoveryTimeoutRef.current = null
-      }
-    }
-  }, [isConnected, error])
-
-  // Cleanup recovery timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (recoveryTimeoutRef.current) {
-        clearTimeout(recoveryTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  // Use ref to track if we've checked initial state
-  const hasCheckedInitialStateRef = useRef(false)
-
-  // MiniApp communication - listen for wallet state from web version (FIXED INFINITE LOOP)
-  useEffect(() => {
-    if (!isMiniAppContext()) return
-
-    const cleanup = listenForWalletState((state) => {
-      // Throttle this log too
-      const now = Date.now()
-      const lastLogKey = 'miniapp-received-state-log'
-      const lastLog = parseInt(localStorage.getItem(lastLogKey) || '0')
-      
-      if (now - lastLog > 5000) {
-        console.log('📨 MiniApp received wallet state from web:', state)
-        localStorage.setItem(lastLogKey, now.toString())
-      }
-
-      // If web version is connected and we have the same address, update our state
-      if (state.isConnected && state.address && !isConnected) {
-        console.log('🔄 MiniApp syncing wallet state from web version')
-
-        // Try to reconnect with the same address if possible
-        if (connectors.length > 0) {
-          reconnect()
-        }
-      }
-    })
-
-    // DISABLED localStorage check to completely stop infinite loop
-    // Check localStorage ONLY ONCE on mount to prevent infinite loop
-    if (!hasCheckedInitialStateRef.current) {
-      hasCheckedInitialStateRef.current = true
-      
-      try {
-        // TEMPORARILY DISABLED: This was causing infinite loops
-        // const storedState = getWalletState()
-        // if (storedState?.isConnected && storedState.address && !isConnected) {
-        //   console.log('📦 MiniApp found stored wallet state (DISABLED TO PREVENT LOOP):', storedState)
-        //   if (connectors.length > 0) {
-        //     setTimeout(() => {
-        //       reconnect()
-        //     }, 100)
-        //   }
-        // }
-        console.log('🚫 Wallet state check temporarily disabled to prevent infinite loop')
-      } catch (error) {
-        console.warn('Failed to check stored wallet state:', error)
-      }
-    }
-
-    return cleanup
-  }, []) // EMPTY DEPENDENCY ARRAY to prevent infinite loop
-
-  // Separate effect to handle connection state changes without infinite loop
-  useEffect(() => {
-    // Only log connection state changes, don't trigger actions
-    if (isMiniAppContext() && isConnected && address) {
-      console.log('✅ MiniApp wallet connected:', { address: address.slice(0, 6) + '...' + address.slice(-4), chainId })
-    }
-  }, [isConnected, address, chainId])
-
-  // =============================================================================
-  // CONNECTION ACTIONS
-  // =============================================================================
-
-  const connect = useCallback(async (preferredConnector?: Connector) => {
-    try {
-      setError(null)
-      
-      // Use the preferred connector or the first available one
-      const targetConnector = preferredConnector || connectors[0]
-      
-      if (!targetConnector) {
-        throw new Error('No wallet connectors available')
-      }
-
-      await wagmiConnect({ connector: targetConnector })
-    } catch (connectError) {
-      const categorized = categorizeError(connectError as Error)
-      setError(categorized)
-
-      // Auto-recover for specific errors
-      if (categorized.recoverable && recoveryAttempts < MAX_RECOVERY_ATTEMPTS) {
-        recoveryTimeoutRef.current = setTimeout(() => {
-          recover()
-        }, 1000)
-      }
-    }
-  }, [wagmiConnect, connectors, recoveryAttempts, recover])
-
-  const disconnect = useCallback(async () => {
-    try {
-      setError(null)
-      await wagmiDisconnect()
-      setRecoveryAttempts(0)
-      
-      // Clear any pending recovery timeout
-      if (recoveryTimeoutRef.current) {
-        clearTimeout(recoveryTimeoutRef.current)
-        recoveryTimeoutRef.current = null
-      }
-    } catch (disconnectError) {
-      setError(categorizeError(disconnectError as Error))
-    }
-  }, [wagmiDisconnect])
-
-  const switchNetwork = useCallback(async (targetChainId: number) => {
-    try {
-      setError(null)
-      
-      if (!connector?.switchChain) {
-        throw new Error('Network switching not supported by current wallet')
-      }
-
-      await connector.switchChain({ chainId: targetChainId })
-    } catch (switchError) {
-      setError(categorizeError(switchError as Error))
-    }
-  }, [connector])
-
-  const retry = useCallback(async () => {
-    if (error?.recoverable) {
-      await recover()
-    }
-  }, [error, recover])
-
-  const clearError = useCallback(() => {
-    setError(null)
-    lastErrorRef.current = ''
-    
-    // Clear any pending recovery timeout
-    if (recoveryTimeoutRef.current) {
-      clearTimeout(recoveryTimeoutRef.current)
-      recoveryTimeoutRef.current = null
-    }
-  }, [])
-
-  // =============================================================================
-  // COMPUTED VALUES
-  // =============================================================================
-
-  const status: WalletConnectionStatus = useMemo(() => {
-    if (isRecovering) return 'recovering'
-    if (isConnecting || isPending) return 'connecting'
-    if (isConnected) return 'connected'
-    if (error) return 'error'
-    return 'disconnected'
-  }, [isRecovering, isConnecting, isPending, isConnected, error])
-
-  const formattedAddress = useMemo(() => 
-    address ? formatAddress(address) : null, 
-    [address]
-  )
-
-  const network = useMemo(() => 
-    SUPPORTED_NETWORKS.find(n => n.id === chainId) || null,
-    [chainId]
-  )
-
-  const isCorrectNetwork = useMemo(() => 
-    network?.isSupported ?? false,
-    [network]
-  )
-
-  const canRecover = useMemo(() => 
-    Boolean(error?.recoverable && recoveryAttempts < MAX_RECOVERY_ATTEMPTS),
-    [error, recoveryAttempts]
-  )
+  // WALLET CONNECTION DISABLED - RETURN DISABLED STATE
+  console.log('🚫 useMiniAppWalletConnect DISABLED - to be rebuilt')
+  
+  const disabledError: ConnectionError = {
+    type: 'unknown',
+    message: 'WALLET CONNECTION DISABLED - TO BE REBUILT',
+    recoverable: false
+  }
+  
+  const disabledNetwork: NetworkInfo = {
+    id: 8453,
+    name: 'Base',
+    isSupported: false,
+    blockExplorer: '',
+    rpcUrl: ''
+  }
 
   return {
-    // State
-    isConnected,
-    isConnecting: isConnecting || isPending || isRecovering,
-    status,
-    address: address || null,
-    formattedAddress,
-    network,
-    isCorrectNetwork,
-    error,
-    canRecover,
-    recoveryAttempts,
+    // State - ALL DISABLED
+    isConnected: false,
+    isConnecting: false,
+    status: 'error' as WalletConnectionStatus,
+    address: null,
+    formattedAddress: null,
+    network: disabledNetwork,
+    isCorrectNetwork: false,
+    error: disabledError,
+    canRecover: false,
+    recoveryAttempts: 0,
 
-    // Actions
-    connect,
-    disconnect,
-    switchNetwork,
-    retry,
-    clearError,
-    recover,
+    // Actions - ALL THROW ERRORS
+    connect: async () => {
+      throw new Error('WALLET CONNECTION DISABLED - TO BE REBUILT')
+    },
+    disconnect: async () => {
+      throw new Error('WALLET CONNECTION DISABLED - TO BE REBUILT')
+    },
+    switchNetwork: async () => {
+      throw new Error('WALLET CONNECTION DISABLED - TO BE REBUILT')
+    },
+    retry: async () => {
+      throw new Error('WALLET CONNECTION DISABLED - TO BE REBUILT')
+    },
+    clearError: () => {
+      throw new Error('WALLET CONNECTION DISABLED - TO BE REBUILT')
+    },
+    recover: async () => {
+      throw new Error('WALLET CONNECTION DISABLED - TO BE REBUILT')
+    },
 
     // Static data
     supportedNetworks: SUPPORTED_NETWORKS,
-    availableConnectors: connectors
+    availableConnectors: []
   }
 }

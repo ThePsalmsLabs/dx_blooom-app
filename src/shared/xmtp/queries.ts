@@ -10,7 +10,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import type { Conversation, DecodedMessage } from '@xmtp/xmtp-js'
+import type { Conversation, DecodedMessage } from '@xmtp/browser-sdk'
 import { useXMTPClient, useIsXMTPConnected } from './client'
 import type { 
   ConversationPreview, 
@@ -40,23 +40,36 @@ const conversationToPreview = async (
   conversation: Conversation,
   context?: MessagingContext
 ): Promise<ConversationPreview> => {
-  const messages = await conversation.messages({ limit: 1 })
+  const messages = await conversation.messages({ limit: BigInt(1) })
   const lastMessage = messages[0]
   
+  // V3 API - determine peer based on conversation type
+  let peerAddress: Address
+  const metadata = conversation.metadata
+  
+  if (metadata?.conversationType === 'dm') {
+    // For DM conversations, use the peerInboxId method
+    peerAddress = await (conversation as any).peerInboxId() as Address
+  } else {
+    // For group conversations, get first member that isn't us
+    const members = await conversation.members()
+    peerAddress = members[0]?.inboxId as Address // Simplified - would need client context
+  }
+  
   return {
-    id: conversation.topic,
-    topic: conversation.topic,
-    peerAddress: conversation.peerAddress as Address,
+    id: conversation.id,
+    topic: conversation.id, // V3 uses id instead of topic
+    peerAddress,
     lastMessage: lastMessage ? {
       id: lastMessage.id,
-      content: lastMessage.content,
-      senderAddress: lastMessage.senderAddress as Address,
-      timestamp: lastMessage.sent,
+      content: typeof lastMessage.content === 'string' ? lastMessage.content : JSON.stringify(lastMessage.content || ''),
+      senderAddress: lastMessage.senderInboxId as Address, // V3 uses senderInboxId
+      timestamp: new Date(Number(lastMessage.sentAtNs) / 1000000), // V3 uses sentAtNs in nanoseconds
       messageType: 'text',
       status: 'sent'
     } : undefined,
     unreadCount: 0,
-    lastMessageTime: lastMessage?.sent,
+    lastMessageTime: lastMessage ? new Date(Number(lastMessage.sentAtNs) / 1000000) : undefined,
     context
   }
 }
@@ -67,9 +80,9 @@ const messageToExtended = (
 ): ExtendedMessage => {
   return {
     id: message.id,
-    content: message.content,
-    senderAddress: message.senderAddress as Address,
-    timestamp: message.sent,
+    content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content || ''),
+    senderAddress: message.senderInboxId as Address, // V3 uses senderInboxId
+    timestamp: new Date(Number(message.sentAtNs) / 1000000), // V3 uses sentAtNs in nanoseconds
     messageType: 'text',
     status: 'sent',
     conversationTopic
@@ -135,7 +148,7 @@ export const useConversationQuery = (topic: string) => {
 
       try {
         const conversations = await client.conversations.list()
-        const conversation = conversations.find(c => c.topic === topic)
+        const conversation = conversations.find(c => c.id === topic) // V3 uses id instead of topic
         if (!conversation) return null
 
         return await conversationToPreview(conversation)
@@ -169,12 +182,12 @@ export const useMessagesQuery = (conversationTopic: string) => {
 
       try {
         const conversations = await client.conversations.list()
-        const conversation = conversations.find(c => c.topic === conversationTopic)
+        const conversation = conversations.find(c => c.id === conversationTopic) // V3 uses id
         if (!conversation) {
           throw createXMTPError('Conversation not found', 'CONVERSATION_NOT_FOUND')
         }
 
-        const messages = await conversation.messages({ limit: 50 })
+        const messages = await conversation.messages({ limit: BigInt(50) })
         return messages.map(msg => messageToExtended(msg, conversationTopic))
       } catch (error) {
         console.error('Failed to fetch messages:', error)
@@ -205,7 +218,8 @@ export const useCreateConversationMutation = () => {
       }
 
       try {
-        const conversation = await client.conversations.newConversation(request.peerAddress)
+        const identifier = { identifier: request.peerAddress, identifierKind: 'Ethereum' as const }
+        const conversation = await client.conversations.newDmWithIdentifier(identifier)
         const preview = await conversationToPreview(conversation, request.context)
 
         if (request.initialMessage) {
@@ -223,7 +237,7 @@ export const useCreateConversationMutation = () => {
     },
     onSuccess: (newConversation) => {
       queryClient.setQueryData(xmtpQueryKeys.conversations(), (old: ConversationPreview[] = []) => {
-        const exists = old.find(conv => conv.topic === newConversation.topic)
+        const exists = old.find(conv => conv.topic === newConversation.topic) // topic field exists in ConversationPreview
         if (exists) return old
         return [newConversation, ...old]
       })
@@ -247,19 +261,29 @@ export const useSendMessageMutation = () => {
 
         if (request.conversationTopic) {
           const conversations = await client.conversations.list()
-          const existingConv = conversations.find(c => c.topic === request.conversationTopic)
+          const existingConv = conversations.find(c => c.id === request.conversationTopic) // V3 uses id
           if (!existingConv) {
             throw createXMTPError('Conversation not found', 'CONVERSATION_NOT_FOUND')
           }
           conversation = existingConv
         } else if (request.peerAddress) {
-          conversation = await client.conversations.newConversation(request.peerAddress)
+          const identifier = { identifier: request.peerAddress, identifierKind: 'Ethereum' as const }
+          conversation = await client.conversations.newDmWithIdentifier(identifier)
         } else {
           throw createXMTPError('Either conversationTopic or peerAddress is required', 'INVALID_REQUEST')
         }
 
-        const sentMessage = await conversation.send(request.content)
-        return messageToExtended(sentMessage, conversation.topic)
+        const messageId = await conversation.send(request.content)
+        
+        // Get the sent message by fetching recent messages
+        const recentMessages = await conversation.messages({ limit: BigInt(1) })
+        const sentMessage = recentMessages.find(msg => msg.id === messageId)
+        
+        if (!sentMessage) {
+          throw createXMTPError('Failed to retrieve sent message', 'MESSAGE_SEND_FAILED')
+        }
+        
+        return messageToExtended(sentMessage, conversation.id)
       } catch (error) {
         console.error('Failed to send message:', error)
         throw createXMTPError(
@@ -275,7 +299,7 @@ export const useSendMessageMutation = () => {
 
         queryClient.setQueryData(xmtpQueryKeys.conversations(), (old: ConversationPreview[] = []) => 
           old.map(conv => 
-            conv.topic === request.conversationTopic 
+            conv.topic === request.conversationTopic // topic field exists in ConversationPreview 
               ? { 
                   ...conv, 
                   lastMessage: {
@@ -314,7 +338,7 @@ export const useConversationManager = () => {
 
   const getConversation = useCallback(
     (topic: string) => {
-      return conversationsQuery.data?.find(conv => conv.topic === topic)
+      return conversationsQuery.data?.find(conv => conv.topic === topic) // topic field exists in ConversationPreview
     },
     [conversationsQuery.data]
   )
