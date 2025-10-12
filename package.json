@@ -11,8 +11,6 @@
     "start": "next start",
     "lint": "next lint",
     "validate-rpc": "tsx scripts/validate-rpc-config.ts",
-    "copy-xmtp-wasm": "./scripts/copy-xmtp-wasm.sh",
-    "postinstall": "npm run copy-xmtp-wasm",
     "clean": "rm -rf .next && rm -rf node_modules/.cache",
     "clean:all": "rm -rf .next && rm -rf node_modules/.cache && rm -rf node_modules && npm install",
     "dev:v1": "cp .env.local .env && npm run dev",
