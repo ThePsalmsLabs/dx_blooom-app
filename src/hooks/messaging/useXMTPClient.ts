@@ -14,6 +14,7 @@ import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { XMTP_CONFIG, MESSAGING_FEATURES } from '@/lib/messaging/xmtp-config'
 import type { XMTPClientResult, XMTPContentTypes } from '@/types/messaging'
 import { MessagingError, MessagingErrorCode } from '@/types/messaging'
+import { initXMTP, isXMTPInitialized } from '@/lib/xmtp/initXMTP'
 // REMOVED: WalletStateManager import - wallet system deleted
 
 /**
@@ -102,6 +103,15 @@ export function useXMTPClient(): XMTPClientResult {
     try {
       console.log('🔗 Connecting to XMTP network...')
       
+      // ===== STEP 1: Initialize XMTP Browser SDK =====
+      // This MUST happen before Client.create() to ensure WASM is properly loaded
+      if (!isXMTPInitialized()) {
+        console.log('🔧 Initializing XMTP Browser SDK (first time setup)...')
+        await initXMTP()
+        console.log('✅ XMTP Browser SDK initialized')
+      }
+      
+      // ===== STEP 2: Validate wallet client =====
       // Get wallet client from wagmi (integrates with existing wallet infrastructure)
       if (!walletClient) {
         throw new MessagingError(
@@ -110,7 +120,7 @@ export function useXMTPClient(): XMTPClientResult {
         )
       }
       
-      // Create XMTP signer from wagmi wallet client
+      // ===== STEP 3: Create XMTP signer from wagmi wallet client =====
       const signer: Signer = {
         type: 'EOA' as const,
         getIdentifier: async () => ({ 
@@ -129,10 +139,13 @@ export function useXMTPClient(): XMTPClientResult {
         },
       }
       
-      // Create connection promise to share across instances
+      // ===== STEP 4: Create XMTP client =====
+      // Per official docs: https://docs.xmtp.org/chat-apps/sdks/browser
+      // Client.create() takes minimal options
+      console.log('📡 Creating XMTP client...')
       globalConnectionPromise = Client.create(signer, {
-        env: XMTP_CONFIG.env,
-        appVersion: 'onchain-content-platform/1.0.0',
+        // Empty config as per official docs
+        // Note: dbEncryptionKey is not used for encryption in browser environments
       })
       
       const xmtpClient = await globalConnectionPromise
