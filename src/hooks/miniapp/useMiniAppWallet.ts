@@ -17,6 +17,7 @@
 import { useAccount, useConnect, useDisconnect, useWalletClient, useSignMessage } from 'wagmi'
 import { useEffect, useCallback, useState } from 'react'
 import type { WalletClient } from 'viem'
+import { logger } from '@/lib/utils/logger'
 
 export interface MiniAppWalletState {
   readonly isConnected: boolean
@@ -167,16 +168,14 @@ export function useMiniAppWallet(): MiniAppWalletState {
   
   // Debug logging in development
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 MiniApp wallet state:', {
-        isConnected,
-        address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null,
-        isConnecting,
-        error,
-        isFarcasterContext: isFarcasterContext(),
-        connectorsCount: connectors.length
-      })
-    }
+    logger.wallet.debug('MiniApp wallet state update', {
+      isConnected,
+      address: address ? `${address.slice(0, 6)}...${address.slice(-4)}` : null,
+      isConnecting,
+      error,
+      isFarcasterContext: isFarcasterContext(),
+      connectorsCount: connectors.length
+    })
   }, [isConnected, address, isConnecting, error, connectors.length])
   
   return {

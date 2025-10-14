@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import webpack from 'webpack';
+import path from 'path';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -19,6 +20,25 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // Required headers for XMTP V3 Browser SDK
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'require-corp',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+        ],
+      },
+    ];
+  },
+
   // Build performance optimizations
   // swcMinify: true, // Removed - deprecated in Next.js 15
   
@@ -32,26 +52,29 @@ const nextConfig: NextConfig = {
       layers: true,
       topLevelAwait: true,
     };
-
-    // Configure WASM file handling for XMTP - Alternative approach
+    
+    // Configure WASM file handling for XMTP - use asset/resource for proper loading
     config.module.rules.push({
       test: /\.wasm$/,
-      type: 'javascript/auto',
-      use: {
-        loader: 'file-loader',
-        options: {
-          publicPath: '/_next/static/wasm/',
-          outputPath: 'static/wasm/',
-        },
+      type: 'asset/resource',
+      generator: {
+        filename: 'static/wasm/[name].[hash][ext]',
       },
     });
 
-    // Fix WASM file paths in production
-    if (!dev && !isServer) {
+    // Fix WASM file paths and ensure proper loading
+    if (!isServer) {
       config.output.webassemblyModuleFilename = 'static/wasm/[modulehash].wasm';
+      config.output.publicPath = '/_next/';
     }
 
-    // XMTP React SDK Polyfills - Fix for "url.replace is not a function" error
+    // Add alias for async-storage to use our browser-compatible polyfill
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@react-native-async-storage/async-storage': path.resolve(__dirname, 'src/polyfills/async-storage.ts'),
+    };
+
+    // Browser polyfills - Let XMTP use native browser APIs
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -60,10 +83,21 @@ const nextConfig: NextConfig = {
         tls: false,
         path: false,
         dns: false,
+        // Keep crypto, stream, buffer, util polyfills for other dependencies
         crypto: require.resolve('crypto-browserify'),
         stream: require.resolve('stream-browserify'),
-        url: require.resolve('url'),
         buffer: require.resolve('buffer'),
+        util: require.resolve('util'),
+        // Don't provide url polyfill - let WASM use native URL
+        url: false,
+        // Handle Node.js module imports from MetaMask SDK
+        'node:crypto': require.resolve('crypto-browserify'),
+        'node:util': require.resolve('util'),
+        'node:stream': require.resolve('stream-browserify'),
+        'node:buffer': require.resolve('buffer'),
+        'node:path': false,
+        // Don't provide node:url polyfill - let WASM use native URL
+        'node:url': false,
       };
 
       // Provide Buffer and process globals for XMTP
