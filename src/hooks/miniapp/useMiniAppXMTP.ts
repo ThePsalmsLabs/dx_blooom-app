@@ -15,6 +15,8 @@ import { createMiniAppXMTPSigner, detectMiniAppContext } from '@/shared/xmtp/min
 import { XMTP_CONFIG, MESSAGING_FEATURES } from '@/lib/messaging/xmtp-config'
 import type { XMTPClientResult, XMTPContentTypes } from '@/types/messaging'
 import { MessagingError, MessagingErrorCode } from '@/types/messaging'
+import { logger } from '@/lib/utils/logger'
+import { initXMTP, isXMTPInitialized } from '@/lib/xmtp/initXMTP'
 
 // Global client cache to prevent multiple initializations
 let globalXMTPClient: Client<XMTPContentTypes> | null = null
@@ -76,7 +78,10 @@ export function useMiniAppXMTP(): MiniAppXMTPState {
     
     // Clear stale client if address changed
     if (globalXMTPClient && globalClientAddress !== address) {
-      console.log('🧹 Address changed, clearing stale XMTP client')
+      logger.xmtp.info('Address changed, clearing stale XMTP client', { 
+        previousAddress: globalClientAddress, 
+        newAddress: address 
+      })
       globalXMTPClient = null
       globalConnectionPromise = null
       globalClientAddress = null
@@ -120,65 +125,63 @@ export function useMiniAppXMTP(): MiniAppXMTPState {
     setError(null)
     
     try {
-      console.log('🔗 Connecting to XMTP network with MiniApp wallet...')
-      console.log('📋 XMTP Config:', { env: XMTP_CONFIG.env, address })
+      logger.xmtp.info('Connecting to XMTP network with MiniApp wallet')
+      logger.xmtp.debug('XMTP Config', { env: XMTP_CONFIG.env, address })
       
-      // Create XMTP signer from wallet state
-      console.log('🔐 Creating XMTP signer...')
+      // ===== STEP 1: Initialize XMTP Browser SDK =====
+      // This MUST happen before Client.create() to ensure WASM is properly loaded
+      if (!isXMTPInitialized()) {
+        logger.xmtp.info('Initializing XMTP Browser SDK (first time setup)')
+        await initXMTP()
+        logger.xmtp.debug('XMTP Browser SDK initialized successfully')
+      } else {
+        logger.xmtp.debug('XMTP Browser SDK already initialized')
+      }
+      
+      // ===== STEP 2: Create XMTP signer from wallet state =====
+      logger.xmtp.debug('Creating XMTP signer')
       const signer = createMiniAppXMTPSigner(address, signMessage)
-      console.log('✅ Signer created successfully')
+      logger.xmtp.debug('Signer created successfully')
       
-      // Test signer functionality
-      console.log('🧪 Testing signer...')
+      // ===== STEP 3: Test signer functionality =====
+      logger.xmtp.debug('Testing signer functionality')
       const signerAddress = await signer.getAddress()
-      console.log('📍 Signer address:', signerAddress)
+      logger.xmtp.debug('Signer address verified', { signerAddress })
       
       if (signerAddress.toLowerCase() !== address.toLowerCase()) {
         throw new Error(`Signer address mismatch: expected ${address}, got ${signerAddress}`)
       }
       
-      // Create connection promise to share across instances using V3 browser SDK
-      console.log('🚀 Initializing XMTP client...')
-      console.log('📋 XMTP Config details:', {
-        env: XMTP_CONFIG.env,
-        envType: typeof XMTP_CONFIG.env,
-        envValue: JSON.stringify(XMTP_CONFIG.env)
-      })
-      
-      // Validate client creation parameters before calling
-      const clientConfig = {
-        env: XMTP_CONFIG.env,
-        appVersion: 'onchain-content-platform/1.0.0',
-      }
-      
-      console.log('🔍 Client config validation:', {
-        config: clientConfig,
-        signerType: signer.type,
-        hasGetAddress: typeof signer.getAddress === 'function',
-        hasSignMessage: typeof signer.signMessage === 'function',
-        hasGetIdentifier: typeof signer.getIdentifier === 'function'
-      })
+      // ===== STEP 4: Create XMTP client =====
+      // Per official docs: https://docs.xmtp.org/chat-apps/sdks/browser
+      // Client.create() takes minimal options - no env or apiUrl needed!
+      logger.xmtp.info('Creating XMTP client instance')
       
       // Cast to Signer as MiniAppXMTPSigner is compatible with XMTP's EOA Signer type
-      globalConnectionPromise = Client.create(signer as Signer, clientConfig)
+      // Note: dbEncryptionKey is not used for encryption in browser environments
+      globalConnectionPromise = Client.create(signer as Signer, {
+        // Empty config or minimal options as per official docs
+      })
       
       const xmtpClient = await globalConnectionPromise
+      logger.xmtp.info('XMTP client created successfully')
       
       // Cache globally to prevent re-initialization
       globalXMTPClient = xmtpClient
       globalClientAddress = address
       setClient(xmtpClient)
       
-      console.log('✅ XMTP client connected successfully')
-      console.log(`📧 Address: ${address}`)
-      console.log(`🌐 Environment: ${XMTP_CONFIG.env}`)
+      logger.xmtp.info('XMTP client connected successfully', {
+        address,
+        environment: XMTP_CONFIG.env
+      })
       
     } catch (connectionError) {
       const error = connectionError instanceof Error 
         ? connectionError 
         : new Error('Unknown XMTP connection error')
       
-      console.error('❌ XMTP connection failed:', error)
+      logger.xmtp.error('XMTP connection failed', { address, env: XMTP_CONFIG.env }, error)
       
       // Clear failed connection attempt
       globalConnectionPromise = null
