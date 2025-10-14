@@ -3,10 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "sh scripts/copy-xmtp-wasm.sh",
     "dev": "next dev",
     "dev:turbopack": "next dev --turbopack",
-    "prebuild": "sh scripts/copy-xmtp-wasm.sh",
     "build": "next build",
     "build:fast": "rm -rf .next && next build",
     "build:clean": "rm -rf .next && rm -rf node_modules/.cache && npm run build",
