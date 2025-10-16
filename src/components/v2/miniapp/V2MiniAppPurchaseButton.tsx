@@ -144,14 +144,6 @@ export function V2MiniAppPurchaseButton({
             <ShoppingCart className="h-4 w-4 mr-2" />
           )}
           {showPricing ? formatPrice(getDiscountedPrice()) : 'Purchase'}
-          
-          {/* V2 Badge */}
-          <Badge 
-            variant="secondary" 
-            className="ml-2 bg-white/20 text-white text-xs border-0"
-          >
-            V2
-          </Badge>
         </Button>
         
         {/* Payment Modal */}
@@ -179,12 +171,12 @@ export function V2MiniAppPurchaseButton({
               </div>
               <div>
                 <h3 className="font-semibold text-sm text-gray-900">Quick Purchase</h3>
-                <p className="text-xs text-gray-500">V2 Enhanced</p>
+                <p className="text-xs text-gray-500">Payment</p>
               </div>
             </div>
             <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
               <Sparkles className="h-3 w-3 mr-1" />
-              V2
+              Fast
             </Badge>
           </div>
 
