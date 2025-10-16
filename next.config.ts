@@ -84,17 +84,17 @@ const nextConfig: NextConfig = {
         path: false,
         dns: false,
         // Keep crypto, stream, buffer, util polyfills for other dependencies
-        crypto: require.resolve('crypto-browserify'),
-        stream: require.resolve('stream-browserify'),
-        buffer: require.resolve('buffer'),
-        util: require.resolve('util'),
+        crypto: 'crypto-browserify',
+        stream: 'stream-browserify',
+        buffer: 'buffer',
+        util: 'util',
         // Don't provide url polyfill - let WASM use native URL
         url: false,
         // Handle Node.js module imports from MetaMask SDK
-        'node:crypto': require.resolve('crypto-browserify'),
-        'node:util': require.resolve('util'),
-        'node:stream': require.resolve('stream-browserify'),
-        'node:buffer': require.resolve('buffer'),
+        'node:crypto': 'crypto-browserify',
+        'node:util': 'util',
+        'node:stream': 'stream-browserify',
+        'node:buffer': 'buffer',
         'node:path': false,
         // Don't provide node:url polyfill - let WASM use native URL
         'node:url': false,
