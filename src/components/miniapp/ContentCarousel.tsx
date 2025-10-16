@@ -9,13 +9,13 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Eye, Play, FileText, Star } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight, Eye, Play, FileText, Star, CheckCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, Button, Badge, Skeleton } from '@/components/ui/index'
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
-import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 import { useContentById, useCreatorProfile, useHasContentAccess } from '@/hooks/contracts/core'
-import { useFarcasterAutoWallet } from '@/hooks/miniapp/useFarcasterAutoWallet'
+import { useMiniAppWallet } from '@/hooks/miniapp/useMiniAppWallet'
 import { getSafeAddress } from '@/lib/utils/wallet-utils'
 import { categoryToString, ContentCategory } from '@/types/contracts'
 
@@ -65,8 +65,9 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
   onSelect,
   className
 }) => {
-  const walletUI = useFarcasterAutoWallet()
-  const userAddress = getSafeAddress(walletUI.address)
+  const router = useRouter()
+  const walletUI = useMiniAppWallet()
+  const userAddress = walletUI.address ? getSafeAddress(walletUI.address) : undefined
   
   const contentQuery = useContentById(contentId)
   const creatorQuery = useCreatorProfile(contentQuery.data?.creator)
@@ -81,6 +82,13 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
       onSelect(contentId)
     }
   }, [contentId, onSelect])
+  
+  const handleViewContent = useCallback((e?: React.MouseEvent) => {
+    // Stop event propagation to prevent card click
+    e?.stopPropagation()
+    // Navigate to content page in miniapp
+    router.push(`/mini/content/${contentId}`)
+  }, [contentId, router])
   
   if (contentQuery.isLoading) {
     return (
@@ -131,15 +139,16 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
     >
       <Card 
         className={cn(
-          "flex-shrink-0 h-80 cursor-pointer shadow-lg hover:shadow-xl transition-shadow duration-200",
-          "w-[calc(100vw-80px)] sm:w-80 md:w-72", // Responsive width
+          "flex-shrink-0 cursor-pointer shadow-lg hover:shadow-xl transition-shadow duration-200",
+          "w-[280px] sm:w-[300px] md:w-[280px]", // Fixed responsive widths
+          "h-auto min-h-[320px]", // Auto height with minimum
           className
         )}
         onClick={handleClick}
       >
-      <CardContent className="p-4 flex flex-col h-full">
+      <CardContent className="p-3 flex flex-col h-full">
         {/* Content Preview */}
-        <div className="flex-shrink-0 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-md flex items-center justify-center mb-3 relative overflow-hidden">
+        <div className="flex-shrink-0 h-28 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-md flex items-center justify-center mb-2 relative overflow-hidden">
           <CategoryIcon className="h-8 w-8 text-muted-foreground" />
           
           {/* Category Badge */}
@@ -162,7 +171,7 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
         </div>
         
         {/* Content Info */}
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 min-h-0 space-y-1.5">
           <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
             {content.title}
           </h3>
@@ -172,7 +181,7 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
           </p>
           
           {/* Creator */}
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground truncate">
             by {formatAddress(content.creator)}
           </div>
           
@@ -183,21 +192,25 @@ const ContentCarouselItem: React.FC<ContentCarouselItemProps> = ({
         </div>
         
         {/* Action Button */}
-        <div className="flex-shrink-0 mt-3">
+        <div className="flex-shrink-0 mt-2">
           {hasAccess ? (
-            <Button size="sm" className="w-full text-xs">
-              <Eye className="h-3 w-3 mr-1" />
-              View
+            <Button 
+              size="sm" 
+              className="w-full text-xs bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleViewContent}
+            >
+              <CheckCircle className="h-3 w-3 mr-1" />
+              View Content
             </Button>
           ) : (
-            <MiniAppPurchaseButton
-              contentId={contentId}
-              title={content.title}
-              userAddress={userAddress}
-              size="sm"
-              fullWidth
-              className="text-xs"
-            />
+            <Button 
+              size="sm" 
+              className="w-full text-xs bg-primary hover:bg-primary/90 text-white"
+              onClick={handleViewContent}
+            >
+              <Eye className="h-3 w-3 mr-1" />
+              View Details
+            </Button>
           )}
         </div>
       </CardContent>
@@ -330,18 +343,18 @@ export const ContentCarousel: React.FC<ContentCarouselProps> = ({
       )}
       
       {/* Carousel Container */}
-      <div className="relative">
+      <div className="relative overflow-hidden">
         <motion.div
           ref={scrollContainerRef}
           className={cn(
-            "flex gap-4 overflow-x-auto scrollbar-hide pb-2",
+            "flex gap-4 overflow-x-auto scrollbar-hide pb-2 px-1",
             "snap-x snap-mandatory scroll-smooth",
-            // Mobile: show 1.2 items, Tablet: 2.5, Desktop: 3.5
             "[-webkit-overflow-scrolling:touch]"
           )}
           style={{
             scrollbarWidth: 'none',
-            msOverflowStyle: 'none'
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch'
           }}
         >
           <AnimatePresence mode="wait">
