@@ -97,7 +97,14 @@ export function useV2PaymentOrchestrator() {
         }
 
         // Execute the payment intent creation
-        const txHash = await commerceCore.createPaymentIntent.mutateAsync(paymentRequest)
+        await commerceCore.createPaymentIntent.mutateAsync(paymentRequest)
+
+        // Get transaction hash from the commerceCore hook state
+        const txHash = commerceCore.hash
+
+        if (!txHash) {
+          throw new Error('Transaction failed - no hash returned')
+        }
 
         // Wait for transaction confirmation
         toast.info('Confirming transaction...')
@@ -107,6 +114,8 @@ export function useV2PaymentOrchestrator() {
         })
 
         // Extract intent ID from transaction logs
+        // The contract emits: event PaymentIntentCreated(bytes16 indexed intentId, ...)
+        // intentId is the first indexed parameter (topics[1])
         const intentId = extractIntentIdFromLogs(receipt.logs, txHash)
 
         toast.success(`Payment intent created: ${intentId.slice(0, 10)}...`)
