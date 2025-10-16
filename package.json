@@ -40,7 +40,7 @@
     "@coinbase/onchainkit": "^0.38.19",
     "@coinbase/wallet-sdk": "^4.3.7",
     "@farcaster/auth-kit": "^0.8.1",
-    "@farcaster/miniapp-sdk": "^0.1.8",
+    "@farcaster/miniapp-sdk": "^0.2.0",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",
     "@farcaster/quick-auth": "^0.0.7",
     "@privy-io/react-auth": "^2.21.3",
@@ -117,5 +117,8 @@
     "typescript": "^5.8.3",
     "url": "^0.11.4",
     "vitest": "^3.2.4"
+  },
+  "optionalDependencies": {
+    "lightningcss-darwin-arm64": "^1.30.2"
   }
 }
