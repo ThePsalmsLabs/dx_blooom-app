@@ -11,6 +11,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import { useWalletConnectionUI } from '@/hooks/ui/integration'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,8 @@ import {
   RefreshCw,
   Wallet,
   AlertCircle,
-  Unlock
+  Unlock,
+  CheckCircle
 } from 'lucide-react'
 import { cn, formatCurrency, formatAddress } from '@/lib/utils'
 import { categoryToString } from '@/types/contracts'
@@ -34,7 +36,6 @@ import {
   useCreatorProfile
 } from '@/hooks/contracts/core'
 // Note: Mock content integration removed - using only real contract data
-import { MiniAppPurchaseButton } from '@/components/commerce/MiniAppPurchaseButton'
 import { useMiniAppRPCOptimization } from '@/hooks/miniapp/useMiniAppRPCOptimization'
 import type { Address } from 'viem'
 
@@ -58,6 +59,7 @@ function MiniAppContentCard({
   onContentSelect?: (contentId: bigint) => void
   userAddress?: string
 }) {
+  const router = useRouter()
   // Fetch real content data only
   const contentQuery = useContentById(contentId)
   const accessControl = useHasContentAccess(
@@ -70,6 +72,11 @@ function MiniAppContentCard({
     if (onContentSelect) {
       onContentSelect(contentId)
     }
+  }
+
+  const handleViewContent = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    router.push(`/mini/content/${contentId}`)
   }
 
   // Loading state
@@ -141,26 +148,30 @@ function MiniAppContentCard({
           <span>by {formatAddress(content.creator)}</span>
         </div>
 
-        {/* Price and Purchase Button */}
+        {/* Price and Action Button */}
         <div className="flex items-center justify-between pt-2">
           <div className="text-sm font-semibold">
             {formatCurrency(content.payPerViewPrice, 6, 'USDC')}
           </div>
-          <MiniAppPurchaseButton
-            contentId={contentId}
-            title={content.title}
-            userAddress={userAddress as Address}
-            creatorInfo={{
-              address: content.creator,
-              name: formatAddress(content.creator)
-            }}
-            onAccessGranted={(contentId) => {
-              // Navigate to content view when user clicks "View Content"
-              if (onContentSelect) {
-                onContentSelect(contentId)
-              }
-            }}
-          />
+          {accessControl.data ? (
+            <Button
+              size="sm"
+              className="text-xs bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleViewContent}
+            >
+              <CheckCircle className="h-3 w-3 mr-1" />
+              View
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="text-xs bg-primary hover:bg-primary/90 text-white"
+              onClick={handleViewContent}
+            >
+              <Eye className="h-3 w-3 mr-1" />
+              Details
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
