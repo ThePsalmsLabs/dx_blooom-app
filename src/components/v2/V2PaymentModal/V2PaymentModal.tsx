@@ -40,6 +40,7 @@ import { Label } from '@/components/ui/label'
 
 // V2 Hooks - using your actual contracts
 import { useV2PaymentOrchestrator } from '@/hooks/contracts/v2/unified/useV2PaymentOrchestrator'
+import { useDirectPayment } from '@/hooks/contracts/v2/unified/useDirectPayment'
 import { useContentPricing } from '@/hooks/contracts/v2/managers/usePriceOracle'
 import { useContentAccess } from '@/hooks/contracts/v2/managers/useAccessManager'
 import { useLoyaltyManager } from '@/hooks/contracts/v2/managers/useLoyaltyManager'
@@ -133,6 +134,7 @@ export function V2PaymentModal({
   
   // V2 Hooks - using your actual contract system
   const { quickPurchase, isPending } = useV2PaymentOrchestrator()
+  const directPayment = useDirectPayment() // Simplified payment for standard USDC
   const { hasAccess, isLoading: accessLoading } = useContentAccess(contentId)
   
   // Gasless payment functionality  
@@ -288,7 +290,16 @@ export function V2PaymentModal({
     }))
 
     try {
+      // ========================================================================
+      // PAYMENT METHOD ROUTING
+      // ========================================================================
+      // Standard:  Direct USDC purchase (1-2 signatures) - BEST UX
+      // Gasless:   Permit-based payment (EIP-2612) - Zero gas for user
+      // Escrow:    Secure escrow with refund protection
+      // ========================================================================
+      
       if (state.paymentMethod === 'gasless') {
+        // GASLESS PAYMENT - Uses EIP-2612 permit signatures
         setState(prev => ({ ...prev, progress: 30, statusMessage: 'Processing permit signature...' }))
         
         if (!state.permitSignature) {
@@ -343,6 +354,7 @@ export function V2PaymentModal({
           transactionHash: txHash
         }))
       } else if (state.paymentMethod === 'escrow') {
+        // ESCROW PAYMENT - Secure payment with buyer protection
         setState(prev => ({ ...prev, progress: 30, statusMessage: 'Initiating escrow payment...' }))
         
         // Execute escrow payment using the BaseCommerceIntegration hook
@@ -378,39 +390,36 @@ export function V2PaymentModal({
           throw new Error('Failed to authorize escrow payment')
         }
       } else {
-        setState(prev => ({ ...prev, progress: 30, statusMessage: 'Creating payment intent...' }))
+        // STANDARD USDC PAYMENT - Simplified Direct Purchase
+        // This flow only requires 1-2 wallet signatures instead of 3-4
+        setState(prev => ({ ...prev, progress: 30, statusMessage: 'Checking USDC balance and allowance...' }))
         
-        // Use quickPurchase for standard payment flow
-        const result = await quickPurchase.mutateAsync({
+        // Use direct payment for better UX (fewer wallet popups)
+        const result: { success: boolean; transactionHash: `0x${string}`; contentId: bigint } = await directPayment.directPurchase.mutateAsync({
+          contentId: BigInt(contentId),
           creator: creator as `0x${string}`,
-          contentId: BigInt(contentId)
+          expectedPrice: loyaltyDiscount.finalAmount || basePrice
         })
 
-        setState(prev => ({ ...prev, progress: 50, statusMessage: 'Waiting for wallet signature...' }))
-        
-        // Extract transaction hash from result
-        const txHash = (result && typeof result === 'object' && 'hash' in result && typeof result.hash === 'string') 
-          ? result.hash 
-          : null
-
-        if (!txHash) {
-          throw new Error('No transaction hash returned from payment')
+        if (!result.success || !result.transactionHash) {
+          throw new Error('Direct payment failed - no transaction hash')
         }
+
+        const txHash = result.transactionHash
 
         setState(prev => ({ 
           ...prev, 
           progress: 70, 
-          statusMessage: 'Transaction submitted. Waiting for blockchain confirmation...',
+          statusMessage: 'Payment confirmed!',
           transactionHash: txHash
         }))
 
-        // The quickPurchase mutation now handles transaction confirmation internally
-        // When it resolves, the transaction has been confirmed on blockchain
+        // Payment complete
         setState(prev => ({ 
           ...prev, 
           currentStep: 'success',
           progress: 100,
-          statusMessage: 'Payment confirmed on blockchain!',
+          statusMessage: 'Purchase completed successfully!',
           transactionHash: txHash
         }))
       }
@@ -423,16 +432,23 @@ export function V2PaymentModal({
       
       const errorMessage = error instanceof Error ? error.message : 'Payment failed'
       
+      // Check if this was a user cancellation
+      const isCancelled = 
+        errorMessage.includes('cancelled') || 
+        errorMessage.includes('CANCELLED') ||
+        errorMessage.includes('denied') ||
+        errorMessage.includes('rejected')
+      
       setState(prev => ({ 
         ...prev, 
         currentStep: 'error',
         error: errorMessage,
-        statusMessage: 'Payment failed'
+        statusMessage: isCancelled ? 'Transaction cancelled' : 'Payment failed'
       }))
 
       onError?.(error instanceof Error ? error : new Error('Payment failed'))
     }
-  }, [userAddress, hasAccess, quickPurchase, creator, contentId, onSuccess, onError, onClose, state.paymentMethod, state.permitSignature, state.transactionHash, loyaltyDiscount, basePrice, permitPaymentManager, userPermitNonce, escrow.authorizePayment, title, description])
+  }, [userAddress, hasAccess, directPayment, creator, contentId, onSuccess, onError, onClose, state.paymentMethod, state.permitSignature, state.transactionHash, loyaltyDiscount, basePrice, permitPaymentManager, userPermitNonce, escrow.authorizePayment, title, description])
 
   const goBack = useCallback(() => {
     const stepOrder: PaymentStep[] = ['payment_method', 'token_selection', 'permit_signature', 'review', 'processing']
@@ -1304,6 +1320,13 @@ export function V2PaymentModal({
         )
 
       case 'error':
+        // Check if this is a cancellation vs actual error
+        const isCancellation = 
+          state.error?.includes('cancelled') || 
+          state.error?.includes('CANCELLED') ||
+          state.error?.includes('denied') ||
+          state.error?.includes('rejected')
+        
         return (
           <motion.div
             key="error"
@@ -1313,19 +1336,27 @@ export function V2PaymentModal({
             exit="exit"
             className="space-y-6 text-center"
           >
-            <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
+            {isCancellation ? (
+              <X className="h-16 w-16 text-amber-500 mx-auto" />
+            ) : (
+              <AlertCircle className="h-16 w-16 text-red-500 mx-auto" />
+            )}
             
             <div>
-              <h3 className="text-xl font-semibold text-red-700 mb-2">Payment Failed</h3>
+              <h3 className={`text-xl font-semibold mb-2 ${isCancellation ? 'text-amber-700' : 'text-red-700'}`}>
+                {isCancellation ? 'Transaction Cancelled' : 'Payment Failed'}
+              </h3>
               <p className="text-muted-foreground text-sm">{state.error}</p>
             </div>
 
             <div className="space-y-2">
-              <Button onClick={retryPayment} className="w-full">
-                Try Again
-              </Button>
+              {!isCancellation && (
+                <Button onClick={retryPayment} className="w-full">
+                  Try Again
+                </Button>
+              )}
               <Button variant="outline" onClick={onClose} className="w-full">
-                Close
+                {isCancellation ? 'Got it' : 'Close'}
               </Button>
             </div>
           </motion.div>
